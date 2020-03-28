@@ -1,0 +1,55 @@
+********** TestComm **************
+***
+Debug processor 1 received data 
+Allgather message strings test
+In processor 1, received messages are :
+Processor = 0
+    Local tips = (0, 0, 0); (1, 0, 1); 
+Processor = 1
+    Local tips = (1000, 1, 1000); (1001, 1, 1001); 
+
+
+ ***
+***
+Debug processor 1 received data 
+Allgather new tips test
+In processor 1, updated tips in all processors are :
+Processor = 0
+    Global tips = (0, 0, 0); (1, 0, 1); (1000, 1, 1000); (1001, 1, 1001); 
+
+Processor = 1
+    Global tips = (0, 0, 0); (1, 0, 1); (1000, 1, 1000); (1001, 1, 1001); 
+
+
+
+ ***
+Allgather message strings test
+In processor 0, received messages are :
+Processor = 0
+    Local tips = (0, 0, 0); (1, 0, 1); 
+Processor = 1
+    Local tips = (1000, 1, 1000); (1001, 1, 1001); 
+
+Allgather new tips test
+In processor 0, updated tips in all processors are :
+Processor = 0
+    Global tips = (0, 0, 0); (1, 0, 1); (1000, 1, 1000); (1001, 1, 1001); 
+
+Processor = 1
+    Global tips = (0, 0, 0); (1, 0, 1); (1000, 1, 1000); (1001, 1, 1001); 
+
+
+
+ ---------------------------------------------------------------------------- 
+| Reference count information                                                |
+ ---------------------------------------------------------------------------- 
+| N7libMesh15GhostingFunctorE reference count information:
+|  Creations:    1
+|  Destructions: 1
+| N7libMesh4ElemE reference count information:
+|  Creations:    103
+|  Destructions: 103
+| N7libMesh9DofObjectE reference count information:
+|  Creations:    224
+|  Destructions: 0
+ ---------------------------------------------------------------------------- 

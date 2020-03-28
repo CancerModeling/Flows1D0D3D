@@ -1,0 +1,60 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Documentation
+*.html
+*.js
+#*.png
+*.css
+
+# Debugger
+core.*
+
+# build directory
+build
+
+# ide directory
+.idea
+.idea/workspace.xml
+
+
+# docs directory
+docs/doxy
+docs/doxy.log
+docs/conf.doxy
+docs/AngLima/doxy
+docs/AngLima/doxy.log
+docs/AngLima/conf.doxy
+docs/AvaLima/doxy
+docs/AvaLima/doxy.log
+docs/AvaLima/conf.doxy
+
+# src directory
+src/Config.h 
