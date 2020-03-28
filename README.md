@@ -12,7 +12,9 @@
 
 - FC : Pressure and nutrient in 3d and 1d are solved simultaneously using block matrix
 
-## NetFVFE
+## Models implemented
+
+### NetFVFE
 
 Network-Tumor coupled modeled solved using mixed finite volume (FV) and finite element (FE)
 
@@ -33,3 +35,17 @@ Avascular model which is trimmed down version of NetTum-FV. This allows one to t
 ### tests
 
 Collection of tests for LibMesh features, geometrical functions, parallel communication
+
+## Running the model
+
+To run model `<model name>`:
+  
+  1. Either have `model_name = <model name>` in input.in, or do not provide the field `model_name` in input.in. 
+  
+  2. Run the model by calling `build/bin/<model name>` executible as follows
+  ```sh
+  <directory to build>/bin/<model name> input.in <libmesh options>
+  ```
+  where `<libmesh options>` are solver type, preconditioner type, etc. For example, `<libmesh options> = " -ksp_type gmres -pc_type bjacobi -sub_pc_type ilu -sub_pc_factor_levels 10"`
+
+Currently, we have choices `AvaFV`, `NetFV`, `NetFVFE`, `NetFC`, `Test` for `<model name>`.
