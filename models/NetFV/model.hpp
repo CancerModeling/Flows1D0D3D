@@ -134,6 +134,7 @@ private:
   void test_taf_2();
   void test_tum();
   void test_tum_2();
+  void test_net_tum();
 
   /*! @brief To store input parameters */
   netfv::InputDeck &d_input;

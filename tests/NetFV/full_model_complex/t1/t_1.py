@@ -20,54 +20,27 @@ def gen_tumor_ic_file(L, filename):
     inpf = open(filename,'w')
     inpf.write("type, cx, cy, cz, tum_rx, tum_ry, tum_rz, hyp_rx, hyp_ry, hyp_rz\n")
 
-    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(3, 0.5*L, 0.5*L, 0.5*L, 0.15*L, 0.0, 0.0, 0.2*L, 0.0, 0.0, 0.0))
+    # type = 1 -- spherical tumor core
+    # type = 3 -- spherical tumor core and then spherical hypoxic core
+    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(1, 0.5*L, 0.5*L, 0.5*L, 0.2*L, 0.0, 0.0, 0.25*L, 0.0, 0.0, 0.0))
 
     inpf.close()
 
 
 def gen_init_network_file(L, filename):
 
-    # write to file
-    inpf = open(filename,'w')
-    inpf.write("DGF\n")
+    # we use extracted network
 
-    R = 0.1 * L
-    P_1 = 1000.
-    P_2 = 500.
-    P_3 = 100.
-
-    # vertex
-    inpf.write("Vertex\n")
-    inpf.write("parameters {}\n".format(1))
-    inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, 0.0, P_1))
-    inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, L, P_2))
-    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, 0.0, P_3))
-    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, L, P_3))
-
-    # segments
-    inpf.write("#\n")
-    inpf.write("SIMPLEX\n")
-    inpf.write("parameters {}\n".format(2))
-    inpf.write("{} {} {} {}\n".format(0, 1, R, 0.0075))
-    inpf.write("{} {} {} {}\n".format(2, 3, R, 0.0075))
-    # 
-    inpf.write("#\n")
-    inpf.write("BOUNDARYDOMAIN\n")
-    inpf.write("default {}\n".format(1))
-
-    # 
-    inpf.write("#")
-    inpf.close()
-
-    return P_2
+    # return the pressure to identify the vein in network (by inspecting the input network file)
+    return 20.
 
 
 def network_input(L, param_index, param_val):
 
     add(param_index, param_val, 'is_network_active', 'true')
-    init_file = 'test_single_line.dgf'
+    init_file = 'ratbrain_secomb.dgf'
     add(param_index, param_val, 'network_init_file', init_file)
-    add(param_index, param_val, 'network_init_refinement', 4)
+    add(param_index, param_val, 'network_init_refinement', 3)
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
     add(param_index, param_val, 'vessel_R_factor', 1.)
     add(param_index, param_val, 'network_update_interval', 1)
@@ -109,6 +82,7 @@ def input():
     break_points.append(len(param_val))
     break_msg.append('# model')
     add(param_index, param_val, 'model_name', 'NetFV')
+    add(param_index, param_val, 'test_name', 'test_net_tum')
     add(param_index, param_val, 'dimension', 3)
     add(param_index, param_val, 'domain_xmin', 0.)
     add(param_index, param_val, 'domain_xmax', L)
@@ -116,7 +90,7 @@ def input():
     add(param_index, param_val, 'domain_ymax', L)
     add(param_index, param_val, 'domain_zmin', 0.)
     add(param_index, param_val, 'domain_zmax', L)    
-    add(param_index, param_val, 'assembly_method', 1)
+    add(param_index, param_val, 'assembly_method', 2)
     
 
     break_points.append(len(param_val))
@@ -128,7 +102,7 @@ def input():
     # mesh
     break_points.append(len(param_val))
     break_msg.append('\n# mesh')
-    num_elems = 30
+    num_elems = 40
     add(param_index, param_val, 'mesh_n_elements', num_elems)
 
     # time
@@ -136,7 +110,7 @@ def input():
     break_msg.append('\n# time')
     final_t = 1.0
     init_t = 0.
-    delta_t = 0.005
+    delta_t = 0.05
     add(param_index, param_val, 'time_step', delta_t)
     add(param_index, param_val, 'initial_time', init_t)
     add(param_index, param_val, 'initial_step', 0)
@@ -145,7 +119,10 @@ def input():
     # output
     break_points.append(len(param_val))
     break_msg.append('\n# output')
-    dt_output = 1
+    total_outputs = 200
+    dt_output = np.floor(final_t / delta_t) / total_outputs
+    if dt_output < 1:
+        dt_output = 1
     add(param_index, param_val, 'perform_output', 'true')
     add(param_index, param_val, 'output_interval', dt_output)
     add(param_index, param_val, 'restart_save', 'false')
@@ -155,31 +132,31 @@ def input():
     break_points.append(len(param_val))
     break_msg.append('\n# solver')
     add(param_index, param_val, 'linear_solver_max_iter', 250)
-    add(param_index, param_val, 'linear_solver_tol', 1.0e-8)
+    add(param_index, param_val, 'linear_solver_tol', 1.0e-7)
     add(param_index, param_val, 'nonlinear_solver_max_iter', 50)
-    add(param_index, param_val, 'nonlinear_solver_tol', 1.0e-8)
+    add(param_index, param_val, 'nonlinear_solver_tol', 1.0e-7)
 
     # nutrient
     break_points.append(len(param_val))
     break_msg.append('\n# nutrient')
-    add(param_index, param_val, 'lambda_P', 2.)
+    add(param_index, param_val, 'lambda_P', 5.)
     add(param_index, param_val, 'lambda_A', 0.005)
     add(param_index, param_val, 'lambda_Ph', 0.5)
-    add(param_index, param_val, 'D_sigma', 5.0e-1)
+    add(param_index, param_val, 'D_sigma', 2.)
     add(param_index, param_val, 'delta_sigma', 1.)
-    add(param_index, param_val, 'chi_c', 0.)
+    add(param_index, param_val, 'chi_c', 0.05)
 
     # tumor
     break_points.append(len(param_val))
     break_msg.append('\n# tumor')
-    add(param_index, param_val, 'bar_M_P', 2.)
+    add(param_index, param_val, 'bar_M_P', 20.)
     add(param_index, param_val, 'bar_E_phi_T', 0.045)
     add(param_index, param_val, 'epsilon_T', 5.0e-3)
 
     # hypoxic
     break_points.append(len(param_val))
     break_msg.append('\n# hypoxic')
-    add(param_index, param_val, 'bar_M_H', 1.)
+    add(param_index, param_val, 'bar_M_H', 10.)
     add(param_index, param_val, 'lambda_PH', 1.)
     add(param_index, param_val, 'lambda_HP', 1.)
     add(param_index, param_val, 'lambda_HN', 1.)
@@ -202,10 +179,10 @@ def input():
     # ECM
     break_points.append(len(param_val))
     break_msg.append('\n# ECM')
-    add(param_index, param_val, 'lambda_ECM_D', 1.)
-    add(param_index, param_val, 'lambda_ECM_P', 1.)
+    add(param_index, param_val, 'lambda_ECM_D', 0.)
+    add(param_index, param_val, 'lambda_ECM_P', 0.)
     add(param_index, param_val, 'bar_phi_ECM_P', 0.5)
-    add(param_index, param_val, 'chi_h', 0.035)
+    add(param_index, param_val, 'chi_h', 0.0)
 
     # MDE
     break_points.append(len(param_val))
@@ -229,8 +206,8 @@ def input():
     # flow 2D/3D 
     break_points.append(len(param_val))
     break_msg.append('\n# flow 21/3DD')
-    add(param_index, param_val, 'tissue_flow_viscosity', 1.)
-    add(param_index, param_val, 'tissue_flow_K', 1.0e-6)
+    add(param_index, param_val, 'tissue_flow_viscosity', 1.0e-3)
+    add(param_index, param_val, 'tissue_flow_K', 0.075e-6)
     add(param_index, param_val, 'tissue_flow_density', 1.)
     L_p = 1.0e-6
     add(param_index, param_val, 'tissue_flow_L_p', L_p)
@@ -249,7 +226,7 @@ def input():
     # nutrient ic
     break_points.append(len(param_val))
     break_msg.append('\n# nutrient ic')
-    add(param_index, param_val, 'ic_nutrient_value', 0.0)
+    add(param_index, param_val, 'ic_nutrient_value', 0.5)
 
     # tumor ic
     break_points.append(len(param_val))

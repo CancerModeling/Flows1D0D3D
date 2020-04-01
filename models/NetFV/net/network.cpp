@@ -848,7 +848,8 @@ void netfv::Network::solveVGMforPressure() {
 
   gmm::bicgstab(A_VGM, P_v, b, P, iter);
 
-  std::cout << P_v << std::endl;
+  if (P_v.size() < 20)
+    std::cout << P_v << std::endl;
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
