@@ -90,8 +90,8 @@ void netfc::Network::create_initial_network() {
      phi_P = std::vector<double>(N_tot_3D, 0.0);
      phi_P_old = std::vector<double>(N_tot_3D, 0.0);
 
-     sol_Vec_Phi_P(2*N_tot_3D, 0.0);
-     sol_Vec_Phi_P_old(2*N_tot_3D, 0.0);
+     sol_Vec_Phi_P = std::vector<double>(2*N_tot_3D, 0.0);
+     sol_Vec_Phi_P_old = std::vector<double>(2*N_tot_3D, 0.0);
 
      mu = input.d_init_vessel_mu;
 
