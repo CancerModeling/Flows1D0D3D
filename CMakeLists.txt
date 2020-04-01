@@ -37,7 +37,7 @@ message("PETSC_LIB = ${PETSC_LIB}")
 
 
 # VTK
-find_package(VTK REQUIRED)
+find_package(VTK COMPONENTS vtkCommonCore QUIET)
 
 if (VTK_VERSION VERSION_LESS "6")
     message(FATAL_ERROR "ERROR: Only VTK library 6+ supported")
@@ -61,8 +61,14 @@ endif ()
 # enable_language(CXX)
 # set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
+#message("Build type: ${CMAKE_BUILD_TYPE}")
+
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -DNDEBUG -g -Wall")
+    if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -DNDEBUG -g -Wall")
+    elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -DNDEBUG -g -Wall")
+    endif()
     # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -xHost -std=c++14")
