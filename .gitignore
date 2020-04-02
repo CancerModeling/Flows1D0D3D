@@ -57,4 +57,7 @@ docs/AvaLima/doxy.log
 docs/AvaLima/conf.doxy
 
 # src directory
-src/Config.h 
+src/Config.h
+
+# mac files
+*.DS_Store
