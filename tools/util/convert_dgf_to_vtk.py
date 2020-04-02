@@ -1,12 +1,4 @@
-import os
 import numpy as np
-import pandas as pd
-import csv
-import sys
-import matplotlib.pyplot as plt
-import importlib
-
-import logging
 
 from read_write_dgf import read_dgf 
 from read_write_vtk import write_vtk

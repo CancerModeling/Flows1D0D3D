@@ -1,15 +1,15 @@
-import os
 import numpy as np
-import pandas as pd
-import csv
-import sys
-import matplotlib.pyplot as plt
-import importlib
-
-import logging
 
 from read_write_dgf import *
 from read_write_vtk import write_vtk
+
+def get_max_radius(segments_data, rad_loc):
+    vec = []
+    for i in range(len(segments_data)):
+        vec.append(segments_data[i][rad_loc])
+    vec = np.array(vec)
+
+    return np.max(vec)
 
 def get_min_max(nodes):
 
@@ -58,9 +58,18 @@ def scale_network(in_file, out_file, scale):
     print(cord_max)
     print(cord_min)
 
+    # we need to create a padding so that cylinders do not touch the boundary
+    # padding size is dictated by maximum radius of cylinder
+    padding = 1.1 * get_max_radius(segments_data, 0)
+    print('\nPadding: {}'.format(padding))
+
     # now translate the cordinates of all nodes so that the minimum cord is
     # at (0,0,0)
     translation = np.multiply(cord_min, -1.)
+
+    # add padding to translation
+    for i in range(3):
+        translation[i] += padding
 
     # translate all nodes
     for i in range(num_nodes):
@@ -68,11 +77,16 @@ def scale_network(in_file, out_file, scale):
             nodes[i][j] += translation[j]
 
     # get min max and check
-    cord_max, cord_min = get_min_max(nodes)
+    cord_max_check, cord_min_check = get_min_max(nodes)
 
     print('\nMin-max coordinates after translation')
-    print(cord_max)
-    print(cord_min)
+    print(cord_max_check)
+    print(cord_min_check)
+
+    # we reset min_cord to origin and max_cord to max_cord + 2 * padding
+    for i in range(3):
+        cord_min[i] = 0.
+        cord_max[i] = cord_max[i] + 2. * padding
 
     # scaling method
     scale_vec = [1., 1., 1.]
@@ -104,10 +118,10 @@ def scale_network(in_file, out_file, scale):
             nodes[i][j] *= scale_vec[j]
 
     # check of new max and min are within expected range
-    cord_max, cord_min = get_min_max(nodes)
+    cord_max_check, cord_min_check = get_min_max(nodes)
     print('\nMin-max coordinates after scaling')
-    print(cord_max)
-    print(cord_min)
+    print(cord_max_check)
+    print(cord_min_check)
 
     # scale the radius of segments_data
     # We assume radius is in the first
@@ -123,3 +137,6 @@ def scale_network(in_file, out_file, scale):
 
 
 scale_network("test.dgf", "test_scaled.dgf", 2.)
+
+# run as follows
+# python3 -B resize_network.py
