@@ -432,6 +432,8 @@ netfv::Model::Model(
       test_tum();
     else if (d_input.d_test_name == "test_tum_2")
       test_tum_2();
+    else if (d_input.d_test_name == "test_net_tum")
+      test_net_tum();
     else
       solve_system();
 
@@ -1197,4 +1199,103 @@ void netfv::Model::test_tum_2() {
       break;
     }
   } // nonlinear solver loop
+}
+
+void netfv::Model::test_net_tum() {
+
+  // get systems
+  auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
+  auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
+  auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
+  auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
+  auto &vel =
+      d_tum_sys.get_system<TransientLinearImplicitSystem>("Velocity");
+
+  // update time
+  nut.time = d_time;
+  tum.time = d_time;
+  hyp.time = d_time;
+  nec.time = d_time;
+  vel.time = d_time;
+
+  d_tum_sys.parameters.set<Real>("time") = d_time;
+
+  // update old solution
+  *nut.old_local_solution = *nut.current_local_solution;
+  *tum.old_local_solution = *tum.current_local_solution;
+  *hyp.old_local_solution = *hyp.current_local_solution;
+  *nec.old_local_solution = *nec.current_local_solution;
+
+  // update old concentration in network
+  d_network.update_old_concentration();
+
+  // solve for pressure
+  solve_pressure();
+
+  // to compute the nonlinear convergence
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
+      tum.solution->clone());
+
+  // Nonlinear iteration loop
+  d_tum_sys.parameters.set<Real>("linear solver tolerance") =
+      d_input.d_linear_tol;
+
+  // nonlinear loop
+  for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
+
+    d_nonlinear_step = l;
+    out << "Nonlinear step: " << l << "\n";
+
+    // solve network nutrient
+    out << std::endl << "Solving network nutrient system" << std::endl;
+    d_network.solveVGMforNutrient();
+
+    // solve nutrient
+    out << std::endl << "Solving tissue nutrient system" << std::endl;
+    nut.solve();
+
+    // solve tumor
+    last_nonlinear_soln_tum->zero();
+    last_nonlinear_soln_tum->add(*tum.solution);
+    out << std::endl << "Solving tumor system" << std::endl;
+    tum.solve();
+    last_nonlinear_soln_tum->add(-1., *tum.solution);
+    last_nonlinear_soln_tum->close();
+
+    // solve hypoxic
+    out << std::endl << "Solving hypoxic system" << std::endl;
+    hyp.solve();
+
+    // solve necrotic
+    out << std::endl << "Solving necrotic system" << std::endl;
+    nec.solve();
+
+    // Nonlinear iteration error
+    double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
+    double nonlinear_global_error = 0.;
+    MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
+                  MPI_SUM, MPI_COMM_WORLD);
+
+    if (d_input.d_perform_output) {
+
+      const unsigned int n_linear_iterations = tum.n_linear_iterations();
+      const Real final_linear_residual = tum.final_linear_residual();
+
+      std::cout << "  Linear converged at step: " << n_linear_iterations
+                << ", residual: " << final_linear_residual
+                << ", Nonlinear convergence: ||u - u_old|| = "
+                << nonlinear_global_error << std::endl;
+    }
+    if (nonlinear_global_error < d_input.d_nonlin_tol) {
+
+      std::cout << "Nonlinear converged at step: " << l << std::endl
+                << std::endl;
+
+      break;
+    }
+  } // nonlinear solver loop
+
+  // solve for velocity
+  out << std::endl << "Solving velocity system" << std::endl;
+  d_vel_assembly.solve();
 }

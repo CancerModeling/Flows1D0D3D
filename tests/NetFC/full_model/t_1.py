@@ -65,9 +65,8 @@ def gen_init_network_file(L, filename):
 def network_input(L, param_index, param_val):
 
     add(param_index, param_val, 'is_network_active', 'true')
-    init_file = 'test_single_line.dgf'
-    add(param_index, param_val, 'network_init_file', init_file)
-    add(param_index, param_val, 'network_init_refinement', 4)
+    add(param_index, param_val, 'network_init_file', '/home/m2rechner/Documents/svn_projects/svn_tumor_growth/TGModels.git/branches/coupled-pressure/build/NetTum/network_files/ratbrain_secomb.dgf')
+    add(param_index, param_val, 'network_init_refinement', 3)
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
     add(param_index, param_val, 'vessel_R_factor', 1.)
     add(param_index, param_val, 'network_update_interval', 1)
@@ -75,7 +74,7 @@ def network_input(L, param_index, param_val):
     add(param_index, param_val, 'log_normal_std_dev', 0.1)
     add(param_index, param_val, 'network_radius_exponent_gamma', 2.)
     add(param_index, param_val, 'network_no_branch_dist', 10)
-    add(param_index, param_val, 'network_new_veesel_max_angle', 0.4)
+    add(param_index, param_val, 'network_new_vessel_max_angle', 0.4)
     add(param_index, param_val, 'network_branch_angle', 0.5)
     add(param_index, param_val, 'network_update_taf_threshold', 0.1)
     add(param_index, param_val, 'network_vessel_no_taf_dist', 0)
@@ -86,11 +85,9 @@ def network_input(L, param_index, param_val):
     add(param_index, param_val, 'network_discret_cyl_length', 5)
     add(param_index, param_val, 'network_discret_cyl_angle', 10)
     add(param_index, param_val, 'network_coupling_method_theta', 1.0)
-
-    P_2 = gen_init_network_file(L, init_file)
-
-    add(param_index, param_val, 'identify_vein_pressure', P_2)
-
+    add(param_index, param_val, 'num_points_length', 50)
+    add(param_index, param_val, 'num_points_angle', 50)
+    add(param_index, param_val, 'identify_vein_pressure',2.8)
 
 def input():
 
@@ -105,10 +102,10 @@ def input():
     break_msg = []
     
     # model
-    L = 2.
+    L = 2.0
     break_points.append(len(param_val))
     break_msg.append('# model')
-    add(param_index, param_val, 'model_name', 'NetFV')
+    add(param_index, param_val, 'model_name', 'NetTum')
     add(param_index, param_val, 'dimension', 3)
     add(param_index, param_val, 'domain_xmin', 0.)
     add(param_index, param_val, 'domain_xmax', L)
@@ -128,15 +125,15 @@ def input():
     # mesh
     break_points.append(len(param_val))
     break_msg.append('\n# mesh')
-    num_elems = 30
+    num_elems = 28
     add(param_index, param_val, 'mesh_n_elements', num_elems)
 
     # time
     break_points.append(len(param_val))
     break_msg.append('\n# time')
-    final_t = 1.0
-    init_t = 0.
-    delta_t = 0.005
+    final_t = 180.0
+    init_t = 0.0
+    delta_t = 0.55
     add(param_index, param_val, 'time_step', delta_t)
     add(param_index, param_val, 'initial_time', init_t)
     add(param_index, param_val, 'initial_step', 0)
@@ -145,7 +142,7 @@ def input():
     # output
     break_points.append(len(param_val))
     break_msg.append('\n# output')
-    dt_output = 1
+    dt_output = 4.0
     add(param_index, param_val, 'perform_output', 'true')
     add(param_index, param_val, 'output_interval', dt_output)
     add(param_index, param_val, 'restart_save', 'false')
@@ -218,26 +215,26 @@ def input():
     # flow 1D 
     break_points.append(len(param_val))
     break_msg.append('\n# flow 1D')
+    add(param_index, param_val, 'scenario', 'network_secomb')
     add(param_index, param_val, 'init_vessel_viscosity', 1.)
     add(param_index, param_val, 'vessel_in_pressure', 1.)
-    add(param_index, param_val, 'vessel_in_nutrient', 1.)
-    add(param_index, param_val, 'vessel_in_nutrient_vein', 0.)
+    add(param_index, param_val, 'vessel_in_nutrient', 1.0)
+    add(param_index, param_val, 'vessel_in_nutrient_vein', 0.0)
     add(param_index, param_val, 'vessel_blood_density', 1.)
     add(param_index, param_val, 'vessel_D_sigma', 5.0e-3)
-    add(param_index, param_val, 'osmotic_reflection_coeff', 1.)
+    add(param_index, param_val, 'osmotic_reflection_coeff', 0.9)
     
     # flow 2D/3D 
     break_points.append(len(param_val))
     break_msg.append('\n# flow 21/3DD')
-    add(param_index, param_val, 'tissue_flow_viscosity', 1.)
-    add(param_index, param_val, 'tissue_flow_K', 1.0e-6)
+    add(param_index, param_val, 'tissue_flow_viscosity', 1.0e-3)
+    add(param_index, param_val, 'tissue_flow_K', 0.75e-5)
     add(param_index, param_val, 'tissue_flow_density', 1.)
-    L_p = 1.0e-6
+    L_p = 1.0e-5
     add(param_index, param_val, 'tissue_flow_L_p', L_p)
-    add(param_index, param_val, 'tissue_nut_L_s', 1.e-2)
+    add(param_index, param_val, 'tissue_nut_L_s', 2.5e-3)
 
-    add(param_index, param_val, 'assembly_factor_p_t', 1.)
-    add(param_index, param_val, 'assembly_factor_c_t', 1.)
+    add(param_index, param_val, 'coupling_factor_p_t', 1. / L_p)
 
     add(param_index, param_val, 'tissue_pressure_bc_val', 0.)
     add(param_index, param_val, 'tissue_pressure_ic_val', 0.)
@@ -245,6 +242,8 @@ def input():
     add(param_index, param_val, 'bc_tissue_pressure_south', 'false')
     add(param_index, param_val, 'bc_tissue_pressure_east', 'false')
     add(param_index, param_val, 'bc_tissue_pressure_west', 'false')
+    add(param_index, param_val, 'N_newton', 10)
+    add(param_index, param_val, 'omega', 0.2)
 
     # nutrient ic
     break_points.append(len(param_val))

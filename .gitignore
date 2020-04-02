@@ -33,6 +33,9 @@
 *.js
 #*.png
 *.css
+#*.pvtu
+#*.vtu
+#*.e 
 
 # Debugger
 core.*
@@ -61,3 +64,9 @@ src/Config.h
 
 # mac files
 *.DS_Store
+
+# output files
+*/output*
+*/sim_*
+*/output*
+*/ratbrain_secomb_vgm*
