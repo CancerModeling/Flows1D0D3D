@@ -60,10 +60,11 @@ void netfc::Network::solve3DProlificCellProblem( int timeStep, double time ){
      std::cout << " " << std::endl;
      std::cout << "Newton iteration 3D ProlificCellProblem finished" << std::endl;
 
-     // Extract phi_p
+     // Extract phi_p and mu_P
      for(int i=0;i<N_tot_3D;i++){
 
-         phi_P[ i ] = Phi_P[ i ];
+         phi_P[ i ] = sol_Vec_Phi_P[ i ];
+        // mu_P[ i ] = sol_Vec_Phi_P[ i+N_tot_3D ];
 
      }
 
