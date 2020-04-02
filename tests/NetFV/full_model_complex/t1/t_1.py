@@ -1,12 +1,5 @@
-import os
 import numpy as np
-import pandas as pd
-import csv
 import sys
-import matplotlib.pyplot as plt
-import importlib
-
-import logging
 
 def add(param_index, param_val, index, val):
 
@@ -22,7 +15,7 @@ def gen_tumor_ic_file(L, filename):
 
     # type = 1 -- spherical tumor core
     # type = 3 -- spherical tumor core and then spherical hypoxic core
-    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(1, 0.5*L, 0.5*L, 0.5*L, 0.2*L, 0.0, 0.0, 0.25*L, 0.0, 0.0, 0.0))
+    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(1, 1., 0.9, 0.8, 0.3, 0.0, 0.0, 0.3, 0.0, 0.0, 0.0))
 
     inpf.close()
 
@@ -102,13 +95,13 @@ def input():
     # mesh
     break_points.append(len(param_val))
     break_msg.append('\n# mesh')
-    num_elems = 40
+    num_elems = 60
     add(param_index, param_val, 'mesh_n_elements', num_elems)
 
     # time
     break_points.append(len(param_val))
     break_msg.append('\n# time')
-    final_t = 1.0
+    final_t = 20.0
     init_t = 0.
     delta_t = 0.05
     add(param_index, param_val, 'time_step', delta_t)
@@ -120,7 +113,7 @@ def input():
     break_points.append(len(param_val))
     break_msg.append('\n# output')
     total_outputs = 200
-    dt_output = np.floor(final_t / delta_t) / total_outputs
+    dt_output = int(np.floor(final_t / delta_t) / total_outputs)
     if dt_output < 1:
         dt_output = 1
     add(param_index, param_val, 'perform_output', 'true')
@@ -140,7 +133,7 @@ def input():
     break_points.append(len(param_val))
     break_msg.append('\n# nutrient')
     add(param_index, param_val, 'lambda_P', 5.)
-    add(param_index, param_val, 'lambda_A', 0.005)
+    add(param_index, param_val, 'lambda_A', 0.)
     add(param_index, param_val, 'lambda_Ph', 0.5)
     add(param_index, param_val, 'D_sigma', 2.)
     add(param_index, param_val, 'delta_sigma', 1.)
@@ -226,7 +219,7 @@ def input():
     # nutrient ic
     break_points.append(len(param_val))
     break_msg.append('\n# nutrient ic')
-    add(param_index, param_val, 'ic_nutrient_value', 0.5)
+    add(param_index, param_val, 'ic_nutrient_value', 0.6)
 
     # tumor ic
     break_points.append(len(param_val))
@@ -259,9 +252,9 @@ def input():
     network_input(L, param_index, param_val)
 
 
-    break_points_new = [-1 for x in xrange(len(param_val))]
-    break_msg_new = ["" for x in xrange(len(param_val))]
-    for i in xrange(len(break_points)):
+    break_points_new = [-1 for x in range(len(param_val))]
+    break_msg_new = ["" for x in range(len(param_val))]
+    for i in range(len(break_points)):
         ii = break_points[i]
         break_points_new[ii] = 1
         break_msg_new[ii] = break_msg[i]
@@ -275,7 +268,7 @@ def input():
     inpf = open('input.in','w')
 
     # Model
-    for i in xrange(len(param_index)):
+    for i in range(len(param_index)):
         if break_points_new[i] == 1:
             inpf.write("{}\n".format(break_msg_new[i]))
 
