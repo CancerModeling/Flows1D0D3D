@@ -38,7 +38,7 @@ def gen_init_network_file(L, filename):
 def network_input(L, param_index, param_val):
 
     add(param_index, param_val, 'is_network_active', 'true')
-    init_file = 'ratbrain_secomb.dgf'
+    init_file = 'ratbrain_secomb_scaled.dgf'
     add(param_index, param_val, 'network_init_file', init_file)
     add(param_index, param_val, 'network_init_refinement', 3)
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
