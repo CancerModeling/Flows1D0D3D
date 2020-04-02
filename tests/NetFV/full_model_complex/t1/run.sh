@@ -24,11 +24,11 @@ if [[ $# -ne 1 ]]; then
 	exit
 fi
 
-python -B "$1".py input
+python3 -B "$1".py input
 
-mv input.in out/.
-mv tum_ic_data.csv out/.
-cp ratbrain_secomb.dgf out/.
+mv *.in out/.
+mv *.csv out/.
+cp *.dgf out/.
 
 cd "out"
 
