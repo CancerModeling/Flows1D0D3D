@@ -351,6 +351,7 @@ struct TumorICData {
    * - tumor_elliptical
    * - tumor_hypoxic_spherical
    * - tumor_hypoxic_elliptical
+   * - tumor_spherical_sharp
    */
   std::string d_ic_type;
   std::vector<double> d_ic_center;
@@ -417,6 +418,7 @@ struct NetworkDeck {
   int d_num_points_length;
   int d_num_points_angle;
   double d_coupling_method_theta;
+  bool d_compute_elem_weights;
 
   double d_assembly_factor_p_t;
   double d_assembly_factor_c_t;
@@ -458,7 +460,7 @@ struct NetworkDeck {
         d_network_no_new_node_search_factor(0.), d_num_points_length(2),
         d_num_points_angle(2), d_coupling_method_theta(0.5),
         d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
-        d_identify_vein_pres(0.) {
+        d_identify_vein_pres(0.), d_compute_elem_weights(false) {
 
     if (!filename.empty())
       read_parameters(filename);

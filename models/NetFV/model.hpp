@@ -113,6 +113,9 @@ public:
   /*! @brief Current nonlinear step */
   unsigned int d_nonlinear_step;
 
+  /*! @brief Is this output time step */
+  bool d_is_output_step;
+
 private:
 
   /*! @brief Output results of tumor system and network system */
@@ -135,6 +138,7 @@ private:
   void test_tum();
   void test_tum_2();
   void test_net_tum();
+  void test_net_tum_2();
 
   /*! @brief To store input parameters */
   netfv::InputDeck &d_input;

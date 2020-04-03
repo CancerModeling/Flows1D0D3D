@@ -688,6 +688,8 @@ void netfv::TumorICDeck::read_parameters(const std::string &filename) {
         ic_type = "tumor_hypoxic_spherical";
       else if (type == 4)
         ic_type = "tumor_hypoxic_elliptical";
+      else if (type == 5)
+        ic_type = "tumor_spherical_sharp";
 
       auto data = TumorICData(ic_type, {cx, cy, cz}, {tum_rx, tum_ry, tum_rz},
                               {hyp_rx, hyp_ry, hyp_rz});
@@ -857,6 +859,7 @@ void netfv::NetworkDeck::read_parameters(const std::string &filename) {
   d_num_points_length = input("network_discret_cyl_length", 2);
   d_num_points_angle = input("network_discret_cyl_angle", 2);
   d_coupling_method_theta = input("network_coupling_method_theta", 0.5);
+  d_compute_elem_weights = input("network_compute_elem_weights", true);
 
   if (input.have_variable("assembly_factor_p_t"))
     d_assembly_factor_p_t = input("assembly_factor_p_t", 1.);
