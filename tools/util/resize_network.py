@@ -37,7 +37,9 @@ def get_min_max(nodes):
 
     return cord_max, cord_min
 
-def scale_network(in_file, out_file, scale):
+def scale_network(in_file, out_file, scale, scale_radius):
+
+    # scale_radius: scale the final radius by this value (usefule when needed to increase the radius so that we can consider coarser mesh in 3D)
 
     # read dgf file
     nodes, nodes_data, segments, segments_data = read_dgf(in_file)
@@ -51,6 +53,10 @@ def scale_network(in_file, out_file, scale):
     print("num segments = {}".format(num_segments))
     # print(segments)
     # print(segments_data)
+
+    # scale the radius
+    for i in range(num_segments):
+        segments_data[i][0] = segments_data[i][0] * scale_radius
 
     cord_max, cord_min = get_min_max(nodes)
 
@@ -127,7 +133,7 @@ def scale_network(in_file, out_file, scale):
     # We assume radius is in the first
     scale_factor = np.min(scale_vec)
     for i in range(num_segments):
-        segments_data[i][0] = segments_data[i][0] * scale_factor
+        segments_data[i][0] = segments_data[i][0] * scale_factor * scale_radius
 
     # write to new dgf file
     write_dgf(out_file, nodes, nodes_data, segments, segments_data)
@@ -136,7 +142,7 @@ def scale_network(in_file, out_file, scale):
     write_vtk("test_scaled.vtk", nodes, nodes_data, segments, segments_data)
 
 
-scale_network("test.dgf", "test_scaled.dgf", 2.)
+scale_network("test.dgf", "test_scaled.dgf", 2., 2.5)
 
 # run as follows
 # python3 -B resize_network.py

@@ -15,7 +15,9 @@ def gen_tumor_ic_file(L, filename):
 
     # type = 1 -- spherical tumor core
     # type = 3 -- spherical tumor core and then spherical hypoxic core
-    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(1, 1., 0.9, 0.8, 0.3, 0.0, 0.0, 0.3, 0.0, 0.0, 0.0))
+    # type = 5 -- spherical tumor core (sharp)
+    tum_ic_type = 5
+    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(tum_ic_type, 1., 0.9, 0.8, 0.3, 0.0, 0.0, 0.3, 0.0, 0.0, 0.0))
 
     inpf.close()
 
@@ -36,7 +38,10 @@ def network_input(L, param_index, param_val):
     add(param_index, param_val, 'network_init_refinement', 3)
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
     add(param_index, param_val, 'vessel_R_factor', 1.)
-    add(param_index, param_val, 'network_update_interval', 1)
+
+    # set below to reasonable value such as 1, 4, 10 if want to grow network
+    add(param_index, param_val, 'network_update_interval', 100000)
+    
     add(param_index, param_val, 'log_normal_mean', 0.01)
     add(param_index, param_val, 'log_normal_std_dev', 0.1)
     add(param_index, param_val, 'network_radius_exponent_gamma', 2.)
@@ -49,8 +54,9 @@ def network_input(L, param_index, param_val):
     add(param_index, param_val, 'network_nonlocal_search_length_factor', 5.)
     add(param_index, param_val, 'network_local_search', 'false')
     add(param_index, param_val, 'network_no_new_node_search_factor', 0.25)
-    add(param_index, param_val, 'network_discret_cyl_length', 5)
-    add(param_index, param_val, 'network_discret_cyl_angle', 10)
+    add(param_index, param_val, 'network_discret_cyl_length', 20)
+    add(param_index, param_val, 'network_discret_cyl_angle', 20)
+    add(param_index, param_val, 'network_compute_elem_weights', 'true')
     add(param_index, param_val, 'network_coupling_method_theta', 1.0)
 
     P_2 = gen_init_network_file(L, init_file)
@@ -75,7 +81,7 @@ def input():
     break_points.append(len(param_val))
     break_msg.append('# model')
     add(param_index, param_val, 'model_name', 'NetFV')
-    add(param_index, param_val, 'test_name', 'test_net_tum')
+    add(param_index, param_val, 'test_name', 'test_net_tum_2')
     add(param_index, param_val, 'dimension', 3)
     add(param_index, param_val, 'domain_xmin', 0.)
     add(param_index, param_val, 'domain_xmax', L)
@@ -101,9 +107,9 @@ def input():
     # time
     break_points.append(len(param_val))
     break_msg.append('\n# time')
-    final_t = 20.0
+    final_t = 30.0
     init_t = 0.
-    delta_t = 0.05
+    delta_t = 0.1
     add(param_index, param_val, 'time_step', delta_t)
     add(param_index, param_val, 'initial_time', init_t)
     add(param_index, param_val, 'initial_step', 0)
@@ -112,7 +118,7 @@ def input():
     # output
     break_points.append(len(param_val))
     break_msg.append('\n# output')
-    total_outputs = 200
+    total_outputs = 100
     dt_output = int(np.floor(final_t / delta_t) / total_outputs)
     if dt_output < 1:
         dt_output = 1
@@ -204,10 +210,11 @@ def input():
     add(param_index, param_val, 'tissue_flow_density', 1.)
     L_p = 1.0e-6
     add(param_index, param_val, 'tissue_flow_L_p', L_p)
-    add(param_index, param_val, 'tissue_nut_L_s', 1.e-2)
+    L_s = 1.0e-2
+    add(param_index, param_val, 'tissue_nut_L_s', L_s)
 
-    add(param_index, param_val, 'assembly_factor_p_t', 1.)
-    add(param_index, param_val, 'assembly_factor_c_t', 1.)
+    add(param_index, param_val, 'assembly_factor_p_t', 1./L_p)
+    add(param_index, param_val, 'assembly_factor_c_t', 1./L_s)
 
     add(param_index, param_val, 'tissue_pressure_bc_val', 0.)
     add(param_index, param_val, 'tissue_pressure_ic_val', 0.)

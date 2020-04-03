@@ -100,11 +100,11 @@ void netfv::Network::create_initial_network() {
 
   transferDataToVGM(vertices, pressures, radii, elements);
   int numberOfNodes = VGM.getNumberOfNodes();
-  std::cout << "Number of nodes: " << numberOfNodes << std::endl;
+  std::cout << "  Number of nodes: " << numberOfNodes << std::endl;
 
   // refine mesh
   //  std::cout << " " << std::endl;
-  std::cout << "Refine mesh" << std::endl;
+  std::cout << "  Refine mesh" << std::endl;
 
   int refinementLevel = input.d_network_init_refinement;
 
@@ -116,10 +116,11 @@ void netfv::Network::create_initial_network() {
   // std::cout << " " << std::endl;
   numberOfNodes = VGM.getNumberOfNodes();
 
-  std::cout << "Number of nodes: " << numberOfNodes << std::endl;
+  std::cout << "  Number of nodes: " << numberOfNodes << std::endl;
 
   // compute element and weights
-  compute_elem_weights();
+  if (input.d_compute_elem_weights)
+    compute_elem_weights();
 
   // Print data
   // std::cout << " " << std::endl;
@@ -741,6 +742,8 @@ void netfv::Network::assembleVGMSystemForPressure() {
     P_v[i] = 0.;
   }
 
+  std::vector<netfv::ElemWeights> J_b_points;
+
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
   while (pointer) {
@@ -764,12 +767,14 @@ void netfv::Network::assembleVGMSystemForPressure() {
     } else {
 
       // get element data at points on cylinder surface
-      // const auto J_b_points = compute_elem_weights_at_node(pointer);
+      if (input.d_compute_elem_weights)
+        J_b_points = pointer->J_b_points;
+      else
+       J_b_points = compute_elem_weights_at_node(pointer);
 
       for (int i = 0; i < numberOfNeighbors; i++) {
 
-        // const auto &J_b_data = J_b_points[i];
-        const auto &J_b_data = pointer->J_b_points[i];
+        const auto &J_b_data = J_b_points[i];
 
         double radius = pointer->radii[i];
 
@@ -834,7 +839,7 @@ void netfv::Network::assembleVGMSystemForPressure() {
 
 void netfv::Network::solveVGMforPressure() {
 
-  std::cout << "Assemble pressure matrix and right hand side" << std::endl;
+  // std::cout << "Assemble pressure matrix and right hand side" << std::endl;
   assembleVGMSystemForPressure();
 
   gmm::iteration iter(10E-18);
@@ -919,6 +924,8 @@ void netfv::Network::assembleVGMSystemForNutrient() {
   //    C_v[i] = 0.;
   //  }
 
+  std::vector<netfv::ElemWeights> J_b_points;
+
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
   double dt = d_model_p->d_dt;
@@ -987,12 +994,14 @@ void netfv::Network::assembleVGMSystemForNutrient() {
     } else {
 
       // get element data at points on cylinder surface
-      // const auto J_b_points = compute_elem_weights_at_node(pointer);
+      if (input.d_compute_elem_weights)
+        J_b_points = pointer->J_b_points;
+      else
+        J_b_points = compute_elem_weights_at_node(pointer);
 
       for (int i = 0; i < numberOfNeighbors; i++) {
 
-        // const auto &J_b_data = J_b_points[i];
-        const auto &J_b_data = pointer->J_b_points[i];
+        const auto &J_b_data = J_b_points[i];
 
         double radius = pointer->radii[i];
 
@@ -1099,8 +1108,8 @@ void netfv::Network::solveVGMforNutrient() {
   gmm::iteration iter(5.0e-11);
   gmm::identity_matrix PR;
 
-  std::cout << " " << std::endl;
-  std::cout << "Assemble nutrient matrix and right hand side" << std::endl;
+  // std::cout << " " << std::endl;
+  // std::cout << "Assemble nutrient matrix and right hand side" << std::endl;
   assembleVGMSystemForNutrient();
 
   // if this is first call inside nonlinear loop, we guess current
@@ -1258,10 +1267,10 @@ void netfv::Network::refine1DMesh() {
 
 void netfv::Network::update_network() {
 
-  out << "Mark apical growth\n";
+  out << "  Mark apical growth\n";
   markApicalGrowth("apical_taf_based");
 
-  out << "Process apical growth\n";
+  out << "  Process apical growth\n";
   auto num_new_nodes = processApicalGrowthTAF();
 
   if (num_new_nodes > 0)
@@ -1270,7 +1279,7 @@ void netfv::Network::update_network() {
 
 void netfv::Network::compute_elem_weights() {
 
-  out << "Computing element-weight data for network\n";
+  out << "  Computing element-weight data for network\n";
 
   auto pointer = VGM.getHead();
 
@@ -1385,9 +1394,6 @@ std::vector<netfv::ElemWeights> netfv::Network::compute_elem_weights_at_node(
 
   const auto &mesh = d_model_p->get_mesh();
   const auto &input = d_model_p->get_input_deck();
-
-  bool direct_find = true;
-  const auto &mesh_locator = mesh.point_locator();
 
   int numberOfNeighbors = pointer->neighbors.size();
 

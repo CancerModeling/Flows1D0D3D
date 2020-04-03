@@ -1,4 +1,4 @@
-# Naming convention
+## Naming convention
 
 - Net : Network-Tumor coupled model
 
@@ -49,3 +49,12 @@ To run model `<model name>`:
   where `<libmesh options>` are solver type, preconditioner type, etc. For example, `<libmesh options> = " -ksp_type gmres -pc_type bjacobi -sub_pc_type ilu -sub_pc_factor_levels 10"`
 
 Currently, we have choices `AvaFV`, `NetFV`, `NetFVFE`, `NetFC`, `Test` for `<model name>`.
+
+### Petsc solver types
+We can select following (and more can be found in the petsc website) with option `-ksp_type`
+	
+	- cg - Conjugate Gradient
+	- gmres - Generalized Minimal Residual method
+	- bcgs - Stabilized version of BiConjugate Gradient
+	- tfqmr - A transpose free QMR (quasi minimal residual)
+	- cgs - Conjugate Gradient Squared

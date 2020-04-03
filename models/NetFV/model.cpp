@@ -271,6 +271,7 @@ netfv::Model::Model(
     TransientLinearImplicitSystem &vel)
     : d_step(0), d_time(0.), d_dt(0.), d_hmin(0.), d_hmax(0.),
       d_bounding_box(Point(), Point()), d_nonlinear_step(0),
+      d_is_output_step(false),
       d_input(input), d_comm_p(comm),
       d_mesh(mesh), d_tum_sys(tum_sys), d_network(this),
       d_nec_assembly(this, "Necrotic", nec), d_tum_assembly(this, "Tumor", tum),
@@ -373,7 +374,7 @@ netfv::Model::Model(
   }
 
   // 1-D network
-  out << "\n\nCreating 1-D network\n\n";
+  out << "\n\nCreating 1-D network\n";
   d_network.create_initial_network();
 
   //
@@ -400,9 +401,34 @@ netfv::Model::Model(
   // Solve
   //
 
+  //  if (d_input.d_test_name == "test_net_tum_2") {
+  //    // decouple 1d-3d pressure
+  //    d_input.d_tissue_flow_L_p = 0.;
+  //
+  //    // solve only for 1d pressure
+  //    out << std::endl << "Solving Network pressure system" << std::endl;
+  //    d_network.solveVGMforPressure();
+  //  }
+
+  if (!d_input.d_test_name.empty())
+    out << "\n\nSolving sub-system for test: " << d_input.d_test_name << "\n\n";
+
+  // check for tumor-network test
+  if (d_input.d_test_name == "test_net_tum_2" or
+      d_input.d_test_name == "test_nut" or
+      d_input.d_test_name == "test_nut_2" or
+      d_input.d_test_name == "test_pressure") {
+
+    // solve for pressure only once
+    auto nt = d_input.d_nonlin_max_iters;
+    d_input.d_nonlin_max_iters = 2 * nt;
+    solve_pressure();
+    d_input.d_nonlin_max_iters = nt;
+  }
+
   // check for pressure test
   if (d_input.d_test_name == "test_pressure") {
-    solve_pressure();
+
     // write tumor solution
     write_system(1, &QOI_MASS);
     d_network.writeDataToVTKTimeStep_VGM(1);
@@ -415,8 +441,15 @@ netfv::Model::Model(
     d_step++;
     d_time += d_dt;
 
-    out << std::endl
-        << "Solving time step: " << d_step << ", time: " << d_time << std::endl;
+    // check if this is output step
+    d_is_output_step = false;
+    if ((d_step >= d_input.d_dt_output_interval and
+         (d_step % d_input.d_dt_output_interval == 0)) or
+        d_step == 0)
+      d_is_output_step = true;
+
+    out << "\n\n________________________________________________________\n";
+    out << "At time step: " << d_step << ", time: " << d_time << "\n\n";
 
     // solve tumor-network system
     // out << std::endl << "Solving Tumor-Network coupled system" << std::endl;
@@ -434,19 +467,19 @@ netfv::Model::Model(
       test_tum_2();
     else if (d_input.d_test_name == "test_net_tum")
       test_net_tum();
+    else if (d_input.d_test_name == "test_net_tum_2")
+      test_net_tum_2();
     else
       solve_system();
 
     // update network
     if (d_step % d_input.d_network_update_interval == 0) {
-      out << std::endl << "Updating Network" << std::endl;
+      out << "\n  Updating Network\n";
       d_network.update_network();
     }
 
     // Post-processing
-    if ((d_step >= d_input.d_dt_output_interval and
-         (d_step % d_input.d_dt_output_interval == 0)) or
-        d_step == 0) {
+    if (d_is_output_step) {
 
       // write tumor solution
       write_system((d_step - d_input.d_init_step) /
@@ -502,8 +535,7 @@ void netfv::Model::write_system(const unsigned int &t_step,
     QOI_MASS->push_back(total_mass);
 
   // print to screen
-  out << "Time: " << d_time << ", Total tumor Mass: " << total_mass
-      << std::endl;
+  out << "\n\n  Total tumor Mass: " << total_mass << "\n";
 
   // print to file
   std::ofstream out_file;
@@ -525,7 +557,7 @@ void netfv::Model::write_system(const unsigned int &t_step,
   if (d_input.d_restart_save &&
       (d_step % d_input.d_dt_restart_save_interval == 0)) {
 
-    out << "Saving files for restart" << std::endl;
+    out << "  Saving files for restart" << std::endl;
     if (t_step == 0) {
 
       std::string mesh_file = "mesh.e";
@@ -626,6 +658,8 @@ void netfv::Model::solve_system() {
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
+  out << "\n  Nonlinear loop\n\n";
+
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
       d_input.d_linear_tol;
@@ -634,41 +668,44 @@ void netfv::Model::solve_system() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
+    out << "    ____________________\n";
+    out << "    Nonlinear step: " << l << "\n\n";
+    out << "      Solving ";
 
     // solver for 1-D pressure and nutrient
-    out << std::endl << "Solving Network nutrient system" << std::endl;
+    out << "[1D nutrient] -> ";
     d_network.solveVGMforNutrient();
 
     // solve nutrient
-    out << std::endl << "Solving nutrient system" << std::endl;
+    out << "[3D nutrient] -> ";
     nut.solve();
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << std::endl << "Solving tumor system" << std::endl;
+    out << "[tumor species] -> ";
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << std::endl << "Solving hypoxic system" << std::endl;
+    out << "[hypoxic species] -> ";
     hyp.solve();
 
     // solve necrotic
-    out << std::endl << "Solving necrotic system" << std::endl;
+    out << "[necrotic species] -> ";
     nec.solve();
 
     // solve taf
-    out << std::endl << "Solving TAF system" << std::endl;
+    out << "[taf species] -> ";
     taf.solve();
 
     // solve mde
-    out << std::endl << "Solving MDE system" << std::endl;
+    out << "[mde species] -> ";
     mde.solve();
 
     // solve ecm
-    out << std::endl << "Solving ECM system" << std::endl;
+    out << "[ecm species]\n";
     ecm.solve();
 
     // Nonlinear iteration error
@@ -682,26 +719,28 @@ void netfv::Model::solve_system() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      std::cout << "  Linear converged at step: " << n_linear_iterations
+      std::cout << "      Linear converged at step: " << n_linear_iterations
                 << ", residual: " << final_linear_residual
                 << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl;
+                << nonlinear_global_error << std::endl << std::endl;
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      std::cout << "Nonlinear converged at step: " << l << std::endl
+      std::cout << "      Nonlinear converged at step: " << l << std::endl
                 << std::endl;
 
       break;
     }
   } // nonlinear solver loop
 
+  out << "\n  End of nonlinear loop\n";
+
   // solve for gradient of taf
-  out << std::endl << "Solving gradient of TAF system" << std::endl;
+  out << "      Solving [gradient of taf] -> ";
   d_grad_taf_assembly.solve();
 
   // solve for velocity
-  out << std::endl << "Solving velocity system" << std::endl;
+  out << "[velocity]\n";
   d_vel_assembly.solve();
 }
 
@@ -728,23 +767,25 @@ void netfv::Model::test_nut() {
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
       d_input.d_linear_tol;
 
-  // Nutrient coupling
-  out << "Nonlinear loop for coupled nutrient systems\n";
+  out << "\n  Nonlinear loop\n";
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
     // for (unsigned int l = 0; l < 1; ++l) {
 
     d_nonlinear_step = l;
+    out << "    ____________________\n";
+    out << "    Nonlinear step: " << l << "\n\n";
+    out << "      Solving ";
 
     // solver for 1-D nutrient
-    out << std::endl << "Solving network nutrient system" << std::endl;
+    out << "[1D nutrient] -> ";
     d_network.solveVGMforNutrient();
 
     // solve for nutrient in tissue
     last_nonlinear_soln_nut->zero();
     last_nonlinear_soln_nut->add(*nut.solution);
-    out << std::endl << "Solving tissue nutrient system" << std::endl;
+    out << "[3D nutrient]\n";
     nut.solve();
     last_nonlinear_soln_nut->add(-1., *nut.solution);
     last_nonlinear_soln_nut->close();
@@ -761,20 +802,22 @@ void netfv::Model::test_nut() {
       const unsigned int n_linear_iterations = nut.n_linear_iterations();
       const Real final_linear_residual = nut.final_linear_residual();
 
-      std::cout << "  Linear converged at step: " << n_linear_iterations
+      std::cout << "    Linear converged at step: " << n_linear_iterations
                 << ", residual: " << final_linear_residual
                 << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error_nut << std::endl;
+                << nonlinear_global_error_nut << std::endl << std::endl;
     }
     if (nonlinear_global_error_nut < d_input.d_nonlin_tol) {
 
-      std::cout << "Nonlinear converged at step: " << l << std::endl
+      std::cout << "    Nonlinear converged at step: " << l << std::endl
                 << std::endl;
 
       break;
     }
 
   } // nonlinear solver loop
+
+  out << "\n  End of nonlinear loop\n";
 }
 
 void netfv::Model::test_nut_2() {
@@ -793,10 +836,10 @@ void netfv::Model::test_nut_2() {
   d_network.update_old_concentration();
 
   // solver for 1-D nutrient
-  out << std::endl << "Solving network nutrient system" << std::endl;
+  out << "      Solving [1D nutrient] -> ";
   d_network.solveVGMforNutrient();
 
-  out << std::endl << "Solving tissue nutrient system" << std::endl;
+  out << "[3D nutrient]\n";
   nut.solve();
 }
 
@@ -821,23 +864,25 @@ void netfv::Model::solve_pressure() {
       d_input.d_linear_tol;
 
   // Solve pressure system
-  out << "Nonlinear loop for coupled pressure systems\n";
+  out << "\n\n  Nonlinear loop for pressure\n";
   // nonlinear loop
-  // for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
+  for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
   // Debug
-  for (unsigned int l = 0; l < 10; ++l) {
+  // for (unsigned int l = 0; l < 10; ++l) {
 
     d_nonlinear_step = l;
-    out << "Nonlinear step: " << l << "\n";
+    out << "    ____________________\n";
+    out << "    Nonlinear step: " << l << "\n\n";
+    out << "      Solving ";
 
     // solver for 1-D pressure and nutrient
-    out << std::endl << "Solving Network pressure system" << std::endl;
+    out << "[1D pressure] -> ";
     d_network.solveVGMforPressure();
 
     // solve for pressure in tissue
     last_nonlinear_soln_pres->zero();
     last_nonlinear_soln_pres->add(*pres.solution);
-    out << std::endl << "Solving tissue pressure system" << std::endl;
+    out << "[3D pressure]\n";
     pres.solve();
     last_nonlinear_soln_pres->add(-1., *pres.solution);
     last_nonlinear_soln_pres->close();
@@ -853,20 +898,22 @@ void netfv::Model::solve_pressure() {
       const unsigned int n_linear_iterations = pres.n_linear_iterations();
       const Real final_linear_residual = pres.final_linear_residual();
 
-      std::cout << "  Linear converged at step: " << n_linear_iterations
+      std::cout << "      Linear converged at step: " << n_linear_iterations
                 << ", residual: " << final_linear_residual
                 << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error_pres << std::endl;
+                << nonlinear_global_error_pres << std::endl << std::endl;
     }
     if (nonlinear_global_error_pres < d_input.d_nonlin_tol) {
 
-      std::cout << "Nonlinear converged at step: " << l << std::endl
+      std::cout << "      Nonlinear converged at step: " << l << std::endl
                 << std::endl;
 
       break;
     }
 
   } // nonlinear solver loop
+
+  out << "\n  End of nonlinear loop for pressure\n";
 }
 
 void netfv::Model::test_taf() {
@@ -920,44 +967,48 @@ void netfv::Model::test_taf() {
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
       d_input.d_linear_tol;
 
+  out << "\n  Nonlinear loop\n";
+
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    out << "Nonlinear step: " << l << "\n";
+    out << "    ____________________\n";
+    out << "    Nonlinear step: " << l << "\n\n";
+    out << "      Solving ";
 
-    out << std::endl << "Solving network nutrient system" << std::endl;
+    out << "[1D nutrient] -> ";
     d_network.solveVGMforNutrient();
 
-    out << std::endl << "Solving tissue nutrient system" << std::endl;
+    out << "[3D nutrient] -> ";
     nut.solve();
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << std::endl << "Solving tumor system" << std::endl;
+    out << "[tumor species] -> ";
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << std::endl << "Solving hypoxic system" << std::endl;
+    out << "[hypoxic species] -> ";
     hyp.solve();
 
     // solve necrotic
-    out << std::endl << "Solving necrotic system" << std::endl;
+    out << "[necrotic species] -> ";
     nec.solve();
 
     // solve taf
-    out << std::endl << "Solving TAF system" << std::endl;
+    out << "[taf species] -> ";
     taf.solve();
 
     // solve mde
-    out << std::endl << "Solving MDE system" << std::endl;
+    out << "[mde species] -> ";
     // mde.solve();
 
     // solve ecm
-    out << std::endl << "Solving ECM system" << std::endl;
+    out << "[ecm species]\n";
     // ecm.solve();
 
     // Nonlinear iteration error
@@ -971,27 +1022,29 @@ void netfv::Model::test_taf() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      std::cout << "  Linear converged at step: " << n_linear_iterations
+      std::cout << "      Linear converged at step: " << n_linear_iterations
                 << ", residual: " << final_linear_residual
                 << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl;
+                << nonlinear_global_error << std::endl << std::endl;
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      std::cout << "Nonlinear converged at step: " << l << std::endl
+      std::cout << "      Nonlinear converged at step: " << l << std::endl
                 << std::endl;
 
       break;
     }
   } // nonlinear solver loop
 
+  out << "\n  End of nonlinear loop\n";
+
   // solve for gradient of taf
-  out << std::endl << "Solving gradient of TAF system" << std::endl;
+  out << "      Solving [gradient of taf] -> ";
   //grad_taf.solve();
   d_grad_taf_assembly.solve();
 
   // solve for gradient of taf
-  out << std::endl << "Solving velocity system" << std::endl;
+  out << "[velocity]\n";
   d_vel_assembly.solve();
 }
 
@@ -1011,11 +1064,11 @@ void netfv::Model::test_taf_2() {
   // update old solution
   *taf.old_local_solution = *taf.current_local_solution;
 
-  out << std::endl << "Solving TAF system" << std::endl;
+  out << "      Solving [taf] -> ";
   taf.solve();
 
   // solve for gradient of taf
-  out << std::endl << "Solving gradient of TAF system" << std::endl;
+  out << "[gradient of taf]\n";
   d_grad_taf_assembly.solve();
 }
 
@@ -1067,6 +1120,8 @@ void netfv::Model::test_tum() {
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
+  out << "\n  Nonlinear loop\n";
+
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
       d_input.d_linear_tol;
@@ -1075,22 +1130,24 @@ void netfv::Model::test_tum() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    out << "Nonlinear step: " << l << "\n";
+    out << "    ____________________\n";
+    out << "    Nonlinear step: " << l << "\n\n";
+    out << "      Solving ";
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << std::endl << "Solving tumor system" << std::endl;
+    out << "[tumor species] -> ";
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << std::endl << "Solving hypoxic system" << std::endl;
+    out << "[hypoxic species] -> ";
     hyp.solve();
 
     // solve necrotic
-    out << std::endl << "Solving necrotic system" << std::endl;
+    out << "[necrotic species]\n";
     nec.solve();
 
     // Nonlinear iteration error
@@ -1104,19 +1161,21 @@ void netfv::Model::test_tum() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      std::cout << "  Linear converged at step: " << n_linear_iterations
+      std::cout << "      Linear converged at step: " << n_linear_iterations
                 << ", residual: " << final_linear_residual
                 << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl;
+                << nonlinear_global_error << std::endl << std::endl;
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      std::cout << "Nonlinear converged at step: " << l << std::endl
+      std::cout << "      Nonlinear converged at step: " << l << std::endl
                 << std::endl;
 
       break;
     }
   } // nonlinear solver loop
+
+  out << "\n  End of nonlinear loop\n";
 }
 
 void netfv::Model::test_tum_2() {
@@ -1145,6 +1204,8 @@ void netfv::Model::test_tum_2() {
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
+  out << "\n  Nonlinear loop\n";
+
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
       d_input.d_linear_tol;
@@ -1153,26 +1214,28 @@ void netfv::Model::test_tum_2() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    out << "Nonlinear step: " << l << "\n";
+    out << "    ____________________\n";
+    out << "    Nonlinear step: " << l << "\n\n";
+    out << "      Solving ";
 
     // solve nutrient
-    out << std::endl << "Solving tissue nutrient system" << std::endl;
+    out << "[3D nutrient] -> ";
     nut.solve();
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << std::endl << "Solving tumor system" << std::endl;
+    out << "[tumor species] -> ";
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << std::endl << "Solving hypoxic system" << std::endl;
+    out << "[hypoxic species] -> ";
     hyp.solve();
 
     // solve necrotic
-    out << std::endl << "Solving necrotic system" << std::endl;
+    out << "[necrotic species]\n";
     nec.solve();
 
     // Nonlinear iteration error
@@ -1186,19 +1249,21 @@ void netfv::Model::test_tum_2() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      std::cout << "  Linear converged at step: " << n_linear_iterations
+      std::cout << "      Linear converged at step: " << n_linear_iterations
                 << ", residual: " << final_linear_residual
                 << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl;
+                << nonlinear_global_error << std::endl << std::endl;
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      std::cout << "Nonlinear converged at step: " << l << std::endl
+      std::cout << "      Nonlinear converged at step: " << l << std::endl
                 << std::endl;
 
       break;
     }
   } // nonlinear solver loop
+
+  out << "\n  End of nonlinear loop\n";
 }
 
 void netfv::Model::test_net_tum() {
@@ -1210,13 +1275,18 @@ void netfv::Model::test_net_tum() {
   auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
   auto &vel =
       d_tum_sys.get_system<TransientLinearImplicitSystem>("Velocity");
+  auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
+  auto &grad_taf =
+      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
 
   // update time
   nut.time = d_time;
   tum.time = d_time;
   hyp.time = d_time;
   nec.time = d_time;
+  taf.time = d_time;
   vel.time = d_time;
+  grad_taf.time = d_time;
 
   d_tum_sys.parameters.set<Real>("time") = d_time;
 
@@ -1236,6 +1306,8 @@ void netfv::Model::test_net_tum() {
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
+  out << "\n  Nonlinear loop\n";
+
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
       d_input.d_linear_tol;
@@ -1244,30 +1316,32 @@ void netfv::Model::test_net_tum() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    out << "Nonlinear step: " << l << "\n";
+    out << "    ____________________\n";
+    out << "    Nonlinear step: " << l << "\n\n";
+    out << "      Solving ";
 
-    // solve network nutrient
-    out << std::endl << "Solving network nutrient system" << std::endl;
+    // solver for 1-D pressure and nutrient
+    out << "[1D nutrient] -> ";
     d_network.solveVGMforNutrient();
 
     // solve nutrient
-    out << std::endl << "Solving tissue nutrient system" << std::endl;
+    out << "[3D nutrient] -> ";
     nut.solve();
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << std::endl << "Solving tumor system" << std::endl;
+    out << "[tumor species] -> ";
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << std::endl << "Solving hypoxic system" << std::endl;
+    out << "[hypoxic species] -> ";
     hyp.solve();
 
     // solve necrotic
-    out << std::endl << "Solving necrotic system" << std::endl;
+    out << "[necrotic species]\n";
     nec.solve();
 
     // Nonlinear iteration error
@@ -1281,21 +1355,159 @@ void netfv::Model::test_net_tum() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      std::cout << "  Linear converged at step: " << n_linear_iterations
+      std::cout << "      Linear converged at step: " << n_linear_iterations
                 << ", residual: " << final_linear_residual
                 << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl;
+                << nonlinear_global_error << std::endl << std::endl;
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      std::cout << "Nonlinear converged at step: " << l << std::endl
+      std::cout << "      Nonlinear converged at step: " << l << std::endl
                 << std::endl;
 
       break;
     }
   } // nonlinear solver loop
 
-  // solve for velocity
-  out << std::endl << "Solving velocity system" << std::endl;
-  d_vel_assembly.solve();
+  out << "\n  End of nonlinear loop\n";
+
+  // compute below only when we are performing output as these do not play
+  // direct role in evolution of sub-system
+  if (d_is_output_step) {
+
+    // solve for velocity
+    out << "      Solving [velocity] -> ";
+    d_vel_assembly.solve();
+
+    // solve for taf
+    *taf.old_local_solution = *taf.current_local_solution;
+    out << "[taf species] -> ";
+    taf.solve();
+
+    // solve for gradient of taf
+    out << "[gradient of taf]\n";
+    d_grad_taf_assembly.solve();
+  }
 }
+
+void netfv::Model::test_net_tum_2() {
+
+  // get systems
+  auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
+  auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
+  auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
+  auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
+  auto &vel =
+      d_tum_sys.get_system<TransientLinearImplicitSystem>("Velocity");
+  auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
+  auto &grad_taf =
+      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+
+  // update time
+  nut.time = d_time;
+  tum.time = d_time;
+  hyp.time = d_time;
+  nec.time = d_time;
+  taf.time = d_time;
+  vel.time = d_time;
+  grad_taf.time = d_time;
+
+  d_tum_sys.parameters.set<Real>("time") = d_time;
+
+  // update old solution
+  *nut.old_local_solution = *nut.current_local_solution;
+  *tum.old_local_solution = *tum.current_local_solution;
+  *hyp.old_local_solution = *hyp.current_local_solution;
+  *nec.old_local_solution = *nec.current_local_solution;
+
+  // update old concentration in network
+  d_network.update_old_concentration();
+
+  // to compute the nonlinear convergence
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
+      tum.solution->clone());
+
+  out << "\n  Nonlinear loop\n";
+
+  // Nonlinear iteration loop
+  d_tum_sys.parameters.set<Real>("linear solver tolerance") =
+      d_input.d_linear_tol;
+
+  // nonlinear loop
+  for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
+
+    d_nonlinear_step = l;
+    out << "    ____________________\n";
+    out << "    Nonlinear step: " << l << "\n\n";
+    out << "      Solving ";
+
+    // solver for 1-D pressure and nutrient
+    out << "[1D nutrient] -> ";
+    d_network.solveVGMforNutrient();
+
+    // solve nutrient
+    out << "[3D nutrient] -> ";
+    nut.solve();
+
+    // solve tumor
+    last_nonlinear_soln_tum->zero();
+    last_nonlinear_soln_tum->add(*tum.solution);
+    out << "[tumor species] -> ";
+    tum.solve();
+    last_nonlinear_soln_tum->add(-1., *tum.solution);
+    last_nonlinear_soln_tum->close();
+
+    // solve hypoxic
+    out << "[hypoxic species] -> ";
+    hyp.solve();
+
+    // solve necrotic
+    out << "[necrotic species]\n";
+    nec.solve();
+
+    // Nonlinear iteration error
+    double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
+    double nonlinear_global_error = 0.;
+    MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
+                  MPI_SUM, MPI_COMM_WORLD);
+
+    if (d_input.d_perform_output) {
+
+      const unsigned int n_linear_iterations = tum.n_linear_iterations();
+      const Real final_linear_residual = tum.final_linear_residual();
+
+      std::cout << "      Linear converged at step: " << n_linear_iterations
+                << ", residual: " << final_linear_residual
+                << ", Nonlinear convergence: ||u - u_old|| = "
+                << nonlinear_global_error << std::endl << std::endl;
+    }
+    if (nonlinear_global_error < d_input.d_nonlin_tol) {
+
+      std::cout << "      Nonlinear converged at step: " << l << std::endl
+                << std::endl;
+
+      break;
+    }
+  } // nonlinear solver loop
+
+  out << "\n  End of nonlinear loop\n";
+
+  // compute below only when we are performing output as these do not play
+  // direct role in evolution of sub-system
+  if (d_is_output_step) {
+
+    // solve for velocity
+    out << "      Solving [velocity] -> ";
+    d_vel_assembly.solve();
+
+    // solve for taf
+    *taf.old_local_solution = *taf.current_local_solution;
+    out << "[taf species] -> ";
+    taf.solve();
+
+    // solve for gradient of taf
+    out << "[gradient of taf]\n";
+    d_grad_taf_assembly.solve();
+  }
+}
+
