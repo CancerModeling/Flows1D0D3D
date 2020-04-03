@@ -435,6 +435,18 @@ netfv::Model::Model(
     return;
   }
 
+  // based on test_name, decide what systems to output
+  if (!d_input.d_test_name.empty()) {
+
+    // hide output to mde, ecm, grad taf
+    d_mde_assembly.d_sys.hide_output() = true;
+    d_ecm_assembly.d_sys.hide_output() = true;
+
+    if (d_input.d_test_name != "test_taf" and
+        d_input.d_test_name != "test_taf_2")
+      d_grad_taf_assembly.d_sys.hide_output() = true;
+  }
+
   do {
 
     // Prepare time step
