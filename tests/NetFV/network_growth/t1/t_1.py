@@ -28,17 +28,18 @@ def gen_init_network_file(L, filename):
     inpf = open(filename,'w')
     inpf.write("DGF\n")
 
-    R = 0.1 * L
+    R = 0.05 * L
     P_1 = 1000.
     P_2 = 500.
-    P_3 = 100.
+    P_3 = 200.
+    P_4 = 100.
 
     # vertex
     inpf.write("Vertex\n")
     inpf.write("parameters {}\n".format(1))
     inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, 0.0, P_1))
     inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, L, P_2))
-    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, 0.0, P_3))
+    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, 0.0, P_4))
     inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, L, P_3))
 
     # segments
@@ -62,14 +63,14 @@ def gen_init_network_file(L, filename):
 def network_input(L, param_index, param_val):
 
     add(param_index, param_val, 'is_network_active', 'true')
-    
+
     # network file
     init_file = 'two_vessels.dgf'
     add(param_index, param_val, 'network_init_file', init_file)
-    add(param_index, param_val, 'network_init_refinement', 4)
+    add(param_index, param_val, 'network_init_refinement', 2)
 
-    # set below to reasonable value such as 1, 4, 10 if want to grow network
-    add(param_index, param_val, 'network_update_interval', 100000)
+    # set below to very high value if want to disable growth
+    add(param_index, param_val, 'network_update_interval', 1)
 
     # control parameters for growth algorithm
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
@@ -79,14 +80,14 @@ def network_input(L, param_index, param_val):
     add(param_index, param_val, 'network_radius_exponent_gamma', 2.)
     add(param_index, param_val, 'network_no_branch_dist', 10)
     add(param_index, param_val, 'network_new_veesel_max_angle', 0.4)
-    add(param_index, param_val, 'network_branch_angle', 0.5)
-    add(param_index, param_val, 'network_update_taf_threshold', 0.1)
+    add(param_index, param_val, 'network_branch_angle', 0.25)
+    add(param_index, param_val, 'network_update_taf_threshold', 0.001)
     add(param_index, param_val, 'network_vessel_no_taf_dist', 0)
     add(param_index, param_val, 'network_nonlocal_search_num_points', 3)
     add(param_index, param_val, 'network_nonlocal_search_length_factor', 5.)
     add(param_index, param_val, 'network_local_search', 'false')
     add(param_index, param_val, 'network_no_new_node_search_factor', 0.25)
-    
+
     # generate network file
     P_2 = gen_init_network_file(L, init_file)
 
@@ -110,13 +111,13 @@ def input():
     L = 2.
     break_points.append(len(param_val))
     break_msg.append('# model')
-    
+
     # specify model such as NetFV, NetFVFE, NetFC, AvaFV
     add(param_index, param_val, 'model_name', 'NetFV')
 
     # specify test (if any) which solves sub-system
     # disable line below if running full system or specify empty string ''
-    add(param_index, param_val, 'test_name', 'test_net_tum_2')
+    add(param_index, param_val, 'test_name', 'test_growth')
 
     # domain
     add(param_index, param_val, 'dimension', 3)
@@ -126,7 +127,7 @@ def input():
     add(param_index, param_val, 'domain_ymax', L)
     add(param_index, param_val, 'domain_zmin', 0.)
     add(param_index, param_val, 'domain_zmax', L)    
-
+    
     # there are various ways to assemble the source terms
     # 1 - use implicit whenever possible
     # 2 - first project species to [0,1] and follow 1
@@ -139,8 +140,8 @@ def input():
     add(param_index, param_val, 'network_decouple_nutrients', 'true')
 
     # control parameters for 1d-3d coupling
-    add(param_index, param_val, 'network_discret_cyl_length', 20)
-    add(param_index, param_val, 'network_discret_cyl_angle', 20)
+    add(param_index, param_val, 'network_discret_cyl_length', 5)
+    add(param_index, param_val, 'network_discret_cyl_angle', 5)
     add(param_index, param_val, 'network_compute_elem_weights', 'true')
     add(param_index, param_val, 'network_coupling_method_theta', 1.0)
     
@@ -154,13 +155,13 @@ def input():
     ## mesh
     break_points.append(len(param_val))
     break_msg.append('\n# mesh')
-    num_elems = 60
+    num_elems = 30
     add(param_index, param_val, 'mesh_n_elements', num_elems)
 
     ## time
     break_points.append(len(param_val))
     break_msg.append('\n# time')
-    final_t = 30.0
+    final_t = 10.0
     init_t = 0.
     delta_t = 0.05
     add(param_index, param_val, 'time_step', delta_t)
@@ -171,10 +172,11 @@ def input():
     ## output
     break_points.append(len(param_val))
     break_msg.append('\n# output')
-    total_outputs = 100
-    dt_output = int(np.floor(final_t / delta_t) / total_outputs)
-    if dt_output < 1:
-        dt_output = 1
+    # total_outputs = 100
+    # dt_output = int(np.floor(final_t / delta_t) / total_outputs)
+    # if dt_output < 1:
+    #     dt_output = 1
+    dt_output = 1
     add(param_index, param_val, 'perform_output', 'true')
     add(param_index, param_val, 'output_interval', dt_output)
     add(param_index, param_val, 'restart_save', 'false')
