@@ -11,7 +11,7 @@ namespace {
 double get_taf_source(const std::string &test_name, const Point &x, const
                       std::vector<double> &x0, const double &r) {
 
-  if (test_name != "test_taf")
+  if (test_name != "test_taf" and test_name != "test_taf_2")
     return 0.;
 
   double L_source_x = x0[0];

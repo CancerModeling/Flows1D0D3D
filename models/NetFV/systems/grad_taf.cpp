@@ -37,7 +37,8 @@ void netfv::GradTafAssembly::solve() {
 
     // compute grad(phi_TAF) which is constant in the element
     taf_cur = taf.get_current_sol(0);
-    grad_taf_cur = 0.;
+    for (unsigned int i=0; i<dim; i++)
+      grad_taf_cur(i) = 0.;
     {
       unsigned int nx = 0, ny = 0, nz = 0;
       // loop over sides of the element
@@ -78,13 +79,8 @@ void netfv::GradTafAssembly::solve() {
     }
 
     // set solution at this element dof
-    d_sys.solution->set(get_var_global_dof_id(0, 0),
-        grad_taf_cur(0));
-    d_sys.solution->set(get_var_global_dof_id(0, 1),
-                                 grad_taf_cur(1));
-    if (dim > 2)
-      d_sys.solution->set(get_var_global_dof_id(0, 2),
-                                   grad_taf_cur(2));
+    for (unsigned int i = 0; i < dim; i++)
+      d_sys.solution->set(get_var_global_dof_id(0, i), grad_taf_cur(i));
   }
 
   d_sys.solution->close();

@@ -912,6 +912,8 @@ void netfv::NetworkDeck::read_parameters(const std::string &filename) {
 
   d_network_no_new_node_search_factor = input
       ("network_no_new_node_search_factor", 0.5);
+
+  d_network_bifurcate_prob = input("network_bifurcate_probability", 0.6);
 }
 
 void netfv::NetworkDeck::print(unsigned int level) {

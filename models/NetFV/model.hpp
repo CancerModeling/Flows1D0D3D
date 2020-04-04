@@ -165,6 +165,16 @@ private:
    *
    * - Good to test TAF equation and also growth of network
    *
+   * ## test_taf_2
+   *
+   * - Solves pressure and TAF equations
+   * - Adds artificial cylindrical TAF source (along z axis)
+   *    - specify center and radius of cylindrical source in input file
+   *
+   * - Good to test TAF equation and also growth of network
+   *
+   * - Also test the pressure in growing network
+   *
    * ## test_tum
    *
    * - Only solves tumor species
@@ -206,6 +216,7 @@ private:
   void test_nut();
   void test_nut_2();
   void test_taf();
+  void test_taf_2();
   void test_tum();
   void test_tum_2();
   void test_net_tum();

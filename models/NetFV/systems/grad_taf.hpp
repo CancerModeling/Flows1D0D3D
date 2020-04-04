@@ -36,7 +36,7 @@ public:
 
     if (sys.get_mesh().mesh_dimension() > 2) {
       d_num_vars = 3;
-      d_var_id.push_back(d_sys.variable_number("taf_gradx"));
+      d_var_id.push_back(d_sys.variable_number("taf_gradz"));
       d_dof_indices_sys_var.resize(d_num_vars);
     }
   }

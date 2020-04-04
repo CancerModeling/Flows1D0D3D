@@ -34,6 +34,13 @@ inline std::string printStr(const bool flag, int nt = 0) {
   return oss.str();
 }
 
+inline std::string printStr(const Point &x, int nt = 0) {
+  auto tabS = getTabS(nt);
+  std::ostringstream oss;
+  oss << tabS << "(" << x(0) << ", " << x(1) << ", " << x(2) << ")";
+  return oss.str();
+}
+
 template <class T>
 inline std::string printStr(const std::vector<T> &list, int nt = 0) {
 

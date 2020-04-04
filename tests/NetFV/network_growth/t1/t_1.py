@@ -28,7 +28,7 @@ def gen_init_network_file(L, filename):
     inpf = open(filename,'w')
     inpf.write("DGF\n")
 
-    R = 0.05 * L
+    R = 0.02 * L
     P_1 = 1000.
     P_2 = 500.
     P_3 = 200.
@@ -72,13 +72,16 @@ def network_input(L, param_index, param_val):
     # control parameters for growth algorithm
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
     add(param_index, param_val, 'vessel_R_factor', 1.)
+    
     add(param_index, param_val, 'log_normal_mean', 0.01)
     add(param_index, param_val, 'log_normal_std_dev', 0.1)
+    add(param_index, param_val, 'network_bifurcate_probability', 0.8)
+
     add(param_index, param_val, 'network_radius_exponent_gamma', 2.)
     add(param_index, param_val, 'network_no_branch_dist', 10)
     add(param_index, param_val, 'network_new_veesel_max_angle', 0.4)
     add(param_index, param_val, 'network_branch_angle', 0.25)
-    add(param_index, param_val, 'network_update_taf_threshold', 0.001)
+    add(param_index, param_val, 'network_update_taf_threshold', 1.e-5)
     add(param_index, param_val, 'network_vessel_no_taf_dist', 0)
     add(param_index, param_val, 'network_nonlocal_search_num_points', 3)
     add(param_index, param_val, 'network_nonlocal_search_length_factor', 5.)
@@ -134,7 +137,7 @@ def input():
     add(param_index, param_val, 'assembly_method', 2)
 
     # simplification of computation
-    add(param_index, param_val, 'advection_active', 'true')
+    add(param_index, param_val, 'advection_active', 'false')
     add(param_index, param_val, 'network_decouple_nutrients', 'true')
 
     # control parameters for 1d-3d coupling
@@ -229,13 +232,18 @@ def input():
     break_msg.append('\n# TAF')
     add(param_index, param_val, 'D_TAF', 1.0e-2)
     add(param_index, param_val, 'delta_TAF', 1.0)
-    add(param_index, param_val, 'lambda_TAF', 1.e+1)
+    
+    # lambda_TAF is treated as magnitude of artificial taf source for test_taf
+    if test_name == 'test_taf':
+    	add(param_index, param_val, 'lambda_TAF', 1.e+1)
+    else:
+    	add(param_index, param_val, 'lambda_TAF', 1.e+1)
     
     # add artificial taf source if required
     if test_name == 'test_taf':
-    	add(param_index, param_val, 'taf_source_center_x', 0.5 * L)
-    	add(param_index, param_val, 'taf_source_center_z', 0.5 * L)
-    	add(param_index, param_val, 'taf_source_center_y', 0.)
+    	add(param_index, param_val, 'taf_source_center_x', 0.6 * L)
+    	add(param_index, param_val, 'taf_source_center_y', 0.4 * L)
+    	add(param_index, param_val, 'taf_source_center_z', 0.)
     	add(param_index, param_val, 'taf_source_radius', 0.05 * L)
 
 
