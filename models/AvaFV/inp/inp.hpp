@@ -22,9 +22,11 @@ struct ModelDeck {
   std::vector<double> d_domain_params;
   unsigned int d_assembly_method;
 
+  std::string d_test_name;
+
   explicit ModelDeck(const std::string &filename = "")
       : d_dim(2), d_domain_type("hyper_cuboid"),
-        d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2) {
+        d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2), d_test_name("") {
 
     if (!filename.empty())
       read_parameters(filename);

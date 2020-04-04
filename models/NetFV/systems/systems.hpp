@@ -23,6 +23,13 @@
 namespace netfv {
 
 /*!
+ * @brief Compute matrix contribution from diffusion
+ *
+ * @param sys System for which assembly is performed
+ */
+void assemble_diffusion(BaseAssembly &sys);
+
+/*!
  * @brief Compute matrix contribution from diffusion and advection
  *
  * @param sys System for which assembly is performed

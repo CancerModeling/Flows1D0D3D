@@ -221,22 +221,24 @@ void netfv::TumAssembly::assemble_face() {
                            Ke_phi_dof_col, Ke_phi_val_col);
 
           // advection
-          // Goes to row and columns corresponding to phi
-          Real mu_two_point = 0.;
-          if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.0E-12)
-            mu_two_point = 2. * chem_tum_cur * chem_tum_neigh_cur /
-                           (chem_tum_cur + chem_tum_neigh_cur);
-          Real v = deck.d_tissue_flow_coeff * deck.d_face_by_h *
+          if (deck.d_advection_active) {
+            // Goes to row and columns corresponding to phi
+            Real mu_two_point = 0.;
+            if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.0E-12)
+              mu_two_point = 2. * chem_tum_cur * chem_tum_neigh_cur /
+                             (chem_tum_cur + chem_tum_neigh_cur);
+            Real v = deck.d_tissue_flow_coeff * deck.d_face_by_h *
                      ((pres_cur - pres_neigh_cur) -
                       mu_two_point * (tum_cur - tum_neigh_cur));
 
-          // upwinding
-          if (v >= 0.)
-            util::add_unique(get_var_global_dof_id(0, 0), dt * v,
-                             Ke_phi_dof_col, Ke_phi_val_col);
-          else
-            util::add_unique(dof_indices_tum_var_neigh[0][0], dt * v,
-                             Ke_phi_dof_col, Ke_phi_val_col);
+            // upwinding
+            if (v >= 0.)
+              util::add_unique(get_var_global_dof_id(0, 0), dt * v,
+                               Ke_phi_dof_col, Ke_phi_val_col);
+            else
+              util::add_unique(dof_indices_tum_var_neigh[0][0], dt * v,
+                               Ke_phi_dof_col, Ke_phi_val_col);
+          }
 
           // interface term in cahn-hilliard
           // Goes to row corresponding to mu and columns corresponding to phi

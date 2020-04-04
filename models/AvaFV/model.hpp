@@ -84,6 +84,12 @@ public:
   /*! @brief Bounding box */
   std::pair<Point, Point> d_bounding_box;
 
+  /*! @brief Current nonlinear step */
+  unsigned int d_nonlinear_step;
+
+  /*! @brief Is this output time step */
+  bool d_is_output_step;
+
 private:
 
   /*! @brief Output results of tumor system and network system */

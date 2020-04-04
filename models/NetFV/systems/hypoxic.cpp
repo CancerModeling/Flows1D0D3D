@@ -224,22 +224,24 @@ void netfv::HypAssembly::assemble_face() {
           Fe(0) += -a_mob * (chem_tum_cur - chem_tum_neigh_cur);
 
           // advection
-          // Goes to row and columns corresponding to phi
-          Real mu_two_point = 0.;
-          if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.0E-12)
-            mu_two_point = 2. * chem_tum_cur * chem_tum_neigh_cur /
-                           (chem_tum_cur + chem_tum_neigh_cur);
-          Real v = deck.d_tissue_flow_coeff * deck.d_face_by_h *
-                   ((pres_cur - pres_neigh_cur) -
-                    mu_two_point * (tum_cur - tum_neigh_cur));
+          if (deck.d_advection_active) {
+            // Goes to row and columns corresponding to phi
+            Real mu_two_point = 0.;
+            if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.0E-12)
+              mu_two_point = 2. * chem_tum_cur * chem_tum_neigh_cur /
+                             (chem_tum_cur + chem_tum_neigh_cur);
+            Real v = deck.d_tissue_flow_coeff * deck.d_face_by_h *
+                     ((pres_cur - pres_neigh_cur) -
+                      mu_two_point * (tum_cur - tum_neigh_cur));
 
-          // upwinding
-          if (v >= 0.)
-            util::add_unique(get_global_dof_id(0), dt * v, Ke_dof_col,
-                             Ke_val_col);
-          else
-            util::add_unique(dof_indices_hyp_neigh[0], dt * v, Ke_dof_col,
-                             Ke_val_col);
+            // upwinding
+            if (v >= 0.)
+              util::add_unique(get_global_dof_id(0), dt * v, Ke_dof_col,
+                               Ke_val_col);
+            else
+              util::add_unique(dof_indices_hyp_neigh[0], dt * v, Ke_dof_col,
+                               Ke_val_col);
+          }
         } // elem neighbor is not null
       }   // loop over faces
 

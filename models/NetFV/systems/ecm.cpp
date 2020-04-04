@@ -89,7 +89,8 @@ void netfv::EcmAssembly::assemble() {
 void netfv::EcmAssembly::assemble_face() {
 
   // call advection calculation function
-  netfv::assemble_advection(d_model_p->get_ecm_assembly(),
+  if (d_model_p->get_input_deck().d_advection_active)
+    netfv::assemble_advection(d_model_p->get_ecm_assembly(),
                              d_model_p->get_pres_assembly(),
                              d_model_p->get_tum_assembly());
 }

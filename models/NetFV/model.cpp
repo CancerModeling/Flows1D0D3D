@@ -569,7 +569,7 @@ void netfv::Model::write_system(const unsigned int &t_step,
   if (d_input.d_restart_save &&
       (d_step % d_input.d_dt_restart_save_interval == 0)) {
 
-    out << "  Saving files for restart" << std::endl;
+    out << "\n  Saving files for restart\n";
     if (t_step == 0) {
 
       std::string mesh_file = "mesh.e";
@@ -666,6 +666,12 @@ void netfv::Model::solve_system() {
   // solve for pressure
   solve_pressure();
 
+  // check if we are decoupling the nutrients
+  if (d_input.d_decouple_nutrients) {
+    out << "\n      Solving [1D nutrient]\n";
+    d_network.solveVGMforNutrient();
+  }
+
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
@@ -684,9 +690,11 @@ void netfv::Model::solve_system() {
     out << "    Nonlinear step: " << l << "\n\n";
     out << "      Solving ";
 
-    // solver for 1-D pressure and nutrient
-    out << "[1D nutrient] -> ";
-    d_network.solveVGMforNutrient();
+    // solver for 1D nutrient
+    if (!d_input.d_decouple_nutrients) {
+      out << "[1D nutrient] -> ";
+      d_network.solveVGMforNutrient();
+    }
 
     // solve nutrient
     out << "[3D nutrient] -> ";
@@ -971,6 +979,12 @@ void netfv::Model::test_taf() {
   // solve for pressure
   solve_pressure();
 
+  // check if we are decoupling the nutrients
+  if (d_input.d_decouple_nutrients) {
+    out << "\n      Solving [1D nutrient]\n";
+    d_network.solveVGMforNutrient();
+  }
+
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
@@ -989,8 +1003,11 @@ void netfv::Model::test_taf() {
     out << "    Nonlinear step: " << l << "\n\n";
     out << "      Solving ";
 
-    out << "[1D nutrient] -> ";
-    d_network.solveVGMforNutrient();
+    // solver for 1D nutrient
+    if (!d_input.d_decouple_nutrients) {
+      out << "[1D nutrient] -> ";
+      d_network.solveVGMforNutrient();
+    }
 
     out << "[3D nutrient] -> ";
     nut.solve();
@@ -1314,6 +1331,12 @@ void netfv::Model::test_net_tum() {
   // solve for pressure
   solve_pressure();
 
+  // check if we are decoupling the nutrients
+  if (d_input.d_decouple_nutrients) {
+    out << "\n      Solving [1D nutrient]\n";
+    d_network.solveVGMforNutrient();
+  }
+
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
@@ -1332,9 +1355,11 @@ void netfv::Model::test_net_tum() {
     out << "    Nonlinear step: " << l << "\n\n";
     out << "      Solving ";
 
-    // solver for 1-D pressure and nutrient
-    out << "[1D nutrient] -> ";
-    d_network.solveVGMforNutrient();
+    // solver for 1D nutrient
+    if (!d_input.d_decouple_nutrients) {
+      out << "[1D nutrient] -> ";
+      d_network.solveVGMforNutrient();
+    }
 
     // solve nutrient
     out << "[3D nutrient] -> ";
@@ -1435,6 +1460,12 @@ void netfv::Model::test_net_tum_2() {
   // update old concentration in network
   d_network.update_old_concentration();
 
+  // check if we are decoupling the nutrients
+  if (d_input.d_decouple_nutrients) {
+    out << "\n      Solving [1D nutrient]\n";
+    d_network.solveVGMforNutrient();
+  }
+
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
@@ -1453,9 +1484,11 @@ void netfv::Model::test_net_tum_2() {
     out << "    Nonlinear step: " << l << "\n\n";
     out << "      Solving ";
 
-    // solver for 1-D pressure and nutrient
-    out << "[1D nutrient] -> ";
-    d_network.solveVGMforNutrient();
+    // solver for 1D nutrient
+    if (!d_input.d_decouple_nutrients) {
+      out << "[1D nutrient] -> ";
+      d_network.solveVGMforNutrient();
+    }
 
     // solve nutrient
     out << "[3D nutrient] -> ";

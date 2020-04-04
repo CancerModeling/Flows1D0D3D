@@ -226,7 +226,9 @@ avafv::Model::Model(
     TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
     TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &grad_taf)
     : d_step(0), d_time(0.), d_dt(0.), d_hmin(0.), d_hmax(0.),
-      d_bounding_box(Point(), Point()), d_input(input), d_comm_p(comm),
+      d_bounding_box(Point(), Point()),
+      d_nonlinear_step(0), d_is_output_step(false),
+      d_input(input), d_comm_p(comm),
       d_mesh(mesh), d_tum_sys(tum_sys),
       d_nec_assembly(this, "Necrotic", nec), d_tum_assembly(this, "Tumor", tum),
       d_nut_assembly(this, "Nutrient", nut),
@@ -309,6 +311,7 @@ avafv::Model::Model(
   if (d_input.d_perform_output)
     write_system(0);
 
+
   //
   // set time parameters
   //
@@ -318,6 +321,17 @@ avafv::Model::Model(
 
   d_tum_sys.parameters.set<unsigned int>("linear solver maximum iterations") =
       d_input.d_linear_max_iters;
+
+  if (!d_input.d_test_name.empty())
+    out << "\n\nSolving sub-system for test: " << d_input.d_test_name << "\n\n";
+
+  // based on test_name, decide what systems to output
+  if (!d_input.d_test_name.empty()) {
+
+    // hide output of certain systems
+    d_taf_assembly.d_sys.hide_output() = true;
+    d_grad_taf_assembly.d_sys.hide_output() = true;
+  }
 
   //
   // Solve
@@ -329,17 +343,26 @@ avafv::Model::Model(
     d_step++;
     d_time += d_dt;
 
-    out << std::endl
-        << "Solving time step: " << d_step << ", time: " << d_time << std::endl;
-
-    // solve tumor-network system
-    // test_tum();
-    test_tum_2();
-
-    // Post-processing
+    // check if this is output step
+    d_is_output_step = false;
     if ((d_step >= d_input.d_dt_output_interval and
          (d_step % d_input.d_dt_output_interval == 0)) or
-        d_step == 0) {
+        d_step == 0)
+      d_is_output_step = true;
+
+    out << "\n\n________________________________________________________\n";
+    out << "At time step: " << d_step << ", time: " << d_time << "\n\n";
+
+    // solve tumor-network system
+    if (d_input.d_test_name == "test_tum")
+      test_tum();
+    else if (d_input.d_test_name == "test_tum_2")
+      test_tum_2();
+    else
+      solve_system();
+
+    // Post-processing
+    if (d_is_output_step) {
 
       // write tumor solution
       write_system((d_step - d_input.d_init_step) /
@@ -368,8 +391,7 @@ void avafv::Model::write_system(const unsigned int &t_step,
     QOI_MASS->push_back(total_mass);
 
   // print to screen
-  out << "Time: " << d_time << ", Total tumor Mass: " << total_mass
-      << std::endl;
+  out << "\n\n  Total tumor Mass: " << total_mass << "\n";
 
   // print to file
   std::ofstream out_file;
@@ -391,7 +413,7 @@ void avafv::Model::write_system(const unsigned int &t_step,
   if (d_input.d_restart_save &&
       (d_step % d_input.d_dt_restart_save_interval == 0)) {
 
-    out << "Saving files for restart" << std::endl;
+    out << "\n  Saving files for restart\n";
     if (t_step == 0) {
 
       std::string mesh_file = "mesh.e";
@@ -462,11 +484,12 @@ void avafv::Model::solve_system() {
   *tum.old_local_solution = *tum.current_local_solution;
   *hyp.old_local_solution = *hyp.current_local_solution;
   *nec.old_local_solution = *nec.current_local_solution;
-  *taf.old_local_solution = *taf.current_local_solution;
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
+
+  out << "\n  Nonlinear loop\n\n";
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
@@ -475,32 +498,30 @@ void avafv::Model::solve_system() {
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
-    d_tum_sys.parameters.set<unsigned int>("nonlinear_step") = l;
-    out << "Nonlinear step: " << l << "\n";
+    d_nonlinear_step = l;
+    out << "    ____________________\n";
+    out << "    Nonlinear step: " << l << "\n\n";
+    out << "      Solving ";
 
     // solve nutrient
-    out << std::endl << "Solving tissue nutrient system" << std::endl;
+    out << "[3D nutrient] -> ";
     nut.solve();
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << std::endl << "Solving tumor system" << std::endl;
+    out << "[tumor species] -> ";
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << std::endl << "Solving hypoxic system" << std::endl;
+    out << "[hypoxic species] -> ";
     hyp.solve();
 
     // solve necrotic
-    out << std::endl << "Solving necrotic system" << std::endl;
+    out << "[necrotic species]\n";
     nec.solve();
-
-    // solve taf
-    out << std::endl << "Solving TAF system" << std::endl;
-    taf.solve();
 
     // Nonlinear iteration error
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
@@ -513,29 +534,38 @@ void avafv::Model::solve_system() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      std::cout << "  Linear converged at step: " << n_linear_iterations
+      std::cout << "      Linear converged at step: " << n_linear_iterations
                 << ", residual: " << final_linear_residual
                 << ", Nonlinear convergence: ||u - u_old|| = "
                 << nonlinear_global_error << std::endl;
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      std::cout << "Nonlinear converged at step: " << l << std::endl
+      std::cout << "      Nonlinear converged at step: " << l << std::endl
                 << std::endl;
 
       break;
     }
   } // nonlinear solver loop
 
-  // solve for gradient of taf
-  out << std::endl << "Solving gradient of TAF system" << std::endl;
-  //grad_taf.solve();
-  d_grad_taf_assembly.solve();
+  out << "\n  End of nonlinear loop\n";
+
+  // compute below only when we are performing output as these do not play
+  // direct role in evolution of sub-system
+  if (d_is_output_step) {
+
+    // solve for taf
+    *taf.old_local_solution = *taf.current_local_solution;
+    out << "      Solving [taf species] -> ";
+    taf.solve();
+
+    // solve for gradient of taf
+    out << "[gradient of taf]\n";
+    d_grad_taf_assembly.solve();
+  }
 }
 
 void avafv::Model::test_tum() {
-
-  d_test_name = "test_tum";
 
   // set nutrient value assuming cylindrical source
   {
@@ -583,6 +613,8 @@ void avafv::Model::test_tum() {
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
+  out << "\n  Nonlinear loop\n";
+
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
       d_input.d_linear_tol;
@@ -590,23 +622,25 @@ void avafv::Model::test_tum() {
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
-    d_tum_sys.parameters.set<unsigned int>("nonlinear_step") = l;
-    out << "Nonlinear step: " << l << "\n";
+    d_nonlinear_step = l;
+    out << "    ____________________\n";
+    out << "    Nonlinear step: " << l << "\n\n";
+    out << "      Solving ";
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << std::endl << "Solving tumor system" << std::endl;
+    out << "[tumor species] -> ";
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << std::endl << "Solving hypoxic system" << std::endl;
+    out << "[hypoxic species] -> ";
     hyp.solve();
 
     // solve necrotic
-    out << std::endl << "Solving necrotic system" << std::endl;
+    out << "[necrotic species]\n";
     nec.solve();
 
     // Nonlinear iteration error
@@ -620,19 +654,21 @@ void avafv::Model::test_tum() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      std::cout << "  Linear converged at step: " << n_linear_iterations
+      std::cout << "      Linear converged at step: " << n_linear_iterations
                 << ", residual: " << final_linear_residual
                 << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl;
+                << nonlinear_global_error << std::endl << std::endl;
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      std::cout << "Nonlinear converged at step: " << l << std::endl
+      std::cout << "      Nonlinear converged at step: " << l << std::endl
                 << std::endl;
 
       break;
     }
   } // nonlinear solver loop
+
+  out << "\n  End of nonlinear loop\n";
 }
 
 void avafv::Model::test_tum_2() {
@@ -661,6 +697,8 @@ void avafv::Model::test_tum_2() {
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
+  out << "\n  Nonlinear loop\n";
+
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
       d_input.d_linear_tol;
@@ -668,27 +706,29 @@ void avafv::Model::test_tum_2() {
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
-    d_tum_sys.parameters.set<unsigned int>("nonlinear_step") = l;
-    out << "Nonlinear step: " << l << "\n";
+    d_nonlinear_step = l;
+    out << "    ____________________\n";
+    out << "    Nonlinear step: " << l << "\n\n";
+    out << "      Solving ";
 
     // solve nutrient
-    out << std::endl << "Solving tissue nutrient system" << std::endl;
+    out << "[3D nutrient] -> ";
     nut.solve();
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << std::endl << "Solving tumor system" << std::endl;
+    out << "[tumor species] -> ";
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << std::endl << "Solving hypoxic system" << std::endl;
+    out << "[hypoxic species] -> ";
     hyp.solve();
 
     // solve necrotic
-    out << std::endl << "Solving necrotic system" << std::endl;
+    out << "[necrotic species]\n";
     nec.solve();
 
     // Nonlinear iteration error
@@ -702,17 +742,19 @@ void avafv::Model::test_tum_2() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      std::cout << "  Linear converged at step: " << n_linear_iterations
+      std::cout << "      Linear converged at step: " << n_linear_iterations
                 << ", residual: " << final_linear_residual
                 << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl;
+                << nonlinear_global_error << std::endl << std::endl;
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      std::cout << "Nonlinear converged at step: " << l << std::endl
+      std::cout << "      Nonlinear converged at step: " << l << std::endl
                 << std::endl;
 
       break;
     }
   } // nonlinear solver loop
+
+  out << "\n  End of nonlinear loop\n";
 }

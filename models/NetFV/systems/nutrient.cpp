@@ -384,8 +384,7 @@ void netfv::NutAssembly::assemble_1() {
 
       // add source
       Fe(0) += factor_nut * deck.d_elem_size * dt *
-               (deck.d_lambda_A * (tum_cur - nec_cur) +
-                deck.d_lambda_ECM_D * ecm_cur * mde_cur);
+               deck.d_lambda_ECM_D * ecm_cur * mde_cur;
 
       // handle all coupling with nutrient as source term
       Number a_source = deck.d_elem_size * dt *
@@ -485,8 +484,7 @@ void netfv::NutAssembly::assemble_2() {
 
       // add source
       Fe(0) += factor_nut * deck.d_elem_size * dt *
-               (deck.d_lambda_A * (tum_proj - nec_proj) +
-                deck.d_lambda_ECM_D * ecm_proj * mde_proj);
+               deck.d_lambda_ECM_D * ecm_proj * mde_proj;
 
       // handle all coupling with nutrient as source term
       auto a_source = deck.d_elem_size * dt *
@@ -588,8 +586,7 @@ void netfv::NutAssembly::assemble_3() {
 
       // add source
       Fe(0) += factor_nut * deck.d_elem_size * dt *
-               (deck.d_lambda_A * (tum_proj - nec_proj) +
-                deck.d_lambda_ECM_D * ecm_proj * mde_proj);
+               deck.d_lambda_ECM_D * ecm_proj * mde_proj;
 
       // handle all coupling with nutrient as source term
       auto a_source = deck.d_elem_size * dt *

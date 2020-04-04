@@ -47,7 +47,9 @@ void avafv::ModelDeck::read_parameters(const std::string &filename) {
     }
   }
 
-  d_assembly_method = input("assembly_method", 1);
+  d_assembly_method = input("assembly_method", 2);
+
+  d_test_name = input("test_name", "");
 }
 
 void avafv::ModelDeck::print(unsigned int level) {
@@ -686,6 +688,8 @@ void avafv::TumorICDeck::read_parameters(const std::string &filename) {
         ic_type = "tumor_hypoxic_spherical";
       else if (type == 4)
         ic_type = "tumor_hypoxic_elliptical";
+      else if (type == 5)
+        ic_type = "tumor_spherical_sharp";
 
       auto data = TumorICData(ic_type, {cx, cy, cz}, {tum_rx, tum_ry, tum_rz},
                               {hyp_rx, hyp_ry, hyp_rz});
