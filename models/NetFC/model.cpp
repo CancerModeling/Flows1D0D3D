@@ -131,6 +131,8 @@ netfc::Model::Model(int argc, char **argv, std::vector<double> &QOI_MASS,
     d_network.solve3D1DNutrientProblem( d_step, d_time );
     d_network.solve3DProlificCellProblem( d_step, d_time );
 
+    d_network.updateNetwork();
+
     //d_network.printDataVGM();
 
   }while (d_step < d_input.d_steps);
