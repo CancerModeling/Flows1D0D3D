@@ -26,10 +26,13 @@ struct ModelDeck {
 
   bool d_advection_active;
 
+  bool d_decouple_nutrients;
+
   explicit ModelDeck(const std::string &filename = "")
       : d_dim(2), d_domain_type("hyper_cuboid"),
         d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2),
-        d_test_name(""), d_advection_active(false) {
+        d_test_name(""), d_advection_active(false), d_decouple_nutrients
+        (false) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -164,9 +167,14 @@ struct NutrientDeck {
   double d_delta_sigma;
   double d_chi_c;
 
+  std::vector<double> d_nut_source_center;
+  double d_nut_source_radius;
+
   explicit NutrientDeck(const std::string &filename = "")
       : d_lambda_P(0.), d_lambda_A(0.), d_lambda_Ph(0.), d_D_sigma(0.),
-        d_delta_sigma(0.), d_chi_c(0.) {
+        d_delta_sigma(0.), d_chi_c(0.),
+        d_nut_source_center(std::vector<double>(3, 0.)),
+        d_nut_source_radius(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -246,8 +254,13 @@ struct TAFDeck {
   double d_delta_TAF;
   double d_lambda_TAF;
 
+  std::vector<double> d_taf_source_center;
+  double d_taf_source_radius;
+
   explicit TAFDeck(const std::string &filename = "")
-      : d_D_TAF(0.), d_delta_TAF(0.), d_lambda_TAF(0.) {
+      : d_D_TAF(0.), d_delta_TAF(0.), d_lambda_TAF(0.),
+        d_taf_source_center(std::vector<double>(3, 0.)),
+        d_taf_source_radius(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -421,7 +434,6 @@ struct NetworkDeck {
   int d_num_points_angle;
   double d_coupling_method_theta;
   bool d_compute_elem_weights;
-  bool d_decouple_nutrients;
 
   double d_assembly_factor_p_t;
   double d_assembly_factor_c_t;
@@ -463,8 +475,7 @@ struct NetworkDeck {
         d_network_no_new_node_search_factor(0.), d_num_points_length(2),
         d_num_points_angle(2), d_coupling_method_theta(0.5),
         d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
-        d_identify_vein_pres(0.), d_compute_elem_weights(false),
-        d_decouple_nutrients(false) {
+        d_identify_vein_pres(0.), d_compute_elem_weights(false) {
 
     if (!filename.empty())
       read_parameters(filename);

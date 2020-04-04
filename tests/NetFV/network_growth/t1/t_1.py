@@ -69,9 +69,6 @@ def network_input(L, param_index, param_val):
     add(param_index, param_val, 'network_init_file', init_file)
     add(param_index, param_val, 'network_init_refinement', 2)
 
-    # set below to very high value if want to disable growth
-    add(param_index, param_val, 'network_update_interval', 1)
-
     # control parameters for growth algorithm
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
     add(param_index, param_val, 'vessel_R_factor', 1.)
@@ -117,7 +114,8 @@ def input():
 
     # specify test (if any) which solves sub-system
     # disable line below if running full system or specify empty string ''
-    add(param_index, param_val, 'test_name', 'test_growth')
+    test_name = 'test_taf'
+    add(param_index, param_val, 'test_name', test_name)
 
     # domain
     add(param_index, param_val, 'dimension', 3)
@@ -144,6 +142,9 @@ def input():
     add(param_index, param_val, 'network_discret_cyl_angle', 5)
     add(param_index, param_val, 'network_compute_elem_weights', 'true')
     add(param_index, param_val, 'network_coupling_method_theta', 1.0)
+
+    # set below to very high value if want to disable growth
+    add(param_index, param_val, 'network_update_interval', 1)
     
     ## restart info
     break_points.append(len(param_val))
@@ -229,6 +230,14 @@ def input():
     add(param_index, param_val, 'D_TAF', 1.0e-2)
     add(param_index, param_val, 'delta_TAF', 1.0)
     add(param_index, param_val, 'lambda_TAF', 1.e+1)
+    
+    # add artificial taf source if required
+    if test_name == 'test_taf':
+    	add(param_index, param_val, 'taf_source_center_x', 0.5 * L)
+    	add(param_index, param_val, 'taf_source_center_z', 0.5 * L)
+    	add(param_index, param_val, 'taf_source_center_y', 0.)
+    	add(param_index, param_val, 'taf_source_radius', 0.05 * L)
+
 
     ## ECM
     break_points.append(len(param_val))

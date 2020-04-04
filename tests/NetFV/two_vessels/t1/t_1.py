@@ -68,9 +68,6 @@ def network_input(L, param_index, param_val):
     add(param_index, param_val, 'network_init_file', init_file)
     add(param_index, param_val, 'network_init_refinement', 4)
 
-    # set below to reasonable value such as 1, 4, 10 if want to grow network
-    add(param_index, param_val, 'network_update_interval', 100000)
-
     # control parameters for growth algorithm
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
     add(param_index, param_val, 'vessel_R_factor', 1.)
@@ -143,6 +140,9 @@ def input():
     add(param_index, param_val, 'network_discret_cyl_angle', 20)
     add(param_index, param_val, 'network_compute_elem_weights', 'true')
     add(param_index, param_val, 'network_coupling_method_theta', 1.0)
+
+    # set below to reasonable value such as 1, 4, 10 if want to grow network
+    add(param_index, param_val, 'network_update_interval', 100000)
     
     ## restart info
     break_points.append(len(param_val))

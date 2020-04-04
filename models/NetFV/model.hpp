@@ -116,6 +116,9 @@ public:
   /*! @brief Is this output time step */
   bool d_is_output_step;
 
+  /*! @brief Is this growth time step */
+  bool d_is_growth_step;
+
 private:
 
   /*! @brief Output results of tumor system and network system */
@@ -128,13 +131,81 @@ private:
 
   /*! @brief Solves tumor system */
   void solve_system();
+
+  /*! @brief Solves 1D-3D pressure system
+   * At given time step, it solves for 1D and 3D pressure in a nonlinear loop
+   * iteratively.
+   */
   void solve_pressure();
 
-  /*! @brief Solves tumor system */
+  /*! @brief Solving sub-systems
+   *
+   * Description of subsystems
+   *
+   * ## test_nut
+   *
+   * - Nonlinear iterations to solve 1D and 3D nutrients
+   * - Good to test the coupling of nutrient
+   * - Maybe it is good to specify d_decouple_nutrients = false in input file
+   *
+   * - Good to test 1D/3D nutrient coupling
+   *
+   * ## test_nut_2
+   *
+   * - Solves 1D nutrient and then solves 3D nutrient
+   * - This is recommended when d_decouple_nutrients = false
+   *
+   * - Good to test 1D/3D nutrient coupling
+   *
+   * ## test_taf
+   *
+   * - Solves only TAF equations
+   * - Adds artificial cylindrical TAF source (along z axis)
+   *    - specify center and radius of cylindrical source in input file
+   *
+   * - Good to test TAF equation and also growth of network
+   *
+   * ## test_tum
+   *
+   * - Only solves tumor species
+   * - Nutrient is constant
+   * - Artificial source is added on cylinder along z-axis with
+   *    - center = (L - 2R, L - 2R, 0)
+   *    - Radius = 0.05 * L
+   *    - L = size of domain
+   *
+   * - Good to test tumor species
+   *
+   * ## test_tum_2
+   *
+   * - Solves nutrient and tumor species
+   * - Adds artificial cylindrical nutrient source (along z axis)
+   *    - specify center and radius of cylindrical source in input file
+   *
+   * - Good to test coupling between nutrient and tumor species
+   *
+   * ## test_net_tum
+   *
+   * - Solves for 1D-3D pressure, 1D-3D nutrients, and all tumor species
+   *
+   * - Also solves for TAF at certain steps such as when we are producing
+   * output or when we are growing the network
+   *
+   * - Good to test full model with/without network growth in which we do not
+   * solve for MDE and ECM and avoid solving for TAF every time step
+   *
+   * ## test_net_tum_2
+   *
+   * - Same as test_net_tum, except that it solves for pressure at the
+   * beginning and after that the pressure in tissue domain and network is fixed
+   *
+   * - Good to test the couling of 1D-3D nutrient coupling and coupling of
+   * network and nutrient with tumor species
+   *
+   */
   void test_nut();
   void test_nut_2();
   void test_taf();
-  void test_taf_2();
   void test_tum();
   void test_tum_2();
   void test_net_tum();

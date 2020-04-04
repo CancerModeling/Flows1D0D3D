@@ -52,6 +52,8 @@ void netfv::ModelDeck::read_parameters(const std::string &filename) {
   d_test_name = input("test_name", "");
 
   d_advection_active = input("advection_active", true);
+
+  d_decouple_nutrients = input("network_decouple_nutrients", true);
 }
 
 void netfv::ModelDeck::print(unsigned int level) {
@@ -334,6 +336,11 @@ void netfv::NutrientDeck::read_parameters(const std::string &filename) {
   d_D_sigma = input("D_sigma", 1.);
   d_delta_sigma = input("delta_sigma", 0.01);
   d_chi_c = input("chi_c", 0.035);
+
+  d_nut_source_center[0] = input("nut_source_center_x", 0.);
+  d_nut_source_center[1] = input("nut_source_center_y", 0.);
+  d_nut_source_center[2] = input("nut_source_center_z", 0.);
+  d_nut_source_radius = input("nut_source_radius", 0.);
 }
 
 void netfv::NutrientDeck::print(unsigned int level) {
@@ -494,6 +501,11 @@ void netfv::TAFDeck::read_parameters(const std::string &filename) {
   d_D_TAF = input("D_TAF", 10.);
   d_delta_TAF = input("delta_TAF", 1.);
   d_lambda_TAF = input("lambda_TAF", 10.);
+
+  d_taf_source_center[0] = input("taf_source_center_x", 0.);
+  d_taf_source_center[1] = input("taf_source_center_y", 0.);
+  d_taf_source_center[2] = input("taf_source_center_z", 0.);
+  d_taf_source_radius = input("taf_source_radius", 0.);
 }
 
 void netfv::TAFDeck::print(unsigned int level) {
@@ -862,7 +874,6 @@ void netfv::NetworkDeck::read_parameters(const std::string &filename) {
   d_num_points_angle = input("network_discret_cyl_angle", 2);
   d_coupling_method_theta = input("network_coupling_method_theta", 0.5);
   d_compute_elem_weights = input("network_compute_elem_weights", true);
-  d_decouple_nutrients = input("network_decouple_nutrients", true);
 
   if (input.have_variable("assembly_factor_p_t"))
     d_assembly_factor_p_t = input("assembly_factor_p_t", 1.);
