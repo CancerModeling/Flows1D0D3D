@@ -6,6 +6,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests.hpp"
+#include "utils.hpp"
 
 static double diri_bc_val = 0.;
 
@@ -18,10 +19,10 @@ void random_init() { srand(time(nullptr)); }
 double get_random_number() { return double(std::rand()) / double(RAND_MAX); }
 
 // random ppint with each element between 0 and 1
-Point get_random_point() {
-  return {double(std::rand()) / double(RAND_MAX),
-          double(std::rand()) / double(RAND_MAX),
-          double(std::rand()) / double(RAND_MAX)};
+Point get_random_point(double scale = 1.) {
+  return {scale * double(std::rand()) / double(RAND_MAX),
+          scale * double(std::rand()) / double(RAND_MAX),
+          scale * double(std::rand()) / double(RAND_MAX)};
 }
 
 std::string print_pt(const Point &p) {
@@ -525,46 +526,25 @@ void test::mesh::elem_id_numbering(int argc, char **argv,
                                         1., 0., 1., HEX8);
 
   // Looping through elements
-    MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
-    const MeshBase::const_element_iterator end_el =
-        mesh.active_local_elements_end();
-
-    for (; el != end_el; ++el) {
-
-      const Elem *elem = *el;
-
-      unsigned int id_guess = 0;
-      {
-        const Point xc = elem->centroid();
-        unsigned int i = xc(0) / h;
-        unsigned int j = xc(1) / h;
-        unsigned int k = xc(2) / h;
-        id_guess = k * N * N + j * N + i;
-      }
-
-      out << "id: " << elem->id()
-          << ", id_guess: " << id_guess
-          << ", center: " << print_pt(elem->centroid())
-          << "\n";
-    }
-
-  // Looping through elements
   out << "Element information:\n";
   for (const auto &elem : mesh.active_local_element_ptr_range()) {
 
-    unsigned int id_guess = 0;
-    {
-      const Point xc = elem->centroid();
-      unsigned int i = xc(0) / h;
-      unsigned int j = xc(1) / h;
-      unsigned int k = xc(2) / h;
-      id_guess = k * N * N + j * N + i;
-    }
+    const Point xc = elem->centroid();
+    unsigned int id_guess = util::get_elem_id(xc, h, N, 3);
 
     out << "id: " << elem->id()
         << ", id_guess: " << id_guess
-        << ", center: " << print_pt(elem->centroid())
-        << "\n";
+        << ", center: " << print_pt(xc);
+
+    // try 4 perturbations of point
+    out << ", rdm pertb. guess: ";
+    for (unsigned int i=0; i<4; i++) {
+      Point x = xc + get_random_point(0.8 * h);
+      unsigned int id_guess = util::get_elem_id(xc, h, N, 3);
+
+      out << id_guess << " ";
+    }
+    out << "\n\n";
   }
 
   // Looping over nodes
@@ -577,7 +557,7 @@ void test::mesh::elem_id_numbering(int argc, char **argv,
       unsigned int i = x(0) / h;
       unsigned int j = x(1) / h;
       unsigned int k = x(2) / h;
-      id_guess = k * (N+1) * (N+1) + j * (N+1) + i;
+      id_guess = k * N * N + j * N + i;
     }
 
     out << "id: " << node->id()

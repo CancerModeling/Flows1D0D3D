@@ -104,9 +104,9 @@ public:
   /*! @brief Compute intersecting element and weight in tumor domain */
   void compute_elem_weights();
 
-  void markApicalGrowth(std::string growth_type);
+  unsigned int markApicalGrowth(std::string growth_type);
   unsigned int processApicalGrowthTAF();
-  void processApicalGrowthTest();
+  unsigned int processApicalGrowthTest();
 
   void sproutingGrowth(std::string growth_type);
 

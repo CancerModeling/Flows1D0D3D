@@ -463,6 +463,8 @@ struct NetworkDeck {
 
   double d_network_no_new_node_search_factor;
 
+  double d_network_bifurcate_prob;
+
   explicit NetworkDeck(const std::string &filename = "")
       : network_active(false), d_net_direction_lambda_g(0.),
         d_net_length_R_factor(0.), d_network_update_interval(1),
@@ -475,7 +477,8 @@ struct NetworkDeck {
         d_network_no_new_node_search_factor(0.), d_num_points_length(2),
         d_num_points_angle(2), d_coupling_method_theta(0.5),
         d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
-        d_identify_vein_pres(0.), d_compute_elem_weights(false) {
+        d_identify_vein_pres(0.), d_compute_elem_weights(false),
+        d_network_bifurcate_prob(0.6) {
 
     if (!filename.empty())
       read_parameters(filename);

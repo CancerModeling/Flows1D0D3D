@@ -475,6 +475,8 @@ netfv::Model::Model(
       test_nut_2();
     else if (d_input.d_test_name == "test_taf")
       test_taf();
+    else if (d_input.d_test_name == "test_taf_2")
+      test_taf_2();
     else if (d_input.d_test_name == "test_tum")
       test_tum();
     else if (d_input.d_test_name == "test_tum_2")
@@ -488,7 +490,8 @@ netfv::Model::Model(
 
     // update network
     if (d_is_growth_step) {
-      out << "\n  Updating Network\n";
+      out << "\n  ____________________________________\n";
+      out << "  Updating Network ";
       d_network.update_network();
     }
 
@@ -950,6 +953,34 @@ void netfv::Model::test_taf() {
   grad_taf.time = d_time;
 
   d_tum_sys.parameters.set<Real>("time") = d_time;
+
+  // update old solution
+  *taf.old_local_solution = *taf.current_local_solution;
+
+  out << "      Solving [taf] -> ";
+  taf.solve();
+
+  // solve for gradient of taf
+  out << "[gradient of taf]\n";
+  d_grad_taf_assembly.solve();
+  d_grad_taf_assembly.d_sys.update();
+}
+
+void netfv::Model::test_taf_2() {
+
+  // get systems
+  auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
+  auto &grad_taf =
+      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+
+  // update time
+  taf.time = d_time;
+  grad_taf.time = d_time;
+
+  d_tum_sys.parameters.set<Real>("time") = d_time;
+
+  // solve for pressure
+  solve_pressure();
 
   // update old solution
   *taf.old_local_solution = *taf.current_local_solution;

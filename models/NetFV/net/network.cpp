@@ -36,7 +36,7 @@ void angle_correction(const Point &parent_d, Point &child_d,
   }
 }
 
-void compute_bifurcate_child_direction(const Point &parent_d,
+double compute_bifurcate_child_direction(const Point &parent_d,
                                        const Point &child_d, Point &child_d_2,
                                        const double &branch_angle) {
 
@@ -51,8 +51,7 @@ void compute_bifurcate_child_direction(const Point &parent_d,
   // rotate parent_direction by -ve angle
   child_d_2 = util::rotate(parent_d, -angle_1, axis);
 
-  out << "\n angle_1: " << angle_1 << ", axis: " << axis
-      << ", child_d_2: " << child_d_2 << "\n";
+  return angle_1;
 }
 
 void angle_correction_bifurcation(const Point &parent_d, Point &child_d,
@@ -1495,11 +1494,18 @@ void netfv::Network::refine1DMesh() {
 
 void netfv::Network::update_network() {
 
-  out << "  Mark apical growth\n";
-  markApicalGrowth("apical_taf_based");
+  out << "[Mark]";
+  auto num_nodes_marked = markApicalGrowth("apical_taf_based");
 
-  out << "  Process apical growth\n";
-  auto num_new_nodes = processApicalGrowthTAF();
+  unsigned int num_new_nodes = 0;
+  if (num_nodes_marked > 0) {
+    out << " -> [Process]";
+    num_new_nodes = processApicalGrowthTAF();
+  }
+  out << "\n";
+
+  out << "\n    ____________________\n";
+  out << "    New nodes added: " << num_new_nodes << "\n";
 
   if (num_new_nodes > 0)
     d_update_number++;
@@ -1957,7 +1963,7 @@ void netfv::Network::sproutingGrowth(std::string growth_type) {
   }
 }
 
-void netfv::Network::markApicalGrowth(std::string growth_type) {
+unsigned int netfv::Network::markApicalGrowth(std::string growth_type) {
 
   const auto &tum_sys = d_model_p->get_system();
   const auto &mesh = d_model_p->get_mesh();
@@ -1970,12 +1976,15 @@ void netfv::Network::markApicalGrowth(std::string growth_type) {
   // mark node for growth based on a certain criterion
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
+  unsigned int num_nodes_marked = 0;
+
   if (growth_type == "test") {
 
     while (pointer) {
 
       if (pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
         pointer->apicalGrowth = true;
+        num_nodes_marked++;
       }
 
       pointer = pointer->global_successor;
@@ -2005,8 +2014,10 @@ void netfv::Network::markApicalGrowth(std::string growth_type) {
           taf.init_dof(elem_i);
           Real taf_i = taf.get_current_sol(0);
 
-          if (taf_i > input.d_network_update_taf_threshold)
+          if (taf_i > input.d_network_update_taf_threshold) {
             pointer->apicalGrowth = true;
+            num_nodes_marked++;
+          }
 
         } // if inside domain
 
@@ -2021,9 +2032,11 @@ void netfv::Network::markApicalGrowth(std::string growth_type) {
               << std::endl;
     exit(1);
   }
+
+  return num_nodes_marked;
 }
 
-void netfv::Network::processApicalGrowthTest() {
+unsigned int netfv::Network::processApicalGrowthTest() {
 
   // mark node for growth based on a certain criterion
   std::shared_ptr<VGNode> pointer = VGM.getHead();
@@ -2031,7 +2044,7 @@ void netfv::Network::processApicalGrowthTest() {
   // create and attach new edges
   pointer = VGM.getHead();
 
-  out << "number of nodes before: " << VGM.getNumberOfNodes() << "\n";
+  auto num_nodes_before = VGM.getNumberOfNodes();
 
   while (pointer) {
 
@@ -2039,9 +2052,9 @@ void netfv::Network::processApicalGrowthTest() {
 
     if (pointer->apicalGrowth) {
 
-      std::cout << " " << std::endl;
-      std::cout << "Type of growth: Test, Create new node at node:"
-                << pointer->index << std::endl;
+    //      std::cout << " " << std::endl;
+    //      std::cout << "Type of growth: Test, Create new node at node:"
+    //                << pointer->index << std::endl;
 
       netfv::VGNode new_node;
 
@@ -2145,12 +2158,11 @@ void netfv::Network::processApicalGrowthTest() {
     pointer = pointer->global_successor;
   }
 
-  out << "number of nodes after: " << VGM.getNumberOfNodes() << "\n";
+  return VGM.getNumberOfNodes() - num_nodes_before;
 }
 
 unsigned int netfv::Network::processApicalGrowthTAF() {
 
-  const auto &tum_sys = d_model_p->get_system();
   const auto &mesh = d_model_p->get_mesh();
   const auto &input = d_model_p->get_input_deck();
   const double domain_size = input.d_domain_params[1];
@@ -2166,7 +2178,6 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
   unsigned int num_nodes_old = VGM.getNumberOfNodes();
-  out << "number of nodes before: " << num_nodes_old << "\n";
 
   // Initialize random objects
   std::lognormal_distribution<> log_normal_distribution(
@@ -2177,11 +2188,14 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
   // store how many new node
   unsigned int num_new_nodes_added = 0;
 
+  // store neighboring element's dof information
+  std::vector<unsigned int> dof_indices_taf_neigh;
+
   while (pointer) {
 
     if (pointer->apicalGrowth) {
 
-      out << "Processing node: " << pointer->index << "\n";
+      out << "\n      Processing node: " << pointer->index << "\n";
 
       // compute radius, direction, length
       unsigned int num_segments = pointer->neighbors.size();
@@ -2231,9 +2245,8 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
 
       // compute taf and grad taf at the node
       double parent_taf = 0.;
-      Point parent_grad_taf = Point();
+      Gradient parent_grad_taf;
       {
-
         // get taf
         const auto *elem_i = mesh.elem_ptr(
             util::get_elem_id(pointer->coord, input.d_mesh_size, input.d_num_elems,
@@ -2243,14 +2256,96 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
         parent_taf = taf.get_current_sol(0);
 
         // get grad taf
-        grad_taf.init_var_dof(elem_i);
-        for (unsigned int var = 0; var < dim; var++)
-          parent_grad_taf(var) = grad_taf.get_current_sol_var(0, var);
+        bool direct_comp = false;
+        if (direct_comp) {
+
+          // get i, j, k
+          unsigned int i = pointer->coord[0] / input.d_mesh_size;
+          unsigned int j = pointer->coord[1] / input.d_mesh_size;
+          unsigned int k = pointer->coord[2] / input.d_mesh_size;
+
+          // get derivatives
+          unsigned int nd = 0;
+          int di = 0;
+          int ii, jj, kk;
+          for (unsigned int var=0; var<dim; var++) {
+
+            nd = 0;
+            for (unsigned int side = 0; side < 2; side++) {
+
+              if (side == 0)
+                di = -1;
+              else
+                di = 1;
+
+              if (var == 0) {
+                ii = i + di, jj = j, kk = k;
+              } else if (var == 1) {
+                ii = i, jj = j + di, kk = k;
+              } else if (var == 2) {
+                ii = i, jj = j, kk = k + di;
+              }
+
+              int neighbor_id =
+                  kk * input.d_num_elems * input.d_num_elems +
+                  jj * input.d_num_elems + ii;
+
+              if (ii < 0 or ii >= input.d_num_elems)
+                continue;
+              if (jj < 0 or jj >= input.d_num_elems)
+                continue;
+              if (kk < 0 or kk >= input.d_num_elems)
+                continue;
+
+              nd++;
+              const auto *neighbor = mesh.elem_ptr(neighbor_id);
+              taf.init_dof(neighbor, dof_indices_taf_neigh);
+
+              auto neighbor_taf = taf.get_current_sol(0, dof_indices_taf_neigh);
+
+              parent_grad_taf(var) += (neighbor_taf - parent_taf) /
+                                      (double(di) * input.d_mesh_size);
+            }
+
+            if (nd == 0) {
+              out << "Error computing gradient of taf at point = ("
+                  << util::io::printStr(pointer->coord) << ") belonging to "
+                  << "element = " << elem_i->id() << "\n";
+              exit(1);
+            }
+            parent_grad_taf(var) = parent_grad_taf(var) / nd;
+          }
+
+        } else {
+          grad_taf.init_var_dof(elem_i);
+          for (unsigned int var = 0; var < dim; var++)
+            parent_grad_taf(var) = grad_taf.get_current_sol_var(0, var);
+        }
       }
 
-      out << "R: " << parent_r << ", L: " << parent_l
-          << ", Direction: " << parent_d << ", Grad(TAF): " << parent_grad_taf
+      out << "      Parent info R: " << parent_r << ", L: " << parent_l
+          << ", d: " << util::io::printStr(parent_d)
+          << ", x: " << util::io::printStr(pointer->coord) << "\n";
+      out << "        taf: " << parent_taf
+          << ", Grad(TAF): " <<  util::io::printStr(parent_grad_taf)
           << "\n";
+
+      // check
+      if (pointer->coord[0] > 1.8 and pointer->coord[1] > 1.8) {
+        bool x_error = false;
+        if (parent_grad_taf(0) > 0.)
+          x_error = true;
+
+        bool y_error = false;
+        if (parent_grad_taf(1) > 0.)
+          y_error = true;
+
+        out << "      Check grad taf x err: " << util::io::printStr(x_error)
+            << ", y err: " << util::io::printStr(y_error) << "\n";
+
+        if (x_error or y_error)
+          exit(1);
+      }
 
       // compute child direction
       Point child_d = input.d_net_direction_lambda_g * parent_d;
@@ -2275,7 +2370,7 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
                            std::sqrt(2. * input.d_log_normal_std_dev *
                                      input.d_log_normal_std_dev));
 
-        if (prob > 0.9)
+        if (prob > input.d_network_bifurcate_prob)
           bifurcate = true;
 
         // if this node already has 3 neighbors then we can not branch
@@ -2284,6 +2379,8 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
 
         //bifurcate = false;
       }
+
+
 
       if (!bifurcate) {
 
@@ -2303,9 +2400,10 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
             check_new_node(pointer->index, pointer->coord, child_end_point,
                            0.5 * child_l, domain_size, check_code);
 
-        out << "Child direction: " << child_d << ", L: " << child_l
-            << ", R: " << child_r << ", end point: " << child_end_point
-            << ", check point: " << check_code << "\n";
+        out << "      Child info R: " << child_r << ", L: " << child_l
+            << ", d: " << util::io::printStr(child_d)
+            << ", check point: " << check_code
+            << ", x end: " << util::io::printStr(child_end_point) << "\n";
 
         // check if the new point is too close to existing node
         if (check_code == 0)
@@ -2320,8 +2418,13 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
 
         // get second child's direction
         Point child_d_2 = Point();
-        compute_bifurcate_child_direction(parent_d, child_d, child_d_2,
+        auto angle = compute_bifurcate_child_direction(parent_d, child_d,
+                                                    child_d_2,
                                           input.d_branch_angle);
+
+        out << "      Bifurcation angle: " << angle << "\n";
+
+
         if (pointer->typeOfVGNode == TypeOfNode::DirichletNode)
           angle_correction_bifurcation(parent_d, child_d, child_d_2,
                                        input.d_new_vessel_max_angle,
@@ -2367,9 +2470,10 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
               check_new_node(pointer->index, pointer->coord, child_end_point,
                              0.5 * child_l, domain_size, check_code);
 
-          out << "Child direction: " << child_d << ", L: " << child_l
-              << ", R: " << child_r << ", end point: " << child_end_point
-              << ", check point: " << check_code << "\n";
+          out << "      Child 1 info R: " << child_r << ", L: " << child_l
+              << ", d: " << util::io::printStr(child_d)
+              << ", check point: " << check_code
+              << ", x end: " << util::io::printStr(child_end_point) << "\n";
 
           // check if the new point is too close to existing node
           if (check_code == 0)
@@ -2393,9 +2497,10 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
               check_new_node(pointer->index, pointer->coord, child_end_point,
                              0.5 * child_l_2, domain_size, check_code);
 
-          out << "Child direction: " << child_d_2 << ", L: " << child_l_2
-              << ", R: " << child_r_2 << ", end point: " << child_end_point
-              << ", check point: " << check_code << "\n";
+          out << "      Child 2 info R: " << child_r_2 << ", L: " << child_l_2
+              << ", d: " << util::io::printStr(child_d_2)
+              << ", check point: " << check_code
+              << ", x end: " << util::io::printStr(child_end_point) << "\n";
 
           // check if the new point is too close to existing node
           if (check_code == 0)
@@ -2407,7 +2512,7 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
           }
         }
       }
-    }
+    } // if apical growth
 
     pointer = pointer->global_successor;
   }
@@ -2430,8 +2535,6 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
 
     pointer = pointer->global_successor;
   }
-
-  out << "number of nodes after: " << VGM.getNumberOfNodes() << "\n";
 
   return VGM.getNumberOfNodes() - num_nodes_old;
 }

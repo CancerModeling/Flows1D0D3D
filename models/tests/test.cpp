@@ -72,7 +72,7 @@ int main(int argc, char* argv[]){
 
     test::mesh::elem_id_numbering(argc, argv, &init.comm());
 
-    test::mesh::memory_leak(argc, argv, &init.comm());
+    // test::mesh::memory_leak(argc, argv, &init.comm());
     
   } else if (model_name == "TestFV") {
 
