@@ -37,10 +37,10 @@ def gen_init_network_file(L, filename):
     # vertex
     inpf.write("Vertex\n")
     inpf.write("parameters {}\n".format(1))
-    inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, 0.0, P_1))
-    inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, L, P_2))
-    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, 0.0, P_4))
-    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, L, P_3))
+    inpf.write("{} {} {} {}\n".format(L - 4.*R, L - 4.*R, 0.0, P_1))
+    inpf.write("{} {} {} {}\n".format(L - 4.*R, L - 4.*R, L, P_2))
+    inpf.write("{} {} {} {}\n".format(4.*R, 4.*R, 0.0, P_4))
+    inpf.write("{} {} {} {}\n".format(4.*R, 4.*R, L, P_3))
 
     # segments
     inpf.write("#\n")
@@ -81,8 +81,10 @@ def network_input(L, param_index, param_val):
     add(param_index, param_val, 'network_no_branch_dist', 10)
     add(param_index, param_val, 'network_new_veesel_max_angle', 0.4)
     add(param_index, param_val, 'network_branch_angle', 0.25)
-    add(param_index, param_val, 'network_update_taf_threshold', 1.e-5)
+
+    add(param_index, param_val, 'network_update_taf_threshold', 1.e-8)
     add(param_index, param_val, 'network_vessel_no_taf_dist', 0)
+
     add(param_index, param_val, 'network_nonlocal_search_num_points', 3)
     add(param_index, param_val, 'network_nonlocal_search_length_factor', 5.)
     add(param_index, param_val, 'network_local_search', 'false')
@@ -241,10 +243,10 @@ def input():
     
     # add artificial taf source if required
     if test_name == 'test_taf':
-    	add(param_index, param_val, 'taf_source_center_x', 0.6 * L)
-    	add(param_index, param_val, 'taf_source_center_y', 0.4 * L)
+    	add(param_index, param_val, 'taf_source_center_x', 0.5 * L)
+    	add(param_index, param_val, 'taf_source_center_y', 0.5 * L)
     	add(param_index, param_val, 'taf_source_center_z', 0.)
-    	add(param_index, param_val, 'taf_source_radius', 0.05 * L)
+    	add(param_index, param_val, 'taf_source_radius', 0.1 * L)
 
 
     ## ECM
