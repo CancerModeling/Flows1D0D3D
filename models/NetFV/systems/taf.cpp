@@ -65,9 +65,12 @@ void netfv::TafAssembly::assemble() {
 void netfv::TafAssembly::assemble_face() {
 
   // call diffusion-advection calculation function
-  netfv::assemble_diffusion_advection(d_model_p->get_taf_assembly(),
+  if (d_model_p->get_input_deck().d_advection_active)
+    netfv::assemble_diffusion_advection(d_model_p->get_taf_assembly(),
                                        d_model_p->get_pres_assembly(),
                                        d_model_p->get_tum_assembly());
+  else
+    netfv::assemble_diffusion(d_model_p->get_taf_assembly());
 }
 
 void netfv::TafAssembly::assemble_1() {

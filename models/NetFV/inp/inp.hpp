@@ -24,10 +24,12 @@ struct ModelDeck {
 
   std::string d_test_name;
 
+  bool d_advection_active;
+
   explicit ModelDeck(const std::string &filename = "")
       : d_dim(2), d_domain_type("hyper_cuboid"),
         d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2),
-        d_test_name("") {
+        d_test_name(""), d_advection_active(false) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -419,6 +421,7 @@ struct NetworkDeck {
   int d_num_points_angle;
   double d_coupling_method_theta;
   bool d_compute_elem_weights;
+  bool d_decouple_nutrients;
 
   double d_assembly_factor_p_t;
   double d_assembly_factor_c_t;
@@ -460,7 +463,8 @@ struct NetworkDeck {
         d_network_no_new_node_search_factor(0.), d_num_points_length(2),
         d_num_points_angle(2), d_coupling_method_theta(0.5),
         d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
-        d_identify_vein_pres(0.), d_compute_elem_weights(false) {
+        d_identify_vein_pres(0.), d_compute_elem_weights(false),
+        d_decouple_nutrients(false) {
 
     if (!filename.empty())
       read_parameters(filename);

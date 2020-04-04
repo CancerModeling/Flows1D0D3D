@@ -80,6 +80,8 @@ public:
 
   void assembleVGMSystemForNutrient();
 
+  void assembleVGMSystemForNutrientDecouple();
+
   void solveVGMforNutrient();
 
   void update_old_concentration() { C_v_old = C_v; };

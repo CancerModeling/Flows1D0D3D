@@ -30,13 +30,17 @@ Number avafv::initial_condition_tum(const Point &p, const Parameters &es,
                              data.d_ic_center[2]);
       const Point dx = p - xc;
 
-      if (type == "tumor_spherical" or type == "tumor_hypoxic_spherical") {
+      if (type == "tumor_spherical" or type == "tumor_hypoxic_spherical" or
+          type == "tumor_spherical_sharp") {
         if (dx.norm() < data.d_tum_ic_radius[0] - 1.0E-12) {
 
           // out << "here tum ic\n";
 
-          return util::exp_decay_function(dx.norm() / data.d_tum_ic_radius[0],
-                                          4.);
+          if (type == "tumor_spherical_sharp")
+            return 1.;
+          else
+            return util::exp_decay_function(dx.norm() / data.d_tum_ic_radius[0],
+                                            4.);
         }
       } else if (type == "tumor_elliptical" or
                  type == "tumor_hypoxic_elliptical") {

@@ -1,12 +1,5 @@
-import os
 import numpy as np
-import pandas as pd
-import csv
 import sys
-import matplotlib.pyplot as plt
-import importlib
-
-import logging
 
 def add(param_index, param_val, index, val):
 
@@ -14,38 +7,46 @@ def add(param_index, param_val, index, val):
     param_val.append(val)
 
 
-def gen_tumor_ic_file(filename):
+def gen_tumor_ic_file(L, filename):
 
     # write to file
     inpf = open(filename,'w')
     inpf.write("type, cx, cy, cz, tum_rx, tum_ry, tum_rz, hyp_rx, hyp_ry, hyp_rz\n")
 
-    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(3, 0.5, 1.0, 0.0, 0.15, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0))
-    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(3, 1.5, 1.0, 0.0, 0.15, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0))
+    # type = 1 -- spherical tumor core
+    # type = 3 -- spherical tumor core and then spherical hypoxic core
+    # type = 5 -- spherical tumor core (sharp)
+    tum_ic_type = 1
+    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(tum_ic_type, 0.5*L, 0.5*L, 0.5*L, 0.2*L, 0.0, 0.0, 0.2*L, 0.0, 0.0, 0.0))
 
     inpf.close()
 
 
-def gen_init_network_file(filename):
+def gen_init_network_file(L, filename):
 
     # write to file
     inpf = open(filename,'w')
     inpf.write("DGF\n")
 
+    R = 0.1 * L
+    P_1 = 1000.
+    P_2 = 500.
+    P_3 = 100.
+
     # vertex
     inpf.write("Vertex\n")
     inpf.write("parameters {}\n".format(1))
-    inpf.write("{} {} {} {}\n".format(300.0e-6, 300.0e-6, 0.0, 50.0))
-    inpf.write("{} {} {} {}\n".format(300.0e-6, 300.0e-6, 385.0e-6, 20.0))
-    inpf.write("{} {} {} {}\n".format(85.0e-6, 85.0e-6, 0.0, 5.0))
-    inpf.write("{} {} {} {}\n".format(85.0e-6, 85.0e-6, 385.0e-6, 10.0))
+    inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, 0.0, P_1))
+    inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, L, P_2))
+    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, 0.0, P_3))
+    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, L, P_3))
 
     # segments
     inpf.write("#\n")
     inpf.write("SIMPLEX\n")
     inpf.write("parameters {}\n".format(2))
-    inpf.write("{} {} {} {}\n".format(0, 1, 10.0e-06, 0.0075))
-    inpf.write("{} {} {} {}\n".format(2, 3, 20.0e-06, 0.0075))
+    inpf.write("{} {} {} {}\n".format(0, 1, R, 0.0075))
+    inpf.write("{} {} {} {}\n".format(2, 3, R, 0.0075))
     # 
     inpf.write("#\n")
     inpf.write("BOUNDARYDOMAIN\n")
@@ -55,16 +56,24 @@ def gen_init_network_file(filename):
     inpf.write("#")
     inpf.close()
 
+    return P_2
 
-def network_input(param_index, param_val):
+
+def network_input(L, param_index, param_val):
 
     add(param_index, param_val, 'is_network_active', 'true')
-    init_file = 'test_single_line.dgf'
+    
+    # network file
+    init_file = 'two_vessels.dgf'
     add(param_index, param_val, 'network_init_file', init_file)
-    add(param_index, param_val, 'network_init_refinement', 5)
+    add(param_index, param_val, 'network_init_refinement', 4)
+
+    # set below to reasonable value such as 1, 4, 10 if want to grow network
+    add(param_index, param_val, 'network_update_interval', 100000)
+
+    # control parameters for growth algorithm
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
     add(param_index, param_val, 'vessel_R_factor', 1.)
-    add(param_index, param_val, 'network_update_interval', 1)
     add(param_index, param_val, 'log_normal_mean', 0.01)
     add(param_index, param_val, 'log_normal_std_dev', 0.1)
     add(param_index, param_val, 'network_radius_exponent_gamma', 2.)
@@ -77,11 +86,12 @@ def network_input(param_index, param_val):
     add(param_index, param_val, 'network_nonlocal_search_length_factor', 5.)
     add(param_index, param_val, 'network_local_search', 'false')
     add(param_index, param_val, 'network_no_new_node_search_factor', 0.25)
-    add(param_index, param_val, 'network_discret_cyl_length', 10)
-    add(param_index, param_val, 'network_discret_cyl_angle', 10)
-    add(param_index, param_val, 'network_coupling_method_theta', 0.5)
+    
+    # generate network file
+    P_2 = gen_init_network_file(L, init_file)
 
-    gen_init_network_file(init_file)
+    # to identify veins so that we can apply correct bc
+    add(param_index, param_val, 'identify_vein_pressure', P_2)
 
 
 def input():
@@ -96,11 +106,19 @@ def input():
     break_points = []
     break_msg = []
     
-    # model
-    L = 385.0e-6
+    ## model
+    L = 2.
     break_points.append(len(param_val))
     break_msg.append('# model')
+    
+    # specify model such as NetFV, NetFVFE, NetFC, AvaFV
     add(param_index, param_val, 'model_name', 'NetFV')
+
+    # specify test (if any) which solves sub-system
+    # disable line below if running full system or specify empty string ''
+    add(param_index, param_val, 'test_name', 'test_net_tum_2')
+
+    # domain
     add(param_index, param_val, 'dimension', 3)
     add(param_index, param_val, 'domain_xmin', 0.)
     add(param_index, param_val, 'domain_xmax', L)
@@ -108,70 +126,89 @@ def input():
     add(param_index, param_val, 'domain_ymax', L)
     add(param_index, param_val, 'domain_zmin', 0.)
     add(param_index, param_val, 'domain_zmax', L)    
-    add(param_index, param_val, 'assembly_method', 1)
-    
 
+    # there are various ways to assemble the source terms
+    # 1 - use implicit whenever possible
+    # 2 - first project species to [0,1] and follow 1
+    # 3 - project to [0,1] and handle all source terms explicitly
+    # In experience, 2 is more robust
+    add(param_index, param_val, 'assembly_method', 2)
+
+    # simplification of computation
+    add(param_index, param_val, 'advection_active', 'true')
+    add(param_index, param_val, 'network_decouple_nutrients', 'true')
+
+    # control parameters for 1d-3d coupling
+    add(param_index, param_val, 'network_discret_cyl_length', 20)
+    add(param_index, param_val, 'network_discret_cyl_angle', 20)
+    add(param_index, param_val, 'network_compute_elem_weights', 'true')
+    add(param_index, param_val, 'network_coupling_method_theta', 1.0)
+    
+    ## restart info
     break_points.append(len(param_val))
     break_msg.append('\n# restart')
     add(param_index, param_val, 'restart', 'false')
     # add(param_index, param_val, 'mesh_restart_file', 'mesh.e')
     # add(param_index, param_val, 'solution_restart_file', 'restart_220.e')
 
-    # mesh
+    ## mesh
     break_points.append(len(param_val))
     break_msg.append('\n# mesh')
-    num_elems = 50
+    num_elems = 60
     add(param_index, param_val, 'mesh_n_elements', num_elems)
 
-    # time
+    ## time
     break_points.append(len(param_val))
     break_msg.append('\n# time')
-    final_t = 1.
+    final_t = 30.0
     init_t = 0.
-    delta_t = 1.
+    delta_t = 0.05
     add(param_index, param_val, 'time_step', delta_t)
     add(param_index, param_val, 'initial_time', init_t)
     add(param_index, param_val, 'initial_step', 0)
     add(param_index, param_val, 'final_time', final_t)
 
-    # output
+    ## output
     break_points.append(len(param_val))
     break_msg.append('\n# output')
-    dt_output = 1
+    total_outputs = 100
+    dt_output = int(np.floor(final_t / delta_t) / total_outputs)
+    if dt_output < 1:
+        dt_output = 1
     add(param_index, param_val, 'perform_output', 'true')
     add(param_index, param_val, 'output_interval', dt_output)
     add(param_index, param_val, 'restart_save', 'false')
     add(param_index, param_val, 'restart_save_interval', 1)
 
-    # solver
+    ## solver
     break_points.append(len(param_val))
     break_msg.append('\n# solver')
     add(param_index, param_val, 'linear_solver_max_iter', 250)
     add(param_index, param_val, 'linear_solver_tol', 1.0e-8)
     add(param_index, param_val, 'nonlinear_solver_max_iter', 50)
-    add(param_index, param_val, 'nonlinear_solver_tol', 1.0e-8)
+    add(param_index, param_val, 'nonlinear_solver_tol', 1.0e-7)
 
-    # nutrient
+    ## nutrient
     break_points.append(len(param_val))
     break_msg.append('\n# nutrient')
-    add(param_index, param_val, 'lambda_P', 2.)
+    add(param_index, param_val, 'lambda_P', 5.)
     add(param_index, param_val, 'lambda_A', 0.005)
     add(param_index, param_val, 'lambda_Ph', 0.5)
-    add(param_index, param_val, 'D_sigma', 0.1)
-    add(param_index, param_val, 'delta_sigma', 0.01)
+    add(param_index, param_val, 'D_sigma', 2.)
+    add(param_index, param_val, 'delta_sigma', 1.)
     add(param_index, param_val, 'chi_c', 0.)
 
-    # tumor
+    ## tumor
     break_points.append(len(param_val))
     break_msg.append('\n# tumor')
-    add(param_index, param_val, 'bar_M_P', 2.)
+    add(param_index, param_val, 'bar_M_P', 20.)
     add(param_index, param_val, 'bar_E_phi_T', 0.045)
-    add(param_index, param_val, 'epsilon_T', 0.005)
+    add(param_index, param_val, 'epsilon_T', 5.0e-3)
 
-    # hypoxic
+    ## hypoxic
     break_points.append(len(param_val))
     break_msg.append('\n# hypoxic')
-    add(param_index, param_val, 'bar_M_H', 1.)
+    add(param_index, param_val, 'bar_M_H', 10.)
     add(param_index, param_val, 'lambda_PH', 1.)
     add(param_index, param_val, 'lambda_HP', 1.)
     add(param_index, param_val, 'lambda_HN', 1.)
@@ -179,27 +216,27 @@ def input():
     add(param_index, param_val, 'sigma_HP', 0.65)
     add(param_index, param_val, 'sigma_HN', 0.44)
 
-    # necrotic
+    ## necrotic
     break_points.append(len(param_val))
     break_msg.append('\n# necrotic')
     add(param_index, param_val, 'bar_M_N', 0.)
 
-    # TAF
+    ## TAF
     break_points.append(len(param_val))
     break_msg.append('\n# TAF')
-    add(param_index, param_val, 'D_TAF', 1.)
-    add(param_index, param_val, 'delta_TAF', 0.1)
-    add(param_index, param_val, 'lambda_TAF', 10.)
+    add(param_index, param_val, 'D_TAF', 1.0e-2)
+    add(param_index, param_val, 'delta_TAF', 1.0)
+    add(param_index, param_val, 'lambda_TAF', 1.e+1)
 
-    # ECM
+    ## ECM
     break_points.append(len(param_val))
     break_msg.append('\n# ECM')
-    add(param_index, param_val, 'lambda_ECM_D', 1.)
-    add(param_index, param_val, 'lambda_ECM_P', 1.)
+    add(param_index, param_val, 'lambda_ECM_D', 0.)
+    add(param_index, param_val, 'lambda_ECM_P', 0.)
     add(param_index, param_val, 'bar_phi_ECM_P', 0.5)
-    add(param_index, param_val, 'chi_h', 0.035)
+    add(param_index, param_val, 'chi_h', 0.0)
 
-    # MDE
+    ## MDE
     break_points.append(len(param_val))
     break_msg.append('\n# MDE')
     add(param_index, param_val, 'D_MDE', 10.)
@@ -207,25 +244,36 @@ def input():
     add(param_index, param_val, 'lambda_MDE_D', 0.3)
     add(param_index, param_val, 'lambda_MDE_P', 0.4)
 
-    # flow 1D 
+    ## flow 1D 
     break_points.append(len(param_val))
     break_msg.append('\n# flow 1D')
-    add(param_index, param_val, 'init_vessel_viscosity', 3.5e-3)
+    add(param_index, param_val, 'init_vessel_viscosity', 1.)
     add(param_index, param_val, 'vessel_in_pressure', 1.)
     add(param_index, param_val, 'vessel_in_nutrient', 1.)
+    add(param_index, param_val, 'vessel_in_nutrient_vein', 0.)
     add(param_index, param_val, 'vessel_blood_density', 1.)
-    add(param_index, param_val, 'vessel_D_sigma', 5.0e-7)
-
-    # flow 2D/3D 
+    add(param_index, param_val, 'vessel_D_sigma', 5.0e-3)
+    add(param_index, param_val, 'osmotic_reflection_coeff', 1.)
+    
+    ## flow 2D/3D 
     break_points.append(len(param_val))
     break_msg.append('\n# flow 21/3DD')
     add(param_index, param_val, 'tissue_flow_viscosity', 1.0e-3)
-    add(param_index, param_val, 'tissue_flow_K', 1.0e-18)
+    add(param_index, param_val, 'tissue_flow_K', 0.075e-6)
     add(param_index, param_val, 'tissue_flow_density', 1.)
-    add(param_index, param_val, 'tissue_flow_L_p', 1.0e-12)
-    add(param_index, param_val, 'tissue_nut_L_s', 1.)
+    
+    # coupling strength between 1d-3d pressure
+    L_p = 1.0e-6
+    add(param_index, param_val, 'tissue_flow_L_p', L_p)
 
-    add(param_index, param_val, 'coupling_factor_p_t', 1.0e+12)
+    # coupling strength between 1d-3d nutrients
+    L_s = 1.0e-2
+    add(param_index, param_val, 'tissue_nut_L_s', L_s)
+
+    # below is the factor for pressure and nutrient equation. This factor is 
+    # multiplied to both sides of equation to improve the coupling.
+    add(param_index, param_val, 'assembly_factor_p_t', 1./L_p)
+    add(param_index, param_val, 'assembly_factor_c_t', 1./L_s)
 
     add(param_index, param_val, 'tissue_pressure_bc_val', 0.)
     add(param_index, param_val, 'tissue_pressure_ic_val', 0.)
@@ -234,29 +282,29 @@ def input():
     add(param_index, param_val, 'bc_tissue_pressure_east', 'false')
     add(param_index, param_val, 'bc_tissue_pressure_west', 'false')
 
-    # nutrient ic
+    ## nutrient ic
     break_points.append(len(param_val))
     break_msg.append('\n# nutrient ic')
     add(param_index, param_val, 'ic_nutrient_value', 0.6)
 
-    # tumor ic
+    ## tumor ic
     break_points.append(len(param_val))
     break_msg.append('\n# tumor ic')
     add(param_index, param_val, 'ic_tumor_file', 'tum_ic_data.csv')
-    gen_tumor_ic_file('tum_ic_data.csv')
+    gen_tumor_ic_file(L, 'tum_ic_data.csv')
 
-    # ECM ic
+    ## ECM ic
     break_points.append(len(param_val))
     break_msg.append('\n# ECM ic')
     add(param_index, param_val, 'ECM_ic_domain_type', '')
     add(param_index, param_val, 'ECM_ic_val', 1.)
 
-    # MDE ic
+    ## MDE ic
     break_points.append(len(param_val))
     break_msg.append('\n# MDE ic')
-    add(param_index, param_val, 'MDE_ic_val', 0.5)
+    add(param_index, param_val, 'MDE_ic_val', 0.0)
 
-    # nutrient bc
+    ## nutrient bc
     break_points.append(len(param_val))
     break_msg.append('\n# nutrient bc')
     add(param_index, param_val, 'bc_nutrient_north', 'false')
@@ -264,15 +312,15 @@ def input():
     add(param_index, param_val, 'bc_nutrient_east', 'false')
     add(param_index, param_val, 'bc_nutrient_west', 'false')
 
-    # network 
+    ## network 
     break_points.append(len(param_val))
     break_msg.append('\n# network')
-    network_input(param_index, param_val)
+    network_input(L, param_index, param_val)
 
 
-    break_points_new = [-1 for x in xrange(len(param_val))]
-    break_msg_new = ["" for x in xrange(len(param_val))]
-    for i in xrange(len(break_points)):
+    break_points_new = [-1 for x in range(len(param_val))]
+    break_msg_new = ["" for x in range(len(param_val))]
+    for i in range(len(break_points)):
         ii = break_points[i]
         break_points_new[ii] = 1
         break_msg_new[ii] = break_msg[i]
@@ -286,7 +334,7 @@ def input():
     inpf = open('input.in','w')
 
     # Model
-    for i in xrange(len(param_index)):
+    for i in range(len(param_index)):
         if break_points_new[i] == 1:
             inpf.write("{}\n".format(break_msg_new[i]))
 

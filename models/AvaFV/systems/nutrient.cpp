@@ -231,10 +231,6 @@ void avafv::NutAssembly::assemble_vol() {
       // previous time step term
       Fe(0) += factor_nut * nut_old * deck.d_elem_size;
 
-      // add source
-      Fe(0) += factor_nut * deck.d_elem_size * dt *
-               (deck.d_lambda_A * (tum_proj - nec_proj));
-
       // handle all coupling with nutrient as source term
       auto a_source = deck.d_elem_size * dt *
                         (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +

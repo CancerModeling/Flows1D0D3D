@@ -32,9 +32,10 @@ void netfv::NecAssembly::assemble() {
 void netfv::NecAssembly::assemble_face() {
 
   // call advection calculation function
-  netfv::assemble_advection(d_model_p->get_nec_assembly(),
-                             d_model_p->get_pres_assembly(),
-                             d_model_p->get_tum_assembly());
+  if (d_model_p->get_input_deck().d_advection_active)
+    netfv::assemble_advection(d_model_p->get_nec_assembly(),
+                              d_model_p->get_pres_assembly(),
+                              d_model_p->get_tum_assembly());
 }
 
 void netfv::NecAssembly::assemble_1() {

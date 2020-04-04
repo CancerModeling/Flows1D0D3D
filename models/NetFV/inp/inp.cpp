@@ -50,6 +50,8 @@ void netfv::ModelDeck::read_parameters(const std::string &filename) {
   d_assembly_method = input("assembly_method", 2);
 
   d_test_name = input("test_name", "");
+
+  d_advection_active = input("advection_active", true);
 }
 
 void netfv::ModelDeck::print(unsigned int level) {
@@ -860,6 +862,7 @@ void netfv::NetworkDeck::read_parameters(const std::string &filename) {
   d_num_points_angle = input("network_discret_cyl_angle", 2);
   d_coupling_method_theta = input("network_coupling_method_theta", 0.5);
   d_compute_elem_weights = input("network_compute_elem_weights", true);
+  d_decouple_nutrients = input("network_decouple_nutrients", true);
 
   if (input.have_variable("assembly_factor_p_t"))
     d_assembly_factor_p_t = input("assembly_factor_p_t", 1.);
