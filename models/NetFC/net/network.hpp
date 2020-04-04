@@ -109,6 +109,12 @@ public:
 
   void rescaleSecombData( std::vector< std::vector<double> >& vertices, std::vector<double>& pressures, std::vector<double>& radii, double epsilon );
 
+  void updateNetwork();
+
+  void markApicalGrowth();
+
+  unsigned int processApicalGrowth();
+
   /** @}*/
 
   /*! @brief Did we change network from last step */
