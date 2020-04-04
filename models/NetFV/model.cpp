@@ -271,7 +271,7 @@ netfv::Model::Model(
     TransientLinearImplicitSystem &vel)
     : d_step(0), d_time(0.), d_dt(0.), d_hmin(0.), d_hmax(0.),
       d_bounding_box(Point(), Point()), d_nonlinear_step(0),
-      d_is_output_step(false),
+      d_is_output_step(false), d_is_growth_step(false),
       d_input(input), d_comm_p(comm),
       d_mesh(mesh), d_tum_sys(tum_sys), d_network(this),
       d_nec_assembly(this, "Necrotic", nec), d_tum_assembly(this, "Tumor", tum),
@@ -460,6 +460,10 @@ netfv::Model::Model(
         d_step == 0)
       d_is_output_step = true;
 
+    d_is_growth_step = false;
+    if (d_step % d_input.d_network_update_interval == 0)
+      d_is_growth_step = true;
+
     out << "\n\n________________________________________________________\n";
     out << "At time step: " << d_step << ", time: " << d_time << "\n\n";
 
@@ -471,8 +475,6 @@ netfv::Model::Model(
       test_nut_2();
     else if (d_input.d_test_name == "test_taf")
       test_taf();
-    else if (d_input.d_test_name == "test_taf_2")
-      test_taf_2();
     else if (d_input.d_test_name == "test_tum")
       test_tum();
     else if (d_input.d_test_name == "test_tum_2")
@@ -485,7 +487,7 @@ netfv::Model::Model(
       solve_system();
 
     // update network
-    if (d_step % d_input.d_network_update_interval == 0) {
+    if (d_is_growth_step) {
       out << "\n  Updating Network\n";
       d_network.update_network();
     }
@@ -939,147 +941,6 @@ void netfv::Model::solve_pressure() {
 void netfv::Model::test_taf() {
 
   // get systems
-  auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
-  auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
-  auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
-  auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
-  auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
-  auto &ecm = d_tum_sys.get_system<TransientLinearImplicitSystem>("ECM");
-  auto &mde = d_tum_sys.get_system<TransientLinearImplicitSystem>("MDE");
-  auto &grad_taf =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
-  auto &vel =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("Velocity");
-
-  // update time
-  nut.time = d_time;
-  tum.time = d_time;
-  hyp.time = d_time;
-  nec.time = d_time;
-  taf.time = d_time;
-  ecm.time = d_time;
-  mde.time = d_time;
-  grad_taf.time = d_time;
-  vel.time = d_time;
-
-  d_tum_sys.parameters.set<Real>("time") = d_time;
-
-  // update old solution
-  *nut.old_local_solution = *nut.current_local_solution;
-  *tum.old_local_solution = *tum.current_local_solution;
-  *hyp.old_local_solution = *hyp.current_local_solution;
-  *nec.old_local_solution = *nec.current_local_solution;
-  *taf.old_local_solution = *taf.current_local_solution;
-  *ecm.old_local_solution = *ecm.current_local_solution;
-  *mde.old_local_solution = *mde.current_local_solution;
-
-  // update old concentration in network
-  d_network.update_old_concentration();
-
-  // solve for pressure
-  solve_pressure();
-
-  // check if we are decoupling the nutrients
-  if (d_input.d_decouple_nutrients) {
-    out << "\n      Solving [1D nutrient]\n";
-    d_network.solveVGMforNutrient();
-  }
-
-  // to compute the nonlinear convergence
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
-
-  // Nonlinear iteration loop
-  d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
-
-  out << "\n  Nonlinear loop\n";
-
-  // nonlinear loop
-  for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
-
-    d_nonlinear_step = l;
-    out << "    ____________________\n";
-    out << "    Nonlinear step: " << l << "\n\n";
-    out << "      Solving ";
-
-    // solver for 1D nutrient
-    if (!d_input.d_decouple_nutrients) {
-      out << "[1D nutrient] -> ";
-      d_network.solveVGMforNutrient();
-    }
-
-    out << "[3D nutrient] -> ";
-    nut.solve();
-
-    // solve tumor
-    last_nonlinear_soln_tum->zero();
-    last_nonlinear_soln_tum->add(*tum.solution);
-    out << "[tumor species] -> ";
-    tum.solve();
-    last_nonlinear_soln_tum->add(-1., *tum.solution);
-    last_nonlinear_soln_tum->close();
-
-    // solve hypoxic
-    out << "[hypoxic species] -> ";
-    hyp.solve();
-
-    // solve necrotic
-    out << "[necrotic species] -> ";
-    nec.solve();
-
-    // solve taf
-    out << "[taf species] -> ";
-    taf.solve();
-
-    // solve mde
-    out << "[mde species] -> ";
-    // mde.solve();
-
-    // solve ecm
-    out << "[ecm species]\n";
-    // ecm.solve();
-
-    // Nonlinear iteration error
-    double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
-    double nonlinear_global_error = 0.;
-    MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
-
-    if (d_input.d_perform_output) {
-
-      const unsigned int n_linear_iterations = tum.n_linear_iterations();
-      const Real final_linear_residual = tum.final_linear_residual();
-
-      std::cout << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
-    }
-    if (nonlinear_global_error < d_input.d_nonlin_tol) {
-
-      std::cout << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
-
-      break;
-    }
-  } // nonlinear solver loop
-
-  out << "\n  End of nonlinear loop\n";
-
-  // solve for gradient of taf
-  out << "      Solving [gradient of taf] -> ";
-  //grad_taf.solve();
-  d_grad_taf_assembly.solve();
-
-  // solve for gradient of taf
-  out << "[velocity]\n";
-  d_vel_assembly.solve();
-}
-
-void netfv::Model::test_taf_2() {
-
-  // get systems
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
   auto &grad_taf =
       d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
@@ -1410,7 +1271,7 @@ void netfv::Model::test_net_tum() {
 
   // compute below only when we are performing output as these do not play
   // direct role in evolution of sub-system
-  if (d_is_output_step) {
+  if (d_is_output_step or d_is_growth_step) {
 
     // solve for velocity
     out << "      Solving [velocity] -> ";

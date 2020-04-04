@@ -9,23 +9,22 @@
 
 namespace {
 double get_nut_source(const std::string &test_name, const Point &x, const
-double &L) {
+std::vector<double> &x0, const double &r) {
 
   if (test_name != "test_tum_2")
     return 0.;
 
-  double R = 0.05 * L;
-  double L_source_x = L - 2. * R;
-  double L_source_y = L - 2. * R;
-  double L_source_z = 0.;
+  double L_source_x = x0[0];
+  double L_source_y = x0[1];
+  double L_source_z = x0[2];
   const Point xc = Point(L_source_x, L_source_y, L_source_z);
   // spherical source
   if (false) {
-    if ((x - xc).norm() < R)
+    if ((x - xc).norm() < r)
       return 1.;
   } else {
     Point dx = Point(x(0), x(1), 0.) - xc;
-    if (dx.norm() < R) {
+    if (dx.norm() < r) {
 
       return 1.;
     }
@@ -395,8 +394,10 @@ void netfv::NutAssembly::assemble_1() {
       Ke(0,0) += factor_nut * a_source;
 
       // add artificial source if asked
-      double articial_source = get_nut_source(deck.d_test_name, elem->centroid(),
-                                              deck.d_domain_params[1]) - nut_old;
+      double articial_source =
+          get_nut_source(deck.d_test_name, elem->centroid(),
+                         deck.d_nut_source_center, deck.d_nut_source_radius) -
+          nut_old;
       if (articial_source > 0.)
         Fe(0) += deck.d_elem_size * dt * articial_source;
     }
@@ -496,7 +497,7 @@ void netfv::NutAssembly::assemble_2() {
 
       // add artificial source if asked
       double articial_source = get_nut_source(deck.d_test_name, elem->centroid(),
-                                              deck.d_domain_params[1]) - nut_old;
+                                              deck.d_nut_source_center, deck.d_nut_source_radius) - nut_old;
       if (articial_source > 0.)
         Fe(0) += deck.d_elem_size * dt * articial_source;
     }
@@ -600,7 +601,7 @@ void netfv::NutAssembly::assemble_3() {
 
       // add artificial source if asked
       double articial_source = get_nut_source(deck.d_test_name, elem->centroid(),
-                                              deck.d_domain_params[1]) - nut_old;
+                                              deck.d_nut_source_center, deck.d_nut_source_radius) - nut_old;
       if (articial_source > 0.)
         Fe(0) += deck.d_elem_size * dt * articial_source;
     }
