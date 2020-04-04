@@ -143,12 +143,13 @@ void netfc::Network::transferDataToVGM( std::vector<std::vector<double>> &vertic
 
     if (new_node.p_boundary > 0.0) {
 
-      new_node.typeOfVGNode = TypeOfNode::DirichletNode;
+        new_node.typeOfVGNode = TypeOfNode::DirichletNode;
 
     } 
     else {
 
-      new_node.typeOfVGNode = TypeOfNode::InnerNode;
+        new_node.typeOfVGNode = TypeOfNode::InnerNode;
+
     }
 
     VGM.attachNode(new_node);
