@@ -121,6 +121,9 @@ public:
   void add_new_node_at_existing_node(std::shared_ptr<VGNode> &pointer,
                                      std::shared_ptr<VGNode> &near_node);
 
+  void get_taf_and_gradient(double &taf_val, Point &grad_taf_val,
+                            const std::vector<double> &coord);
+
   /** @}*/
 
   /*! @brief Did we change network from last step */

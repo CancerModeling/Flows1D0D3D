@@ -744,7 +744,7 @@ std::vector<double> util::determineRotator( const std::vector<double> &dir ){
 
   std::vector<double> rotator;
 
-  if( std::abs(dir[ 0 ])<1.0e-11 && std::abs(dir[ 0 ])<1.0e-11 ){
+  if( std::abs(dir[ 0 ])<1.0e-11 && std::abs(dir[ 1 ])<1.0e-11 ){
 
     rotator.push_back( 1.0 );
 
@@ -769,7 +769,7 @@ std::vector<double> util::determineRotator( const std::vector<double> &dir ){
 
 Point util::determineRotator( const Point &dir ){
 
-  if( std::abs(dir(0))<1.0e-11 && std::abs(dir(0))<1.0e-11 ){
+  if( std::abs(dir(0))<1.0e-11 && std::abs(dir(1))<1.0e-11 ){
 
     return Point(1., 0., 0.);
   }
