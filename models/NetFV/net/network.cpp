@@ -45,7 +45,11 @@ double compute_bifurcate_child_direction(const Point &parent_d,
   double angle_1 = util::angle(parent_d, child_d) + branch_angle;
 
   // axis for rotation
-  Point axis = parent_d.cross(child_d);
+  auto axis = Point();
+  if (util::angle(parent_d, child_d) > 1.0e-10)
+    axis = parent_d.cross(child_d);
+  else
+    axis = util::determineRotator(parent_d);
   axis = axis / axis.norm();
 
   // rotate parent_direction by -ve angle
@@ -2168,12 +2172,6 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
   const double domain_size = input.d_domain_params[1];
   const unsigned int dim = input.d_dim;
 
-  // taf
-  auto &taf = d_model_p->get_taf_assembly();
-
-  // grad taf
-  auto &grad_taf = d_model_p->get_grad_taf_assembly();
-
   // mark node for growth based on a certain criterion
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -2187,9 +2185,6 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
 
   // store how many new node
   unsigned int num_new_nodes_added = 0;
-
-  // store neighboring element's dof information
-  std::vector<unsigned int> dof_indices_taf_neigh;
 
   while (pointer) {
 
@@ -2245,107 +2240,15 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
 
       // compute taf and grad taf at the node
       double parent_taf = 0.;
-      Gradient parent_grad_taf;
-      {
-        // get taf
-        const auto *elem_i = mesh.elem_ptr(
-            util::get_elem_id(pointer->coord, input.d_mesh_size, input.d_num_elems,
-                dim));
-
-        taf.init_dof(elem_i);
-        parent_taf = taf.get_current_sol(0);
-
-        // get grad taf
-        bool direct_comp = false;
-        if (direct_comp) {
-
-          // get i, j, k
-          unsigned int i = pointer->coord[0] / input.d_mesh_size;
-          unsigned int j = pointer->coord[1] / input.d_mesh_size;
-          unsigned int k = pointer->coord[2] / input.d_mesh_size;
-
-          // get derivatives
-          unsigned int nd = 0;
-          int di = 0;
-          int ii, jj, kk;
-          for (unsigned int var=0; var<dim; var++) {
-
-            nd = 0;
-            for (unsigned int side = 0; side < 2; side++) {
-
-              if (side == 0)
-                di = -1;
-              else
-                di = 1;
-
-              if (var == 0) {
-                ii = i + di, jj = j, kk = k;
-              } else if (var == 1) {
-                ii = i, jj = j + di, kk = k;
-              } else if (var == 2) {
-                ii = i, jj = j, kk = k + di;
-              }
-
-              int neighbor_id =
-                  kk * input.d_num_elems * input.d_num_elems +
-                  jj * input.d_num_elems + ii;
-
-              if (ii < 0 or ii >= input.d_num_elems)
-                continue;
-              if (jj < 0 or jj >= input.d_num_elems)
-                continue;
-              if (kk < 0 or kk >= input.d_num_elems)
-                continue;
-
-              nd++;
-              const auto *neighbor = mesh.elem_ptr(neighbor_id);
-              taf.init_dof(neighbor, dof_indices_taf_neigh);
-
-              auto neighbor_taf = taf.get_current_sol(0, dof_indices_taf_neigh);
-
-              parent_grad_taf(var) += (neighbor_taf - parent_taf) /
-                                      (double(di) * input.d_mesh_size);
-            }
-
-            if (nd == 0) {
-              out << "Error computing gradient of taf at point = ("
-                  << util::io::printStr(pointer->coord) << ") belonging to "
-                  << "element = " << elem_i->id() << "\n";
-              exit(1);
-            }
-            parent_grad_taf(var) = parent_grad_taf(var) / nd;
-          }
-
-        } else {
-          grad_taf.init_var_dof(elem_i);
-          for (unsigned int var = 0; var < dim; var++)
-            parent_grad_taf(var) = grad_taf.get_current_sol_var(0, var);
-        }
-      }
+      Point parent_grad_taf;
+      get_taf_and_gradient(parent_taf, parent_grad_taf, pointer->coord);
 
       out << "      Parent info R: " << parent_r << ", L: " << parent_l
           << ", d: " << util::io::printStr(parent_d)
-          << ", x: " << util::io::printStr(pointer->coord) << "\n";
+          << ", x: (" << util::io::printStr(pointer->coord) << ")\n";
       out << "        taf: " << parent_taf
           << ", Grad(TAF): " <<  util::io::printStr(parent_grad_taf)
           << "\n";
-
-      // check
-      if (pointer->coord[0] > 1.8 and pointer->coord[1] > 1.8) {
-        bool x_error = false;
-        if (parent_grad_taf(0) > 0.)
-          x_error = true;
-
-        bool y_error = false;
-        if (parent_grad_taf(1) > 0.)
-          y_error = true;
-
-        out << "      Check grad taf x err: " << util::io::printStr(x_error)
-            << ", y err: " << util::io::printStr(y_error) << "\n";
-
-        if (x_error or y_error)
-          exit(1);
-      }
 
       // compute child direction
       Point child_d = input.d_net_direction_lambda_g * parent_d;
@@ -2398,12 +2301,12 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
         unsigned int check_code = 0;
         auto near_node =
             check_new_node(pointer->index, pointer->coord, child_end_point,
-                           0.5 * child_l, domain_size, check_code);
+                           0.1 * child_l, domain_size, check_code);
 
         out << "      Child info R: " << child_r << ", L: " << child_l
             << ", d: " << util::io::printStr(child_d)
             << ", check point: " << check_code
-            << ", x end: " << util::io::printStr(child_end_point) << "\n";
+            << ", x end: (" << util::io::printStr(child_end_point) << ")\n";
 
         // check if the new point is too close to existing node
         if (check_code == 0)
@@ -2468,12 +2371,12 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
           unsigned int check_code = 0;
           auto near_node =
               check_new_node(pointer->index, pointer->coord, child_end_point,
-                             0.5 * child_l, domain_size, check_code);
+                             0.1 * child_l, domain_size, check_code);
 
           out << "      Child 1 info R: " << child_r << ", L: " << child_l
               << ", d: " << util::io::printStr(child_d)
               << ", check point: " << check_code
-              << ", x end: " << util::io::printStr(child_end_point) << "\n";
+              << ", x end: (" << util::io::printStr(child_end_point) << ")\n";
 
           // check if the new point is too close to existing node
           if (check_code == 0)
@@ -2495,12 +2398,12 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
           unsigned int check_code = 0;
           auto near_node =
               check_new_node(pointer->index, pointer->coord, child_end_point,
-                             0.5 * child_l_2, domain_size, check_code);
+                             0.1 * child_l_2, domain_size, check_code);
 
           out << "      Child 2 info R: " << child_r_2 << ", L: " << child_l_2
               << ", d: " << util::io::printStr(child_d_2)
               << ", check point: " << check_code
-              << ", x end: " << util::io::printStr(child_end_point) << "\n";
+              << ", x end: (" << util::io::printStr(child_end_point) << ")\n";
 
           // check if the new point is too close to existing node
           if (check_code == 0)
@@ -2700,4 +2603,126 @@ void netfv::Network::add_new_node_at_existing_node(
   near_node->sprouting_edge.push_back(false);
 
   near_node->edge_touched.push_back(true);
+}
+
+void netfv::Network::get_taf_and_gradient(double &taf_val, Point &grad_taf_val,
+                                          const std::vector<double> &coord) {
+
+  const auto &mesh = d_model_p->get_mesh();
+  const auto &input = d_model_p->get_input_deck();
+
+  // taf
+  auto &taf = d_model_p->get_taf_assembly();
+
+  // grad taf
+  auto &grad_taf = d_model_p->get_grad_taf_assembly();
+
+  // get taf
+  const auto *elem_i = mesh.elem_ptr(
+      util::get_elem_id(coord, input.d_mesh_size, input.d_num_elems,
+                        input.d_dim));
+
+  taf.init_dof(elem_i);
+  taf_val = taf.get_current_sol(0);
+
+  if (input.d_test_name == "test_taf" or input.d_test_name == "test_taf_2") {
+
+    auto xc =
+        Point(input.d_taf_source_center[0], input.d_taf_source_center[1], 0.);
+    auto x = Point(coord[0], coord[1], 0.);
+
+    if ((x - xc).norm() < input.d_taf_source_radius)
+      grad_taf_val = Point(0., 0., 0.);
+    else
+      grad_taf_val = xc - x;
+
+    return;
+  }
+
+  // get grad taf
+  bool direct_comp = false;
+  if (direct_comp) {
+
+    // store neighboring element's dof information
+    std::vector<unsigned int> dof_indices_taf_neigh;
+
+    // get i, j, k
+    unsigned int i = coord[0] / input.d_mesh_size;
+    unsigned int j = coord[1] / input.d_mesh_size;
+    unsigned int k = coord[2] / input.d_mesh_size;
+
+    // get derivatives
+    unsigned int nd = 0;
+    int di = 0;
+    int ii, jj, kk;
+    for (unsigned int var=0; var<input.d_dim; var++) {
+
+      nd = 0;
+      for (unsigned int side = 0; side < 2; side++) {
+
+        if (side == 0)
+          di = -1;
+        else
+          di = 1;
+
+        if (var == 0) {
+          ii = i + di, jj = j, kk = k;
+        } else if (var == 1) {
+          ii = i, jj = j + di, kk = k;
+        } else if (var == 2) {
+          ii = i, jj = j, kk = k + di;
+        }
+
+        int neighbor_id =
+            kk * input.d_num_elems * input.d_num_elems +
+            jj * input.d_num_elems + ii;
+
+        if (ii < 0 or ii >= input.d_num_elems)
+          continue;
+        if (jj < 0 or jj >= input.d_num_elems)
+          continue;
+        if (kk < 0 or kk >= input.d_num_elems)
+          continue;
+
+        nd++;
+        const auto *neighbor = mesh.elem_ptr(neighbor_id);
+        taf.init_dof(neighbor, dof_indices_taf_neigh);
+
+        auto neighbor_taf = taf.get_current_sol(0, dof_indices_taf_neigh);
+
+        grad_taf_val(var) += (neighbor_taf - taf_val) /
+                                (double(di) * input.d_mesh_size);
+      }
+
+      if (nd == 0) {
+        out << "Error computing gradient of taf at point = ("
+            << util::io::printStr(coord) << ") belonging to "
+            << "element = " << elem_i->id() << "\n";
+        exit(1);
+      }
+      grad_taf_val(var) = grad_taf_val(var) / nd;
+    }
+
+  } else {
+    grad_taf.init_var_dof(elem_i);
+    for (unsigned int var = 0; var < input.d_dim; var++)
+      grad_taf_val(var) = grad_taf.get_current_sol_var(0, var);
+  }
+
+  //  // check
+  //  if (coord[0] > 1.8 and coord[1] > 1.8) {
+  //    bool x_error = false;
+  //    if (grad_taf_val(0) > 0.)
+  //      x_error = true;
+  //
+  //    bool y_error = false;
+  //    if (grad_taf_val(1) > 0.)
+  //      y_error = true;
+  //
+  //    out << "      Check grad taf x err: " << util::io::printStr(x_error)
+  //        << ", y err: " << util::io::printStr(y_error) << "\n";
+  //
+  //    if (x_error or y_error)
+  //      exit(1);
+  //  }
 }

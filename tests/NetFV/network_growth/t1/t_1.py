@@ -67,7 +67,7 @@ def network_input(L, param_index, param_val):
     # network file
     init_file = 'two_vessels.dgf'
     add(param_index, param_val, 'network_init_file', init_file)
-    add(param_index, param_val, 'network_init_refinement', 2)
+    add(param_index, param_val, 'network_init_refinement', 5)
 
     # control parameters for growth algorithm
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
@@ -75,12 +75,12 @@ def network_input(L, param_index, param_val):
     
     add(param_index, param_val, 'log_normal_mean', 0.01)
     add(param_index, param_val, 'log_normal_std_dev', 0.1)
-    add(param_index, param_val, 'network_bifurcate_probability', 0.8)
+    add(param_index, param_val, 'network_bifurcate_probability', 0.82)
 
     add(param_index, param_val, 'network_radius_exponent_gamma', 2.)
     add(param_index, param_val, 'network_no_branch_dist', 10)
     add(param_index, param_val, 'network_new_veesel_max_angle', 0.4)
-    add(param_index, param_val, 'network_branch_angle', 0.25)
+    add(param_index, param_val, 'network_branch_angle', 0.3)
 
     add(param_index, param_val, 'network_update_taf_threshold', 1.e-8)
     add(param_index, param_val, 'network_vessel_no_taf_dist', 0)
