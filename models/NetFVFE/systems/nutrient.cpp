@@ -8,8 +8,8 @@
 #include "../model.hpp"
 
 namespace {
-double get_nut_source(const std::string &test_name, const Point &x, const
-std::vector<double> &x0, const double &r) {
+double get_nut_source(const std::string &test_name, const Point &x,
+                      const std::vector<double> &x0, const double &r) {
 
   if (test_name != "test_tum_2")
     return 0.;
@@ -32,11 +32,11 @@ std::vector<double> &x0, const double &r) {
 
   return 0.;
 }
-}
+} // namespace
 
 Number netfvfe::initial_condition_nut(const Point &p, const Parameters &es,
-                                     const std::string &system_name,
-                                     const std::string &var_name) {
+                                      const std::string &system_name,
+                                      const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Nutrient");
 
@@ -98,7 +98,7 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
     const auto &network = d_model_p->get_network();
     auto pointer = network.get_mesh().getHead();
 
-    DenseMatrix<Number> Ke(1,1);
+    DenseMatrix<Number> Ke(1, 1);
     DenseVector<Number> Fe(1);
 
     while (pointer) {
@@ -129,11 +129,11 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
 
           // implicit for c_t in source
           Ke(0, 0) = dt * factor_nut * deck.d_coupling_method_theta *
-                      pointer->L_s[i] * J_b_data.half_cyl_surf * e_w;
+                     pointer->L_s[i] * J_b_data.half_cyl_surf * e_w;
 
           // explicit for c_v in source
           Fe(0) = dt * factor_nut * pointer->L_s[i] * J_b_data.half_cyl_surf *
-                   e_w * (c_v_k - (1. - deck.d_coupling_method_theta) * c_t_k);
+                  e_w * (c_v_k - (1. - deck.d_coupling_method_theta) * c_t_k);
 
           // term due to pressure difference
           double c_transport = 0.;
@@ -161,7 +161,6 @@ void netfvfe::NutAssembly::assemble_face() {
   // Get required system alias
   // auto &nut = d_model_p->get_nut_assembly();
   auto &tum = d_model_p->get_tum_assembly();
-  auto &hyp = d_model_p->get_hyp_assembly();
   auto &pres = d_model_p->get_pres_assembly();
 
   // Model parameters
@@ -188,22 +187,18 @@ void netfvfe::NutAssembly::assemble_face() {
 
   // Store current and old solution
   Real pres_cur = 0.;
-  Real tum_cur = 0.;
   Real chem_tum_cur = 0.;
 
   Gradient tum_grad = 0.;
 
   // Store current and old solution of neighboring element
   Real pres_neigh_cur = 0.;
-  Real tum_neigh_cur = 0.;
-  Real chem_tum_neigh_cur = 0.;
 
   // Looping through elements
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
     tum.init_dof(elem);
-    hyp.init_dof(elem);
     pres.init_dof(elem);
 
     // reset matrix and force
@@ -229,20 +224,17 @@ void netfvfe::NutAssembly::assemble_face() {
 
         // pres
         pres.init_dof(neighbor, dof_indices_pres_neigh);
-        pres_neigh_cur =
-            pres.get_current_sol(0, dof_indices_pres_neigh);
+        pres_neigh_cur = pres.get_current_sol(0, dof_indices_pres_neigh);
 
         // diffusion
-        const Real a_diff =
-            factor_nut * dt * deck.d_D_sigma * deck.d_face_by_h;
-        util::add_unique(get_global_dof_id(0), a_diff, Ke_dof_col,
-                         Ke_val_col);
+        const Real a_diff = factor_nut * dt * deck.d_D_sigma * deck.d_face_by_h;
+        util::add_unique(get_global_dof_id(0), a_diff, Ke_dof_col, Ke_val_col);
         util::add_unique(dof_indices_nut_neigh[0], -a_diff, Ke_dof_col,
                          Ke_val_col);
 
         // advection (pressure gradient term)
         Real v = deck.d_tissue_flow_coeff * deck.d_face_by_h *
-                   (pres_cur - pres_neigh_cur);
+                 (pres_cur - pres_neigh_cur);
 
         // upwinding
         if (v >= 0.)
@@ -275,12 +267,12 @@ void netfvfe::NutAssembly::assemble_face() {
                    deck.d_chi_c * tum_grad * tum.d_qface_normals[qp];
 
           // advection term
-          Real v_mu = deck.d_tissue_flow_coeff * chem_tum_cur * tum_grad *
-                      d_qface_normals[qp];
+          Real v_mu = factor_nut * tum.d_JxW_face[qp] * dt *
+                      deck.d_tissue_flow_coeff * chem_tum_cur *
+                      (tum_grad * tum.d_qface_normals[qp]);
 
           // goes to the dof of element (not the neighbor)
-          util::add_unique(get_global_dof_id(0), factor_nut * dt * v_mu,
-                           Ke_dof_col, Ke_val_col);
+          util::add_unique(get_global_dof_id(0), v_mu, Ke_dof_col, Ke_val_col);
         } // loop over quadrature points on face
 
       } // elem neighbor is not null
@@ -301,7 +293,7 @@ void netfvfe::NutAssembly::assemble_face() {
 void netfvfe::NutAssembly::assemble_1() {
 
   // Get required system alias
-  //auto &nut = d_model_p->get_nut_assembly();
+  // auto &nut = d_model_p->get_nut_assembly();
   auto &tum = d_model_p->get_tum_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
   auto &nec = d_model_p->get_nec_assembly();
@@ -347,7 +339,7 @@ void netfvfe::NutAssembly::assemble_1() {
 
     // get finite-volume quantities
     nut_old = get_old_sol(0);
-    
+
     // add finite-volume contribution to matrix and vector
     d_Fe(0) += deck.d_elem_size * factor_nut * nut_old;
     d_Ke(0, 0) += deck.d_elem_size * factor_nut;
@@ -355,8 +347,12 @@ void netfvfe::NutAssembly::assemble_1() {
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
       // Computing solution
-      tum_cur = 0.; hyp_cur = 0.; nec_cur = 0.; ecm_cur = 0.; mde_cur = 0.;
-      
+      tum_cur = 0.;
+      hyp_cur = 0.;
+      nec_cur = 0.;
+      ecm_cur = 0.;
+      mde_cur = 0.;
+
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         tum_cur += d_phi[l][qp] * tum.get_current_sol_var(l, 0);
@@ -374,7 +370,7 @@ void netfvfe::NutAssembly::assemble_1() {
                       (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
                        deck.d_lambda_Ph * hyp_cur +
                        deck.d_lambda_ECM_P * (1. - ecm_cur) *
-                       util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+                           util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
 
       } else {
 
@@ -384,13 +380,14 @@ void netfvfe::NutAssembly::assemble_1() {
         hyp_proj = util::project_concentration(hyp_cur);
         nec_proj = util::project_concentration(nec_cur);
 
-        compute_rhs = d_JxW[qp] * dt * deck.d_lambda_ECM_D * ecm_proj * mde_proj;
+        compute_rhs =
+            d_JxW[qp] * dt * deck.d_lambda_ECM_D * ecm_proj * mde_proj;
 
         compute_mat = d_JxW[qp] * dt *
                       (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
                        deck.d_lambda_Ph * hyp_proj +
                        deck.d_lambda_ECM_P * (1. - ecm_proj) *
-                       util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
+                           util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
       }
 
       // add artificial source if asked
