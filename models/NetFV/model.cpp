@@ -42,6 +42,8 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
     sys.project_solution(netfv::initial_condition_ecm, nullptr, es.parameters);
   else if (system_name == "MDE")
     sys.project_solution(netfv::initial_condition_mde, nullptr, es.parameters);
+  else if (system_name == "Pressure")
+    sys.project_solution(netfv::initial_condition_pres, nullptr, es.parameters);
   else {
     return;
   }
