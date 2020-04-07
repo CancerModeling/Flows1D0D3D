@@ -23,7 +23,7 @@ Number netfc::initial_condition_pres(const Point &p, const Parameters &es,
 
   libmesh_assert_equal_to(system_name, "Pressure");
 
-  if (var_name == "ecm") {
+  if (var_name == "pressure") {
 
     const auto *deck = es.get<netfc::InputDeck *>("input_deck");
 

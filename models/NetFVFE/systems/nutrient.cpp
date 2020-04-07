@@ -77,13 +77,8 @@ void netfvfe::boundary_condition_nut(EquationSystems &es) {
 
 // Assembly class
 void netfvfe::NutAssembly::assemble() {
-
-  const auto &deck = d_model_p->get_input_deck();
-
   assemble_1d_coupling();
-
   assemble_face();
-
   assemble_1();
 }
 
@@ -260,7 +255,7 @@ void netfvfe::NutAssembly::assemble_face() {
                            Ke_dof_col, Ke_val_col);
 
         // advection (mu_T grad(phi_T) term) and chemotactic term
-        // These require integration over face of an element
+        // these terms require integration over face of an element
         tum.d_fe_face->reinit(elem, side);
 
         // loop over quadrature points

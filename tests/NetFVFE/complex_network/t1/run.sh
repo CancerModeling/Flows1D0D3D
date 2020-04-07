@@ -2,7 +2,7 @@
 MYPWD=$(pwd)
 
 # locate executible
-execsrc="../../../bin/NetFVFE"
+execsrc="../../../../bin/NetFVFE"
 
 # libmesh options
 libmesh_opts=" -ksp_type gmres -pc_type bjacobi -sub_pc_type ilu -sub_pc_factor_levels 10"
@@ -24,11 +24,11 @@ if [[ $# -ne 1 ]]; then
 	exit
 fi
 
-python -B "$1".py input
+python3 -B "$1".py input
 
-mv input.in out/.
-mv tum_ic_data.csv out/.
-mv test_single_line.dgf out/.
+mv *.in out/.
+mv *.csv out/.
+cp *.dgf out/.
 
 cd "out"
 
