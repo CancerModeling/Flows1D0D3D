@@ -47,7 +47,13 @@ void netfvfe::ModelDeck::read_parameters(const std::string &filename) {
     }
   }
 
-  d_assembly_method = input("assembly_method", 1);
+  d_assembly_method = input("assembly_method", 2);
+
+  d_test_name = input("test_name", "");
+
+  d_advection_active = input("advection_active", true);
+
+  d_decouple_nutrients = input("network_decouple_nutrients", true);
 }
 
 void netfvfe::ModelDeck::print(unsigned int level) {
@@ -140,15 +146,16 @@ void netfvfe::MeshDeck::read_parameters(const std::string &filename) {
   d_mesh_filename = input("mesh_name", "");
   d_num_elems = input("mesh_n_elements", 0);
   if (d_num_elems == 0) {
-    d_num_elems_vec[0] = input("mesh_n_elements_x", 50);
-    d_num_elems_vec[1] = input("mesh_n_elements_y", 50);
-    d_num_elems_vec[2] = input("mesh_n_elements_z", 50);
-  } else {
-    d_num_elems_vec[0] = d_num_elems;
-    d_num_elems_vec[1] = d_num_elems;
-    d_num_elems_vec[2] = d_num_elems;
+    // check if mesh size is provided
+    d_mesh_size = input("mesh_size", 0.);
+
+    if (d_mesh_size < 1.0e-12) {
+      libmesh_error_msg("Number of elements for 2D/3D mesh can not be zero.");
+      exit(1);
+    } else {
+      d_use_mesh_size_for_disc = true;
+    }
   }
-  d_n_global_refinement = input("mesh_n_global_refinement", 0);
   d_read_mesh_flag = input("mesh_read_file", false);
 }
 
@@ -165,10 +172,6 @@ void netfvfe::MeshDeck::print(unsigned int level) {
   out << "# Number of elements for discretization in each coordinate \n";
   out << "# Default: 100\n";
   out << "mesh_n_elements = " << d_num_elems << "\n\n";
-
-  out << "# Global refinement level \n";
-  out << "# Default: 0\n";
-  out << "mesh_n_global_refinement = " << d_n_global_refinement << "\n\n";
 
   out << "# Read mesh from file? If true, must specify mesh file using tag "
          "mesh_name above\n";
@@ -333,6 +336,11 @@ void netfvfe::NutrientDeck::read_parameters(const std::string &filename) {
   d_D_sigma = input("D_sigma", 1.);
   d_delta_sigma = input("delta_sigma", 0.01);
   d_chi_c = input("chi_c", 0.035);
+
+  d_nut_source_center[0] = input("nut_source_center_x", 0.);
+  d_nut_source_center[1] = input("nut_source_center_y", 0.);
+  d_nut_source_center[2] = input("nut_source_center_z", 0.);
+  d_nut_source_radius = input("nut_source_radius", 0.);
 }
 
 void netfvfe::NutrientDeck::print(unsigned int level) {
@@ -493,6 +501,11 @@ void netfvfe::TAFDeck::read_parameters(const std::string &filename) {
   d_D_TAF = input("D_TAF", 10.);
   d_delta_TAF = input("delta_TAF", 1.);
   d_lambda_TAF = input("lambda_TAF", 10.);
+
+  d_taf_source_center[0] = input("taf_source_center_x", 0.);
+  d_taf_source_center[1] = input("taf_source_center_y", 0.);
+  d_taf_source_center[2] = input("taf_source_center_z", 0.);
+  d_taf_source_radius = input("taf_source_radius", 0.);
 }
 
 void netfvfe::TAFDeck::print(unsigned int level) {
@@ -689,6 +702,8 @@ void netfvfe::TumorICDeck::read_parameters(const std::string &filename) {
         ic_type = "tumor_hypoxic_spherical";
       else if (type == 4)
         ic_type = "tumor_hypoxic_elliptical";
+      else if (type == 5)
+        ic_type = "tumor_spherical_sharp";
 
       auto data = TumorICData(ic_type, {cx, cy, cz}, {tum_rx, tum_ry, tum_rz},
                               {hyp_rx, hyp_ry, hyp_rz});
@@ -858,8 +873,14 @@ void netfvfe::NetworkDeck::read_parameters(const std::string &filename) {
   d_num_points_length = input("network_discret_cyl_length", 2);
   d_num_points_angle = input("network_discret_cyl_angle", 2);
   d_coupling_method_theta = input("network_coupling_method_theta", 0.5);
+  d_compute_elem_weights = input("network_compute_elem_weights", true);
 
-  d_coupling_factor_p_t = input("coupling_factor_p_t", 1.);
+  if (input.have_variable("assembly_factor_p_t"))
+    d_assembly_factor_p_t = input("assembly_factor_p_t", 1.);
+  else if (input.have_variable("coupling_factor_p_t"))
+    d_assembly_factor_p_t = input("coupling_factor_p_t", 1.);
+
+  d_assembly_factor_c_t = input("assembly_factor_c_t", 1.);
 
   d_identify_vein_pres = input("identify_vein_pressure", 0.);
 
@@ -891,6 +912,8 @@ void netfvfe::NetworkDeck::read_parameters(const std::string &filename) {
 
   d_network_no_new_node_search_factor = input
       ("network_no_new_node_search_factor", 0.5);
+
+  d_network_bifurcate_prob = input("network_bifurcate_probability", 0.6);
 }
 
 void netfvfe::NetworkDeck::print(unsigned int level) {
@@ -940,6 +963,7 @@ void netfvfe::FlowDeck::read_parameters(const std::string &filename) {
 
   d_tissue_flow_mu = input("tissue_flow_viscosity", 1.);
   d_tissue_flow_K = input("tissue_flow_K", 1.);
+  d_tissue_flow_coeff = d_tissue_flow_K / d_tissue_flow_mu;
   d_tissue_flow_rho = input("tissue_flow_density", 1.);
   d_tissue_flow_L_p = input("tissue_flow_L_p", 1.);
   d_tissue_nut_L_s = input("tissue_nut_L_s", 1.);

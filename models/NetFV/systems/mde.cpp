@@ -203,12 +203,12 @@ void netfv::MdeAssembly::assemble_2() {
       // matrix contribution
       Real a_source = deck.d_elem_size * dt *
                       (deck.d_lambda_MDE_D +
-                       deck.d_lambda_MDE_P * aux_1 +
+                        aux_1 +
                        deck.d_lambda_ECM_D * ecm_proj);
       Ke(0,0) += a_source;
 
       // add source
-      Fe(0) += deck.d_elem_size * dt * deck.d_lambda_MDE_P * aux_1;
+      Fe(0) += deck.d_elem_size * dt * aux_1;
     }
 
     // add to matrix

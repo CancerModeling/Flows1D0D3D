@@ -6,7 +6,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "../model.hpp"
-#include "systems.hpp"
+
+namespace {
+double get_nut_source(const std::string &test_name, const Point &x, const
+std::vector<double> &x0, const double &r) {
+
+  if (test_name != "test_tum_2")
+    return 0.;
+
+  double L_source_x = x0[0];
+  double L_source_y = x0[1];
+  double L_source_z = x0[2];
+  const Point xc = Point(L_source_x, L_source_y, L_source_z);
+  // spherical source
+  if (false) {
+    if ((x - xc).norm() < r)
+      return 1.;
+  } else {
+    Point dx = Point(x(0), x(1), 0.) - xc;
+    if (dx.norm() < r) {
+
+      return 1.;
+    }
+  }
+
+  return 0.;
+}
+}
 
 Number netfvfe::initial_condition_nut(const Point &p, const Parameters &es,
                                      const std::string &system_name,
@@ -49,303 +75,36 @@ void netfvfe::boundary_condition_nut(EquationSystems &es) {
   sys.get_dof_map().add_dirichlet_boundary(diri_bc);
 }
 
+// Assembly class
 void netfvfe::NutAssembly::assemble() {
 
-    const auto &deck = d_model_p->get_input_deck();
+  const auto &deck = d_model_p->get_input_deck();
 
-    if (deck.d_assembly_method == 1)
-        assemble_1();
-    else if (deck.d_assembly_method == 2)
-        assemble_2();
-    else if (deck.d_assembly_method == 3)
-      assemble_3();
+  assemble_1d_coupling();
+
+  assemble_face();
+
+  assemble_1();
 }
 
-void netfvfe::NutAssembly::assemble_1() {
+void netfvfe::NutAssembly::assemble_1d_coupling() {
 
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
-  const unsigned int dim = mesh.mesh_dimension();
-
-  // Tumor system
-  auto &tum = es.get_system<TransientLinearImplicitSystem>("Tumor");
-  std::vector<unsigned int> v_tum(2);
-  v_tum[0] = tum.variable_number("tumor");
-  v_tum[1] = tum.variable_number("chemical_tumor");
-
-  const DofMap &tum_map = tum.get_dof_map();
-  std::vector<unsigned int> dof_indices_tum;
-  std::vector<std::vector<dof_id_type>> dof_indices_tum_var(2);
-
-  // Nutrient system
-  auto &nut = es.get_system<TransientLinearImplicitSystem>("Nutrient");
-  const unsigned int v_nut = nut.variable_number("nutrient");
-  const DofMap &nut_map = nut.get_dof_map();
-  std::vector<unsigned int> dof_indices_nut;
-
-  // Hypoxic system
-  auto &hyp = es.get_system<TransientLinearImplicitSystem>("Hypoxic");
-  const unsigned int v_hyp = hyp.variable_number("hypoxic");
-  const DofMap &hyp_map = hyp.get_dof_map();
-  std::vector<unsigned int> dof_indices_hyp;
-
-  // Necrotic system
-  auto &nec = es.get_system<TransientLinearImplicitSystem>("Necrotic");
-  const unsigned int v_nec = nec.variable_number("necrotic");
-  const DofMap &nec_map = nec.get_dof_map();
-  std::vector<unsigned int> dof_indices_nec;
-
-  // TAF system
-  auto &taf = es.get_system<TransientLinearImplicitSystem>("TAF");
-  const unsigned int v_taf = taf.variable_number("taf");
-  const DofMap &taf_map = taf.get_dof_map();
-  std::vector<unsigned int> dof_indices_taf;
-
-  // ECM system
-  auto &ecm = es.get_system<TransientLinearImplicitSystem>("ECM");
-  const unsigned int v_ecm = ecm.variable_number("ecm");
-  const DofMap &ecm_map = ecm.get_dof_map();
-  std::vector<unsigned int> dof_indices_ecm;
-
-  // MDE system
-  auto &mde = es.get_system<TransientLinearImplicitSystem>("MDE");
-  const unsigned int v_mde = mde.variable_number("mde");
-  const DofMap &mde_map = mde.get_dof_map();
-  std::vector<unsigned int> dof_indices_mde;
-
-  // Velocity system
-  auto &vel = es.get_system<TransientLinearImplicitSystem>("Velocity");
-  std::vector<unsigned int> v_vel(2);
-  v_vel[0] = vel.variable_number("velocity_x");
-  v_vel[1] = vel.variable_number("velocity_y");
-  if (dim > 2)
-    v_vel.push_back(vel.variable_number("velocity_z"));
-
-  const DofMap &vel_map = vel.get_dof_map();
-  std::vector<unsigned int> dof_indices_vel;
-  std::vector<std::vector<dof_id_type>> dof_indices_vel_var(2);
-  if (dim > 2)
-    dof_indices_vel_var.resize(3);
-
-  // Pressure system
-  auto &pres = es.get_system<TransientLinearImplicitSystem>("Pressure");
-  const unsigned int v_pres = pres.variable_number("pressure");
-  const DofMap &pres_map = pres.get_dof_map();
-  std::vector<unsigned int> dof_indices_pres;
-
-  // FEM parameters
-  FEType fe_tum_type = tum.variable_type(0);
-  UniquePtr<FEBase> fe_tum(FEBase::build(dim, fe_tum_type));
-  QGauss qrule(dim, fe_tum_type.default_quadrature_order());
-  fe_tum->attach_quadrature_rule(&qrule);
-  const std::vector<Real> &JxW = fe_tum->get_JxW();
-  const std::vector<std::vector<Real>> &phi = fe_tum->get_phi();
-  const std::vector<std::vector<RealGradient>> &dphi = fe_tum->get_dphi();
-
-  // Finite element type for tumor variable
-  std::unique_ptr<FEBase> fe_elem_face_tum(FEBase::build(dim, fe_tum_type));
-  QGauss qface(dim - 1, fe_tum_type.default_quadrature_order());
-  fe_elem_face_tum->attach_quadrature_rule(&qface);
-
-  // Data for surface integrals on the element boundary
-  const std::vector<std::vector<Real>> &phi_face = fe_elem_face_tum->get_phi();
-  const std::vector<std::vector<RealGradient>> &dphi_face =
-      fe_elem_face_tum->get_dphi();
-  const std::vector<Real> &JxW_face = fe_elem_face_tum->get_JxW();
-  const std::vector<Point> &qface_normals = fe_elem_face_tum->get_normals();
-  const std::vector<Point> &qface_points = fe_elem_face_tum->get_xyz();
+  // Get required system alias
+  // auto &nut = d_model_p->get_nut_assembly();
+  auto &pres = d_model_p->get_pres_assembly();
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
-  const Real dt = es.parameters.get<Real>("time_step");
-  const Real mesh_size = deck.d_mesh_size_vec[0];
-  Real face_area = mesh_size * mesh_size;
-  if (mesh.mesh_dimension() == 2)
-    face_area = mesh_size;
+  const Real dt = d_model_p->d_dt;
+  const Real factor_nut = deck.d_assembly_factor_c_t;
 
-  Real elem_vol = face_area * mesh_size;
-
-  double factor_nut = 1.;
-  if (deck.d_tissue_nut_L_s > 1.e-18)
-    factor_nut = 1. / deck.d_tissue_nut_L_s;
-
-  // store boundary condition constraints
-  std::vector<unsigned int> bc_rows;
-  std::vector<Number> bc_vals;
-
-  // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-    tum_map.dof_indices(elem, dof_indices_tum);
-    for (unsigned int var = 0; var < 2; var++)
-      tum_map.dof_indices(elem, dof_indices_tum_var[var], v_tum[var]);
-
-    nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-    hyp_map.dof_indices(elem, dof_indices_hyp, v_hyp);
-    nec_map.dof_indices(elem, dof_indices_nec, v_nec);
-    taf_map.dof_indices(elem, dof_indices_taf, v_taf);
-    ecm_map.dof_indices(elem, dof_indices_ecm, v_ecm);
-    mde_map.dof_indices(elem, dof_indices_mde, v_mde);
-
-    vel_map.dof_indices(elem, dof_indices_vel);
-    for (unsigned int var = 0; var < dim; var++)
-      vel_map.dof_indices(elem, dof_indices_vel_var[var], v_vel[var]);
-
-    pres_map.dof_indices(elem, dof_indices_pres, v_pres);
-
-    const unsigned int n_dofs = dof_indices_nut.size();
-
-    fe_tum->reinit(elem);
-
-    std::vector<Real> Ke_val_col;
-    std::vector<unsigned int> Ke_dof_col;
-    std::vector<unsigned int> Ke_dof_row;
-    Ke_dof_row.push_back(dof_indices_nut[0]);
-    DenseVector<Number> Fe;
-    Fe.resize(n_dofs);
-
-    // Finite volume contribution
-    {
-      const auto elem_center = elem->centroid();
-
-      double elem_p_t_k = pres.current_solution(dof_indices_pres[0]);
-      double elem_nut_old = nut.current_solution(dof_indices_nut[0]);
-
-      // loop over sides of the element
-
-      for (auto side : elem->side_index_range()) {
-
-        if (elem->neighbor_ptr(side) != nullptr) {
-
-          const Elem *neighbor = elem->neighbor_ptr(side);
-          const auto neighbor_center = neighbor->centroid();
-          const auto dx = (elem_center - neighbor_center).norm();
-
-          // get dof id
-          std::vector<unsigned int> dof_indices_nut_neigh;
-          nut_map.dof_indices(neighbor, dof_indices_nut_neigh, v_nut);
-
-          std::vector<unsigned int> dof_indices_pres_neigh;
-          pres_map.dof_indices(neighbor, dof_indices_pres_neigh, v_pres);
-          double neighbor_p_t_k =
-              pres.current_solution(dof_indices_pres_neigh[0]);
-
-          // get coefficient
-          const Real a = factor_nut * dt * deck.d_D_sigma * face_area / dx;
-          //          if (elem->id() > 100 and elem->id() < 120)
-          //            out << "Elem: " << elem->id() << ", neighbor: " << neighbor->id()
-          //                << ", diffusion: " << a
-          //                << ", dt: " << dt << ", D_s: " << deck.d_D_sigma << "\n";
-
-          // add contribution
-          // +a to (e,e) where e is id of this element
-          // -a to (e, n_e) where n_e is id of neighbor of element
-          util::add_unique(dof_indices_nut[0], a, Ke_dof_col, Ke_val_col);
-          util::add_unique(dof_indices_nut_neigh[0], -a, Ke_dof_col,
-                           Ke_val_col);
-
-          // advection
-          double v = -deck.d_tissue_flow_K * (neighbor_p_t_k - elem_p_t_k) /
-                     (deck.d_tissue_flow_mu * mesh_size);
-          if (v >= 0.)
-            util::add_unique(dof_indices_nut[0],
-                             factor_nut * dt * v * face_area, Ke_dof_col,
-                             Ke_val_col);
-          else
-            util::add_unique(dof_indices_nut_neigh[0],
-                             factor_nut * dt * v * face_area, Ke_dof_col,
-                             Ke_val_col);
-
-          // mass matrix
-          util::add_unique(dof_indices_nut[0], factor_nut * elem_vol,
-                           Ke_dof_col, Ke_val_col);
-
-          Fe(0) += factor_nut * elem_nut_old * elem_vol;
-
-          // chemotaxi term
-          // Reinitialize shape functions on the element side
-          fe_elem_face_tum->reinit(elem, side);
-
-          // loop over quadrature point
-          for (unsigned int qp = 0; qp < qface.n_points(); qp++) {
-
-            Gradient tum_grad;
-
-            for (unsigned int l = 0; l < phi_face.size(); l++) {
-
-              tum_grad.add_scaled(
-                  dphi_face[l][qp],
-                  tum.current_solution(dof_indices_tum_var[0][l]));
-            }
-
-            Fe(0) += factor_nut * JxW_face[qp] * deck.d_chi_c * tum_grad * qface_normals[qp];
-          }
-        } // elem neighbor is not null
-      }   // loop over faces
-    }
-
-    // contribution from other species which are linear fields
-    Number nut_cur = nut.current_solution(dof_indices_nut[0]);
-    {
-      for (unsigned int qp = 0; qp < qrule.n_points(); qp++) {
-
-        // Computing solution
-        Number tum_cur = 0.;
-        Number hyp_cur = 0.;
-        Number nec_cur = 0.;
-        Number taf_cur = 0.;
-        Number ecm_cur = 0.;
-        Number mde_cur = 0.;
-
-        for (unsigned int l = 0; l < phi.size(); l++) {
-
-          tum_cur += phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
-          hyp_cur += phi[l][qp] * hyp.current_solution(dof_indices_hyp[l]);
-          nec_cur += phi[l][qp] * nec.current_solution(dof_indices_nec[l]);
-          taf_cur += phi[l][qp] * taf.current_solution(dof_indices_taf[l]);
-          ecm_cur += phi[l][qp] * ecm.current_solution(dof_indices_ecm[l]);
-          mde_cur += phi[l][qp] * mde.current_solution(dof_indices_mde[l]);
-        }
-
-        // add source
-        Fe(0) +=
-            factor_nut * JxW[qp] * (dt * deck.d_lambda_A * (tum_cur - nec_cur) +
-                       dt * deck.d_lambda_ECM_D * ecm_cur * mde_cur);
-
-        // handle all coupling with nutrient as source term
-        double compute_mat =
-            JxW[qp] * dt *
-            (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
-             deck.d_lambda_Ph * hyp_cur +
-             deck.d_lambda_ECM_P * (1. - ecm_cur) *
-                 util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
-
-        util::add_unique(dof_indices_nut[0], factor_nut * compute_mat,
-                           Ke_dof_col, Ke_val_col);
-      } // loop over quadrature points
-    }
-
-    // add to matrix
-    DenseMatrix<Number> Ke;
-    Ke.resize(1, Ke_dof_col.size());
-    for (unsigned int i = 0; i < Ke_dof_col.size(); i++)
-      Ke(0, i) = Ke_val_col[i];
-
-    nut.matrix->add_matrix(Ke, Ke_dof_row, Ke_dof_col);
-
-    // add to vector
-    nut.rhs->add_vector(Fe, dof_indices_nut);
-  }
-
-  //
-  // Handle coupling between tissue nutrient and vessel nutrient
-  //
-  if (true) {
+  // coupling between tissue pressure and vessel pressure
+  {
     const auto &network = d_model_p->get_network();
     auto pointer = network.get_mesh().getHead();
+
+    DenseMatrix<Number> Ke(1,1);
+    DenseVector<Number> Fe(1);
 
     while (pointer) {
 
@@ -365,25 +124,20 @@ void netfvfe::NutAssembly::assemble_1() {
           auto e_w = J_b_data.elem_weight[e];
 
           // get 3d pressure
-          const auto *elem = mesh.elem_ptr(e_id);
-          pres_map.dof_indices(elem, dof_indices_pres, v_pres);
-          double p_t_k = pres.current_solution(dof_indices_pres[0]);
+          const auto *elem = d_mesh.elem_ptr(e_id);
+          pres.init_dof(elem);
+          auto p_t_k = pres.get_current_sol(0);
 
           // get 3d nutrient
-          nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-          double c_t_k = nut.current_solution(dof_indices_nut[0]);
-
-          std::vector<unsigned int> Ke_dof_row;
-          Ke_dof_row.push_back(dof_indices_nut[0]);
-          DenseMatrix<Number> Ke(1, 1);
-          DenseVector<Number> Fe(1);
+          init_dof(elem);
+          auto c_t_k = get_current_sol(0);
 
           // implicit for c_t in source
-          Ke(0, 0) += dt * factor_nut * deck.d_coupling_method_theta *
+          Ke(0, 0) = dt * factor_nut * deck.d_coupling_method_theta *
                       pointer->L_s[i] * J_b_data.half_cyl_surf * e_w;
 
           // explicit for c_v in source
-          Fe(0) += dt * factor_nut * pointer->L_s[i] * J_b_data.half_cyl_surf *
+          Fe(0) = dt * factor_nut * pointer->L_s[i] * J_b_data.half_cyl_surf *
                    e_w * (c_v_k - (1. - deck.d_coupling_method_theta) * c_t_k);
 
           // term due to pressure difference
@@ -397,726 +151,279 @@ void netfvfe::NutAssembly::assemble_1() {
                    (p_v_k - p_t_k) * c_transport;
 
           // update matrix
-          nut.matrix->add_matrix(Ke, Ke_dof_row, Ke_dof_row);
-          nut.rhs->add_vector(Fe, dof_indices_nut);
+          d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
+          d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
         }
       } // loop over neighbor segments
 
       pointer = pointer->global_successor;
     } // loop over vertex in 1-d
   }
-
-  // finish
-  nut.matrix->close();
-  nut.rhs->close();
 }
 
-void netfvfe::NutAssembly::assemble_2() {
-
-    // get tumor equation system
-    EquationSystems &es = d_model_p->get_system();
-
-    // Mesh
-    const MeshBase &mesh = es.get_mesh();
-    const unsigned int dim = mesh.mesh_dimension();
-
-    // Tumor system
-    auto &tum = es.get_system<TransientLinearImplicitSystem>("Tumor");
-    std::vector<unsigned int> v_tum(2);
-    v_tum[0] = tum.variable_number("tumor");
-    v_tum[1] = tum.variable_number("chemical_tumor");
-
-    const DofMap &tum_map = tum.get_dof_map();
-    std::vector<unsigned int> dof_indices_tum;
-    std::vector<std::vector<dof_id_type>> dof_indices_tum_var(2);
-
-    // Nutrient system
-    auto &nut = es.get_system<TransientLinearImplicitSystem>("Nutrient");
-    const unsigned int v_nut = nut.variable_number("nutrient");
-    const DofMap &nut_map = nut.get_dof_map();
-    std::vector<unsigned int> dof_indices_nut;
-
-    // Hypoxic system
-    auto &hyp = es.get_system<TransientLinearImplicitSystem>("Hypoxic");
-    const unsigned int v_hyp = hyp.variable_number("hypoxic");
-    const DofMap &hyp_map = hyp.get_dof_map();
-    std::vector<unsigned int> dof_indices_hyp;
-
-    // Necrotic system
-    auto &nec = es.get_system<TransientLinearImplicitSystem>("Necrotic");
-    const unsigned int v_nec = nec.variable_number("necrotic");
-    const DofMap &nec_map = nec.get_dof_map();
-    std::vector<unsigned int> dof_indices_nec;
-
-    // TAF system
-    auto &taf = es.get_system<TransientLinearImplicitSystem>("TAF");
-    const unsigned int v_taf = taf.variable_number("taf");
-    const DofMap &taf_map = taf.get_dof_map();
-    std::vector<unsigned int> dof_indices_taf;
-
-    // ECM system
-    auto &ecm = es.get_system<TransientLinearImplicitSystem>("ECM");
-    const unsigned int v_ecm = ecm.variable_number("ecm");
-    const DofMap &ecm_map = ecm.get_dof_map();
-    std::vector<unsigned int> dof_indices_ecm;
-
-    // MDE system
-    auto &mde = es.get_system<TransientLinearImplicitSystem>("MDE");
-    const unsigned int v_mde = mde.variable_number("mde");
-    const DofMap &mde_map = mde.get_dof_map();
-    std::vector<unsigned int> dof_indices_mde;
-
-    // Velocity system
-    auto &vel = es.get_system<TransientLinearImplicitSystem>("Velocity");
-    std::vector<unsigned int> v_vel(2);
-    v_vel[0] = vel.variable_number("velocity_x");
-    v_vel[1] = vel.variable_number("velocity_y");
-    if (dim > 2)
-        v_vel.push_back(vel.variable_number("velocity_z"));
-
-    const DofMap &vel_map = vel.get_dof_map();
-    std::vector<unsigned int> dof_indices_vel;
-    std::vector<std::vector<dof_id_type>> dof_indices_vel_var(2);
-    if (dim > 2)
-        dof_indices_vel_var.resize(3);
-
-    // Pressure system
-    auto &pres = es.get_system<TransientLinearImplicitSystem>("Pressure");
-    const unsigned int v_pres = pres.variable_number("pressure");
-    const DofMap &pres_map = pres.get_dof_map();
-    std::vector<unsigned int> dof_indices_pres;
-
-    // FEM parameters
-    FEType fe_tum_type = tum.variable_type(0);
-    UniquePtr<FEBase> fe_tum(FEBase::build(dim, fe_tum_type));
-    QGauss qrule(dim, fe_tum_type.default_quadrature_order());
-    fe_tum->attach_quadrature_rule(&qrule);
-    const std::vector<Real> &JxW = fe_tum->get_JxW();
-    const std::vector<std::vector<Real>> &phi = fe_tum->get_phi();
-    const std::vector<std::vector<RealGradient>> &dphi = fe_tum->get_dphi();
-
-    // Finite element type for tumor variable
-    std::unique_ptr<FEBase> fe_elem_face_tum(FEBase::build(dim, fe_tum_type));
-    QGauss qface(dim - 1, fe_tum_type.default_quadrature_order());
-    fe_elem_face_tum->attach_quadrature_rule(&qface);
-
-    // Data for surface integrals on the element boundary
-    const std::vector<std::vector<Real>> &phi_face = fe_elem_face_tum->get_phi();
-    const std::vector<std::vector<RealGradient>> &dphi_face =
-            fe_elem_face_tum->get_dphi();
-    const std::vector<Real> &JxW_face = fe_elem_face_tum->get_JxW();
-    const std::vector<Point> &qface_normals = fe_elem_face_tum->get_normals();
-    const std::vector<Point> &qface_points = fe_elem_face_tum->get_xyz();
-
-    // Model parameters
-    const auto &deck = d_model_p->get_input_deck();
-    const Real dt = es.parameters.get<Real>("time_step");
-    const Real mesh_size = deck.d_mesh_size_vec[0];
-    Real face_area = mesh_size * mesh_size;
-    if (mesh.mesh_dimension() == 2)
-        face_area = mesh_size;
-
-    Real elem_vol = face_area * mesh_size;
-
-    double factor_nut = 1.;
-    if (deck.d_tissue_nut_L_s > 1.e-18)
-        factor_nut = 1. / deck.d_tissue_nut_L_s;
-
-    // store boundary condition constraints
-    std::vector<unsigned int> bc_rows;
-    std::vector<Number> bc_vals;
-
-    // Looping through elements
-    for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-        tum_map.dof_indices(elem, dof_indices_tum);
-        for (unsigned int var = 0; var < 2; var++)
-            tum_map.dof_indices(elem, dof_indices_tum_var[var], v_tum[var]);
-
-        nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-        hyp_map.dof_indices(elem, dof_indices_hyp, v_hyp);
-        nec_map.dof_indices(elem, dof_indices_nec, v_nec);
-        taf_map.dof_indices(elem, dof_indices_taf, v_taf);
-        ecm_map.dof_indices(elem, dof_indices_ecm, v_ecm);
-        mde_map.dof_indices(elem, dof_indices_mde, v_mde);
-
-        vel_map.dof_indices(elem, dof_indices_vel);
-        for (unsigned int var = 0; var < dim; var++)
-            vel_map.dof_indices(elem, dof_indices_vel_var[var], v_vel[var]);
-
-        pres_map.dof_indices(elem, dof_indices_pres, v_pres);
-
-        const unsigned int n_dofs = dof_indices_nut.size();
-
-        fe_tum->reinit(elem);
-
-        std::vector<Real> Ke_val_col;
-        std::vector<unsigned int> Ke_dof_col;
-        std::vector<unsigned int> Ke_dof_row;
-        Ke_dof_row.push_back(dof_indices_nut[0]);
-        DenseVector<Number> Fe;
-        Fe.resize(n_dofs);
-
-        // Finite volume contribution
-        {
-            const auto elem_center = elem->centroid();
-
-            double elem_p_t_k = pres.current_solution(dof_indices_pres[0]);
-            double elem_nut_old = nut.current_solution(dof_indices_nut[0]);
-
-            // loop over sides of the element
-
-            for (auto side : elem->side_index_range()) {
-
-                if (elem->neighbor_ptr(side) != nullptr) {
-
-                    const Elem *neighbor = elem->neighbor_ptr(side);
-                    const auto neighbor_center = neighbor->centroid();
-                    const auto dx = (elem_center - neighbor_center).norm();
-
-                    // get dof id
-                    std::vector<unsigned int> dof_indices_nut_neigh;
-                    nut_map.dof_indices(neighbor, dof_indices_nut_neigh, v_nut);
-
-                    std::vector<unsigned int> dof_indices_pres_neigh;
-                    pres_map.dof_indices(neighbor, dof_indices_pres_neigh, v_pres);
-                    double neighbor_p_t_k =
-                            pres.current_solution(dof_indices_pres_neigh[0]);
-
-                    // get coefficient
-                    const Real a = factor_nut * dt * deck.d_D_sigma * face_area / dx;
-                    //          if (elem->id() > 100 and elem->id() < 120)
-                    //            out << "Elem: " << elem->id() << ", neighbor: " << neighbor->id()
-                    //                << ", diffusion: " << a
-                    //                << ", dt: " << dt << ", D_s: " << deck.d_D_sigma << "\n";
-
-                    // add contribution
-                    // +a to (e,e) where e is id of this element
-                    // -a to (e, n_e) where n_e is id of neighbor of element
-                    util::add_unique(dof_indices_nut[0], a, Ke_dof_col, Ke_val_col);
-                    util::add_unique(dof_indices_nut_neigh[0], -a, Ke_dof_col,
-                                     Ke_val_col);
-
-                    // advection
-                    double v = -deck.d_tissue_flow_K * (neighbor_p_t_k - elem_p_t_k) /
-                               (deck.d_tissue_flow_mu * mesh_size);
-                    if (v >= 0.)
-                        util::add_unique(dof_indices_nut[0],
-                                         factor_nut * dt * v * face_area, Ke_dof_col,
-                                         Ke_val_col);
-                    else
-                        util::add_unique(dof_indices_nut_neigh[0],
-                                         factor_nut * dt * v * face_area, Ke_dof_col,
-                                         Ke_val_col);
-
-                    // mass matrix
-                    util::add_unique(dof_indices_nut[0], factor_nut * elem_vol,
-                                     Ke_dof_col, Ke_val_col);
-
-                    Fe(0) += factor_nut * elem_nut_old * elem_vol;
-
-                    // chemotaxi term
-                    // Reinitialize shape functions on the element side
-                    fe_elem_face_tum->reinit(elem, side);
-
-                    // loop over quadrature point
-                    for (unsigned int qp = 0; qp < qface.n_points(); qp++) {
-
-                        Gradient tum_grad;
-
-                        for (unsigned int l = 0; l < phi_face.size(); l++) {
-
-                            tum_grad.add_scaled(
-                                    dphi_face[l][qp],
-                                    tum.current_solution(dof_indices_tum_var[0][l]));
-                        }
-
-                        Fe(0) += factor_nut * JxW_face[qp] * deck.d_chi_c * tum_grad * qface_normals[qp];
-                    }
-                } // elem neighbor is not null
-            }   // loop over faces
-        }
-
-        // contribution from other species which are linear fields
-        {
-            for (unsigned int qp = 0; qp < qrule.n_points(); qp++) {
-
-                // Computing solution
-                Number tum_cur = 0.;
-                Number hyp_cur = 0.;
-                Number nec_cur = 0.;
-                Number ecm_cur = 0.;
-                Number mde_cur = 0.;
-
-                for (unsigned int l = 0; l < phi.size(); l++) {
-
-                    tum_cur += phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
-                    hyp_cur += phi[l][qp] * hyp.current_solution(dof_indices_hyp[l]);
-                    nec_cur += phi[l][qp] * nec.current_solution(dof_indices_nec[l]);
-                    ecm_cur += phi[l][qp] * ecm.current_solution(dof_indices_ecm[l]);
-                    mde_cur += phi[l][qp] * mde.current_solution(dof_indices_mde[l]);
-                }
-
-                // get projected values of species
-                Number tum_proj = util::project_concentration(tum_cur);
-                Number hyp_proj = util::project_concentration(hyp_cur);
-                Number nec_proj = util::project_concentration(nec_cur);
-                Number ecm_proj = util::project_concentration(ecm_cur);
-                Number mde_proj = util::project_concentration(mde_cur);
-
-                // add source
-                Fe(0) +=
-                        factor_nut * JxW[qp] * dt * (deck.d_lambda_A * (tum_proj - nec_proj) +
-                                                deck.d_lambda_ECM_D * ecm_proj * mde_proj);
-
-                // handle all coupling with nutrient as source term
-                double compute_mat =
-                        JxW[qp] * dt *
-                        (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
-                         deck.d_lambda_Ph * hyp_proj +
-                         deck.d_lambda_ECM_P * (1. - ecm_proj) *
-                         util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
-
-                util::add_unique(dof_indices_nut[0], factor_nut * compute_mat,
-                                 Ke_dof_col, Ke_val_col);
-            } // loop over quadrature points
-        }
-
-        // add to matrix
-        DenseMatrix<Number> Ke;
-        Ke.resize(1, Ke_dof_col.size());
-        for (unsigned int i = 0; i < Ke_dof_col.size(); i++)
-            Ke(0, i) = Ke_val_col[i];
-
-        nut.matrix->add_matrix(Ke, Ke_dof_row, Ke_dof_col);
-
-        // add to vector
-        nut.rhs->add_vector(Fe, dof_indices_nut);
-    }
-
-    //
-    // Handle coupling between tissue nutrient and vessel nutrient
-    //
-    if (true) {
-        const auto &network = d_model_p->get_network();
-        auto pointer = network.get_mesh().getHead();
-
-        while (pointer) {
-
-            int numberOfNeighbors = pointer->neighbors.size();
-
-            double p_v_k = pointer->p_v;
-            double c_v_k = pointer->c_v;
-
-            for (int i = 0; i < numberOfNeighbors; i++) {
-
-                const auto &J_b_data = pointer->J_b_points[i];
-
-                // loop over 3d elements
-                for (unsigned int e = 0; e < J_b_data.elem_id.size(); e++) {
-
-                    auto e_id = J_b_data.elem_id[e];
-                    auto e_w = J_b_data.elem_weight[e];
-
-                    // get 3d pressure
-                    const auto *elem = mesh.elem_ptr(e_id);
-                    pres_map.dof_indices(elem, dof_indices_pres, v_pres);
-                    double p_t_k = pres.current_solution(dof_indices_pres[0]);
-
-                    // get 3d nutrient
-                    nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-                    double c_t_k = nut.current_solution(dof_indices_nut[0]);
-                    Number c_t_k_proj = util::project_concentration(c_t_k);
-
-                    std::vector<unsigned int> Ke_dof_row;
-                    Ke_dof_row.push_back(dof_indices_nut[0]);
-                    DenseMatrix<Number> Ke(1, 1);
-                    DenseVector<Number> Fe(1);
-
-                    // implicit for c_t in source
-                    Ke(0, 0) += dt * factor_nut * deck.d_coupling_method_theta *
-                                pointer->L_s[i] * J_b_data.half_cyl_surf * e_w;
-
-                    // explicit for c_v in source
-                    Fe(0) += dt * factor_nut * pointer->L_s[i] * J_b_data.half_cyl_surf *
-                             e_w * (c_v_k - (1. - deck.d_coupling_method_theta) * c_t_k_proj);
-
-                    // term due to pressure difference
-                    double c_transport = 0.;
-                    if (p_v_k - p_t_k >= 0.)
-                        c_transport = c_v_k;
-                    else
-                        c_transport = c_t_k_proj;
-                    Fe(0) += dt * factor_nut * (1. - deck.d_osmotic_sigma) *
-                             pointer->L_p[i] * J_b_data.half_cyl_surf * e_w *
-                             (p_v_k - p_t_k) * c_transport;
-
-                    // update matrix
-                    nut.matrix->add_matrix(Ke, Ke_dof_row, Ke_dof_row);
-                    nut.rhs->add_vector(Fe, dof_indices_nut);
-                }
-            } // loop over neighbor segments
-
-            pointer = pointer->global_successor;
-        } // loop over vertex in 1-d
-    }
-
-    // finish
-    nut.matrix->close();
-    nut.rhs->close();
-}
-
-void netfvfe::NutAssembly::assemble_3() {
-
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
-  const unsigned int dim = mesh.mesh_dimension();
-
-  // Tumor system
-  auto &tum = es.get_system<TransientLinearImplicitSystem>("Tumor");
-  std::vector<unsigned int> v_tum(2);
-  v_tum[0] = tum.variable_number("tumor");
-  v_tum[1] = tum.variable_number("chemical_tumor");
-
-  const DofMap &tum_map = tum.get_dof_map();
-  std::vector<unsigned int> dof_indices_tum;
-  std::vector<std::vector<dof_id_type>> dof_indices_tum_var(2);
-
-  // Nutrient system
-  auto &nut = es.get_system<TransientLinearImplicitSystem>("Nutrient");
-  const unsigned int v_nut = nut.variable_number("nutrient");
-  const DofMap &nut_map = nut.get_dof_map();
-  std::vector<unsigned int> dof_indices_nut;
-
-  // Hypoxic system
-  auto &hyp = es.get_system<TransientLinearImplicitSystem>("Hypoxic");
-  const unsigned int v_hyp = hyp.variable_number("hypoxic");
-  const DofMap &hyp_map = hyp.get_dof_map();
-  std::vector<unsigned int> dof_indices_hyp;
-
-  // Necrotic system
-  auto &nec = es.get_system<TransientLinearImplicitSystem>("Necrotic");
-  const unsigned int v_nec = nec.variable_number("necrotic");
-  const DofMap &nec_map = nec.get_dof_map();
-  std::vector<unsigned int> dof_indices_nec;
-
-  // TAF system
-  auto &taf = es.get_system<TransientLinearImplicitSystem>("TAF");
-  const unsigned int v_taf = taf.variable_number("taf");
-  const DofMap &taf_map = taf.get_dof_map();
-  std::vector<unsigned int> dof_indices_taf;
-
-  // ECM system
-  auto &ecm = es.get_system<TransientLinearImplicitSystem>("ECM");
-  const unsigned int v_ecm = ecm.variable_number("ecm");
-  const DofMap &ecm_map = ecm.get_dof_map();
-  std::vector<unsigned int> dof_indices_ecm;
-
-  // MDE system
-  auto &mde = es.get_system<TransientLinearImplicitSystem>("MDE");
-  const unsigned int v_mde = mde.variable_number("mde");
-  const DofMap &mde_map = mde.get_dof_map();
-  std::vector<unsigned int> dof_indices_mde;
-
-  // Velocity system
-  auto &vel = es.get_system<TransientLinearImplicitSystem>("Velocity");
-  std::vector<unsigned int> v_vel(2);
-  v_vel[0] = vel.variable_number("velocity_x");
-  v_vel[1] = vel.variable_number("velocity_y");
-  if (dim > 2)
-    v_vel.push_back(vel.variable_number("velocity_z"));
-
-  const DofMap &vel_map = vel.get_dof_map();
-  std::vector<unsigned int> dof_indices_vel;
-  std::vector<std::vector<dof_id_type>> dof_indices_vel_var(2);
-  if (dim > 2)
-    dof_indices_vel_var.resize(3);
-
-  // Pressure system
-  auto &pres = es.get_system<TransientLinearImplicitSystem>("Pressure");
-  const unsigned int v_pres = pres.variable_number("pressure");
-  const DofMap &pres_map = pres.get_dof_map();
-  std::vector<unsigned int> dof_indices_pres;
-
-  // FEM parameters
-  FEType fe_tum_type = tum.variable_type(0);
-  UniquePtr<FEBase> fe_tum(FEBase::build(dim, fe_tum_type));
-  QGauss qrule(dim, fe_tum_type.default_quadrature_order());
-  fe_tum->attach_quadrature_rule(&qrule);
-  const std::vector<Real> &JxW = fe_tum->get_JxW();
-  const std::vector<std::vector<Real>> &phi = fe_tum->get_phi();
-  const std::vector<std::vector<RealGradient>> &dphi = fe_tum->get_dphi();
-
-  // Finite element type for tumor variable
-  std::unique_ptr<FEBase> fe_elem_face_tum(FEBase::build(dim, fe_tum_type));
-  QGauss qface(dim - 1, fe_tum_type.default_quadrature_order());
-  fe_elem_face_tum->attach_quadrature_rule(&qface);
-
-  // Data for surface integrals on the element boundary
-  const std::vector<std::vector<Real>> &phi_face = fe_elem_face_tum->get_phi();
-  const std::vector<std::vector<RealGradient>> &dphi_face =
-      fe_elem_face_tum->get_dphi();
-  const std::vector<Real> &JxW_face = fe_elem_face_tum->get_JxW();
-  const std::vector<Point> &qface_normals = fe_elem_face_tum->get_normals();
-  const std::vector<Point> &qface_points = fe_elem_face_tum->get_xyz();
+void netfvfe::NutAssembly::assemble_face() {
+
+  // Get required system alias
+  // auto &nut = d_model_p->get_nut_assembly();
+  auto &tum = d_model_p->get_tum_assembly();
+  auto &hyp = d_model_p->get_hyp_assembly();
+  auto &pres = d_model_p->get_pres_assembly();
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
-  const Real dt = es.parameters.get<Real>("time_step");
-  const Real mesh_size = deck.d_mesh_size_vec[0];
-  Real face_area = mesh_size * mesh_size;
-  if (mesh.mesh_dimension() == 2)
-    face_area = mesh_size;
-
-  Real elem_vol = face_area * mesh_size;
-
-  double factor_nut = 1.;
-  if (deck.d_tissue_nut_L_s > 1.e-18)
-    factor_nut = 1. / deck.d_tissue_nut_L_s;
+  const Real dt = d_model_p->d_dt;
+  const Real factor_nut = deck.d_assembly_factor_c_t;
 
   // store boundary condition constraints
   std::vector<unsigned int> bc_rows;
-  std::vector<Number> bc_vals;
+  std::vector<Real> bc_vals;
+
+  // to store pair of column dof and row-column matrix value
+  std::vector<unsigned int> Ke_dof_row(1, 0);
+  std::vector<Real> Ke_val_col;
+  std::vector<unsigned int> Ke_dof_col;
+
+  // local matrix and vector
+  DenseMatrix<Number> Ke;
+  DenseVector<Number> Fe(1);
+
+  // store neighboring element's dof information
+  std::vector<unsigned int> dof_indices_nut_neigh;
+  std::vector<unsigned int> dof_indices_pres_neigh;
+
+  // Store current and old solution
+  Real pres_cur = 0.;
+  Real tum_cur = 0.;
+  Real chem_tum_cur = 0.;
+
+  Gradient tum_grad = 0.;
+
+  // Store current and old solution of neighboring element
+  Real pres_neigh_cur = 0.;
+  Real tum_neigh_cur = 0.;
+  Real chem_tum_neigh_cur = 0.;
 
   // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
-    tum_map.dof_indices(elem, dof_indices_tum);
-    for (unsigned int var = 0; var < 2; var++)
-      tum_map.dof_indices(elem, dof_indices_tum_var[var], v_tum[var]);
+    init_dof(elem);
+    tum.init_dof(elem);
+    hyp.init_dof(elem);
+    pres.init_dof(elem);
 
-    nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-    hyp_map.dof_indices(elem, dof_indices_hyp, v_hyp);
-    nec_map.dof_indices(elem, dof_indices_nec, v_nec);
-    taf_map.dof_indices(elem, dof_indices_taf, v_taf);
-    ecm_map.dof_indices(elem, dof_indices_ecm, v_ecm);
-    mde_map.dof_indices(elem, dof_indices_mde, v_mde);
+    // reset matrix and force
+    Ke_dof_col.clear();
+    Ke_val_col.clear();
 
-    vel_map.dof_indices(elem, dof_indices_vel);
-    for (unsigned int var = 0; var < dim; var++)
-      vel_map.dof_indices(elem, dof_indices_vel_var[var], v_vel[var]);
+    Ke_dof_row[0] = get_global_dof_id(0);
+    Fe(0) = 0.;
 
-    pres_map.dof_indices(elem, dof_indices_pres, v_pres);
+    // get solution in this element
+    pres_cur = pres.get_current_sol(0);
+    tum_cur = tum.get_current_sol_var(0, 0);
+    chem_tum_cur = tum.get_current_sol_var(0, 1);
 
-    const unsigned int n_dofs = dof_indices_nut.size();
+    // loop over sides of the element
+    for (auto side : elem->side_index_range()) {
 
-    fe_tum->reinit(elem);
+      if (elem->neighbor_ptr(side) != nullptr) {
 
-    std::vector<Real> Ke_val_col;
-    std::vector<unsigned int> Ke_dof_col;
-    std::vector<unsigned int> Ke_dof_row;
-    Ke_dof_row.push_back(dof_indices_nut[0]);
-    DenseVector<Number> Fe;
-    Fe.resize(n_dofs);
+        const Elem *neighbor = elem->neighbor_ptr(side);
 
-    // Finite volume contribution
-    {
-      const auto elem_center = elem->centroid();
+        // get dof id
+        // nut
+        init_dof(neighbor, dof_indices_nut_neigh);
 
-      double elem_p_t_k = pres.current_solution(dof_indices_pres[0]);
-      double elem_nut_old = nut.current_solution(dof_indices_nut[0]);
+        // pres
+        pres.init_dof(neighbor, dof_indices_pres_neigh);
+        pres_neigh_cur =
+            pres.get_current_sol(0, dof_indices_pres_neigh);
 
-      // loop over sides of the element
+        // diffusion
+        const Real a_diff =
+            factor_nut * dt * deck.d_D_sigma * deck.d_face_by_h;
+        util::add_unique(get_global_dof_id(0), a_diff, Ke_dof_col,
+                         Ke_val_col);
+        util::add_unique(dof_indices_nut_neigh[0], -a_diff, Ke_dof_col,
+                         Ke_val_col);
 
-      for (auto side : elem->side_index_range()) {
+        // advection (pressure gradient term)
+        Real v = deck.d_tissue_flow_coeff * deck.d_face_by_h *
+                   (pres_cur - pres_neigh_cur);
 
-        if (elem->neighbor_ptr(side) != nullptr) {
-
-          const Elem *neighbor = elem->neighbor_ptr(side);
-          const auto neighbor_center = neighbor->centroid();
-          const auto dx = (elem_center - neighbor_center).norm();
-
-          // get dof id
-          std::vector<unsigned int> dof_indices_nut_neigh;
-          nut_map.dof_indices(neighbor, dof_indices_nut_neigh, v_nut);
-
-          std::vector<unsigned int> dof_indices_pres_neigh;
-          pres_map.dof_indices(neighbor, dof_indices_pres_neigh, v_pres);
-          double neighbor_p_t_k =
-              pres.current_solution(dof_indices_pres_neigh[0]);
-
-          // get coefficient
-          const Real a = factor_nut * dt * deck.d_D_sigma * face_area / dx;
-          //          if (elem->id() > 100 and elem->id() < 120)
-          //            out << "Elem: " << elem->id() << ", neighbor: " << neighbor->id()
-          //                << ", diffusion: " << a
-          //                << ", dt: " << dt << ", D_s: " << deck.d_D_sigma << "\n";
-
-          // add contribution
-          // +a to (e,e) where e is id of this element
-          // -a to (e, n_e) where n_e is id of neighbor of element
-          util::add_unique(dof_indices_nut[0], a, Ke_dof_col, Ke_val_col);
-          util::add_unique(dof_indices_nut_neigh[0], -a, Ke_dof_col,
-                           Ke_val_col);
-
-          // advection
-          double v = -deck.d_tissue_flow_K * (neighbor_p_t_k - elem_p_t_k) /
-                     (deck.d_tissue_flow_mu * mesh_size);
-          if (v >= 0.)
-            util::add_unique(dof_indices_nut[0],
-                             factor_nut * dt * v * face_area, Ke_dof_col,
-                             Ke_val_col);
-          else
-            util::add_unique(dof_indices_nut_neigh[0],
-                             factor_nut * dt * v * face_area, Ke_dof_col,
-                             Ke_val_col);
-
-          // mass matrix
-          util::add_unique(dof_indices_nut[0], factor_nut * elem_vol,
+        // upwinding
+        if (v >= 0.)
+          util::add_unique(get_global_dof_id(0), factor_nut * dt * v,
+                           Ke_dof_col, Ke_val_col);
+        else
+          util::add_unique(dof_indices_nut_neigh[0], factor_nut * dt * v,
                            Ke_dof_col, Ke_val_col);
 
-          Fe(0) += factor_nut * elem_nut_old * elem_vol;
+        // advection (mu_T grad(phi_T) term) and chemotactic term
+        // These require integration over face of an element
+        tum.d_fe_face->reinit(elem, side);
 
-          // chemotaxi term
-          // Reinitialize shape functions on the element side
-          fe_elem_face_tum->reinit(elem, side);
+        // loop over quadrature points
+        for (unsigned int qp = 0; qp < tum.d_qrule_face.n_points(); qp++) {
 
-          // loop over quadrature point
-          for (unsigned int qp = 0; qp < qface.n_points(); qp++) {
+          chem_tum_cur = 0.;
+          tum_grad = 0.;
+          for (unsigned int l = 0; l < tum.d_phi_face.size(); l++) {
 
-            Gradient tum_grad;
+            chem_tum_cur +=
+                tum.d_phi_face[l][qp] * tum.get_current_sol_var(l, 1);
 
-            for (unsigned int l = 0; l < phi_face.size(); l++) {
-
-              tum_grad.add_scaled(
-                  dphi_face[l][qp],
-                  tum.current_solution(dof_indices_tum_var[0][l]));
-            }
-
-            Fe(0) += factor_nut * JxW_face[qp] * deck.d_chi_c * tum_grad * qface_normals[qp];
+            tum_grad.add_scaled(tum.d_dphi_face[l][qp],
+                                tum.get_current_sol_var(l, 0));
           }
-        } // elem neighbor is not null
-      }   // loop over faces
-    }
 
-    // contribution from other species which are linear fields
-    {
-      Number nut_cur = nut.current_solution(dof_indices_nut[0]);
-      Number nut_proj = util::project_concentration(nut_cur);
-      for (unsigned int qp = 0; qp < qrule.n_points(); qp++) {
+          // chemotactic term
+          Fe(0) += -factor_nut * tum.d_JxW_face[qp] * deck.d_D_sigma *
+                   deck.d_chi_c * tum_grad * tum.d_qface_normals[qp];
 
-        // Computing solution
-        Number tum_cur = 0.;
-        Number hyp_cur = 0.;
-        Number nec_cur = 0.;
-        Number ecm_cur = 0.;
-        Number mde_cur = 0.;
+          // advection term
+          Real v_mu = deck.d_tissue_flow_coeff * chem_tum_cur * tum_grad *
+                      d_qface_normals[qp];
 
-        for (unsigned int l = 0; l < phi.size(); l++) {
+          // goes to the dof of element (not the neighbor)
+          util::add_unique(get_global_dof_id(0), factor_nut * dt * v_mu,
+                           Ke_dof_col, Ke_val_col);
+        } // loop over quadrature points on face
 
-          tum_cur += phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
-          hyp_cur += phi[l][qp] * hyp.current_solution(dof_indices_hyp[l]);
-          nec_cur += phi[l][qp] * nec.current_solution(dof_indices_nec[l]);
-          ecm_cur += phi[l][qp] * ecm.current_solution(dof_indices_ecm[l]);
-          mde_cur += phi[l][qp] * mde.current_solution(dof_indices_mde[l]);
-        }
-
-        // get projected values of species
-        Number tum_proj = util::project_concentration(tum_cur);
-        Number hyp_proj = util::project_concentration(hyp_cur);
-        Number nec_proj = util::project_concentration(nec_cur);
-        Number ecm_proj = util::project_concentration(ecm_cur);
-        Number mde_proj = util::project_concentration(mde_cur);
-
-        // add source
-        Fe(0) +=
-            factor_nut * JxW[qp] * dt * (deck.d_lambda_A * (tum_proj - nec_proj) +
-                                         deck.d_lambda_ECM_D * ecm_proj * mde_proj);
-
-        // handle all coupling with nutrient as source term
-        Fe(0) +=
-            factor_nut * JxW[qp] * dt *
-            (-deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) * nut_proj -
-             deck.d_lambda_Ph * hyp_proj * nut_proj -
-             deck.d_lambda_ECM_P * (1. - ecm_proj) *
-             util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P) * nut_proj);
-      } // loop over quadrature points
-    }
+      } // elem neighbor is not null
+    }   // loop over faces
 
     // add to matrix
-    DenseMatrix<Number> Ke;
     Ke.resize(1, Ke_dof_col.size());
     for (unsigned int i = 0; i < Ke_dof_col.size(); i++)
       Ke(0, i) = Ke_val_col[i];
 
-    nut.matrix->add_matrix(Ke, Ke_dof_row, Ke_dof_col);
+    d_sys.matrix->add_matrix(Ke, Ke_dof_row, Ke_dof_col);
 
     // add to vector
-    nut.rhs->add_vector(Fe, dof_indices_nut);
+    d_sys.rhs->add_vector(Fe, Ke_dof_row);
   }
+}
 
-  //
-  // Handle coupling between tissue nutrient and vessel nutrient
-  //
-  if (true) {
-    const auto &network = d_model_p->get_network();
-    auto pointer = network.get_mesh().getHead();
+void netfvfe::NutAssembly::assemble_1() {
 
-    while (pointer) {
+  // Get required system alias
+  //auto &nut = d_model_p->get_nut_assembly();
+  auto &tum = d_model_p->get_tum_assembly();
+  auto &hyp = d_model_p->get_hyp_assembly();
+  auto &nec = d_model_p->get_nec_assembly();
+  auto &taf = d_model_p->get_taf_assembly();
+  auto &ecm = d_model_p->get_ecm_assembly();
+  auto &mde = d_model_p->get_mde_assembly();
 
-      int numberOfNeighbors = pointer->neighbors.size();
+  // Model parameters
+  const auto &deck = d_model_p->get_input_deck();
+  const Real dt = d_model_p->d_dt;
+  const Real factor_nut = deck.d_assembly_factor_c_t;
 
-      double p_v_k = pointer->p_v;
-      double c_v_k = pointer->c_v;
+  // Store current and old solution
+  Real nut_old = 0.;
+  Real tum_cur = 0.;
+  Real hyp_cur = 0.;
+  Real nec_cur = 0.;
+  Real ecm_cur = 0.;
+  Real mde_cur = 0.;
 
-      for (int i = 0; i < numberOfNeighbors; i++) {
+  Real tum_proj = 0.;
+  Real hyp_proj = 0.;
+  Real nec_proj = 0.;
+  Real ecm_proj = 0.;
+  Real mde_proj = 0.;
 
-        const auto &J_b_data = pointer->J_b_points[i];
+  Real compute_rhs = 0.;
+  Real compute_mat = 0.;
 
-        // loop over 3d elements
-        for (unsigned int e = 0; e < J_b_data.elem_id.size(); e++) {
+  // Looping through elements
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
-          auto e_id = J_b_data.elem_id[e];
-          auto e_w = J_b_data.elem_weight[e];
+    init_dof(elem);
+    tum.init_dof(elem);
+    hyp.init_dof(elem);
+    nec.init_dof(elem);
+    taf.init_dof(elem);
+    ecm.init_dof(elem);
+    mde.init_dof(elem);
 
-          // get 3d pressure
-          const auto *elem = mesh.elem_ptr(e_id);
-          pres_map.dof_indices(elem, dof_indices_pres, v_pres);
-          double p_t_k = pres.current_solution(dof_indices_pres[0]);
+    // init fe and element matrix and vector
+    init_fe(elem);
 
-          // get 3d nutrient
-          nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-          double c_t_k = nut.current_solution(dof_indices_nut[0]);
-          Number c_t_k_proj = util::project_concentration(c_t_k);
+    // get finite-volume quantities
+    nut_old = get_old_sol(0);
+    
+    // add finite-volume contribution to matrix and vector
+    d_Fe(0) += deck.d_elem_size * factor_nut * nut_old;
+    d_Ke(0, 0) += deck.d_elem_size * factor_nut;
 
-          std::vector<unsigned int> Ke_dof_row;
-          Ke_dof_row.push_back(dof_indices_nut[0]);
-          DenseMatrix<Number> Ke(1, 1);
-          DenseVector<Number> Fe(1);
+    for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
-          // implicit for c_t in source
-          Ke(0, 0) += dt * factor_nut * deck.d_coupling_method_theta *
-                      pointer->L_s[i] * J_b_data.half_cyl_surf * e_w;
+      // Computing solution
+      tum_cur = 0.; hyp_cur = 0.; nec_cur = 0.; ecm_cur = 0.; mde_cur = 0.;
+      
+      for (unsigned int l = 0; l < d_phi.size(); l++) {
 
-          // explicit for c_v in source
-          Fe(0) += dt * factor_nut * pointer->L_s[i] * J_b_data.half_cyl_surf *
-                   e_w * (c_v_k - (1. - deck.d_coupling_method_theta) * c_t_k_proj);
+        tum_cur += d_phi[l][qp] * tum.get_current_sol_var(l, 0);
+        hyp_cur += d_phi[l][qp] * hyp.get_current_sol(l);
+        nec_cur += d_phi[l][qp] * nec.get_current_sol(l);
+        ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
+        mde_cur += d_phi[l][qp] * mde.get_current_sol(l);
+      }
 
-          // term due to pressure difference
-          double c_transport = 0.;
-          if (p_v_k - p_t_k >= 0.)
-            c_transport = c_v_k;
-          else
-            c_transport = c_t_k_proj;
-          Fe(0) += dt * factor_nut * (1. - deck.d_osmotic_sigma) *
-                   pointer->L_p[i] * J_b_data.half_cyl_surf * e_w *
-                   (p_v_k - p_t_k) * c_transport;
+      if (deck.d_assembly_method == 1) {
 
-          // update matrix
-          nut.matrix->add_matrix(Ke, Ke_dof_row, Ke_dof_row);
-          nut.rhs->add_vector(Fe, dof_indices_nut);
-        }
-      } // loop over neighbor segments
+        compute_rhs = d_JxW[qp] * dt * deck.d_lambda_ECM_D * ecm_cur * mde_cur;
 
-      pointer = pointer->global_successor;
-    } // loop over vertex in 1-d
+        compute_mat = d_JxW[qp] * dt *
+                      (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
+                       deck.d_lambda_Ph * hyp_cur +
+                       deck.d_lambda_ECM_P * (1. - ecm_cur) *
+                       util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+
+      } else {
+
+        mde_proj = util::project_concentration(mde_cur);
+        ecm_proj = util::project_concentration(ecm_cur);
+        tum_proj = util::project_concentration(tum_cur);
+        hyp_proj = util::project_concentration(hyp_cur);
+        nec_proj = util::project_concentration(nec_cur);
+
+        compute_rhs = d_JxW[qp] * dt * deck.d_lambda_ECM_D * ecm_proj * mde_proj;
+
+        compute_mat = d_JxW[qp] * dt *
+                      (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
+                       deck.d_lambda_Ph * hyp_proj +
+                       deck.d_lambda_ECM_P * (1. - ecm_proj) *
+                       util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
+      }
+
+      // add artificial source if asked
+      Real artificial_source =
+          get_nut_source(deck.d_test_name, d_qpoints[qp],
+                         deck.d_nut_source_center, deck.d_nut_source_radius) -
+          nut_old;
+      if (artificial_source > 0.)
+        compute_rhs += d_JxW[qp] * dt * artificial_source;
+
+      // add rhs
+      d_Fe(0) += factor_nut * compute_rhs;
+
+      // add matrix
+      d_Ke(0, 0) += factor_nut * compute_mat;
+
+    } // loop over quadrature points
+
+    // add to matrix
+    d_sys.matrix->add_matrix(d_Ke, d_dof_indices_sys, d_dof_indices_sys);
+
+    // add to vector
+    d_sys.rhs->add_vector(d_Fe, d_dof_indices_sys);
   }
 
   // finish
-  nut.matrix->close();
-  nut.rhs->close();
+  d_sys.matrix->close();
+  d_sys.rhs->close();
 }
-

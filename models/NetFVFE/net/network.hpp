@@ -8,13 +8,13 @@
 #ifndef NETFVFE_NETWORK_H
 #define NETFVFE_NETWORK_H
 
-#include "utilLibs.hpp"
 #include "../inp/inp.hpp"
 #include "../systems/systems.hpp"
 #include "gmm.h"
-#include "utils.hpp"
 #include "list_structure.hpp"
 #include "nodes.hpp"
+#include "utilLibs.hpp"
+#include "utils.hpp"
 #include <string>
 #include <vector>
 
@@ -36,7 +36,7 @@ class Network {
 public:
   /*! @brief Constructor */
   Network(netfvfe::Model *model)
-      : d_is_network_changed(false), d_model_p(model) {}
+      : d_is_network_changed(false), d_model_p(model), d_update_number(0) {}
 
   const netfvfe::ListStructure<netfvfe::VGNode> &get_mesh() const { return VGM; }
 
@@ -80,7 +80,14 @@ public:
 
   void assembleVGMSystemForNutrient();
 
+  void assembleVGMSystemForNutrientDecouple();
+
   void solveVGMforNutrient();
+
+  void update_old_concentration() { C_v_old = C_v; };
+
+  std::vector<netfvfe::ElemWeights>
+  compute_elem_weights_at_node(std::shared_ptr<VGNode> &pointer) const;
 
   /** @}*/
 
@@ -96,6 +103,26 @@ public:
 
   /*! @brief Compute intersecting element and weight in tumor domain */
   void compute_elem_weights();
+
+  unsigned int markApicalGrowth(std::string growth_type);
+  unsigned int processApicalGrowthTAF();
+  unsigned int processApicalGrowthTest();
+
+  void sproutingGrowth(std::string growth_type);
+
+  std::shared_ptr<VGNode>
+  check_new_node(const int &parent_index,
+                 const std::vector<double> &parent_coord,
+                 const std::vector<double> &child_coord, const double &dist_tol,
+                 const double &domain_size, unsigned int &check_code);
+
+  void add_new_node(std::shared_ptr<VGNode> &pointer, const double &child_r,
+                    const std::vector<double> &child_end_point);
+  void add_new_node_at_existing_node(std::shared_ptr<VGNode> &pointer,
+                                     std::shared_ptr<VGNode> &near_node);
+
+  void get_taf_and_gradient(double &taf_val, Point &grad_taf_val,
+                            const std::vector<double> &coord);
 
   /** @}*/
 
@@ -133,6 +160,7 @@ public:
 
   double osmotic_sigma;
 
+  unsigned int d_update_number;
 };
 
 } // namespace netfvfe

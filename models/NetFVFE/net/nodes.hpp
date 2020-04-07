@@ -91,16 +91,21 @@ public:
    * @brief Constructor
    */
   VGNode(): index(0), p_v(0.0), c_v(0.0), p_boundary(0.0), 
-            c_boundary(0.0), edge_touched(false), coord(0.0), radii(0.0), L_p
-            (0.0), L_s(0.) {}
+            c_boundary(0.0), edge_touched(false), sprouting_edge(false), apicalGrowth(false),
+            coord(0.0), radii(0.0), L_p(0.0)           
+  {}
 
   int index;
+
+  bool apicalGrowth;
 
   double p_v, c_v, p_boundary, c_boundary;
 
   std::vector< double > coord, radii, L_p, L_s;
 
   std::vector< bool > edge_touched;
+
+  std::vector< bool > sprouting_edge;
 
   std::vector< std::shared_ptr<VGNode> > neighbors;
 
@@ -132,13 +137,35 @@ public:
 
   }
 
-  void replacePointerWithIndex( int index, std::shared_ptr<VGNode> new_pointer ){
+  int getLocalIndexOfNeighbor( std::shared_ptr<VGNode> neighbor ){
+
+      int local_index_neighbor = 0;
+
+      int numberOfNeighbors = neighbors.size();
+
+      for(int i=0;i<numberOfNeighbors;i++){
+      
+          if( neighbor->index == neighbors[i]->index ){
+
+              local_index_neighbor = i;
+
+              return local_index_neighbor;
+
+          }
+
+      }
+
+      return local_index_neighbor;
+
+  }
+
+  void replacePointerWithIndex( int index_new, std::shared_ptr<VGNode> new_pointer ){
 
        int numberOfNeighbors = neighbors.size();
 
        for(int i=0;i<numberOfNeighbors;i++){
 
-           if( index == neighbors[i]->index ){
+           if( index_new == neighbors[i]->index ){
 
                neighbors[ i ] = new_pointer;
 
@@ -147,6 +174,15 @@ public:
            }
 
        }
+
+  }
+
+
+  void attachNeighbor( std::shared_ptr<VGNode> new_pointer ){
+
+       neighbors.push_back( new_pointer );
+
+       typeOfVGNode = InnerNode;       
 
   }
 
@@ -176,6 +212,19 @@ public:
 
          return totalVolume;
   }
+
+  void markEdgeForSprouting(int edgeNumber){
+
+       sprouting_edge[ edgeNumber ] = true; 
+
+  }
+
+  void markNodeForApicalGrowth(){
+
+       apicalGrowth = true;
+
+  }
+
 };
 
 } // namespace netfvfe
