@@ -18,9 +18,9 @@ int main(int argc, char* argv[]){
   GetPot input_file(filename);
 
   // find which model to run
-  std::string model_name = input_file("model_name", "NetFV");
+  std::string model_name = input_file("model_name", "NetFVFE");
 
-  if (model_name == "NetFV") {
+  if (model_name == "NetFVFE") {
 
     // Note: This one requires pointer to comm and therefore we have to init
     // libmesh and then call the constructor of model
@@ -36,8 +36,9 @@ int main(int argc, char* argv[]){
 
   } else {
     std::cout << "Model name = " << model_name
-              << " is incorrect. It should be NetFV to run network-tumor "
-                 "coupled model with fully finite-volume discretization.\n ";
+              << " is incorrect. It should be NetFVFE to run network-tumor "
+                 "coupled model with mixed finite-volume and finite-element "
+                 "discretization.\n ";
   }
 
   // End Code
