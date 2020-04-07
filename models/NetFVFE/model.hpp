@@ -24,6 +24,12 @@
  */
 namespace netfvfe {
 
+void model_setup_run(int argc, char **argv, std::vector<double> &QOI_MASS,
+                     const std::string &filename,
+                     Parallel::Communicator *comm);
+
+void create_mesh(netfvfe::InputDeck &input, ReplicatedMesh &mesh);
+
 /*!
  * @brief Coupled 3D-1D tumor growth model driver
  */
@@ -32,7 +38,19 @@ class Model {
 public:
   /*! @brief Constructor */
   Model(int argc, char **argv, std::vector<double> &QOI_MASS,
-        const std::string &filename, Parallel::Communicator *comm);
+        const std::string &filename, Parallel::Communicator *comm,
+        netfvfe::InputDeck &input, ReplicatedMesh &mesh,
+        EquationSystems &tum_sys,
+        TransientLinearImplicitSystem &nec,
+        TransientLinearImplicitSystem &tum,
+        TransientLinearImplicitSystem &nut,
+        TransientLinearImplicitSystem &hyp,
+        TransientLinearImplicitSystem &taf,
+        TransientLinearImplicitSystem &ecm,
+        TransientLinearImplicitSystem &mde,
+        TransientLinearImplicitSystem &pres,
+        TransientLinearImplicitSystem &grad_taf,
+        TransientLinearImplicitSystem &vel);
 
   /*! @brief Get equation system */
   const EquationSystems &get_system() const { return d_tum_sys; }
@@ -62,6 +80,19 @@ public:
   /*! @brief Get network data */
   bool is_network_changed() const { return d_network.d_is_network_changed; }
 
+  /*! @brief Get various system classes */
+  PressureAssembly &get_pres_assembly() {return d_pres_assembly;}
+  NutAssembly &get_nut_assembly() {return d_nut_assembly;}
+  TumAssembly &get_tum_assembly() {return d_tum_assembly;}
+  HypAssembly &get_hyp_assembly() {return d_hyp_assembly;}
+  NecAssembly &get_nec_assembly() {return d_nec_assembly;}
+  TafAssembly &get_taf_assembly() {return d_taf_assembly;}
+  GradTafAssembly &get_grad_taf_assembly() {return d_grad_taf_assembly;}
+  EcmAssembly &get_ecm_assembly() {return d_ecm_assembly;}
+  MdeAssembly &get_mde_assembly() {return d_mde_assembly;}
+  VelAssembly &get_vel_assembly() {return d_vel_assembly;}
+
+
 public:
   /*! @brief To store input parameters */
   unsigned int d_step;
@@ -79,12 +110,16 @@ public:
   /*! @brief Bounding box */
   std::pair<Point, Point> d_bounding_box;
 
-private:
-  /*! @brief Create mesh for 2d/3d pde and 1d network */
-  void create_mesh();
+  /*! @brief Current nonlinear step */
+  unsigned int d_nonlinear_step;
 
-  /*! @brief Setup 2d/3d tumor system and 1d network system */
-  void setup_system();
+  /*! @brief Is this output time step */
+  bool d_is_output_step;
+
+  /*! @brief Is this growth time step */
+  bool d_is_growth_step;
+
+private:
 
   /*! @brief Output results of tumor system and network system */
   void write_system(const unsigned int &t_step,
@@ -97,26 +132,107 @@ private:
   /*! @brief Solves tumor system */
   void solve_system();
 
-  /*! @brief Solves tumor system */
-  void test_nutrient();
-  void test_nutrient_2();
+  /*! @brief Solves 1D-3D pressure system
+   * At given time step, it solves for 1D and 3D pressure in a nonlinear loop
+   * iteratively.
+   */
+  void solve_pressure();
+
+  /*! @brief Solving sub-systems
+   *
+   * Description of subsystems
+   *
+   * ## test_nut
+   *
+   * - Nonlinear iterations to solve 1D and 3D nutrients
+   * - Good to test the coupling of nutrient
+   * - Maybe it is good to specify d_decouple_nutrients = false in input file
+   *
+   * - Good to test 1D/3D nutrient coupling
+   *
+   * ## test_nut_2
+   *
+   * - Solves 1D nutrient and then solves 3D nutrient
+   * - This is recommended when d_decouple_nutrients = false
+   *
+   * - Good to test 1D/3D nutrient coupling
+   *
+   * ## test_taf
+   *
+   * - Solves only TAF equations
+   * - Adds artificial cylindrical TAF source (along z axis)
+   *    - specify center and radius of cylindrical source in input file
+   *
+   * - Good to test TAF equation and also growth of network
+   *
+   * ## test_taf_2
+   *
+   * - Solves pressure and TAF equations
+   * - Adds artificial cylindrical TAF source (along z axis)
+   *    - specify center and radius of cylindrical source in input file
+   *
+   * - Good to test TAF equation and also growth of network
+   *
+   * - Also test the pressure in growing network
+   *
+   * ## test_tum
+   *
+   * - Only solves tumor species
+   * - Nutrient is constant
+   * - Artificial source is added on cylinder along z-axis with
+   *    - center = (L - 2R, L - 2R, 0)
+   *    - Radius = 0.05 * L
+   *    - L = size of domain
+   *
+   * - Good to test tumor species
+   *
+   * ## test_tum_2
+   *
+   * - Solves nutrient and tumor species
+   * - Adds artificial cylindrical nutrient source (along z axis)
+   *    - specify center and radius of cylindrical source in input file
+   *
+   * - Good to test coupling between nutrient and tumor species
+   *
+   * ## test_net_tum
+   *
+   * - Solves for 1D-3D pressure, 1D-3D nutrients, and all tumor species
+   *
+   * - Also solves for TAF at certain steps such as when we are producing
+   * output or when we are growing the network
+   *
+   * - Good to test full model with/without network growth in which we do not
+   * solve for MDE and ECM and avoid solving for TAF every time step
+   *
+   * ## test_net_tum_2
+   *
+   * - Same as test_net_tum, except that it solves for pressure at the
+   * beginning and after that the pressure in tissue domain and network is fixed
+   *
+   * - Good to test the couling of 1D-3D nutrient coupling and coupling of
+   * network and nutrient with tumor species
+   *
+   */
+  void test_nut();
+  void test_nut_2();
   void test_taf();
   void test_taf_2();
-
-  /*! @brief Solves tumor system */
-  void test_pressure();
+  void test_tum();
+  void test_tum_2();
+  void test_net_tum();
+  void test_net_tum_2();
 
   /*! @brief To store input parameters */
-  netfvfe::InputDeck d_input;
+  netfvfe::InputDeck &d_input;
 
   /*! @brief Pointer to communicator */
   Parallel::Communicator *d_comm_p;
 
   /*! @brief Store the network mesh */
-  ReplicatedMesh d_mesh;
+  ReplicatedMesh &d_mesh;
 
   /*! @brief Store the 2d/3d tumor system */
-  EquationSystems d_tum_sys;
+  EquationSystems &d_tum_sys;
 
   /*! @brief Network class */
   Network d_network;
@@ -131,7 +247,7 @@ private:
   MdeAssembly d_mde_assembly;
   PressureAssembly d_pres_assembly;
   GradTafAssembly d_grad_taf_assembly;
-  VelocityAssembly d_vel_assembly;
+  VelAssembly d_vel_assembly;
 };
 
 } // namespace netfvfe

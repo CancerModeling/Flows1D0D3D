@@ -22,9 +22,17 @@ struct ModelDeck {
   std::vector<double> d_domain_params;
   unsigned int d_assembly_method;
 
+  std::string d_test_name;
+
+  bool d_advection_active;
+
+  bool d_decouple_nutrients;
+
   explicit ModelDeck(const std::string &filename = "")
       : d_dim(2), d_domain_type("hyper_cuboid"),
-        d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2) {
+        d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2),
+        d_test_name(""), d_advection_active(false), d_decouple_nutrients
+        (false) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -58,15 +66,18 @@ struct RestartDeck {
 
 struct MeshDeck {
   std::string d_mesh_filename;
-  unsigned int d_num_elems;
-  unsigned int d_n_global_refinement;
   bool d_read_mesh_flag;
-  std::vector<unsigned int> d_num_elems_vec;
-  std::vector<double> d_mesh_size_vec;
+  unsigned int d_num_elems;
+  double d_mesh_size;
+  bool d_use_mesh_size_for_disc;
+  double d_elem_face_size;
+  double d_elem_size;
+  double d_face_by_h;
 
   explicit MeshDeck(const std::string &filename = "")
-      : d_num_elems(0), d_n_global_refinement(0), d_read_mesh_flag(false),
-        d_num_elems_vec({0, 0, 0}), d_mesh_size_vec({0., 0., 0.}) {
+      : d_read_mesh_flag(false), d_num_elems(0), d_mesh_size(0.),
+        d_use_mesh_size_for_disc(false),
+        d_elem_face_size(0.), d_elem_size(0.), d_face_by_h(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -156,9 +167,14 @@ struct NutrientDeck {
   double d_delta_sigma;
   double d_chi_c;
 
+  std::vector<double> d_nut_source_center;
+  double d_nut_source_radius;
+
   explicit NutrientDeck(const std::string &filename = "")
       : d_lambda_P(0.), d_lambda_A(0.), d_lambda_Ph(0.), d_D_sigma(0.),
-        d_delta_sigma(0.), d_chi_c(0.) {
+        d_delta_sigma(0.), d_chi_c(0.),
+        d_nut_source_center(std::vector<double>(3, 0.)),
+        d_nut_source_radius(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -238,8 +254,13 @@ struct TAFDeck {
   double d_delta_TAF;
   double d_lambda_TAF;
 
+  std::vector<double> d_taf_source_center;
+  double d_taf_source_radius;
+
   explicit TAFDeck(const std::string &filename = "")
-      : d_D_TAF(0.), d_delta_TAF(0.), d_lambda_TAF(0.) {
+      : d_D_TAF(0.), d_delta_TAF(0.), d_lambda_TAF(0.),
+        d_taf_source_center(std::vector<double>(3, 0.)),
+        d_taf_source_radius(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -345,6 +366,7 @@ struct TumorICData {
    * - tumor_elliptical
    * - tumor_hypoxic_spherical
    * - tumor_hypoxic_elliptical
+   * - tumor_spherical_sharp
    */
   std::string d_ic_type;
   std::vector<double> d_ic_center;
@@ -411,8 +433,10 @@ struct NetworkDeck {
   int d_num_points_length;
   int d_num_points_angle;
   double d_coupling_method_theta;
+  bool d_compute_elem_weights;
 
-  double d_coupling_factor_p_t;
+  double d_assembly_factor_p_t;
+  double d_assembly_factor_c_t;
 
   double d_identify_vein_pres;
 
@@ -439,6 +463,8 @@ struct NetworkDeck {
 
   double d_network_no_new_node_search_factor;
 
+  double d_network_bifurcate_prob;
+
   explicit NetworkDeck(const std::string &filename = "")
       : network_active(false), d_net_direction_lambda_g(0.),
         d_net_length_R_factor(0.), d_network_update_interval(1),
@@ -449,8 +475,10 @@ struct NetworkDeck {
         d_nonlocal_direction_search_num_points(0),
         d_nonlocal_direction_search_length(0.), d_network_local_search(false),
         d_network_no_new_node_search_factor(0.), d_num_points_length(2),
-        d_num_points_angle(2), d_coupling_method_theta(0.5), d_coupling_factor_p_t(1.),
-        d_identify_vein_pres(0.) {
+        d_num_points_angle(2), d_coupling_method_theta(0.5),
+        d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
+        d_identify_vein_pres(0.), d_compute_elem_weights(false),
+        d_network_bifurcate_prob(0.6) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -494,6 +522,7 @@ struct FlowDeck {
 
   double d_tissue_flow_mu;
   double d_tissue_flow_K;
+  double d_tissue_flow_coeff;
   double d_tissue_flow_rho;
   double d_tissue_flow_L_p;
   double d_tissue_nut_L_s;
@@ -510,7 +539,8 @@ struct FlowDeck {
   double d_mmhgFactor;
 
   explicit FlowDeck(const std::string &filename = "")
-      : d_tissue_flow_mu(0.), d_tissue_flow_K(0.), d_tissue_flow_rho(1.),
+      : d_tissue_flow_mu(0.), d_tissue_flow_K(0.), d_tissue_flow_coeff(0.),
+      d_tissue_flow_rho(1.),
       d_tissue_flow_L_p(0.), d_tissue_nut_L_s(0.),
       d_pressure_bc_north(false),
         d_pressure_bc_south(false), d_pressure_bc_east(false),

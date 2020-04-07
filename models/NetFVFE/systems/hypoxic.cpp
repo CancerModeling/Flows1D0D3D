@@ -6,10 +6,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "../model.hpp"
-#include "systems.hpp"
 
 Number netfvfe::initial_condition_hyp_kernel(const Point &p,
-    const netfvfe::InputDeck *deck) {
+                                            const netfvfe::InputDeck *deck) {
 
   const unsigned int dim = deck->d_dim;
   const unsigned int num_ic = deck->d_tum_ic_data.size();
@@ -30,14 +29,14 @@ Number netfvfe::initial_condition_hyp_kernel(const Point &p,
       if (dx.norm() < data.d_tum_ic_radius[0] - 1.0E-12) {
 
         return 1. - util::exp_decay_function(
-            dx.norm() / data.d_tum_ic_radius[0], 4.);
+                        dx.norm() / data.d_tum_ic_radius[0], 4.);
 
       } else if (dx.norm() > data.d_tum_ic_radius[0] - 1.0E-12 and
                  dx.norm() < data.d_hyp_ic_radius[0] - 1.0E-12) {
 
         return util::exp_decay_function(
             (dx.norm() - data.d_tum_ic_radius[0]) /
-            (data.d_hyp_ic_radius[0] - data.d_tum_ic_radius[0]),
+                (data.d_hyp_ic_radius[0] - data.d_tum_ic_radius[0]),
             4.);
       }
     } else if (type == "tumor_hypoxic_elliptical") {
@@ -48,8 +47,8 @@ Number netfvfe::initial_condition_hyp_kernel(const Point &p,
         small_ball_r = data.d_tum_ic_radius[i] * data.d_tum_ic_radius[i];
       small_ball_r = std::sqrt(small_ball_r);
 
-      Point p_small_ball = util::ellipse_to_ball(p, xc, data.d_tum_ic_radius,
-                                                 dim, small_ball_r);
+      Point p_small_ball =
+          util::ellipse_to_ball(p, xc, data.d_tum_ic_radius, dim, small_ball_r);
 
       // transform ellipse into ball of radius
       double large_ball_r = 0.;
@@ -57,19 +56,19 @@ Number netfvfe::initial_condition_hyp_kernel(const Point &p,
         large_ball_r = data.d_hyp_ic_radius[i] * data.d_hyp_ic_radius[i];
       large_ball_r = std::sqrt(large_ball_r);
 
-      Point p_large_ball = util::ellipse_to_ball(p, xc, data.d_hyp_ic_radius,
-                                                 dim, large_ball_r);
+      Point p_large_ball =
+          util::ellipse_to_ball(p, xc, data.d_hyp_ic_radius, dim, large_ball_r);
 
       if (p_small_ball.norm() < small_ball_r - 1.0E-12) {
 
-        return 1. - util::exp_decay_function(
-            p_small_ball.norm() / small_ball_r, 4.);
+        return 1. -
+               util::exp_decay_function(p_small_ball.norm() / small_ball_r, 4.);
 
       } else if (p_small_ball.norm() > small_ball_r - 1.0E-12 and
                  p_small_ball.norm() < large_ball_r - 1.0E-12) {
 
         return util::exp_decay_function((p_small_ball.norm() - small_ball_r) /
-                                        (large_ball_r - small_ball_r),
+                                            (large_ball_r - small_ball_r),
                                         4.);
       }
     }
@@ -94,419 +93,137 @@ Number netfvfe::initial_condition_hyp(const Point &p, const Parameters &es,
   return 0.;
 }
 
+// Assembly class
 void netfvfe::HypAssembly::assemble() {
 
   const auto &deck = d_model_p->get_input_deck();
 
-  if (deck.d_assembly_method == 1)
-    assemble_1();
-  else if (deck.d_assembly_method == 2)
-    assemble_2();
-  else if (deck.d_assembly_method == 3)
-    assemble_3();
+  assemble_1();
 }
 
 void netfvfe::HypAssembly::assemble_1() {
 
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Tumor system
-  auto &tum = es.get_system<TransientLinearImplicitSystem>("Tumor");
-  std::vector<unsigned int> v_tum(2);
-  v_tum[0] = tum.variable_number("tumor");
-  v_tum[1] = tum.variable_number("chemical_tumor");
-
-  const DofMap &tum_map = tum.get_dof_map();
-  std::vector<unsigned int> dof_indices_tum;
-  std::vector<std::vector<dof_id_type>> dof_indices_tum_var(2);
-
-  // Nutrient system
-  auto &nut = es.get_system<TransientLinearImplicitSystem>("Nutrient");
-  const unsigned int v_nut = nut.variable_number("nutrient");
-  const DofMap &nut_map = nut.get_dof_map();
-  std::vector<unsigned int> dof_indices_nut;
-
-  // Hypoxic system
-  auto &hyp = es.get_system<TransientLinearImplicitSystem>("Hypoxic");
-  const unsigned int v_hyp = hyp.variable_number("hypoxic");
-  const DofMap &hyp_map = hyp.get_dof_map();
-  std::vector<unsigned int> dof_indices_hyp;
-
-  // Necrotic system
-  auto &nec = es.get_system<TransientLinearImplicitSystem>("Necrotic");
-  const unsigned int v_nec = nec.variable_number("necrotic");
-  const DofMap &nec_map = nec.get_dof_map();
-  std::vector<unsigned int> dof_indices_nec;
-
-  // FEM parameters
-  const MeshBase &mesh = es.get_mesh();
-  const unsigned int dim = mesh.mesh_dimension();
-  FEType fe_type = hyp.variable_type(0);
-  UniquePtr<FEBase> fe(FEBase::build(dim, fe_type));
-  QGauss qrule(dim, fe_type.default_quadrature_order());
-  fe->attach_quadrature_rule(&qrule);
-  const std::vector<Real> &JxW = fe->get_JxW();
-  const std::vector<std::vector<Real>> &phi = fe->get_phi();
-  const std::vector<std::vector<RealGradient>> &dphi = fe->get_dphi();
+  // Get required system alias
+  // auto &hyp = d_model_p->get_hyp_assembly();
+  auto &nut = d_model_p->get_nut_assembly();
+  auto &tum = d_model_p->get_tum_assembly();
+  auto &nec = d_model_p->get_nec_assembly();
 
   // Model parameters
-  const auto *deck = es.parameters.get<netfvfe::InputDeck *>("input_deck");
-  const Real dt = es.parameters.get<Real>("time_step");
+  const auto &deck = d_model_p->get_input_deck();
+  const Real dt = d_model_p->d_dt;
 
-  // Arranging matrix
-  DenseMatrix<Number> Ke;
-  DenseVector<Number> Fi;
+  // Store current and old solution
+  Real hyp_old = 0.;
+  Real hyp_cur = 0.;
+  Real tum_cur = 0.;
+  Real nut_cur = 0.;
+  Real nec_cur = 0.;
+
+  Real tum_proj = 0.;
+  Real hyp_proj = 0.;
+  Real nut_proj = 0.;
+  Real nec_proj = 0.;
+
+  Gradient che_grad;
+
+  Real mobility = 0.;
+
+  Real compute_rhs = 0.;
+  Real compute_mat = 0.;
 
   // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
-    tum_map.dof_indices(elem, dof_indices_tum);
-    for (unsigned int var = 0; var < 2; var++)
-      tum_map.dof_indices(elem, dof_indices_tum_var[var], v_tum[var]);
+    init_dof(elem);
+    nut.init_dof(elem);
+    tum.init_dof(elem);
+    nec.init_dof(elem);
 
-    nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-    hyp_map.dof_indices(elem, dof_indices_hyp, v_hyp);
-    nec_map.dof_indices(elem, dof_indices_nec, v_nec);
+    // init fe and element matrix and vector
+    init_fe(elem);
 
-    const unsigned int n_dofs = dof_indices_hyp.size();
+    // get finite-volume quantities
+    nut_cur = nut.get_current_sol(0);
+    nut_proj = util::project_concentration(nut_cur);
 
-    fe->reinit(elem);
-
-    Ke.resize(n_dofs, n_dofs);
-    Fi.resize(n_dofs);
-
-    // get nutrient at this element
-    Number nut_cur = nut.current_solution(dof_indices_nut[0]);
-
-    for (unsigned int qp = 0; qp < qrule.n_points(); qp++) {
+    for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
       // Computing solution
-      Number hyp_cur = 0.;
-      Number hyp_old = 0.;
-      Number tum_cur = 0.;
-      Number nec_cur = 0.;
-      Gradient che_grad;
+      tum_cur = 0.; hyp_cur = 0.; hyp_old = 0.; nec_cur = 0.;
+      che_grad = 0.;
+      for (unsigned int l = 0; l < d_phi.size(); l++) {
 
-      for (unsigned int l = 0; l < phi.size(); l++) {
+        tum_cur += d_phi[l][qp] * tum.get_current_sol_var(l, 0);
+        hyp_cur += d_phi[l][qp] * get_current_sol(l);
+        hyp_old += d_phi[l][qp] * get_old_sol(l);
+        nec_cur += d_phi[l][qp] * nec.get_current_sol(l);
 
-        tum_cur += phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
-        hyp_cur += phi[l][qp] * hyp.current_solution(dof_indices_hyp[l]);
-        hyp_old += phi[l][qp] * hyp.old_solution(dof_indices_hyp[l]);
-        nec_cur += phi[l][qp] * nec.current_solution(dof_indices_nec[l]);
-        che_grad.add_scaled(dphi[l][qp],
-                            tum.current_solution(dof_indices_tum_var[1][l]));
+        che_grad.add_scaled(d_dphi[l][qp],
+                            tum.get_current_sol_var(l, 1));
       }
 
-      Number mobility =
-          deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
+      // get projected solution
+      hyp_proj = util::project_concentration(hyp_cur);
 
-      Number compute_rhs =
-          JxW[qp] * (hyp_old + dt * deck->d_lambda_PH *
-                                   util::heaviside(deck->d_sigma_PH - nut_cur) *
-                                   (tum_cur - nec_cur));
+      mobility =
+          deck.d_bar_M_H * pow(hyp_proj, 2) * pow(1. - hyp_proj, 2);
 
-      Number compute_mat =
-          JxW[qp] * (1. + dt * deck->d_lambda_A +
-                     dt * deck->d_lambda_HP *
-                         util::heaviside(nut_cur - deck->d_sigma_HP) +
-                     dt * deck->d_lambda_PH *
-                         util::heaviside(deck->d_sigma_PH - nut_cur) +
-                     dt * deck->d_lambda_HN *
-                         util::heaviside(deck->d_sigma_HN - nut_cur));
+      if (deck.d_assembly_method == 1) {
+
+        compute_rhs =
+            d_JxW[qp] *
+            (hyp_old + dt * deck.d_lambda_PH *
+                           util::heaviside(deck.d_sigma_PH - nut_cur) *
+                           (tum_cur - nec_cur));
+
+        compute_mat =
+            d_JxW[qp] * (1. + dt * deck.d_lambda_A +
+                         dt * deck.d_lambda_HP *
+                             util::heaviside(nut_cur - deck.d_sigma_HP) +
+                         dt * deck.d_lambda_PH *
+                             util::heaviside(deck.d_sigma_PH - nut_cur) +
+                         dt * deck.d_lambda_HN *
+                             util::heaviside(deck.d_sigma_HN - nut_cur));
+      } else {
+
+        tum_proj = util::project_concentration(tum_cur);
+        nec_proj = util::project_concentration(nec_cur);
+
+        compute_rhs =
+            d_JxW[qp] *
+            (hyp_old + dt * deck.d_lambda_PH *
+                       util::heaviside(deck.d_sigma_PH - nut_proj) *
+                       (tum_proj - nec_proj));
+
+        compute_mat =
+            d_JxW[qp] * (1. + dt * deck.d_lambda_A +
+                         dt * deck.d_lambda_HP *
+                         util::heaviside(nut_proj - deck.d_sigma_HP) +
+                         dt * deck.d_lambda_PH *
+                         util::heaviside(deck.d_sigma_PH - nut_proj) +
+                         dt * deck.d_lambda_HN *
+                         util::heaviside(deck.d_sigma_HN - nut_proj));
+      }
 
       // Assembling matrix
-      for (unsigned int i = 0; i < phi.size(); i++) {
+      for (unsigned int i = 0; i < d_phi.size(); i++) {
 
-        Fi(i) += compute_rhs * phi[i][qp];
+        d_Fe(i) += compute_rhs * d_phi[i][qp];
 
         // gradient term
-        Fi(i) -= JxW[qp] * dt * mobility * che_grad * dphi[i][qp];
+        d_Fe(i) -= d_JxW[qp] * dt * mobility * che_grad * d_dphi[i][qp];
 
-        for (unsigned int j = 0; j < phi.size(); j++) {
+        for (unsigned int j = 0; j < d_phi.size(); j++) {
 
-          Ke(i, j) += compute_mat * phi[j][qp] * phi[i][qp];
+          d_Ke(i, j) += compute_mat * d_phi[j][qp] * d_phi[i][qp];
         }
       }
     } // loop over quadrature points
 
-    hyp_map.heterogenously_constrain_element_matrix_and_vector(Ke, Fi,
-                                                               dof_indices_hyp);
-    hyp.matrix->add_matrix(Ke, dof_indices_hyp);
-    hyp.rhs->add_vector(Fi, dof_indices_hyp);
-  }
-}
-
-void netfvfe::HypAssembly::assemble_2() {
-
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Tumor system
-  auto &tum = es.get_system<TransientLinearImplicitSystem>("Tumor");
-  std::vector<unsigned int> v_tum(2);
-  v_tum[0] = tum.variable_number("tumor");
-  v_tum[1] = tum.variable_number("chemical_tumor");
-
-  const DofMap &tum_map = tum.get_dof_map();
-  std::vector<unsigned int> dof_indices_tum;
-  std::vector<std::vector<dof_id_type>> dof_indices_tum_var(2);
-
-  // Nutrient system
-  auto &nut = es.get_system<TransientLinearImplicitSystem>("Nutrient");
-  const unsigned int v_nut = nut.variable_number("nutrient");
-  const DofMap &nut_map = nut.get_dof_map();
-  std::vector<unsigned int> dof_indices_nut;
-
-  // Hypoxic system
-  auto &hyp = es.get_system<TransientLinearImplicitSystem>("Hypoxic");
-  const unsigned int v_hyp = hyp.variable_number("hypoxic");
-  const DofMap &hyp_map = hyp.get_dof_map();
-  std::vector<unsigned int> dof_indices_hyp;
-
-  // Necrotic system
-  auto &nec = es.get_system<TransientLinearImplicitSystem>("Necrotic");
-  const unsigned int v_nec = nec.variable_number("necrotic");
-  const DofMap &nec_map = nec.get_dof_map();
-  std::vector<unsigned int> dof_indices_nec;
-
-  // FEM parameters
-  const MeshBase &mesh = es.get_mesh();
-  const unsigned int dim = mesh.mesh_dimension();
-  FEType fe_type = hyp.variable_type(0);
-  UniquePtr<FEBase> fe(FEBase::build(dim, fe_type));
-  QGauss qrule(dim, fe_type.default_quadrature_order());
-  fe->attach_quadrature_rule(&qrule);
-  const std::vector<Real> &JxW = fe->get_JxW();
-  const std::vector<std::vector<Real>> &phi = fe->get_phi();
-  const std::vector<std::vector<RealGradient>> &dphi = fe->get_dphi();
-
-  // Model parameters
-  const auto *deck = es.parameters.get<netfvfe::InputDeck *>("input_deck");
-  const Real dt = es.parameters.get<Real>("time_step");
-
-  // Arranging matrix
-  DenseMatrix<Number> Ke;
-  DenseVector<Number> Fi;
-
-  // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-    tum_map.dof_indices(elem, dof_indices_tum);
-    for (unsigned int var = 0; var < 2; var++)
-      tum_map.dof_indices(elem, dof_indices_tum_var[var], v_tum[var]);
-
-    nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-    hyp_map.dof_indices(elem, dof_indices_hyp, v_hyp);
-    nec_map.dof_indices(elem, dof_indices_nec, v_nec);
-
-    const unsigned int n_dofs = dof_indices_hyp.size();
-
-    fe->reinit(elem);
-
-    Ke.resize(n_dofs, n_dofs);
-    Fi.resize(n_dofs);
-
-    // get nutrient at this element
-    Number nut_cur = nut.current_solution(dof_indices_nut[0]);
-    Number nut_proj = util::project_concentration(nut_cur);
-
-    for (unsigned int qp = 0; qp < qrule.n_points(); qp++) {
-
-      // Computing solution
-      Number hyp_cur = 0.;
-      Number hyp_old = 0.;
-      Number tum_cur = 0.;
-      Number nec_cur = 0.;
-      Gradient che_grad;
-
-      for (unsigned int l = 0; l < phi.size(); l++) {
-
-        tum_cur += phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
-        hyp_cur += phi[l][qp] * hyp.current_solution(dof_indices_hyp[l]);
-        hyp_old += phi[l][qp] * hyp.old_solution(dof_indices_hyp[l]);
-        nec_cur += phi[l][qp] * nec.current_solution(dof_indices_nec[l]);
-        che_grad.add_scaled(dphi[l][qp],
-                            tum.current_solution(dof_indices_tum_var[1][l]));
-      }
-
-      Number mobility =
-          deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
-
-      // get projected values of species
-      Number tum_proj = util::project_concentration(tum_cur);
-      Number nec_proj = util::project_concentration(nec_cur);
-
-      Number compute_rhs =
-          JxW[qp] *
-          (hyp_old + dt * deck->d_lambda_PH *
-                         util::heaviside(deck->d_sigma_PH - nut_proj) *
-                         (tum_proj - nec_proj));
-
-      Number compute_mat =
-          JxW[qp] * (1. + dt * deck->d_lambda_A +
-                     dt * deck->d_lambda_HP *
-                         util::heaviside(nut_proj - deck->d_sigma_HP) +
-                     dt * deck->d_lambda_PH *
-                         util::heaviside(deck->d_sigma_PH - nut_proj) +
-                     dt * deck->d_lambda_HN *
-                         util::heaviside(deck->d_sigma_HN - nut_proj));
-
-      // Assembling matrix
-      for (unsigned int i = 0; i < phi.size(); i++) {
-
-        Fi(i) += compute_rhs * phi[i][qp];
-
-        // gradient term
-        Fi(i) -= JxW[qp] * dt * mobility * che_grad * dphi[i][qp];
-
-        for (unsigned int j = 0; j < phi.size(); j++) {
-
-          Ke(i, j) += compute_mat * phi[j][qp] * phi[i][qp];
-        }
-      }
-    } // loop over quadrature points
-
-    hyp_map.heterogenously_constrain_element_matrix_and_vector(Ke, Fi,
-                                                               dof_indices_hyp);
-    hyp.matrix->add_matrix(Ke, dof_indices_hyp);
-    hyp.rhs->add_vector(Fi, dof_indices_hyp);
-  }
-}
-
-void netfvfe::HypAssembly::assemble_3() {
-
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Tumor system
-  auto &tum = es.get_system<TransientLinearImplicitSystem>("Tumor");
-  std::vector<unsigned int> v_tum(2);
-  v_tum[0] = tum.variable_number("tumor");
-  v_tum[1] = tum.variable_number("chemical_tumor");
-
-  const DofMap &tum_map = tum.get_dof_map();
-  std::vector<unsigned int> dof_indices_tum;
-  std::vector<std::vector<dof_id_type>> dof_indices_tum_var(2);
-
-  // Nutrient system
-  auto &nut = es.get_system<TransientLinearImplicitSystem>("Nutrient");
-  const unsigned int v_nut = nut.variable_number("nutrient");
-  const DofMap &nut_map = nut.get_dof_map();
-  std::vector<unsigned int> dof_indices_nut;
-
-  // Hypoxic system
-  auto &hyp = es.get_system<TransientLinearImplicitSystem>("Hypoxic");
-  const unsigned int v_hyp = hyp.variable_number("hypoxic");
-  const DofMap &hyp_map = hyp.get_dof_map();
-  std::vector<unsigned int> dof_indices_hyp;
-
-  // Necrotic system
-  auto &nec = es.get_system<TransientLinearImplicitSystem>("Necrotic");
-  const unsigned int v_nec = nec.variable_number("necrotic");
-  const DofMap &nec_map = nec.get_dof_map();
-  std::vector<unsigned int> dof_indices_nec;
-
-  // FEM parameters
-  const MeshBase &mesh = es.get_mesh();
-  const unsigned int dim = mesh.mesh_dimension();
-  FEType fe_type = hyp.variable_type(0);
-  UniquePtr<FEBase> fe(FEBase::build(dim, fe_type));
-  QGauss qrule(dim, fe_type.default_quadrature_order());
-  fe->attach_quadrature_rule(&qrule);
-  const std::vector<Real> &JxW = fe->get_JxW();
-  const std::vector<std::vector<Real>> &phi = fe->get_phi();
-  const std::vector<std::vector<RealGradient>> &dphi = fe->get_dphi();
-
-  // Model parameters
-  const auto *deck = es.parameters.get<netfvfe::InputDeck *>("input_deck");
-  const Real dt = es.parameters.get<Real>("time_step");
-
-  // Arranging matrix
-  DenseMatrix<Number> Ke;
-  DenseVector<Number> Fi;
-
-  // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-    tum_map.dof_indices(elem, dof_indices_tum);
-    for (unsigned int var = 0; var < 2; var++)
-      tum_map.dof_indices(elem, dof_indices_tum_var[var], v_tum[var]);
-
-    nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-    hyp_map.dof_indices(elem, dof_indices_hyp, v_hyp);
-    nec_map.dof_indices(elem, dof_indices_nec, v_nec);
-
-    const unsigned int n_dofs = dof_indices_hyp.size();
-
-    fe->reinit(elem);
-
-    Ke.resize(n_dofs, n_dofs);
-    Fi.resize(n_dofs);
-
-    // get nutrient at this element
-    Number nut_cur = nut.current_solution(dof_indices_nut[0]);
-    Number nut_proj = util::project_concentration(nut_cur);
-
-    for (unsigned int qp = 0; qp < qrule.n_points(); qp++) {
-
-      // Computing solution
-      Number hyp_cur = 0.;
-      Number hyp_old = 0.;
-      Number tum_cur = 0.;
-      Number nec_cur = 0.;
-      Gradient che_grad;
-
-      for (unsigned int l = 0; l < phi.size(); l++) {
-
-        tum_cur += phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
-        hyp_cur += phi[l][qp] * hyp.current_solution(dof_indices_hyp[l]);
-        hyp_old += phi[l][qp] * hyp.old_solution(dof_indices_hyp[l]);
-        nec_cur += phi[l][qp] * nec.current_solution(dof_indices_nec[l]);
-        che_grad.add_scaled(dphi[l][qp],
-                            tum.current_solution(dof_indices_tum_var[1][l]));
-      }
-
-      Number mobility =
-          deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
-
-      // get projected values of species
-      Number tum_proj = util::project_concentration(tum_cur);
-      Number nec_proj = util::project_concentration(nec_cur);
-      Number hyp_proj = util::project_concentration(hyp_cur);
-
-      Number compute_rhs =
-          JxW[qp] *
-          (hyp_old +
-           dt * deck->d_lambda_PH *
-               util::heaviside(deck->d_sigma_PH - nut_proj) *
-               (tum_proj - hyp_proj - nec_proj) -
-           dt * deck->d_lambda_A * hyp_proj -
-           dt * deck->d_lambda_HP *
-               util::heaviside(nut_proj - deck->d_sigma_HP) * hyp_proj -
-           dt * deck->d_lambda_HN *
-               util::heaviside(deck->d_sigma_HN - nut_proj) * hyp_proj);
-
-      Number compute_mat = JxW[qp];
-
-      // Assembling matrix
-      for (unsigned int i = 0; i < phi.size(); i++) {
-
-        Fi(i) += compute_rhs * phi[i][qp];
-
-        // gradient term
-        Fi(i) -= JxW[qp] * dt * mobility * che_grad * dphi[i][qp];
-
-        for (unsigned int j = 0; j < phi.size(); j++) {
-
-          Ke(i, j) += compute_mat * phi[j][qp] * phi[i][qp];
-        }
-      }
-    } // loop over quadrature points
-
-    hyp_map.heterogenously_constrain_element_matrix_and_vector(Ke, Fi,
-                                                               dof_indices_hyp);
-    hyp.matrix->add_matrix(Ke, dof_indices_hyp);
-    hyp.rhs->add_vector(Fi, dof_indices_hyp);
+    d_dof_map_sys.heterogenously_constrain_element_matrix_and_vector(
+        d_Ke, d_Fe, d_dof_indices_sys);
+    d_sys.matrix->add_matrix(d_Ke, d_dof_indices_sys);
+    d_sys.rhs->add_vector(d_Fe, d_dof_indices_sys);
   }
 }

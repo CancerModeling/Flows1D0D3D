@@ -5,7 +5,6 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "systems.hpp"
 #include "../model.hpp"
 
 Number netfvfe::initial_condition_ecm(const Point &p, const Parameters &es,
@@ -72,332 +71,101 @@ Number netfvfe::initial_condition_ecm(const Point &p, const Parameters &es,
   return 0.;
 }
 
-void netfvfe::boundary_condition_ecm(EquationSystems &es) {
-
-  const auto *deck = es.parameters.get<netfvfe::InputDeck *>("input_deck");
-}
-
+// Assembly class
 void netfvfe::EcmAssembly::assemble() {
-
-  const auto &deck = d_model_p->get_input_deck();
-
-  if (deck.d_assembly_method == 1)
-    assemble_1();
-  else if (deck.d_assembly_method == 2)
-    assemble_2();
-  else if (deck.d_assembly_method == 3)
-    assemble_3();
+  assemble_1();
 }
 
 void netfvfe::EcmAssembly::assemble_1() {
 
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Nutrient system
-  auto &nut =
-      es.get_system<TransientLinearImplicitSystem>("Nutrient");
-  const unsigned int v_nut = nut.variable_number("nutrient");
-  const DofMap &nut_map = nut.get_dof_map();
-  std::vector<unsigned int> dof_indices_nut;
-
-  // ECM system
-  auto &ecm = es.get_system<TransientLinearImplicitSystem>("ECM");
-  const unsigned int v_ecm = ecm.variable_number("ecm");
-  const DofMap &ecm_map = ecm.get_dof_map();
-  std::vector<unsigned int> dof_indices_ecm;
-
-  // MDE system
-  auto &mde = es.get_system<TransientLinearImplicitSystem>("MDE");
-  const unsigned int v_mde = mde.variable_number("mde");
-  const DofMap &mde_map = mde.get_dof_map();
-  std::vector<unsigned int> dof_indices_mde;
-
-  // FEM parameters
-  const MeshBase &mesh = es.get_mesh();
-  const unsigned int dim = mesh.mesh_dimension();
-  FEType fe_type = ecm.variable_type(0);
-  UniquePtr<FEBase> fe(FEBase::build(dim, fe_type));
-  QGauss qrule(dim, fe_type.default_quadrature_order());
-  fe->attach_quadrature_rule(&qrule);
-  const std::vector<Real> &JxW = fe->get_JxW();
-  const std::vector<std::vector<Real>> &phi = fe->get_phi();
-  const std::vector<std::vector<RealGradient>> &dphi = fe->get_dphi();
+  // Get required system alias
+  // auto &ecm = d_model_p->get_ecm_assembly();
+  auto &nut = d_model_p->get_nut_assembly();  
+  auto &mde = d_model_p->get_mde_assembly();
 
   // Model parameters
-  const auto *deck = es.parameters.get<netfvfe::InputDeck *>("input_deck");
-  const Real dt = es.parameters.get<Real>("time_step");
+  const auto &deck = d_model_p->get_input_deck();
+  const Real dt = d_model_p->d_dt;
 
-  // Arranging matrix
-  DenseMatrix<Number> Ke;
-  DenseVector<Number> Fi;
+  // Store current and old solution
+  Real ecm_old = 0.;
+  Real ecm_cur = 0.;
+  Real nut_cur = 0.;
+  Real mde_cur = 0.;
+
+  Real ecm_proj = 0.;
+  Real nut_proj = 0.;
+  Real mde_proj = 0.;
+
+  Real compute_rhs = 0.;
+  Real compute_mat = 0.;
 
   // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
-    nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-    ecm_map.dof_indices(elem, dof_indices_ecm, v_ecm);
-    mde_map.dof_indices(elem, dof_indices_mde, v_mde);
+    init_dof(elem);
+    nut.init_dof(elem);    
+    mde.init_dof(elem);
 
-    const unsigned int n_dofs = dof_indices_ecm.size();
+    // init fe and element matrix and vector
+    init_fe(elem);
 
-    fe->reinit(elem);
+    // get finite-volume quantities
+    nut_cur = nut.get_current_sol(0);
+    nut_proj = util::project_concentration(nut_cur);
 
-    Ke.resize(n_dofs, n_dofs);
-    Fi.resize(n_dofs);
-
-    // get nutrient at this element
-    Number nut_cur = nut.current_solution(dof_indices_nut[0]);
-
-    for (unsigned int qp = 0; qp < qrule.n_points(); qp++) {
+    for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
       // Computing solution
-      Number ecm_cur = 0.;
-      Number ecm_old = 0.;
-      Number mde_cur = 0.;
+      ecm_cur = 0.; ecm_old = 0.; mde_cur = 0.;
+      for (unsigned int l = 0; l < d_phi.size(); l++) {
 
-      for (unsigned int l = 0; l < phi.size(); l++) {
-
-        ecm_cur += phi[l][qp] * ecm.current_solution(dof_indices_ecm[l]);
-        ecm_old += phi[l][qp] * ecm.old_solution(dof_indices_ecm[l]);
-        mde_cur += phi[l][qp] * mde.current_solution(dof_indices_mde[l]);
+        ecm_cur += d_phi[l][qp] * get_current_sol(l);
+        ecm_old += d_phi[l][qp] * get_old_sol(l);
+        mde_cur += d_phi[l][qp] * mde.get_current_sol(l);
       }
 
-      Number compute_rhs = JxW[qp] * (ecm_old + dt * deck->d_lambda_ECM_P *
-          nut_cur * util::heaviside(ecm_cur - deck->d_bar_phi_ECM_P));
+      if (deck.d_assembly_method == 1) {
 
-      Number compute_mat =
-          JxW[qp] * (1. + dt * deck->d_lambda_ECM_D * mde_cur +
-                     dt * deck->d_lambda_ECM_P * nut_cur *
-                         util::heaviside(ecm_cur - deck->d_bar_phi_ECM_P));
+        compute_rhs =
+            d_JxW[qp] *
+            (ecm_old + dt * deck.d_lambda_ECM_P * nut_cur *
+                           util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+
+        compute_mat =
+            d_JxW[qp] * (1. + dt * deck.d_lambda_ECM_D * mde_cur +
+                         dt * deck.d_lambda_ECM_P * nut_cur *
+                             util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+      } else {
+
+        mde_proj = util::project_concentration(mde_cur);
+
+        compute_rhs =
+            d_JxW[qp] *
+            (ecm_old + dt * deck.d_lambda_ECM_P * nut_cur *
+                       util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+
+        compute_mat =
+            d_JxW[qp] * (1. + dt * deck.d_lambda_ECM_D * mde_proj +
+                         dt * deck.d_lambda_ECM_P * nut_proj *
+                         util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+      }
 
       // Assembling matrix
-      for (unsigned int i = 0; i < phi.size(); i++) {
+      for (unsigned int i = 0; i < d_phi.size(); i++) {
 
-        Fi(i) += compute_rhs * phi[i][qp];
+        d_Fe(i) += compute_rhs * d_phi[i][qp];
 
-        for (unsigned int j = 0; j < phi.size(); j++) {
+        for (unsigned int j = 0; j < d_phi.size(); j++) {
 
-          Ke(i, j) += compute_mat * phi[j][qp] * phi[i][qp];
+          d_Ke(i, j) += compute_mat * d_phi[j][qp] * d_phi[i][qp];
         }
       }
     } // loop over quadrature points
 
-    ecm_map.heterogenously_constrain_element_matrix_and_vector(Ke, Fi,
-                                                               dof_indices_ecm);
-    ecm.matrix->add_matrix(Ke, dof_indices_ecm);
-    ecm.rhs->add_vector(Fi, dof_indices_ecm);
-  }
-}
-
-void netfvfe::EcmAssembly::assemble_2() {
-
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Nutrient system
-  auto &nut =
-      es.get_system<TransientLinearImplicitSystem>("Nutrient");
-  const unsigned int v_nut = nut.variable_number("nutrient");
-  const DofMap &nut_map = nut.get_dof_map();
-  std::vector<unsigned int> dof_indices_nut;
-
-  // ECM system
-  auto &ecm = es.get_system<TransientLinearImplicitSystem>("ECM");
-  const unsigned int v_ecm = ecm.variable_number("ecm");
-  const DofMap &ecm_map = ecm.get_dof_map();
-  std::vector<unsigned int> dof_indices_ecm;
-
-  // MDE system
-  auto &mde = es.get_system<TransientLinearImplicitSystem>("MDE");
-  const unsigned int v_mde = mde.variable_number("mde");
-  const DofMap &mde_map = mde.get_dof_map();
-  std::vector<unsigned int> dof_indices_mde;
-
-  // FEM parameters
-  const MeshBase &mesh = es.get_mesh();
-  const unsigned int dim = mesh.mesh_dimension();
-  FEType fe_type = ecm.variable_type(0);
-  UniquePtr<FEBase> fe(FEBase::build(dim, fe_type));
-  QGauss qrule(dim, fe_type.default_quadrature_order());
-  fe->attach_quadrature_rule(&qrule);
-  const std::vector<Real> &JxW = fe->get_JxW();
-  const std::vector<std::vector<Real>> &phi = fe->get_phi();
-  const std::vector<std::vector<RealGradient>> &dphi = fe->get_dphi();
-
-  // Model parameters
-  const auto *deck = es.parameters.get<netfvfe::InputDeck *>("input_deck");
-  const Real dt = es.parameters.get<Real>("time_step");
-
-  // Arranging matrix
-  DenseMatrix<Number> Ke;
-  DenseVector<Number> Fi;
-
-  // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-    nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-    ecm_map.dof_indices(elem, dof_indices_ecm, v_ecm);
-    mde_map.dof_indices(elem, dof_indices_mde, v_mde);
-
-    const unsigned int n_dofs = dof_indices_ecm.size();
-
-    fe->reinit(elem);
-
-    Ke.resize(n_dofs, n_dofs);
-    Fi.resize(n_dofs);
-
-    // get nutrient at this element
-    Number nut_cur = nut.current_solution(dof_indices_nut[0]);
-    Number nut_proj = util::project_concentration(nut_cur);
-
-    for (unsigned int qp = 0; qp < qrule.n_points(); qp++) {
-
-      // Computing solution
-      Number ecm_cur = 0.;
-      Number ecm_old = 0.;
-      Number mde_cur = 0.;
-
-      for (unsigned int l = 0; l < phi.size(); l++) {
-
-        ecm_cur += phi[l][qp] * ecm.current_solution(dof_indices_ecm[l]);
-        ecm_old += phi[l][qp] * ecm.old_solution(dof_indices_ecm[l]);
-        mde_cur += phi[l][qp] * mde.current_solution(dof_indices_mde[l]);
-      }
-
-      // get projected values of species
-      Number ecm_proj = util::project_concentration(ecm_cur);
-      Number mde_proj = util::project_concentration(mde_cur);
-
-      Number compute_rhs = JxW[qp] * (ecm_old + dt * deck->d_lambda_ECM_P *
-                                                nut_proj * util::heaviside(ecm_proj - deck->d_bar_phi_ECM_P));
-
-      Number compute_mat =
-          JxW[qp] * (1. + dt * deck->d_lambda_ECM_D * mde_proj +
-                     dt * deck->d_lambda_ECM_P * nut_proj *
-                     util::heaviside(ecm_proj - deck->d_bar_phi_ECM_P));
-
-      // Assembling matrix
-      for (unsigned int i = 0; i < phi.size(); i++) {
-
-        Fi(i) += compute_rhs * phi[i][qp];
-
-        for (unsigned int j = 0; j < phi.size(); j++) {
-
-          Ke(i, j) += compute_mat * phi[j][qp] * phi[i][qp];
-        }
-      }
-    } // loop over quadrature points
-
-    ecm_map.heterogenously_constrain_element_matrix_and_vector(Ke, Fi,
-                                                               dof_indices_ecm);
-    ecm.matrix->add_matrix(Ke, dof_indices_ecm);
-    ecm.rhs->add_vector(Fi, dof_indices_ecm);
-  }
-}
-
-void netfvfe::EcmAssembly::assemble_3() {
-
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Nutrient system
-  auto &nut =
-      es.get_system<TransientLinearImplicitSystem>("Nutrient");
-  const unsigned int v_nut = nut.variable_number("nutrient");
-  const DofMap &nut_map = nut.get_dof_map();
-  std::vector<unsigned int> dof_indices_nut;
-
-  // ECM system
-  auto &ecm = es.get_system<TransientLinearImplicitSystem>("ECM");
-  const unsigned int v_ecm = ecm.variable_number("ecm");
-  const DofMap &ecm_map = ecm.get_dof_map();
-  std::vector<unsigned int> dof_indices_ecm;
-
-  // MDE system
-  auto &mde = es.get_system<TransientLinearImplicitSystem>("MDE");
-  const unsigned int v_mde = mde.variable_number("mde");
-  const DofMap &mde_map = mde.get_dof_map();
-  std::vector<unsigned int> dof_indices_mde;
-
-  // FEM parameters
-  const MeshBase &mesh = es.get_mesh();
-  const unsigned int dim = mesh.mesh_dimension();
-  FEType fe_type = ecm.variable_type(0);
-  UniquePtr<FEBase> fe(FEBase::build(dim, fe_type));
-  QGauss qrule(dim, fe_type.default_quadrature_order());
-  fe->attach_quadrature_rule(&qrule);
-  const std::vector<Real> &JxW = fe->get_JxW();
-  const std::vector<std::vector<Real>> &phi = fe->get_phi();
-  const std::vector<std::vector<RealGradient>> &dphi = fe->get_dphi();
-
-  // Model parameters
-  const auto *deck = es.parameters.get<netfvfe::InputDeck *>("input_deck");
-  const Real dt = es.parameters.get<Real>("time_step");
-
-  // Arranging matrix
-  DenseMatrix<Number> Ke;
-  DenseVector<Number> Fi;
-
-  // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-    nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-    ecm_map.dof_indices(elem, dof_indices_ecm, v_ecm);
-    mde_map.dof_indices(elem, dof_indices_mde, v_mde);
-
-    const unsigned int n_dofs = dof_indices_ecm.size();
-
-    fe->reinit(elem);
-
-    Ke.resize(n_dofs, n_dofs);
-    Fi.resize(n_dofs);
-
-    // get nutrient at this element
-    Number nut_cur = nut.current_solution(dof_indices_nut[0]);
-    Number nut_proj = util::project_concentration(nut_cur);
-
-    for (unsigned int qp = 0; qp < qrule.n_points(); qp++) {
-
-      // Computing solution
-      Number ecm_cur = 0.;
-      Number ecm_old = 0.;
-      Number mde_cur = 0.;
-
-      for (unsigned int l = 0; l < phi.size(); l++) {
-
-        ecm_cur += phi[l][qp] * ecm.current_solution(dof_indices_ecm[l]);
-        ecm_old += phi[l][qp] * ecm.old_solution(dof_indices_ecm[l]);
-        mde_cur += phi[l][qp] * mde.current_solution(dof_indices_mde[l]);
-      }
-
-      // get projected values of species
-      Number ecm_proj = util::project_concentration(ecm_cur);
-      Number mde_proj = util::project_concentration(mde_cur);
-
-      Number compute_rhs =
-          JxW[qp] *
-          (ecm_old + dt * deck->d_lambda_ECM_P * nut_proj * (1. - ecm_proj) *
-                         util::heaviside(ecm_proj - deck->d_bar_phi_ECM_P)
-           - dt * deck->d_lambda_ECM_D * mde_proj * ecm_proj);
-
-      Number compute_mat = JxW[qp];
-
-      // Assembling matrix
-      for (unsigned int i = 0; i < phi.size(); i++) {
-
-        Fi(i) += compute_rhs * phi[i][qp];
-
-        for (unsigned int j = 0; j < phi.size(); j++) {
-
-          Ke(i, j) += compute_mat * phi[j][qp] * phi[i][qp];
-        }
-      }
-    } // loop over quadrature points
-
-    ecm_map.heterogenously_constrain_element_matrix_and_vector(Ke, Fi,
-                                                               dof_indices_ecm);
-    ecm.matrix->add_matrix(Ke, dof_indices_ecm);
-    ecm.rhs->add_vector(Fi, dof_indices_ecm);
+    d_dof_map_sys.heterogenously_constrain_element_matrix_and_vector(d_Ke, d_Fe,
+                                                                     d_dof_indices_sys);
+    d_sys.matrix->add_matrix(d_Ke, d_dof_indices_sys);
+    d_sys.rhs->add_vector(d_Fe, d_dof_indices_sys);
   }
 }
