@@ -215,8 +215,6 @@ void netfvfe::NutAssembly::assemble_face() {
 
     // get solution in this element
     pres_cur = pres.get_current_sol(0);
-    tum_cur = tum.get_current_sol_var(0, 0);
-    chem_tum_cur = tum.get_current_sol_var(0, 1);
 
     // loop over sides of the element
     for (auto side : elem->side_index_range()) {
@@ -273,7 +271,7 @@ void netfvfe::NutAssembly::assemble_face() {
           }
 
           // chemotactic term
-          Fe(0) += -factor_nut * tum.d_JxW_face[qp] * deck.d_D_sigma *
+          Fe(0) += -factor_nut * tum.d_JxW_face[qp] * dt * deck.d_D_sigma *
                    deck.d_chi_c * tum_grad * tum.d_qface_normals[qp];
 
           // advection term
