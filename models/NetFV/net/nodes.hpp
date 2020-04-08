@@ -8,7 +8,6 @@
 #ifndef NETFV_SEG_FV_H
 #define NETFV_SEG_FV_H
 
-#include "../inp/inp.hpp"
 #include "list_structure.hpp"
 #include "utilLibs.hpp"
 #include "utils.hpp"

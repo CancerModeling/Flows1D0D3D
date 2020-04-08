@@ -8,7 +8,6 @@
 #ifndef NETFV_NETWORK_H
 #define NETFV_NETWORK_H
 
-#include "../inp/inp.hpp"
 #include "../systems/systems.hpp"
 #include "gmm.h"
 #include "list_structure.hpp"

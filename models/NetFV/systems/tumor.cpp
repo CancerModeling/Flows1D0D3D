@@ -14,7 +14,7 @@ Number netfv::initial_condition_tum(const Point &p, const Parameters &es,
 
   if (var_name == "tumor") {
 
-    const auto *deck = es.get<netfv::InputDeck *>("input_deck");
+    const auto *deck = es.get<InpDeck *>("input_deck");
 
     const unsigned int dim = deck->d_dim;
     const unsigned int num_ic = deck->d_tum_ic_data.size();

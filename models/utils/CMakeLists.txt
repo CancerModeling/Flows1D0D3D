@@ -4,5 +4,6 @@ cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 # Create library
 # ****************************************************************************
 AUX_SOURCE_DIRECTORY(./ SOURCES)
+AUX_SOURCE_DIRECTORY(netinp/ SOURCES)
 
 add_library(Utils ${SOURCES})
