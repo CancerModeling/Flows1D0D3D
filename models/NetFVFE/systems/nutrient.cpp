@@ -14,21 +14,13 @@ double get_nut_source(const std::string &test_name, const Point &x,
   if (test_name != "test_tum_2")
     return 0.;
 
-  double L_source_x = x0[0];
-  double L_source_y = x0[1];
-  double L_source_z = x0[2];
-  const Point xc = Point(L_source_x, L_source_y, L_source_z);
-  // spherical source
-  if (false) {
-    if ((x - xc).norm() < r)
-      return 1.;
-  } else {
-    Point dx = Point(x(0), x(1), 0.) - xc;
-    if (dx.norm() < r) {
+  // For cylinder, take z-coord as 0
+  const Point xc = util::to_point({x0[0], x0[1], 0.});
 
-      return 1.;
-    }
-  }
+  // spherical source
+  Point dx = Point(x(0), x(1), 0.) - xc;
+  if (dx.norm() < r)
+    return 1.;
 
   return 0.;
 }

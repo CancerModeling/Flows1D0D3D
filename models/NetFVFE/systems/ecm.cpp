@@ -93,7 +93,6 @@ void netfvfe::EcmAssembly::assemble_1() {
   Real nut_cur = 0.;
   Real mde_cur = 0.;
 
-  Real ecm_proj = 0.;
   Real nut_proj = 0.;
   Real mde_proj = 0.;
 
@@ -142,7 +141,7 @@ void netfvfe::EcmAssembly::assemble_1() {
 
         compute_rhs =
             d_JxW[qp] *
-            (ecm_old + dt * deck.d_lambda_ECM_P * nut_cur *
+            (ecm_old + dt * deck.d_lambda_ECM_P * nut_proj *
                        util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
 
         compute_mat =

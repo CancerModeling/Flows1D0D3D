@@ -14,11 +14,10 @@ Number netfvfe::initial_condition_hyp_kernel(const Point &p,
                                            const std::vector<double> &tum_ic_radius,
                                            const std::vector<double> &hyp_ic_radius) {
 
-  const std::string type = ic_type;
   const Point xc = util::to_point(ic_center);
   const Point dx = p - xc;
 
-  if (type == "tumor_hypoxic_spherical") {
+  if (ic_type == "tumor_hypoxic_spherical") {
 
     if (dx.norm() < tum_ic_radius[0] - 1.0E-12) {
 
@@ -33,7 +32,7 @@ Number netfvfe::initial_condition_hyp_kernel(const Point &p,
           (hyp_ic_radius[0] - tum_ic_radius[0]),
           4.);
     }
-  } else if (type == "tumor_hypoxic_elliptical") {
+  } else if (ic_type == "tumor_hypoxic_elliptical") {
 
     // transform ellipse into ball of radius
     double small_ball_r = 0.;
@@ -96,9 +95,6 @@ Number netfvfe::initial_condition_hyp(const Point &p, const Parameters &es,
 
 // Assembly class
 void netfvfe::HypAssembly::assemble() {
-
-  const auto &deck = d_model_p->get_input_deck();
-
   assemble_1();
 }
 

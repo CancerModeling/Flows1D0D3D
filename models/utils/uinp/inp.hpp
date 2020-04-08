@@ -5,8 +5,8 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef NET_INP_H
-#define NET_INP_H
+#ifndef UTIL_INP_H
+#define UTIL_INP_H
 
 #include "libmesh/point.h"
 #include <string>
@@ -693,4 +693,4 @@ public:
 
 } // namespace util
 
-#endif // NET_INP_H
+#endif // UTIL_INP_H

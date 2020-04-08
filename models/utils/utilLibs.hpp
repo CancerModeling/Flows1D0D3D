@@ -17,6 +17,7 @@
 #include <chrono>
 #include <vector>
 #include <numeric>
+#include <random>
 
 #include "libmesh/libmesh.h"
 #include "libmesh/tecplot_io.h"

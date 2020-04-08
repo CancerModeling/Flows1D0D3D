@@ -67,12 +67,6 @@ void netfv::PressureAssembly::assemble() {
 
 void netfv::PressureAssembly::assemble_1d_coupling() {
 
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
-
   // Get required system alias
   // auto &pres = d_model_p->get_pres_assembly();
 
@@ -105,7 +99,7 @@ void netfv::PressureAssembly::assemble_1d_coupling() {
           auto e_w = J_b_data.elem_weight[e];
 
           // get 3d pressure
-          const auto *elem = mesh.elem_ptr(e_id);
+          const auto *elem = d_mesh.elem_ptr(e_id);
           init_dof(elem);
           auto p_t_k = get_current_sol(0);
 
@@ -136,15 +130,9 @@ void netfv::PressureAssembly::assemble_1d_coupling() {
 
 void netfv::PressureAssembly::assemble_face() {
 
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
-
   // Get required system alias
-  auto &tum = d_model_p->get_tum_assembly();
   // auto &pres = d_model_p->get_pres_assembly();
+  auto &tum = d_model_p->get_tum_assembly();
 
   // Parameters
   const auto &deck = d_model_p->get_input_deck();
@@ -176,13 +164,14 @@ void netfv::PressureAssembly::assemble_face() {
   Real tum_neigh_cur = 0.;
   Real chem_tum_neigh_cur = 0.;
 
+  Real compute_rhs = 0.;
+  Real compute_mat = 0.;
+
   // Looping through elements
-  for (const auto & elem : mesh.active_local_element_ptr_range()) {
+  for (const auto & elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
-    tum.init_var_dof(elem);
-
-    // const unsigned int n_dofs = d_dof_indices_sys.size();
+    tum.init_dof(elem);
 
     // reset matrix anf force
     Ke_dof_col.clear();
@@ -195,48 +184,45 @@ void netfv::PressureAssembly::assemble_face() {
     tum_cur = tum.get_current_sol_var(0, 0);
     chem_tum_cur = tum.get_current_sol_var(0, 1);
 
-    // face terms
-    {
-      // loop over sides of the element
-      for (auto side : elem->side_index_range()) {
+    // loop over sides of the element
+    for (auto side : elem->side_index_range()) {
 
-        if (elem->neighbor_ptr(side) != nullptr) {
+      if (elem->neighbor_ptr(side) != nullptr) {
 
-          const Elem *neighbor = elem->neighbor_ptr(side);
+        const Elem *neighbor = elem->neighbor_ptr(side);
 
-          // get dof id
-          // pres
-          init_dof(neighbor, dof_indices_pres_neigh);
+        // get dof id
+        // pres
+        init_dof(neighbor, dof_indices_pres_neigh);
 
-          // tum
-          tum.init_var_dof(neighbor, dof_indices_tum_neigh,
-                           dof_indices_tum_var_neigh);
+        // tum
+        tum.init_var_dof(neighbor, dof_indices_tum_neigh,
+                         dof_indices_tum_var_neigh);
 
-          // get coefficient
-          const Real a_diff = factor_p * deck.d_tissue_flow_rho *
-                              deck.d_tissue_flow_coeff * deck.d_face_by_h;
+        // get coefficient
+        compute_mat = factor_p * deck.d_tissue_flow_rho *
+                            deck.d_tissue_flow_coeff * deck.d_face_by_h;
 
-          // diffusion
-          util::add_unique(get_global_dof_id(0), a_diff, Ke_dof_col,
-                           Ke_val_col);
-          util::add_unique(dof_indices_pres_neigh[0], -a_diff, Ke_dof_col,
-                           Ke_val_col);
+        // diffusion
+        util::add_unique(get_global_dof_id(0), compute_mat, Ke_dof_col,
+                         Ke_val_col);
+        util::add_unique(dof_indices_pres_neigh[0], -compute_mat, Ke_dof_col,
+                         Ke_val_col);
 
-          // div(chem_tum * grad(tum)) term
-          tum_neigh_cur =
-              tum.get_current_sol_var(0, 0, dof_indices_tum_var_neigh);
-          chem_tum_neigh_cur =
-              tum.get_current_sol_var(0, 1, dof_indices_tum_var_neigh);
+        // div(chem_tum * grad(tum)) term
+        tum_neigh_cur =
+            tum.get_current_sol_var(0, 0, dof_indices_tum_var_neigh);
+        chem_tum_neigh_cur =
+            tum.get_current_sol_var(0, 1, dof_indices_tum_var_neigh);
 
-          Real b_tum = 0.;
-          if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.0e-12)
-            b_tum = 2. * a_diff * chem_tum_cur * chem_tum_neigh_cur /
-                               (chem_tum_cur + chem_tum_neigh_cur);
+        compute_rhs = 0.;
+        if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.0e-12)
+          compute_rhs = 2. * compute_mat * chem_tum_cur * chem_tum_neigh_cur /
+                             (chem_tum_cur + chem_tum_neigh_cur);
 
-          Fe(0) += b_tum * (tum_cur - tum_neigh_cur);
-        } // elem neighbor is not null
-      }   // loop over faces
-    }
+        Fe(0) += compute_rhs * (tum_cur - tum_neigh_cur);
+      } // elem neighbor is not null
+    }   // loop over faces
 
     // add to matrix
     Ke.resize(1, Ke_dof_col.size());

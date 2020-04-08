@@ -8,54 +8,42 @@
 #ifndef NETFV_VELOCITY_H
 #define NETFV_VELOCITY_H
 
-#include "abstraction.hpp"
+#include "usystem/abstraction.hpp"
 
 namespace netfv {
 
 // forward declare
 class Model;
 
-/*!
- * @brief Class to perform assembly of velocity
- */
-class VelAssembly : public BaseAssembly {
+/*! @brief Class to perform assembly of velocity */
+class VelAssembly : public util::BaseAssembly {
 
 public:
-  /*!
-   * @brief Constructor
-   *
-   * @param model Model class
-   * @param sys_name Name of system
-   * @param sys System
-   */
-  VelAssembly(Model * model, const std::string system_name,
-      TransientLinearImplicitSystem & sys)
-      : BaseAssembly(model, system_name, sys, 2,
-                     {sys.variable_number("velocity_x"),
-                      sys.variable_number("velocity_y")}) {
+  /*! @brief Constructor */
+  VelAssembly(Model *model, const std::string system_name, MeshBase &mesh,
+              TransientLinearImplicitSystem &sys)
+      : util::BaseAssembly(
+      system_name, mesh, sys, mesh.mesh_dimension(),
+      (mesh.mesh_dimension() == 2
+       ? std::vector<unsigned int>{sys.variable_number("velocity_x"),
+                                   sys.variable_number("velocity_y")}
+       : std::vector<unsigned int>{sys.variable_number("velocity_x"),
+                                   sys.variable_number("velocity_y"),
+                                   sys.variable_number(
+                                       "velocity_z")})),
+        d_model_p(model) {}
 
-    if (sys.get_mesh().mesh_dimension() > 2) {
-      d_num_vars = 3;
-      d_var_id.push_back(d_sys.variable_number("velocity_z"));
-      d_dof_indices_sys_var.resize(d_num_vars);
-    }
-  }
-
-  /*!
-   * @brief Assembly function
-   *
-   * Overrides the default assembly function.
-   *
-   * For grad taf, we do not need to solve. We have another function which
-   * computes the grad of taf at center of elements and updates the solution
-   * data.
-   */
+  /*! @brief Assembly function. Overrides the default assembly function */
   void assemble() override {}
 
-  /*!
-   * @brief Solve for gradient taf
-   */
+  /*! @brief Directly computes the gradient of taf and sets the values of
+   * solution */
   void solve();
+
+public:
+
+  /*! @brief Pointer reference to model */
+  Model *d_model_p;
 };
 
 } // namespace netfv

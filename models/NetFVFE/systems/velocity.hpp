@@ -15,19 +15,11 @@ namespace netfvfe {
 // forward declare
 class Model;
 
-/*!
- * @brief Class to perform assembly of velocity
- */
+/*! @brief Class to perform assembly of velocity */
 class VelAssembly : public util::BaseAssembly {
 
 public:
-  /*!
-   * @brief Constructor
-   *
-   * @param model Model class
-   * @param sys_name Name of system
-   * @param sys System
-   */
+  /*! @brief Constructor */
   VelAssembly(Model *model, const std::string system_name, MeshBase &mesh,
               TransientLinearImplicitSystem &sys)
       : util::BaseAssembly(
@@ -41,11 +33,7 @@ public:
                                                  "velocity_z")})),
         d_model_p(model) {}
 
-  /*!
-   * @brief Assembly function
-   *
-   * Overrides the default assembly function.
-   */
+  /*! @brief Assembly function. Overrides the default assembly function */
   void assemble() override;
 
 public:
