@@ -5,17 +5,13 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef NETFVFE_SEG_FV_H
-#define NETFVFE_SEG_FV_H
+#ifndef UTIL_SEG_FV_H
+#define UTIL_SEG_FV_H
 
-#include "list_structure.hpp"
-#include "utilLibs.hpp"
 #include "utils.hpp"
-#include <math.h>
-#include <string>
-#include <vector>
+#include "list_structure.hpp"
 
-namespace netfvfe {
+namespace util {
 
 struct ElemWeights {
 
@@ -226,6 +222,6 @@ public:
 
 };
 
-} // namespace netfvfe
+} // namespace util
 
-#endif // NETFVFE_NETWORK_H
+#endif // UTIL_NETWORK_H

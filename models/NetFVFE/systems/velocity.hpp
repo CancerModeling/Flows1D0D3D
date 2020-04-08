@@ -8,7 +8,7 @@
 #ifndef NETFVFE_VELOCITY_H
 #define NETFVFE_VELOCITY_H
 
-#include "abstraction.hpp"
+#include "usystem/abstraction.hpp"
 
 namespace netfvfe {
 
@@ -18,7 +18,7 @@ class Model;
 /*!
  * @brief Class to perform assembly of velocity
  */
-class VelAssembly : public BaseAssembly {
+class VelAssembly : public util::BaseAssembly {
 
 public:
   /*!
@@ -30,15 +30,16 @@ public:
    */
   VelAssembly(Model *model, const std::string system_name, MeshBase &mesh,
               TransientLinearImplicitSystem &sys)
-      : BaseAssembly(
-            model, system_name, mesh, sys, mesh.mesh_dimension(),
+      : util::BaseAssembly(
+            system_name, mesh, sys, mesh.mesh_dimension(),
             (mesh.mesh_dimension() == 2
                  ? std::vector<unsigned int>{sys.variable_number("velocity_x"),
                                              sys.variable_number("velocity_y")}
-                 : std::vector<unsigned int>{
-                       sys.variable_number("velocity_x"),
-                       sys.variable_number("velocity_y"),
-                       sys.variable_number("velocity_z")})) {}
+                 : std::vector<unsigned int>{sys.variable_number("velocity_x"),
+                                             sys.variable_number("velocity_y"),
+                                             sys.variable_number(
+                                                 "velocity_z")})),
+        d_model_p(model) {}
 
   /*!
    * @brief Assembly function
@@ -46,6 +47,11 @@ public:
    * Overrides the default assembly function.
    */
   void assemble() override;
+
+public:
+
+  /*! @brief Pointer reference to model */
+  Model *d_model_p;
 };
 
 } // namespace netfvfe

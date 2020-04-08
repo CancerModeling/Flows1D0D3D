@@ -17,6 +17,10 @@ void util::ModelDeck::read_parameters(const std::string &filename) {
 
   GetPot input(filename);
 
+  d_model_name = input("model_name", "");
+  if (d_model_name.empty())
+    libmesh_error_msg("Model name is not valid");
+
   d_dim = input("dimension", 2);
   d_domain_params[0] = input("domain_xmin", 0.);
   d_domain_params[2] = input("domain_ymin", 0.);

@@ -8,7 +8,7 @@
 #ifndef NETFVFE_TAF_H
 #define NETFVFE_TAF_H
 
-#include "abstraction.hpp"
+#include "usystem/abstraction.hpp"
 
 namespace netfvfe {
 
@@ -30,7 +30,7 @@ Number initial_condition_taf(const Point &p, const Parameters &es,
 /*!
  * @brief Class to perform assembly of TAF
  */
-class TafAssembly : public BaseAssembly {
+class TafAssembly : public util::BaseAssembly {
 
 public:
   /*!
@@ -42,8 +42,8 @@ public:
    */
   TafAssembly(Model * model, const std::string system_name, MeshBase &mesh,
       TransientLinearImplicitSystem & sys)
-      : BaseAssembly(model, system_name, mesh, sys, 1,
-                     {sys.variable_number("taf")}) {}
+      : util::BaseAssembly(system_name, mesh, sys, 1,
+                     {sys.variable_number("taf")}), d_model_p(model) {}
 
   /*!
    * @brief Assembly function
@@ -52,6 +52,11 @@ public:
    * assemble_2, or assemble_3 depending on user flag
    */
   void assemble() override;
+
+public:
+
+  /*! @brief Pointer reference to model */
+  Model *d_model_p;
 
 private:
 

@@ -6,10 +6,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "network.hpp"
-#include "../model.hpp"
-#include "nodes.hpp"
-#include "utilIO.hpp"
-#include "utils.hpp"
 #include <random>
 
 namespace {
@@ -90,7 +86,7 @@ void angle_correction_bifurcation(const Point &parent_d, Point &child_d,
 }
 } // namespace
 
-void netfvfe::Network::create_initial_network() {
+void util::Network::create_initial_network() {
 
   const auto &input = d_model_p->get_input_deck();
   d_is_network_changed = true;
@@ -155,7 +151,7 @@ void netfvfe::Network::create_initial_network() {
   osmotic_sigma = input.d_osmotic_sigma;
 }
 
-void netfvfe::Network::readData(
+void util::Network::readData(
     std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
     std::vector<double> &radii,
     std::vector<std::vector<unsigned int>> &elements) {
@@ -242,7 +238,7 @@ void netfvfe::Network::readData(
   }
 }
 
-void netfvfe::Network::transferDataToVGM(
+void util::Network::transferDataToVGM(
     std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
     std::vector<double> &radii,
     std::vector<std::vector<unsigned int>> &elements) {
@@ -252,7 +248,7 @@ void netfvfe::Network::transferDataToVGM(
 
   for (int i = 0; i < numberOfVertices; i++) {
 
-    netfvfe::VGNode new_node;
+    util::VGNode new_node;
 
     new_node.index = i;
 
@@ -328,7 +324,7 @@ void netfvfe::Network::transferDataToVGM(
   }
 }
 
-void netfvfe::Network::printDataVGM() {
+void util::Network::printDataVGM() {
 
   oss << " " << std::endl;
   oss << "PrintData of network: " << std::endl;
@@ -367,166 +363,7 @@ void netfvfe::Network::printDataVGM() {
   }
 }
 
-void netfvfe::Network::writeDataToVTK_VGM() {
-
-  const auto &input = d_model_p->get_input_deck();
-
-  std::fstream filevtk;
-  filevtk.open(input.d_outfilename_net + ".vtk", std::ios::out);
-  filevtk << "# vtk DataFile Version 2.0" << std::endl;
-  filevtk << "Network ETH" << std::endl;
-  filevtk << "ASCII" << std::endl;
-  filevtk << "DATASET POLYDATA" << std::endl;
-
-  filevtk << "POINTS " << VGM.getNumberOfNodes() << " float" << std::endl;
-
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
-
-  while (pointer) {
-
-    std::vector<double> coord;
-
-    coord = pointer->coord;
-
-    filevtk << coord[0] << " " << coord[1] << " " << coord[2] << std::endl;
-
-    pointer = pointer->global_successor;
-  }
-
-  int numberOfNodes = 0;
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      if (!pointer->edge_touched[i]) {
-
-        numberOfNodes = numberOfNodes + 1;
-
-        pointer->edge_touched[i] = true;
-
-        pointer->neighbors[i]->markEdge(pointer->index);
-      }
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      pointer->edge_touched[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  int polygons = 3 * numberOfNodes;
-
-  filevtk << " " << std::endl;
-  filevtk << "LINES " << numberOfNodes << " " << polygons << std::endl;
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      if (!pointer->edge_touched[i]) {
-
-        filevtk << "2 " << pointer->index << " " << pointer->neighbors[i]->index
-                << std::endl;
-
-        pointer->edge_touched[i] = true;
-
-        pointer->neighbors[i]->markEdge(pointer->index);
-      }
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      pointer->edge_touched[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  filevtk << " " << std::endl;
-  filevtk << "CELL_DATA " << numberOfNodes << std::endl;
-  filevtk << "SCALARS radii float 1" << std::endl;
-  filevtk << "LOOKUP_TABLE default" << std::endl;
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      if (!pointer->edge_touched[i]) {
-
-        filevtk << pointer->radii[i] << std::endl;
-
-        pointer->edge_touched[i] = true;
-
-        pointer->neighbors[i]->markEdge(pointer->index);
-      }
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      pointer->edge_touched[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  filevtk << " " << std::endl;
-  filevtk << "POINT_DATA " << VGM.getNumberOfNodes() << std::endl;
-  filevtk << "SCALARS pressure_[mmHg] float 1" << std::endl;
-  filevtk << "LOOKUP_TABLE default" << std::endl;
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    filevtk << pointer->p_v / 133.322 << std::endl;
-
-    pointer = pointer->global_successor;
-  }
-}
-
-void netfvfe::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
+void util::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
   const auto &input = d_model_p->get_input_deck();
 
@@ -701,17 +538,9 @@ void netfvfe::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
   }
 }
 
-void netfvfe::Network::solve_system() {
-  solveVGMforPressure();
-  solveVGMforNutrient();
-}
-
-void netfvfe::Network::assembleVGMSystemForPressure() {
+void util::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
 
   const auto &mesh = d_model_p->get_mesh();
-
-  // 3d pressure
-  auto &pres = d_model_p->get_pres_assembly();
 
   const auto &input = d_model_p->get_input_deck();
 
@@ -756,7 +585,7 @@ void netfvfe::Network::assembleVGMSystemForPressure() {
     P_v[i] = 0.;
   }
 
-  std::vector<netfvfe::ElemWeights> J_b_points;
+  std::vector<util::ElemWeights> J_b_points;
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -826,8 +655,8 @@ void netfvfe::Network::assembleVGMSystemForPressure() {
 
           // get 3d pressure
           const auto *elem = mesh.elem_ptr(e_id);
-          pres.init_dof(elem);
-          auto p_t_k = pres.get_current_sol(0);
+          pres_sys.init_dof(elem);
+          auto p_t_k = pres_sys.get_current_sol(0);
 
           // explicit for p_t in source
           b[indexOfNode] -=
@@ -851,10 +680,10 @@ void netfvfe::Network::assembleVGMSystemForPressure() {
   // std::cout << "A_VGM: " << A_VGM << std::endl;
 }
 
-void netfvfe::Network::solveVGMforPressure() {
+void util::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
 
   // std::cout << "Assemble pressure matrix and right hand side" << std::endl;
-  assembleVGMSystemForPressure();
+  assembleVGMSystemForPressure(pres_sys);
 
   gmm::iteration iter(10E-18);
 
@@ -887,16 +716,9 @@ void netfvfe::Network::solveVGMforPressure() {
   //  writeDataToVTK_VGM();
 }
 
-void netfvfe::Network::assembleVGMSystemForNutrient() {
+void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys) {
 
   const auto &mesh = d_model_p->get_mesh();
-
-  // 3d pressure
-  auto &pres = d_model_p->get_pres_assembly();
-
-  // 3d nutrient
-  auto &nut = d_model_p->get_nut_assembly();
-
   const auto &input = d_model_p->get_input_deck();
 
   // factor to enhance condition of matrix
@@ -940,7 +762,7 @@ void netfvfe::Network::assembleVGMSystemForNutrient() {
   //    C_v[i] = 0.;
   //  }
 
-  std::vector<netfvfe::ElemWeights> J_b_points;
+  std::vector<util::ElemWeights> J_b_points;
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -1074,12 +896,12 @@ void netfvfe::Network::assembleVGMSystemForNutrient() {
 
             // get 3d pressure
             const auto *elem = mesh.elem_ptr(e_id);
-            pres.init_dof(elem);
-            Real p_t_k = pres.get_current_sol(0);
+            pres_sys.init_dof(elem);
+            Real p_t_k = pres_sys.get_current_sol(0);
 
             // get 3d nutrient
-            nut.init_dof(elem);
-            Real c_t_k = nut.get_current_sol(0);
+            nut_sys.init_dof(elem);
+            Real c_t_k = nut_sys.get_current_sol(0);
 
             // explicit
             double source =
@@ -1116,16 +938,9 @@ void netfvfe::Network::assembleVGMSystemForNutrient() {
   }
 }
 
-void netfvfe::Network::assembleVGMSystemForNutrientDecouple() {
+void util::Network::assembleVGMSystemForNutrientDecouple(BaseAssembly &pres_sys, BaseAssembly &nut_sys) {
 
   const auto &mesh = d_model_p->get_mesh();
-
-  // 3d pressure
-  auto &pres = d_model_p->get_pres_assembly();
-
-  // 3d nutrient
-  auto &nut = d_model_p->get_nut_assembly();
-
   const auto &input = d_model_p->get_input_deck();
 
   // factor to enhance condition of matrix
@@ -1169,7 +984,7 @@ void netfvfe::Network::assembleVGMSystemForNutrientDecouple() {
   //    C_v[i] = 0.;
   //  }
 
-  std::vector<netfvfe::ElemWeights> J_b_points;
+  std::vector<util::ElemWeights> J_b_points;
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -1299,12 +1114,12 @@ void netfvfe::Network::assembleVGMSystemForNutrientDecouple() {
 
             // get 3d pressure
             const auto *elem = mesh.elem_ptr(e_id);
-            pres.init_dof(elem);
-            Real p_t_k = pres.get_current_sol(0);
+            pres_sys.init_dof(elem);
+            Real p_t_k = pres_sys.get_current_sol(0);
 
             // get 3d nutrient
-            nut.init_dof(elem);
-            Real c_t_n = nut.get_old_sol(0);
+            nut_sys.init_dof(elem);
+            Real c_t_n = nut_sys.get_old_sol(0);
 
             // explicit
             double source =
@@ -1341,7 +1156,7 @@ void netfvfe::Network::assembleVGMSystemForNutrientDecouple() {
   }
 }
 
-void netfvfe::Network::solveVGMforNutrient() {
+void util::Network::solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys) {
 
   int numberOfNodes = VGM.getNumberOfNodes();
 
@@ -1352,9 +1167,9 @@ void netfvfe::Network::solveVGMforNutrient() {
   // std::cout << " " << std::endl;
   // std::cout << "Assemble nutrient matrix and right hand side" << std::endl;
   if (d_model_p->get_input_deck().d_decouple_nutrients)
-    assembleVGMSystemForNutrientDecouple();
+    assembleVGMSystemForNutrientDecouple(pres_sys, nut_sys);
   else
-    assembleVGMSystemForNutrient();
+    assembleVGMSystemForNutrient(pres_sys, nut_sys);
 
   // if this is first call inside nonlinear loop, we guess current
   // concentration as old concentration
@@ -1385,7 +1200,7 @@ void netfvfe::Network::solveVGMforNutrient() {
   // C_v_old = C_v;
 }
 
-void netfvfe::Network::refine1DMesh() {
+void util::Network::refine1DMesh() {
 
   const auto &input = d_model_p->get_input_deck();
 
@@ -1405,7 +1220,7 @@ void netfvfe::Network::refine1DMesh() {
 
       if (!pointer->edge_touched[i]) {
 
-        netfvfe::VGNode new_node;
+        util::VGNode new_node;
 
         new_node.index = numberOfNodes + counter;
 
@@ -1509,17 +1324,17 @@ void netfvfe::Network::refine1DMesh() {
   }
 }
 
-void netfvfe::Network::update_network() {
+void util::Network::update_network(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys) {
 
   oss << "[Mark]";
   d_model_p->d_log(oss);
-  auto num_nodes_marked = markApicalGrowth("apical_taf_based");
+  auto num_nodes_marked = markApicalGrowth("apical_taf_based", taf_sys);
 
   unsigned int num_new_nodes = 0;
   if (num_nodes_marked > 0) {
     oss << " -> [Process]";
     d_model_p->d_log(oss);
-    num_new_nodes = processApicalGrowthTAF();
+    num_new_nodes = processApicalGrowthTAF(taf_sys, grad_taf_sys);
   }
   oss << "\n";
 
@@ -1531,7 +1346,7 @@ void netfvfe::Network::update_network() {
     d_update_number++;
 }
 
-void netfvfe::Network::compute_elem_weights() {
+void util::Network::compute_elem_weights() {
 
   oss << "  Computing element-weight data for network\n";
   d_model_p->d_log(oss);
@@ -1645,7 +1460,7 @@ void netfvfe::Network::compute_elem_weights() {
   }
 }
 
-std::vector<netfvfe::ElemWeights> netfvfe::Network::compute_elem_weights_at_node(
+std::vector<util::ElemWeights> util::Network::compute_elem_weights_at_node(
     std::shared_ptr<VGNode> &pointer) const {
 
   const auto &mesh = d_model_p->get_mesh();
@@ -1653,13 +1468,13 @@ std::vector<netfvfe::ElemWeights> netfvfe::Network::compute_elem_weights_at_node
 
   int numberOfNeighbors = pointer->neighbors.size();
 
-  std::vector<netfvfe::ElemWeights> J_b_points(numberOfNeighbors);
+  std::vector<util::ElemWeights> J_b_points(numberOfNeighbors);
 
   const Point i_coords = util::to_point(pointer->coord);
 
   for (int j = 0; j < numberOfNeighbors; j++) {
 
-    netfvfe::ElemWeights J_b_ij;
+    util::ElemWeights J_b_ij;
 
     // const auto &j_coords = pointer->neighbors[j]->coord;
     const Point j_coords = util::to_point(pointer->neighbors[j]->coord);
@@ -1734,267 +1549,12 @@ std::vector<netfvfe::ElemWeights> netfvfe::Network::compute_elem_weights_at_node
   return J_b_points;
 }
 
-void netfvfe::Network::sproutingGrowth(std::string growth_type) {
-
-  // mark edge for growth based on a certain criterion
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
-
-  oss << " " << std::endl;
-  oss << "      Type of growth: Test" << std::endl;
-  d_model_p->d_log(oss);
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    if (growth_type == "test") {
-
-      for (int i = 0; i < numberOfNeighbors; i++) {
-
-        if (pointer->edge_touched[i] == false) {
-
-          pointer->sprouting_edge[i] = true;
-
-          int local_index =
-              pointer->neighbors[i]->getLocalIndexOfNeighbor(pointer);
-
-          pointer->neighbors[i]->sprouting_edge[local_index] = true;
-
-          pointer->edge_touched[i] = true;
-        }
-      }
-
-    } else {
-
-      std::cout << " " << std::endl;
-      std::cout << "Criterion not implemented!!! Program is terminated here"
-                << std::endl;
-      exit(1);
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  // reset the boolean values
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    pointer->apicalGrowth = false;
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      pointer->edge_touched[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  // add new vessels to segments
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    std::vector<double> coord_old_edge_1 = pointer->coord;
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      if (pointer->sprouting_edge[i] == true) {
-
-        double radius_old_edge = pointer->radii[i];
-
-        std::vector<double> coord_old_edge_2 = pointer->neighbors[i]->coord;
-
-        netfvfe::VGNode new_node_1;
-
-        netfvfe::VGNode new_node_2;
-
-        std::vector<double> coord_new_edge_1, coord_new_edge_2, dir_old_edge,
-            dir_new_edge(3);
-
-        for (int j = 0; j < 3; j++) {
-
-          coord_new_edge_1.push_back(
-              0.5 * (coord_old_edge_1[j] + coord_old_edge_2[j]));
-
-          dir_old_edge.push_back(coord_old_edge_2[j] - coord_old_edge_1[j]);
-        }
-
-        if (std::abs(dir_old_edge[0]) > 1.0e-16 ||
-            std::abs(dir_old_edge[1]) > 1.0e-16) {
-
-          dir_new_edge[0] = -dir_old_edge[1];
-
-          dir_new_edge[1] = dir_old_edge[0];
-
-          dir_new_edge[2] = 0.0;
-
-        } else {
-
-          dir_new_edge[0] = 0.0;
-
-          dir_new_edge[1] = 0.0;
-
-          dir_new_edge[2] = 1.0;
-        }
-
-        for (int j = 0; j < 3; j++) {
-
-          coord_new_edge_2.push_back(coord_new_edge_1[j] + dir_new_edge[j]);
-        }
-
-        // index
-        new_node_1.index = VGM.getNumberOfNodes();
-
-        new_node_2.index = VGM.getNumberOfNodes() + 1;
-
-        // Apical growth
-        new_node_1.apicalGrowth = false;
-
-        new_node_2.apicalGrowth = false;
-
-        // pressures
-        new_node_1.p_v = 0.0;
-
-        new_node_2.p_v = 0.0;
-
-        // concentrations
-        new_node_1.c_v = 0.0;
-
-        new_node_2.c_v = 0.0;
-
-        // boundary pressures
-        new_node_1.p_boundary = pointer->p_v;
-
-        new_node_2.p_boundary = pointer->p_v;
-
-        // boundary concentrations
-        new_node_1.c_boundary = pointer->c_v;
-
-        new_node_2.c_boundary = pointer->c_v;
-
-        // coordinates
-        new_node_1.coord = coord_new_edge_1;
-
-        new_node_2.coord = coord_new_edge_2;
-
-        // radii
-        new_node_1.radii.push_back(radius_old_edge);
-
-        new_node_1.radii.push_back(radius_old_edge);
-
-        new_node_1.radii.push_back(radius_old_edge);
-
-        new_node_2.radii.push_back(radius_old_edge);
-
-        // Lp
-        new_node_1.L_p.push_back(pointer->L_p[i]);
-
-        new_node_1.L_p.push_back(pointer->L_p[i]);
-
-        new_node_1.L_p.push_back(pointer->L_p[i]);
-
-        new_node_2.L_p.push_back(pointer->L_p[i]);
-
-        // edge touched
-        new_node_1.edge_touched.push_back(true);
-
-        new_node_1.edge_touched.push_back(true);
-
-        new_node_1.edge_touched.push_back(true);
-
-        new_node_2.edge_touched.push_back(true);
-
-        // sprouting edge
-        new_node_1.sprouting_edge.push_back(false);
-
-        new_node_1.sprouting_edge.push_back(false);
-
-        new_node_1.sprouting_edge.push_back(false);
-
-        new_node_2.sprouting_edge.push_back(false);
-
-        // type of node
-        new_node_1.typeOfVGNode = TypeOfNode::InnerNode;
-
-        new_node_2.typeOfVGNode = TypeOfNode::DirichletNode;
-
-        // make pointers
-        std::shared_ptr<VGNode> pointer_new_node_1 =
-            std::make_shared<VGNode>(new_node_1);
-
-        std::shared_ptr<VGNode> pointer_new_node_2 =
-            std::make_shared<VGNode>(new_node_2);
-
-        // neighbors
-        pointer_new_node_1->neighbors.push_back(pointer);
-
-        pointer_new_node_1->neighbors.push_back(pointer->neighbors[i]);
-
-        pointer_new_node_1->neighbors.push_back(pointer_new_node_2);
-
-        pointer_new_node_2->neighbors.push_back(pointer_new_node_1);
-
-        // new neigbors for vertices of the old edge
-        pointer->replacePointerWithIndex(i, pointer_new_node_1);
-
-        int index_to_be_replaced =
-            pointer->neighbors[i]->getLocalIndexOfNeighbor(pointer);
-
-        pointer->neighbors[i]->replacePointerWithIndex(index_to_be_replaced,
-                                                       pointer_new_node_1);
-
-        pointer->markEdgeLocalIndex(i);
-
-        pointer->sprouting_edge[i] = false;
-
-        pointer->neighbors[i]->markEdgeLocalIndex(index_to_be_replaced);
-
-        pointer->neighbors[i]->sprouting_edge[index_to_be_replaced] = false;
-
-        // add to vgm
-        VGM.attachPointerToNode(pointer_new_node_1);
-
-        VGM.attachPointerToNode(pointer_new_node_2);
-      }
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  // reset the boolean values
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    pointer->apicalGrowth = false;
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      pointer->sprouting_edge[i] = false;
-
-      pointer->edge_touched[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
-}
-
-unsigned int netfvfe::Network::markApicalGrowth(std::string growth_type) {
+unsigned int util::Network::markApicalGrowth(std::string growth_type, BaseAssembly &taf_sys) {
 
   const auto &tum_sys = d_model_p->get_system();
   const auto &mesh = d_model_p->get_mesh();
   const auto &input = d_model_p->get_input_deck();
   const double domain_size = input.d_domain_params[1];
-
-  // 3d pressure
-  auto &taf = d_model_p->get_taf_assembly();
 
   // mark node for growth based on a certain criterion
   std::shared_ptr<VGNode> pointer = VGM.getHead();
@@ -2034,8 +1594,15 @@ unsigned int netfvfe::Network::markApicalGrowth(std::string growth_type) {
           const auto *elem_i = mesh.elem_ptr(util::get_elem_id(
               coord, input.d_mesh_size, input.d_num_elems, input.d_dim));
 
-          taf.init_dof(elem_i);
-          Real taf_i = taf.get_current_sol(0);
+          // Note: TAF may be finite-element field in which case a more
+          // accurate way would be to find the nearest quadrature point to
+          // the coordinate of this node pointer->coord
+          // But for marking, it is enough to just take taf at first vertex
+          // of element
+          //
+          // If TAF is finite-volume than below is correct
+          taf_sys.init_dof(elem_i);
+          Real taf_i = taf_sys.get_current_sol(0);
 
           if (taf_i > input.d_network_update_taf_threshold) {
             pointer->apicalGrowth = true;
@@ -2059,132 +1626,8 @@ unsigned int netfvfe::Network::markApicalGrowth(std::string growth_type) {
   return num_nodes_marked;
 }
 
-unsigned int netfvfe::Network::processApicalGrowthTest() {
-
-  // mark node for growth based on a certain criterion
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
-
-  // create and attach new edges
-  pointer = VGM.getHead();
-
-  auto num_nodes_before = VGM.getNumberOfNodes();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    if (pointer->apicalGrowth) {
-
-    //      std::cout << " " << std::endl;
-    //      std::cout << "Type of growth: Test, Create new node at node:"
-    //                << pointer->index << std::endl;
-
-      netfvfe::VGNode new_node;
-
-      new_node.index = VGM.getNumberOfNodes();
-
-      new_node.typeOfVGNode = TypeOfNode::DirichletNode;
-
-      new_node.L_p.push_back(0.1);
-
-      double new_radius = pointer->radii[0];
-
-      new_node.radii.push_back(new_radius);
-
-      new_node.edge_touched.push_back(true);
-
-      new_node.sprouting_edge.push_back(false);
-
-      new_node.apicalGrowth = false;
-
-      new_node.p_v = pointer->p_v;
-
-      new_node.p_boundary = pointer->p_boundary;
-
-      new_node.c_v = 0.0;
-
-      new_node.c_boundary = 0.0;
-
-      new_node.neighbors.push_back(pointer);
-
-      std::vector<double> coord_neighbor = pointer->neighbors[0]->coord;
-
-      std::vector<double> coord = pointer->coord;
-
-      std::vector<double> new_dir;
-
-      for (int j = 0; j < 3; j++) {
-
-        new_dir.push_back(coord[j] - coord_neighbor[j]);
-      }
-
-      double length = 0.0;
-
-      for (int j = 0; j < 3; j++) {
-
-        length = length + new_dir[j] * new_dir[j];
-      }
-
-      length = std::sqrt(length);
-
-      for (int j = 0; j < 3; j++) {
-
-        new_dir[j] = new_dir[j] / length;
-      }
-
-      std::vector<double> new_coord;
-
-      for (int j = 0; j < 3; j++) {
-
-        new_coord.push_back(coord[j] + length * new_dir[j]);
-      }
-
-      new_node.coord = new_coord;
-
-      std::shared_ptr<VGNode> pointer_new_node =
-          std::make_shared<VGNode>(new_node);
-
-      pointer->neighbors.push_back(pointer_new_node);
-
-      pointer->radii.push_back(new_radius);
-
-      pointer->L_p.push_back(0.1);
-
-      pointer->typeOfVGNode = TypeOfNode::InnerNode;
-
-      pointer->sprouting_edge.push_back(false);
-
-      pointer->edge_touched.push_back(true);
-
-      VGM.attachPointerToNode(pointer_new_node);
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  // reset the boolean values
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    pointer->apicalGrowth = false;
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      pointer->sprouting_edge[i] = false;
-
-      pointer->edge_touched[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  return VGM.getNumberOfNodes() - num_nodes_before;
-}
-
-unsigned int netfvfe::Network::processApicalGrowthTAF() {
+unsigned int util::Network::processApicalGrowthTAF(BaseAssembly &taf_sys,
+                                                   BaseAssembly &grad_taf_sys) {
 
   const auto &mesh = d_model_p->get_mesh();
   const auto &input = d_model_p->get_input_deck();
@@ -2261,7 +1704,8 @@ unsigned int netfvfe::Network::processApicalGrowthTAF() {
       // compute taf and grad taf at the node
       double parent_taf = 0.;
       Point parent_grad_taf;
-      get_taf_and_gradient(parent_taf, parent_grad_taf, pointer->coord);
+      get_taf_and_gradient(taf_sys, grad_taf_sys, parent_taf, parent_grad_taf,
+                           pointer->coord);
 
       oss << "      Parent info R: " << parent_r << ", L: " << parent_l
           << ", d: " << util::io::printStr(parent_d)
@@ -2467,7 +1911,7 @@ unsigned int netfvfe::Network::processApicalGrowthTAF() {
   return VGM.getNumberOfNodes() - num_nodes_old;
 }
 
-std::shared_ptr<netfvfe::VGNode> netfvfe::Network::check_new_node(
+std::shared_ptr<util::VGNode> util::Network::check_new_node(
     const int &parent_index, const std::vector<double> &parent_coord,
     const std::vector<double> &child_coord, const double &dist_tol,
     const double &domain_size, unsigned int &check_code) {
@@ -2530,13 +1974,13 @@ std::shared_ptr<netfvfe::VGNode> netfvfe::Network::check_new_node(
   return nullptr;
 }
 
-void netfvfe::Network::add_new_node(std::shared_ptr<VGNode> &pointer,
+void util::Network::add_new_node(std::shared_ptr<VGNode> &pointer,
                                    const double &child_r,
                                    const std::vector<double> &child_end_point) {
 
   const auto &input = d_model_p->get_input_deck();
 
-  netfvfe::VGNode new_node;
+  util::VGNode new_node;
 
   new_node.index = VGM.getNumberOfNodes();
 
@@ -2583,7 +2027,7 @@ void netfvfe::Network::add_new_node(std::shared_ptr<VGNode> &pointer,
   VGM.attachPointerToNode(pointer_new_node);
 }
 
-void netfvfe::Network::add_new_node_at_existing_node(
+void util::Network::add_new_node_at_existing_node(
     std::shared_ptr<VGNode> &pointer, std::shared_ptr<VGNode> &near_node) {
 
   const auto &input = d_model_p->get_input_deck();
@@ -2630,25 +2074,24 @@ void netfvfe::Network::add_new_node_at_existing_node(
   near_node->edge_touched.push_back(true);
 }
 
-void netfvfe::Network::get_taf_and_gradient(double &taf_val, Point &grad_taf_val,
-                                          const std::vector<double> &coord) {
+void util::Network::get_taf_and_gradient(BaseAssembly &taf_sys,
+                                         BaseAssembly &grad_taf_sys,
+                                         double &taf_val, Point &grad_taf_val,
+                                         const std::vector<double> &coord) const {
 
   const auto &mesh = d_model_p->get_mesh();
   const auto &input = d_model_p->get_input_deck();
 
-  // taf
-  auto &taf = d_model_p->get_taf_assembly();
-
-  // grad taf
-  auto &grad_taf = d_model_p->get_grad_taf_assembly();
+  // reset
+  taf_val = 0.;
+  grad_taf_val = Point(0., 0., 0.);
 
   // compute analytically
-  if ((input.d_test_name == "test_taf" or
+  bool compute_analytically = true;
+  if (compute_analytically and (input.d_test_name == "test_taf" or
        input.d_test_name == "test_taf_2") and !input.d_taf_source_type.empty()) {
 
     auto x = util::to_point(coord);
-    taf_val = 0.;
-    grad_taf_val = Point();
 
     for (int i=0; i<input.d_taf_source_type.size(); i++) {
 
@@ -2673,34 +2116,43 @@ void netfvfe::Network::get_taf_and_gradient(double &taf_val, Point &grad_taf_val
       util::get_elem_id(coord, input.d_mesh_size, input.d_num_elems,
                         input.d_dim));
 
-  taf.init_dof(elem_i);
-  grad_taf.init_dof(elem_i);
-  taf.init_fe(elem_i);
+  // initialize dofs at the element
+  taf_sys.init_dof(elem_i);
+  grad_taf_sys.init_dof(elem_i);
 
-  // taf and grad_taf are fe field so find the quadrature point closest to
-  // coord and evaluate fields at that point
-  unsigned int qp_near = 0;
-  double dist = input.d_mesh_size;
-  for (unsigned int i=0; i<taf.d_qpoints.size(); i++) {
-    Point dx = taf.d_qpoints[i] - util::to_point(coord);
+  // compute values depending on the model type
+  if (input.d_model_name == "NetFV") {
 
-    if (dist > dx.norm()) {
-      dist = dx.norm();
-      qp_near = i;
+    taf_val = taf_sys.get_current_sol(0);
+    for (unsigned int var = 0; var < input.d_dim; var++)
+      grad_taf_val(var) = grad_taf_sys.get_current_sol_var(0, var);
+
+  } else if (input.d_model_name == "NetFVFE") {
+
+    // taf and grad_taf are fe field so find the quadrature point closest to
+    // coord and evaluate fields at that point
+    unsigned int qp_near = 0;
+    double dist = input.d_mesh_size;
+    for (unsigned int i = 0; i < taf_sys.d_qpoints.size(); i++) {
+      Point dx = taf_sys.d_qpoints[i] - util::to_point(coord);
+
+      if (dist > dx.norm()) {
+        dist = dx.norm();
+        qp_near = i;
+      }
     }
-  }
 
-  // evaluate fields
-  taf_val = 0.;
-  grad_taf_val = Point(0., 0., 0.);
-  for (unsigned int l = 0; l < taf.d_phi.size(); l++) {
+    // evaluate fields
+    for (unsigned int l = 0; l < taf_sys.d_phi.size(); l++) {
 
-    taf_val += taf.d_phi[l][qp_near] * taf.get_current_sol(l);
+      taf_val += taf_sys.d_phi[l][qp_near] * taf_sys.get_current_sol(l);
 
-    // use interpolation function of tar even for grad_taf
-    // Since grad_taf is system with multiple variables (equal to dimension
-    // of the problem), we use get_current_sol_var
-    for (unsigned int i=0; i<input.d_dim; i++)
-      grad_taf_val(i) += taf.d_phi[l][qp_near] * grad_taf.get_current_sol_var(l, i);
+      // use interpolation function of tar even for grad_taf
+      // Since grad_taf is system with multiple variables (equal to dimension
+      // of the problem), we use get_current_sol_var
+      for (unsigned int i = 0; i < input.d_dim; i++)
+        grad_taf_val(i) +=
+            taf_sys.d_phi[l][qp_near] * grad_taf_sys.get_current_sol_var(l, i);
+    }
   }
 }

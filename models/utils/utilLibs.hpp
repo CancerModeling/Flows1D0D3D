@@ -9,12 +9,14 @@
 #define UTILS_LIBS_H
 
 #include <iostream>
-#include <stdio.h>
+#include <cstdio>
 #include <fstream>
-#include <string.h>
+#include <cstring>
 #include <sstream>
-#include <math.h>
+#include <cmath>
 #include <chrono>
+#include <vector>
+#include <numeric>
 
 #include "libmesh/libmesh.h"
 #include "libmesh/tecplot_io.h"

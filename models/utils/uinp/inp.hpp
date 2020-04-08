@@ -17,6 +17,7 @@ using namespace libMesh;
 namespace util {
 
 struct ModelDeck {
+  std::string d_model_name;
   unsigned int d_dim;
   std::string d_domain_type;
   std::vector<double> d_domain_params;

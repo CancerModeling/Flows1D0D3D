@@ -5,10 +5,12 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 /////////////////////////////////////////////////////////////////////////////
 
-#ifndef NETFVFE_LISTSTRUCTURE_H
-#define NETFVFE_LISTSTRUCTURE_H
+#ifndef UTIL_LISTSTRUCTURE_H
+#define UTIL_LISTSTRUCTURE_H
 
-namespace netfvfe {
+#include <boost/shared_ptr.hpp>
+
+namespace util {
 
 template<class Node>
 class ListStructure{
@@ -179,4 +181,4 @@ std::shared_ptr<Node> findNode(int indexOfNode){
 
 }
 
-#endif // NETFVFE_LISTSTRUCTURE_H
+#endif // UTIL_LISTSTRUCTURE_H

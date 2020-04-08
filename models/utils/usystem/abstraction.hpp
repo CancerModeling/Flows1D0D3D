@@ -5,18 +5,12 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef NETFVFE_ABSTRACTION_H
-#define NETFVFE_ABSTRACTION_H
+#ifndef UTIL_SYSTEM_ABSTRACTION_H
+#define UTIL_SYSTEM_ABSTRACTION_H
 
-#include "utilLibs.hpp"
 #include "utils.hpp"
 
-#include <string>
-
-namespace netfvfe {
-
-// forward declare
-class Model;
+namespace util {
 
 /*!
  * @brief Class to perform assembly of tumor species
@@ -27,14 +21,13 @@ public:
   /*!
    * @brief Constructor
    *
-   * @param model Model class
    * @param sys_name Name of system
    * @param sys System
    */
-  BaseAssembly(Model *model, const std::string system_name, MeshBase &mesh,
+  BaseAssembly(const std::string system_name, MeshBase &mesh,
                TransientLinearImplicitSystem &sys, const unsigned int &num_vars,
                const std::vector<unsigned int> &var_id)
-      : d_sys_name(system_name), d_model_p(model), d_mesh(mesh), d_sys(sys),
+      : d_sys_name(system_name), d_mesh(mesh), d_sys(sys),
         d_num_vars(num_vars), d_var_id(var_id),
         d_n_dofs(0), d_n_dofs_var(0),
         d_dof_map_sys(d_sys.get_dof_map()), d_fe_type(d_sys.variable_type(0)),
@@ -320,9 +313,6 @@ public:
   /*! @brief Name of system */
   std::string d_sys_name;
 
-  /*! @brief Pointer reference to model */
-  Model *d_model_p;
-
   /*! @brief Constant reference to system */
   TransientLinearImplicitSystem &d_sys;
 
@@ -385,6 +375,6 @@ public:
   std::vector<DenseSubVector<Number>> d_Fe_var;
 };
 
-} // namespace netfvfe
+} // namespace util
 
-#endif // NETFVFE_ABSTRACTION_H
+#endif // UTIL_SYSTEM_ABSTRACTION_H

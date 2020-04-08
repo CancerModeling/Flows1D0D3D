@@ -27,12 +27,7 @@ int main(int argc, char* argv[]){
     LibMeshInit init(argc, argv);
 
     // Run the model
-    std::vector<double> out_rd;
-    netfvfe::model_setup_run(argc, argv, out_rd, filename, &init.comm());
-
-    // Print solution to screen
-    for (auto i : out_rd)
-      std::cout << "Solution: Tumor area = " << i << std::endl;
+    netfvfe::model_setup_run(argc, argv, filename, &init.comm());
 
   } else {
     std::cout << "Model name = " << model_name
