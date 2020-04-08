@@ -242,6 +242,17 @@ void netfvfe::OutputDeck::read_parameters(const std::string &filename) {
 
   d_restart_save = input("restart_save", false);
   d_dt_restart_save_interval = input("restart_save_interval", 1);
+
+  bool dbg_out = input("output_debug_info", true);
+  d_quiet = !dbg_out;
+
+  d_outfile_tag = input("output_tag", "");
+  d_outfilename = "output";
+  d_outfilename_net = "net_output";
+  if (!d_outfile_tag.empty()) {
+    d_outfilename += "_" + d_outfile_tag;
+    d_outfilename_net += "_" + d_outfile_tag;
+  }
 }
 
 void netfvfe::OutputDeck::print(unsigned int level) {

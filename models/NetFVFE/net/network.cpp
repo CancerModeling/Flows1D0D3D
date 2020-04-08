@@ -14,6 +14,8 @@
 
 namespace {
 
+std::ostringstream oss;
+
 void angle_correction(const Point &parent_d, Point &child_d,
                       const double &max_angle) {
 
@@ -103,11 +105,13 @@ void netfvfe::Network::create_initial_network() {
 
   transferDataToVGM(vertices, pressures, radii, elements);
   int numberOfNodes = VGM.getNumberOfNodes();
-  std::cout << "  Number of nodes: " << numberOfNodes << std::endl;
+  oss << "  Number of nodes: " << numberOfNodes << std::endl;
+  d_model_p->d_log(oss);
 
   // refine mesh
   //  std::cout << " " << std::endl;
-  std::cout << "  Refine mesh" << std::endl;
+  oss << "  Refine mesh" << std::endl;
+  d_model_p->d_log(oss);
 
   int refinementLevel = input.d_network_init_refinement;
 
@@ -119,7 +123,8 @@ void netfvfe::Network::create_initial_network() {
   // std::cout << " " << std::endl;
   numberOfNodes = VGM.getNumberOfNodes();
 
-  std::cout << "  Number of nodes: " << numberOfNodes << std::endl;
+  oss << "  Number of nodes: " << numberOfNodes << std::endl;
+  d_model_p->d_log(oss);
 
   // compute element and weights
   if (input.d_compute_elem_weights)
@@ -325,36 +330,38 @@ void netfvfe::Network::transferDataToVGM(
 
 void netfvfe::Network::printDataVGM() {
 
-  std::cout << " " << std::endl;
-  std::cout << "PrintData of network: " << std::endl;
-  std::cout << " " << std::endl;
+  oss << " " << std::endl;
+  oss << "PrintData of network: " << std::endl;
+  oss << " " << std::endl;
+  d_model_p->d_log(oss);
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
   while (pointer) {
 
-    std::cout << "Index of node [-]: " << pointer->index << std::endl;
-    std::cout << "Type of node [-]: " << pointer->typeOfVGNode << std::endl;
-    std::cout << "Boundary pressure of node [Pa]: " << pointer->p_boundary
+    oss << "Index of node [-]: " << pointer->index << std::endl;
+    oss << "Type of node [-]: " << pointer->typeOfVGNode << std::endl;
+    oss << "Boundary pressure of node [Pa]: " << pointer->p_boundary
               << std::endl;
-    std::cout << "Pressure of node [Pa]: " << pointer->p_v << std::endl;
-    std::cout << "Boundary concentration of node [mol/m^3]: "
+    oss << "Pressure of node [Pa]: " << pointer->p_v << std::endl;
+    oss << "Boundary concentration of node [mol/m^3]: "
               << pointer->c_boundary << std::endl;
-    std::cout << "Coord [m]: " << pointer->coord[0] << " " << pointer->coord[1]
+    oss << "Coord [m]: " << pointer->coord[0] << " " << pointer->coord[1]
               << " " << pointer->coord[2] << std::endl;
 
     int numberOfNeighbors = pointer->neighbors.size();
 
     for (int i = 0; i < numberOfNeighbors; i++) {
 
-      std::cout << "L_p [m/(Pa s)]: " << pointer->L_p[i] << std::endl;
-      std::cout << "L_s [m/s]: " << pointer->L_s[i] << std::endl;
-      std::cout << "Radii [m]: " << pointer->radii[i] << std::endl;
-      std::cout << "Neighbor [-]: " << pointer->neighbors[i]->index
+      oss << "L_p [m/(Pa s)]: " << pointer->L_p[i] << std::endl;
+      oss << "L_s [m/s]: " << pointer->L_s[i] << std::endl;
+      oss << "Radii [m]: " << pointer->radii[i] << std::endl;
+      oss << "Neighbor [-]: " << pointer->neighbors[i]->index
                 << std::endl;
     }
 
-    std::cout << " " << std::endl;
+    oss << " " << std::endl;
+    d_model_p->d_log(oss);
 
     pointer = pointer->global_successor;
   }
@@ -362,8 +369,10 @@ void netfvfe::Network::printDataVGM() {
 
 void netfvfe::Network::writeDataToVTK_VGM() {
 
+  const auto &input = d_model_p->get_input_deck();
+
   std::fstream filevtk;
-  filevtk.open("ratbrain_secomb_vgm.vtk", std::ios::out);
+  filevtk.open(input.d_outfilename_net + ".vtk", std::ios::out);
   filevtk << "# vtk DataFile Version 2.0" << std::endl;
   filevtk << "Network ETH" << std::endl;
   filevtk << "ASCII" << std::endl;
@@ -519,7 +528,9 @@ void netfvfe::Network::writeDataToVTK_VGM() {
 
 void netfvfe::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
-  std::string path = "ratbrain_secomb_vgm_";
+  const auto &input = d_model_p->get_input_deck();
+
+  std::string path = input.d_outfilename_net + "_";
   path += std::to_string(timeStep);
   path.append(".vtk");
 
@@ -856,8 +867,10 @@ void netfvfe::Network::solveVGMforPressure() {
 
   gmm::bicgstab(A_VGM, P_v, b, P, iter);
 
-  if (P_v.size() < 20)
-    std::cout << "P_v = (" << util::io::printStr(P_v) << ")" << std::endl;
+  if (P_v.size() < 20) {
+    oss << "        P_v = (" << util::io::printStr(P_v) << ")" << std::endl;
+    d_model_p->d_log(oss);
+  }
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -1498,18 +1511,21 @@ void netfvfe::Network::refine1DMesh() {
 
 void netfvfe::Network::update_network() {
 
-  out << "[Mark]";
+  oss << "[Mark]";
+  d_model_p->d_log(oss);
   auto num_nodes_marked = markApicalGrowth("apical_taf_based");
 
   unsigned int num_new_nodes = 0;
   if (num_nodes_marked > 0) {
-    out << " -> [Process]";
+    oss << " -> [Process]";
+    d_model_p->d_log(oss);
     num_new_nodes = processApicalGrowthTAF();
   }
-  out << "\n";
+  oss << "\n";
 
-  out << "\n    ____________________\n";
-  out << "    New nodes added: " << num_new_nodes << "\n";
+  oss << "\n    ____________________\n";
+  oss << "    New nodes added: " << num_new_nodes << "\n";
+  d_model_p->d_log(oss);
 
   if (num_new_nodes > 0)
     d_update_number++;
@@ -1517,7 +1533,8 @@ void netfvfe::Network::update_network() {
 
 void netfvfe::Network::compute_elem_weights() {
 
-  out << "  Computing element-weight data for network\n";
+  oss << "  Computing element-weight data for network\n";
+  d_model_p->d_log(oss);
 
   auto pointer = VGM.getHead();
 
@@ -1525,7 +1542,7 @@ void netfvfe::Network::compute_elem_weights() {
   const auto &input = d_model_p->get_input_deck();
 
   bool direct_find = true;
-  const auto &mesh_locator = mesh.point_locator();
+  // const auto &mesh_locator = mesh.point_locator();
 
   while (pointer) {
 
@@ -1604,10 +1621,11 @@ void netfvfe::Network::compute_elem_weights() {
           if (direct_find) {
             elem_id =
                 util::get_elem_id(x, input.d_mesh_size, input.d_num_elems, input.d_dim);
-          } else {
-            const auto *elem_x = mesh_locator(x);
-            elem_id = elem_x->id();
           }
+          //          else {
+          //            const auto *elem_x = mesh_locator(x);
+          //            elem_id = elem_x->id();
+          //          }
 
           // add data to J_b_ij
           J_b_ij.add_unique(elem_id, w);
@@ -1721,8 +1739,9 @@ void netfvfe::Network::sproutingGrowth(std::string growth_type) {
   // mark edge for growth based on a certain criterion
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
-  std::cout << " " << std::endl;
-  std::cout << "Type of growth: Test" << std::endl;
+  oss << " " << std::endl;
+  oss << "      Type of growth: Test" << std::endl;
+  d_model_p->d_log(oss);
 
   while (pointer) {
 
@@ -2190,7 +2209,8 @@ unsigned int netfvfe::Network::processApicalGrowthTAF() {
 
     if (pointer->apicalGrowth) {
 
-      out << "\n      Processing node: " << pointer->index << "\n";
+      oss << "\n      Processing node: " << pointer->index << "\n";
+      d_model_p->d_log(oss);
 
       // compute radius, direction, length
       unsigned int num_segments = pointer->neighbors.size();
@@ -2243,12 +2263,13 @@ unsigned int netfvfe::Network::processApicalGrowthTAF() {
       Point parent_grad_taf;
       get_taf_and_gradient(parent_taf, parent_grad_taf, pointer->coord);
 
-      out << "      Parent info R: " << parent_r << ", L: " << parent_l
+      oss << "      Parent info R: " << parent_r << ", L: " << parent_l
           << ", d: " << util::io::printStr(parent_d)
           << ", x: (" << util::io::printStr(pointer->coord) << ")\n";
-      out << "        taf: " << parent_taf
+      oss << "        taf: " << parent_taf
           << ", Grad(TAF): " <<  util::io::printStr(parent_grad_taf)
           << "\n";
+      d_model_p->d_log(oss);
 
       // compute child direction
       Point child_d = input.d_net_direction_lambda_g * parent_d;
@@ -2303,10 +2324,11 @@ unsigned int netfvfe::Network::processApicalGrowthTAF() {
             check_new_node(pointer->index, pointer->coord, child_end_point,
                            0.1 * child_l, domain_size, check_code);
 
-        out << "      Child info R: " << child_r << ", L: " << child_l
+        oss << "      Child info R: " << child_r << ", L: " << child_l
             << ", d: " << util::io::printStr(child_d)
             << ", check point: " << check_code
             << ", x end: (" << util::io::printStr(child_end_point) << ")\n";
+        d_model_p->d_log(oss);
 
         // check if the new point is too close to existing node
         if (check_code == 0)
@@ -2325,7 +2347,8 @@ unsigned int netfvfe::Network::processApicalGrowthTAF() {
                                                     child_d_2,
                                           input.d_branch_angle);
 
-        out << "      Bifurcation angle: " << angle << "\n";
+        oss << "      Bifurcation angle: " << angle << "\n";
+        d_model_p->d_log(oss);
 
 
         if (pointer->typeOfVGNode == TypeOfNode::DirichletNode)
@@ -2373,10 +2396,11 @@ unsigned int netfvfe::Network::processApicalGrowthTAF() {
               check_new_node(pointer->index, pointer->coord, child_end_point,
                              0.1 * child_l, domain_size, check_code);
 
-          out << "      Child 1 info R: " << child_r << ", L: " << child_l
+          oss << "      Child 1 info R: " << child_r << ", L: " << child_l
               << ", d: " << util::io::printStr(child_d)
               << ", check point: " << check_code
               << ", x end: (" << util::io::printStr(child_end_point) << ")\n";
+          d_model_p->d_log(oss);
 
           // check if the new point is too close to existing node
           if (check_code == 0)
@@ -2400,10 +2424,11 @@ unsigned int netfvfe::Network::processApicalGrowthTAF() {
               check_new_node(pointer->index, pointer->coord, child_end_point,
                              0.1 * child_l_2, domain_size, check_code);
 
-          out << "      Child 2 info R: " << child_r_2 << ", L: " << child_l_2
+          oss << "      Child 2 info R: " << child_r_2 << ", L: " << child_l_2
               << ", d: " << util::io::printStr(child_d_2)
               << ", check point: " << check_code
               << ", x end: (" << util::io::printStr(child_end_point) << ")\n";
+          d_model_p->d_log(oss);
 
           // check if the new point is too close to existing node
           if (check_code == 0)
