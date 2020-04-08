@@ -6,7 +6,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "../model.hpp"
-#include "systems.hpp"
 
 Number netfv::initial_condition_nec(const Point &p, const Parameters &es,
                               const std::string &system_name, const std::string &var_name){

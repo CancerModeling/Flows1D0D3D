@@ -11,7 +11,7 @@ set(ProjectLib "Lib${ProjectName}")
 # ****************************************************************************
 include_directories(systems)
 include_directories(util)
-include_directories(inp)
+#include_directories(inp)
 include_directories(util)
 include_directories(net)
 include_directories(${CMAKE_SOURCE_DIR}/external/gmm)
@@ -25,7 +25,7 @@ add_subdirectory(driver)
 # Create library
 # ****************************************************************************
 AUX_SOURCE_DIRECTORY(util SOURCES)
-AUX_SOURCE_DIRECTORY(inp SOURCES)
+#AUX_SOURCE_DIRECTORY(inp SOURCES)
 AUX_SOURCE_DIRECTORY(./ SOURCES)
 AUX_SOURCE_DIRECTORY(systems SOURCES)
 AUX_SOURCE_DIRECTORY(net SOURCES)

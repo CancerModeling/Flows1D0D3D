@@ -14,7 +14,7 @@ Number netfv::initial_condition_ecm(const Point &p, const Parameters &es,
 
   if (var_name == "ecm") {
 
-    const auto *deck = es.get<netfv::InputDeck *>("input_deck");
+    const auto *deck = es.get<InpDeck *>("input_deck");
     const auto &ic_data = deck->d_ecm_ic_data;
 
     if (ic_data.d_type.empty())

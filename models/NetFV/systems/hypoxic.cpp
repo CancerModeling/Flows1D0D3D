@@ -8,35 +8,29 @@
 #include "../model.hpp"
 
 Number netfv::initial_condition_hyp_kernel(const Point &p,
-                                            const netfv::InputDeck *deck) {
+                                           const unsigned int &dim,
+                                           const std::string &ic_type,
+                                           const std::vector<double> &ic_center,
+                                           const std::vector<double> &tum_ic_radius,
+                                           const std::vector<double> &hyp_ic_radius) {
 
-  const unsigned int dim = deck->d_dim;
-  const unsigned int num_ic = deck->d_tum_ic_data.size();
-  if (num_ic == 0)
-    return 0.;
-
-  for (unsigned int ic = 0; ic < num_ic; ic++) {
-
-    auto data = deck->d_tum_ic_data[ic];
-
-    const std::string type = data.d_ic_type;
-    const Point xc =
-        Point(data.d_ic_center[0], data.d_ic_center[1], data.d_ic_center[2]);
+    const std::string type = ic_type;
+    const Point xc = util::to_point(ic_center);
     const Point dx = p - xc;
 
     if (type == "tumor_hypoxic_spherical") {
 
-      if (dx.norm() < data.d_tum_ic_radius[0] - 1.0E-12) {
+      if (dx.norm() < tum_ic_radius[0] - 1.0E-12) {
 
         return 1. - util::exp_decay_function(
-                        dx.norm() / data.d_tum_ic_radius[0], 4.);
+                        dx.norm() / tum_ic_radius[0], 4.);
 
-      } else if (dx.norm() > data.d_tum_ic_radius[0] - 1.0E-12 and
-                 dx.norm() < data.d_hyp_ic_radius[0] - 1.0E-12) {
+      } else if (dx.norm() >  tum_ic_radius[0] - 1.0E-12 and
+                 dx.norm() <  hyp_ic_radius[0] - 1.0E-12) {
 
         return util::exp_decay_function(
-            (dx.norm() - data.d_tum_ic_radius[0]) /
-                (data.d_hyp_ic_radius[0] - data.d_tum_ic_radius[0]),
+            (dx.norm() -  tum_ic_radius[0]) /
+                (hyp_ic_radius[0] - tum_ic_radius[0]),
             4.);
       }
     } else if (type == "tumor_hypoxic_elliptical") {
@@ -44,20 +38,20 @@ Number netfv::initial_condition_hyp_kernel(const Point &p,
       // transform ellipse into ball of radius
       double small_ball_r = 0.;
       for (unsigned int i = 0; i < dim; i++)
-        small_ball_r = data.d_tum_ic_radius[i] * data.d_tum_ic_radius[i];
+        small_ball_r =  tum_ic_radius[i] *  tum_ic_radius[i];
       small_ball_r = std::sqrt(small_ball_r);
 
       Point p_small_ball =
-          util::ellipse_to_ball(p, xc, data.d_tum_ic_radius, dim, small_ball_r);
+          util::ellipse_to_ball(p, xc,  tum_ic_radius, dim, small_ball_r);
 
       // transform ellipse into ball of radius
       double large_ball_r = 0.;
       for (unsigned int i = 0; i < dim; i++)
-        large_ball_r = data.d_hyp_ic_radius[i] * data.d_hyp_ic_radius[i];
+        large_ball_r =  hyp_ic_radius[i] *  hyp_ic_radius[i];
       large_ball_r = std::sqrt(large_ball_r);
 
       Point p_large_ball =
-          util::ellipse_to_ball(p, xc, data.d_hyp_ic_radius, dim, large_ball_r);
+          util::ellipse_to_ball(p, xc,  hyp_ic_radius, dim, large_ball_r);
 
       if (p_small_ball.norm() < small_ball_r - 1.0E-12) {
 
@@ -72,7 +66,6 @@ Number netfv::initial_condition_hyp_kernel(const Point &p,
                                         4.);
       }
     }
-  }
 
   return 0.;
 }
@@ -85,9 +78,17 @@ Number netfv::initial_condition_hyp(const Point &p, const Parameters &es,
 
   if (var_name == "hypoxic") {
 
-    const auto *deck = es.get<netfv::InputDeck *>("input_deck");
+    const auto *deck = es.get<InpDeck *>("input_deck");
 
-    return initial_condition_hyp_kernel(p, deck);
+    double val = 0.;
+    for (unsigned int i=0; i<deck->d_tum_ic_data.size(); i++)
+      val += initial_condition_hyp_kernel(p, deck->d_dim,
+                                   deck->d_tum_ic_data[i].d_ic_type,
+                                   deck->d_tum_ic_data[i].d_ic_center,
+                                   deck->d_tum_ic_data[i].d_tum_ic_radius,
+                                   deck->d_tum_ic_data[i].d_hyp_ic_radius);
+
+    return val;
   }
 
   return 0.;

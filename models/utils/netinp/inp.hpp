@@ -5,8 +5,8 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef NETFV_INP_H
-#define NETFV_INP_H
+#ifndef NET_INP_H
+#define NET_INP_H
 
 #include "libmesh/point.h"
 #include <string>
@@ -14,7 +14,7 @@
 
 using namespace libMesh;
 
-namespace netfv {
+namespace util {
 
 struct ModelDeck {
   unsigned int d_dim;
@@ -687,10 +687,9 @@ public:
   FlowDeck *deck = this;
   deck->print();
 }
-}; // namespace netfv
-}
-;
+};
+};
 
-} // namespace netfv
+} // namespace util
 
-#endif // NETFV_INP_H
+#endif // NET_INP_H

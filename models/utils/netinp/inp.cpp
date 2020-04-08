@@ -9,7 +9,7 @@
 #include "libmesh/getpot.h"
 #include "csv.hpp"
 
-void netfv::ModelDeck::read_parameters(const std::string &filename) {
+void util::ModelDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -56,7 +56,7 @@ void netfv::ModelDeck::read_parameters(const std::string &filename) {
   d_decouple_nutrients = input("network_decouple_nutrients", true);
 }
 
-void netfv::ModelDeck::print(unsigned int level) {
+void util::ModelDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# ModelDeck\n";
@@ -103,7 +103,7 @@ void netfv::ModelDeck::print(unsigned int level) {
   out << "assembly_method = " << d_assembly_method << "\n\n";
 }
 
-void netfv::RestartDeck::read_parameters(const std::string &filename) {
+void util::RestartDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -116,7 +116,7 @@ void netfv::RestartDeck::read_parameters(const std::string &filename) {
   d_sol_restart_file = input("solution_restart_file", "");
 }
 
-void netfv::RestartDeck::print(unsigned int level) {
+void util::RestartDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# RestartDeck\n";
@@ -135,7 +135,7 @@ void netfv::RestartDeck::print(unsigned int level) {
   out << "solution_restart_file = " << d_sol_restart_file << "\n\n";
 }
 
-void netfv::MeshDeck::read_parameters(const std::string &filename) {
+void util::MeshDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -159,7 +159,7 @@ void netfv::MeshDeck::read_parameters(const std::string &filename) {
   d_read_mesh_flag = input("mesh_read_file", false);
 }
 
-void netfv::MeshDeck::print(unsigned int level) {
+void util::MeshDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# MeshDeck\n";
@@ -179,7 +179,7 @@ void netfv::MeshDeck::print(unsigned int level) {
   out << "mesh_read_file = " << d_read_mesh_flag << "\n\n";
 }
 
-void netfv::TimeDeck::read_parameters(const std::string &filename) {
+void util::TimeDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -197,7 +197,7 @@ void netfv::TimeDeck::read_parameters(const std::string &filename) {
   d_init_step = input("initial_step", 0);
 }
 
-void netfv::TimeDeck::print(unsigned int level) {
+void util::TimeDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# TimeDeck\n";
@@ -229,7 +229,7 @@ void netfv::TimeDeck::print(unsigned int level) {
   out << "initial_step = " << d_init_step << "\n\n";
 }
 
-void netfv::OutputDeck::read_parameters(const std::string &filename) {
+void util::OutputDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -255,7 +255,7 @@ void netfv::OutputDeck::read_parameters(const std::string &filename) {
   }
 }
 
-void netfv::OutputDeck::print(unsigned int level) {
+void util::OutputDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# OutputDeck\n";
@@ -286,7 +286,7 @@ void netfv::OutputDeck::print(unsigned int level) {
   out << "restart_save_interval = " << d_dt_restart_save_interval << "\n\n";
 }
 
-void netfv::SolverDeck::read_parameters(const std::string &filename) {
+void util::SolverDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -304,7 +304,7 @@ void netfv::SolverDeck::read_parameters(const std::string &filename) {
       input("project_solution_to_phyiscal_range", false);
 }
 
-void netfv::SolverDeck::print(unsigned int level) {
+void util::SolverDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# SolverDeck\n";
@@ -333,7 +333,7 @@ void netfv::SolverDeck::print(unsigned int level) {
       << d_project_solution_to_physical_range << "\n\n";
 }
 
-void netfv::NutrientDeck::read_parameters(const std::string &filename) {
+void util::NutrientDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -354,7 +354,7 @@ void netfv::NutrientDeck::read_parameters(const std::string &filename) {
   d_nut_source_radius = input("nut_source_radius", 0.);
 }
 
-void netfv::NutrientDeck::print(unsigned int level) {
+void util::NutrientDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# NutrientDeck\n";
@@ -389,7 +389,7 @@ void netfv::NutrientDeck::print(unsigned int level) {
   out << "chi_c = " << d_chi_c << "\n\n";
 }
 
-void netfv::TumorDeck::read_parameters(const std::string &filename) {
+void util::TumorDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -402,7 +402,7 @@ void netfv::TumorDeck::read_parameters(const std::string &filename) {
   d_epsilon_T = input("epsilon_T", 0.005);
 }
 
-void netfv::TumorDeck::print(unsigned int level) {
+void util::TumorDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# TumorDeck\n";
@@ -421,7 +421,7 @@ void netfv::TumorDeck::print(unsigned int level) {
   out << "epsilon_T = " << d_epsilon_T << "\n\n";
 }
 
-void netfv::HypoxicDeck::read_parameters(const std::string &filename) {
+void util::HypoxicDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -438,7 +438,7 @@ void netfv::HypoxicDeck::read_parameters(const std::string &filename) {
   d_sigma_HN = input("sigma_HN", 0.2);
 }
 
-void netfv::HypoxicDeck::print(unsigned int level) {
+void util::HypoxicDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# HypoxicDeck\n";
@@ -479,7 +479,7 @@ void netfv::HypoxicDeck::print(unsigned int level) {
   out << "sigma_HN = " << d_sigma_HN << "\n\n";
 }
 
-void netfv::NecroticDeck::read_parameters(const std::string &filename) {
+void util::NecroticDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -490,7 +490,7 @@ void netfv::NecroticDeck::read_parameters(const std::string &filename) {
   d_bar_M_N = input("bar_M_N", 0.);
 }
 
-void netfv::NecroticDeck::print(unsigned int level) {
+void util::NecroticDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# NecroticDeck\n";
@@ -501,7 +501,7 @@ void netfv::NecroticDeck::print(unsigned int level) {
   out << "bar_M_N = " << d_bar_M_N << "\n\n";
 }
 
-void netfv::TAFDeck::read_parameters(const std::string &filename) {
+void util::TAFDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -538,7 +538,7 @@ void netfv::TAFDeck::read_parameters(const std::string &filename) {
   }
 }
 
-void netfv::TAFDeck::print(unsigned int level) {
+void util::TAFDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# TAFDeck\n";
@@ -557,7 +557,7 @@ void netfv::TAFDeck::print(unsigned int level) {
   out << "lambda_TAF = " << d_lambda_TAF << "\n\n";
 }
 
-void netfv::ECMDeck::read_parameters(const std::string &filename) {
+void util::ECMDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -585,7 +585,7 @@ void netfv::ECMDeck::read_parameters(const std::string &filename) {
     d_ecm_ic_data.d_geom_params.push_back(input("ECM_ic_params_" + std::to_string(i+1), 0.));
 }
 
-void netfv::ECMDeck::print(unsigned int level) {
+void util::ECMDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# ECMDeck\n";
@@ -625,7 +625,7 @@ void netfv::ECMDeck::print(unsigned int level) {
   out << "\n";
 }
 
-void netfv::MDEDeck::read_parameters(const std::string &filename) {
+void util::MDEDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -641,7 +641,7 @@ void netfv::MDEDeck::read_parameters(const std::string &filename) {
   d_mde_ic_val = input("MDE_ic_val", 0.5);
 }
 
-void netfv::MDEDeck::print(unsigned int level) {
+void util::MDEDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# MDEDeck\n";
@@ -669,7 +669,7 @@ void netfv::MDEDeck::print(unsigned int level) {
   out << "MDE_ic_val = " << d_mde_ic_val << "\n\n";
 }
 
-void netfv::NutrientICDeck::read_parameters(const std::string &filename) {
+void util::NutrientICDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -681,7 +681,7 @@ void netfv::NutrientICDeck::read_parameters(const std::string &filename) {
   // out << "nutrient ic = " << d_nut_ic_value;
 }
 
-void netfv::NutrientICDeck::print(unsigned int level) {
+void util::NutrientICDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# NutrientICDeck\n";
@@ -692,7 +692,7 @@ void netfv::NutrientICDeck::print(unsigned int level) {
   out << "ic_nutrient_value = " << d_nut_ic_value << "\n\n";
 }
 
-void netfv::TumorICDeck::read_parameters(const std::string &filename) {
+void util::TumorICDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -804,7 +804,7 @@ void netfv::TumorICDeck::read_parameters(const std::string &filename) {
   }
 }
 
-void netfv::TumorICDeck::print(unsigned int level) {
+void util::TumorICDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# TumorICDeck\n";
@@ -851,7 +851,7 @@ void netfv::TumorICDeck::print(unsigned int level) {
 //  out << "ic_tumor_center_z = " << d_tum_ic_center[2] << "\n\n";
 }
 
-void netfv::NutrientBCDeck::read_parameters(const std::string &filename) {
+void util::NutrientBCDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -865,7 +865,7 @@ void netfv::NutrientBCDeck::read_parameters(const std::string &filename) {
   d_nutrient_bc_west = input("bc_nutrient_west", false);
 }
 
-void netfv::NutrientBCDeck::print(unsigned int level) {
+void util::NutrientBCDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# NutrientBCDeck\n";
@@ -888,7 +888,7 @@ void netfv::NutrientBCDeck::print(unsigned int level) {
   out << "bc_nutrient_west = " << d_nutrient_bc_west << "\n\n";
 }
 
-void netfv::NetworkDeck::read_parameters(const std::string &filename) {
+void util::NetworkDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -946,11 +946,11 @@ void netfv::NetworkDeck::read_parameters(const std::string &filename) {
   d_network_bifurcate_prob = input("network_bifurcate_probability", 0.6);
 }
 
-void netfv::NetworkDeck::print(unsigned int level) {
+void util::NetworkDeck::print(unsigned int level) {
 
 }
 
-void netfv::Flow1DDeck::read_parameters(const std::string &filename) {
+void util::Flow1DDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -968,7 +968,7 @@ void netfv::Flow1DDeck::read_parameters(const std::string &filename) {
   d_osmotic_sigma = input("osmotic_reflection_coeff", 0.1);
 }
 
-void netfv::Flow1DDeck::print(unsigned int level) {
+void util::Flow1DDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# Flow1DDeck\n";
@@ -983,7 +983,7 @@ void netfv::Flow1DDeck::print(unsigned int level) {
   out << "vessel_in_pressure = " << d_in_pressure << "\n\n";
 }
 
-void netfv::FlowDeck::read_parameters(const std::string &filename) {
+void util::FlowDeck::read_parameters(const std::string &filename) {
 
   // Open file with model setup
   if (filename.empty())
@@ -1007,7 +1007,7 @@ void netfv::FlowDeck::read_parameters(const std::string &filename) {
   d_pressure_bc_west = input("bc_tissue_pressure_west", false);
 }
 
-void netfv::FlowDeck::print(unsigned int level) {
+void util::FlowDeck::print(unsigned int level) {
 
   out << "#\n";
   out << "# FlowDeck\n";
