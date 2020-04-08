@@ -14,6 +14,8 @@
 
 namespace {
 
+std::ostringstream oss;
+
 void angle_correction(const Point &parent_d, Point &child_d,
                       const double &max_angle) {
 
@@ -22,7 +24,7 @@ void angle_correction(const Point &parent_d, Point &child_d,
   auto child_angle = util::angle(child_d, parent_d);
   if (std::abs(child_angle) > max_angle) {
 
-    out << "Child direction: " << child_d << ", child angle: " << child_angle
+    oss << "Child direction: " << child_d << ", child angle: " << child_angle
         << "\n";
 
     // axis for rotation
@@ -31,7 +33,7 @@ void angle_correction(const Point &parent_d, Point &child_d,
 
     // rotate parent direction by allowed angle
     //    child_d = util::rotate(parent_d, max_angle, axis);
-    out << "New child direction: " << util::rotate(parent_d, max_angle, axis)
+    oss << "New child direction: " << util::rotate(parent_d, max_angle, axis)
         << "\n";
   }
 }
@@ -103,11 +105,13 @@ void netfv::Network::create_initial_network() {
 
   transferDataToVGM(vertices, pressures, radii, elements);
   int numberOfNodes = VGM.getNumberOfNodes();
-  std::cout << "  Number of nodes: " << numberOfNodes << std::endl;
+  oss << "  Number of nodes: " << numberOfNodes << std::endl;
+  d_model_p->d_log(oss);
 
   // refine mesh
-  //  std::cout << " " << std::endl;
-  std::cout << "  Refine mesh" << std::endl;
+  //  oss << " " << std::endl;
+  oss << "  Refine mesh" << std::endl;
+  d_model_p->d_log(oss);
 
   int refinementLevel = input.d_network_init_refinement;
 
@@ -116,18 +120,19 @@ void netfv::Network::create_initial_network() {
     refine1DMesh();
   }
 
-  // std::cout << " " << std::endl;
+  // oss << " " << std::endl;
   numberOfNodes = VGM.getNumberOfNodes();
 
-  std::cout << "  Number of nodes: " << numberOfNodes << std::endl;
+  oss << "  Number of nodes: " << numberOfNodes << std::endl;
+  d_model_p->d_log(oss);
 
   // compute element and weights
   if (input.d_compute_elem_weights)
     compute_elem_weights();
 
   // Print data
-  // std::cout << " " << std::endl;
-  // std::cout << "Print data" << std::endl;
+  // oss << " " << std::endl;
+  // oss << "Print data" << std::endl;
   // printDataVGM();
 
   // initialize matrix and vector
@@ -197,7 +202,7 @@ void netfv::Network::readData(
       pressures.push_back(vertexInfo[3] *
                           133.322); // - 100000.0 ); //*133.322 );
 
-      //      std::cout << vertexInfo[0] << " " << vertexInfo[1] << " " <<
+      //      oss << vertexInfo[0] << " " << vertexInfo[1] << " " <<
       //      vertexInfo[2]
       //                << " " << vertexInfo[3] << std::endl;
     } else if (fileSeparator == 1) // Avoid line: SIMPLEX in the dgf file
@@ -229,7 +234,7 @@ void netfv::Network::readData(
       radii.push_back(radius);
       elements.push_back(cornerIDs);
 
-      //      std::cout << cornerIDs[0] << " " << cornerIDs[1] << " " << radius
+      //      oss << cornerIDs[0] << " " << cornerIDs[1] << " " << radius
       //      << "\n";
     }
 
@@ -325,36 +330,38 @@ void netfv::Network::transferDataToVGM(
 
 void netfv::Network::printDataVGM() {
 
-  std::cout << " " << std::endl;
-  std::cout << "PrintData of network: " << std::endl;
-  std::cout << " " << std::endl;
+  oss << " " << std::endl;
+  oss << "PrintData of network: " << std::endl;
+  oss << " " << std::endl;
+  d_model_p->d_log(oss);
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
   while (pointer) {
 
-    std::cout << "Index of node [-]: " << pointer->index << std::endl;
-    std::cout << "Type of node [-]: " << pointer->typeOfVGNode << std::endl;
-    std::cout << "Boundary pressure of node [Pa]: " << pointer->p_boundary
+    oss << "Index of node [-]: " << pointer->index << std::endl;
+    oss << "Type of node [-]: " << pointer->typeOfVGNode << std::endl;
+    oss << "Boundary pressure of node [Pa]: " << pointer->p_boundary
               << std::endl;
-    std::cout << "Pressure of node [Pa]: " << pointer->p_v << std::endl;
-    std::cout << "Boundary concentration of node [mol/m^3]: "
+    oss << "Pressure of node [Pa]: " << pointer->p_v << std::endl;
+    oss << "Boundary concentration of node [mol/m^3]: "
               << pointer->c_boundary << std::endl;
-    std::cout << "Coord [m]: " << pointer->coord[0] << " " << pointer->coord[1]
+    oss << "Coord [m]: " << pointer->coord[0] << " " << pointer->coord[1]
               << " " << pointer->coord[2] << std::endl;
 
     int numberOfNeighbors = pointer->neighbors.size();
 
     for (int i = 0; i < numberOfNeighbors; i++) {
 
-      std::cout << "L_p [m/(Pa s)]: " << pointer->L_p[i] << std::endl;
-      std::cout << "L_s [m/s]: " << pointer->L_s[i] << std::endl;
-      std::cout << "Radii [m]: " << pointer->radii[i] << std::endl;
-      std::cout << "Neighbor [-]: " << pointer->neighbors[i]->index
+      oss << "L_p [m/(Pa s)]: " << pointer->L_p[i] << std::endl;
+      oss << "L_s [m/s]: " << pointer->L_s[i] << std::endl;
+      oss << "Radii [m]: " << pointer->radii[i] << std::endl;
+      oss << "Neighbor [-]: " << pointer->neighbors[i]->index
                 << std::endl;
     }
 
-    std::cout << " " << std::endl;
+    oss << " " << std::endl;
+    d_model_p->d_log(oss);
 
     pointer = pointer->global_successor;
   }
@@ -759,7 +766,7 @@ void netfv::Network::assembleVGMSystemForPressure() {
 
     double p_v_k = pointer->p_v;
 
-    // std::cout << "p_v_k: " << p_v_k << std::endl;
+    // oss << "p_v_k: " << p_v_k << std::endl;
 
     if (numberOfNeighbors == 1) {
 
@@ -829,7 +836,7 @@ void netfv::Network::assembleVGMSystemForPressure() {
       // b[indexOfNode] = 0.0;
     }
 
-    //    std::cout << "p_v_k: " << pointer->p_v << " s: " << pointer->coord[2]
+    //    oss << "p_v_k: " << pointer->p_v << " s: " << pointer->coord[2]
     //              << ", b: " << b[indexOfNode]
     //              << ", L_p: " << util::io::printStr(pointer->L_p) <<
     //              std::endl;
@@ -837,12 +844,12 @@ void netfv::Network::assembleVGMSystemForPressure() {
     pointer = pointer->global_successor;
   }
 
-  // std::cout << "A_VGM: " << A_VGM << std::endl;
+  // oss << "A_VGM: " << A_VGM << std::endl;
 }
 
 void netfv::Network::solveVGMforPressure() {
 
-  // std::cout << "Assemble pressure matrix and right hand side" << std::endl;
+  // oss << "Assemble pressure matrix and right hand side" << std::endl;
   assembleVGMSystemForPressure();
 
   gmm::iteration iter(10E-18);
@@ -856,8 +863,10 @@ void netfv::Network::solveVGMforPressure() {
 
   gmm::bicgstab(A_VGM, P_v, b, P, iter);
 
-  if (P_v.size() < 20)
-    std::cout << "P_v = (" << util::io::printStr(P_v) << ")" << std::endl;
+  if (P_v.size() < 20) {
+    oss << "        P_v = (" << util::io::printStr(P_v) << ")" << std::endl;
+    d_model_p->d_log(oss);
+  }
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -870,7 +879,7 @@ void netfv::Network::solveVGMforPressure() {
     pointer = pointer->global_successor;
   }
 
-  //  std::cout << "Write vtk" << std::endl;
+  //  oss << "Write vtk" << std::endl;
   //  writeDataToVTK_VGM();
 }
 
@@ -1078,7 +1087,7 @@ void netfv::Network::assembleVGMSystemForNutrient() {
             //                    input.d_mmhgFactor *
             //                    input.d_identify_vein_pres &&
             //                i == 0 && e < 2)
-            //              out << "index: " << indexOfNode << ", neighbor: " <<
+            //              oss << "index: " << indexOfNode << ", neighbor: " <<
             //              indexNeighbor
             //                  << ", source: " << source << ", pressure: " <<
             //                  p_v_k
@@ -1303,7 +1312,7 @@ void netfv::Network::assembleVGMSystemForNutrientDecouple() {
             //                    input.d_mmhgFactor *
             //                    input.d_identify_vein_pres &&
             //                i == 0 && e < 2)
-            //              out << "index: " << indexOfNode << ", neighbor: " <<
+            //              oss << "index: " << indexOfNode << ", neighbor: " <<
             //              indexNeighbor
             //                  << ", source: " << source << ", pressure: " <<
             //                  p_v_k
@@ -1336,8 +1345,8 @@ void netfv::Network::solveVGMforNutrient() {
   gmm::iteration iter(5.0e-11);
   gmm::identity_matrix PR;
 
-  // std::cout << " " << std::endl;
-  // std::cout << "Assemble nutrient matrix and right hand side" << std::endl;
+  // oss << " " << std::endl;
+  // oss << "Assemble nutrient matrix and right hand side" << std::endl;
   if (d_model_p->get_input_deck().d_decouple_nutrients)
     assembleVGMSystemForNutrientDecouple();
   else
@@ -1352,7 +1361,7 @@ void netfv::Network::solveVGMforNutrient() {
 
   gmm::bicgstab(Ac_VGM, C_v, b_c, P, iter);
 
-  // std::cout << C_v << std::endl;
+  // oss << C_v << std::endl;
 
   auto pointer = VGM.getHead();
 
@@ -1479,7 +1488,7 @@ void netfv::Network::refine1DMesh() {
 
     int numberOfNeighbors = pointer->neighbors.size();
 
-    // std::cout << "index: " << pointer->index << std::endl;
+    // oss << "index: " << pointer->index << std::endl;
 
     for (int i = 0; i < numberOfNeighbors; i++) {
 
@@ -1490,7 +1499,7 @@ void netfv::Network::refine1DMesh() {
 
     counter = counter + 1;
 
-    // std::cout << " " << std::endl;
+    // oss << " " << std::endl;
 
     pointer = pointer->global_successor;
   }
@@ -1498,18 +1507,21 @@ void netfv::Network::refine1DMesh() {
 
 void netfv::Network::update_network() {
 
-  out << "[Mark]";
+  oss << "[Mark]";
+  d_model_p->d_log(oss);
   auto num_nodes_marked = markApicalGrowth("apical_taf_based");
 
   unsigned int num_new_nodes = 0;
   if (num_nodes_marked > 0) {
-    out << " -> [Process]";
+    oss << " -> [Process]";
+    d_model_p->d_log(oss);
     num_new_nodes = processApicalGrowthTAF();
   }
-  out << "\n";
+  oss << "\n";
 
-  out << "\n    ____________________\n";
-  out << "    New nodes added: " << num_new_nodes << "\n";
+  oss << "\n    ____________________\n";
+  oss << "    New nodes added: " << num_new_nodes << "\n";
+  d_model_p->d_log(oss);
 
   if (num_new_nodes > 0)
     d_update_number++;
@@ -1517,7 +1529,8 @@ void netfv::Network::update_network() {
 
 void netfv::Network::compute_elem_weights() {
 
-  out << "  Computing element-weight data for network\n";
+  oss << "  Computing element-weight data for network\n";
+  d_model_p->d_log(oss);
 
   auto pointer = VGM.getHead();
 
@@ -1525,7 +1538,6 @@ void netfv::Network::compute_elem_weights() {
   const auto &input = d_model_p->get_input_deck();
 
   bool direct_find = true;
-  const auto &mesh_locator = mesh.point_locator();
 
   while (pointer) {
 
@@ -1580,7 +1592,7 @@ void netfv::Network::compute_elem_weights() {
         Point e1 = util::determineRotator(direction);
         e1 = e1 / e1.norm();
 
-        // out << "e1: " << e1 << std::endl;
+        // oss << "e1: " << e1 << std::endl;
 
         // discretize [0,2pi]
         unsigned int N_theta = input.d_num_points_angle;
@@ -1591,35 +1603,36 @@ void netfv::Network::compute_elem_weights() {
 
           auto x = xs + util::rotate(ij_rad * e1, theta, direction);
 
-          // out << "x: " << x << std::endl;
+          // oss << "x: " << x << std::endl;
 
           // compute normalize weight of the point x
           double w = 1. / (double(N_length) * N_theta);
           sum_weights += w;
 
-          // out << "sum_weights: " << sum_weights << std::endl;
+          // oss << "sum_weights: " << sum_weights << std::endl;
 
           // get element of point x
           unsigned int elem_id = 0;
           if (direct_find) {
             elem_id =
                 util::get_elem_id(x, input.d_mesh_size, input.d_num_elems, input.d_dim);
-          } else {
-            const auto *elem_x = mesh_locator(x);
-            elem_id = elem_x->id();
           }
+          //          else {
+          //            const auto *elem_x = mesh_locator(x);
+          //            elem_id = elem_x->id();
+          //          }
 
           // add data to J_b_ij
           J_b_ij.add_unique(elem_id, w);
 
-          // out << "elem_x->id(): " << elem_x->id() << std::endl;
+          // oss << "elem_x->id(): " << elem_x->id() << std::endl;
 
         } // loop over theta
 
       } // loop over length
 
-      // std::cout << " "<<std::endl;
-      // out << "Node: " << pointer->index  << ", sum weights: " << sum_weights
+      // oss << " "<<std::endl;
+      // oss << "Node: " << pointer->index  << ", sum weights: " << sum_weights
       // << "\n";
     }
 
@@ -1674,7 +1687,7 @@ std::vector<netfv::ElemWeights> netfv::Network::compute_elem_weights_at_node(
       Point e1 = util::determineRotator(direction);
       e1 = e1 / e1.norm();
 
-      // out << "e1: " << e1 << std::endl;
+      // oss << "e1: " << e1 << std::endl;
 
       // discretize [0,2pi]
       unsigned int N_theta = input.d_num_points_angle;
@@ -1685,13 +1698,13 @@ std::vector<netfv::ElemWeights> netfv::Network::compute_elem_weights_at_node(
 
         auto x = xs + util::rotate(ij_rad * e1, theta, direction);
 
-        // out << "x: " << x << std::endl;
+        // oss << "x: " << x << std::endl;
 
         // compute normalize weight of the point x
         double w = 1. / (double(N_length) * N_theta);
         sum_weights += w;
 
-        // out << "sum_weights: " << sum_weights << std::endl;
+        // oss << "sum_weights: " << sum_weights << std::endl;
 
         // get element of point x
         unsigned int elem_id =
@@ -1700,13 +1713,13 @@ std::vector<netfv::ElemWeights> netfv::Network::compute_elem_weights_at_node(
         // add data to J_b_ij
         J_b_ij.add_unique(elem_id, w);
 
-        // out << "elem_x->id(): " << elem_x->id() << std::endl;
+        // oss << "elem_x->id(): " << elem_x->id() << std::endl;
 
       } // loop over theta
 
     } // loop over length
 
-    //    out << "Node: " << pointer->index << ", sum weights: " << sum_weights
+    //    oss << "Node: " << pointer->index << ", sum weights: " << sum_weights
     //        << "\n";
 
     // add to data
@@ -1721,8 +1734,9 @@ void netfv::Network::sproutingGrowth(std::string growth_type) {
   // mark edge for growth based on a certain criterion
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
-  std::cout << " " << std::endl;
-  std::cout << "Type of growth: Test" << std::endl;
+  oss << " " << std::endl;
+  oss << "Type of growth: Test" << std::endl;
+  d_model_p->d_log(oss);
 
   while (pointer) {
 
@@ -1747,9 +1761,10 @@ void netfv::Network::sproutingGrowth(std::string growth_type) {
 
     } else {
 
-      std::cout << " " << std::endl;
-      std::cout << "Criterion not implemented!!! Program is terminated here"
+      oss << " " << std::endl;
+      oss << "Criterion not implemented!!! Program is terminated here"
                 << std::endl;
+      d_model_p->d_log(oss);
       exit(1);
     }
 
@@ -1997,8 +2012,8 @@ unsigned int netfv::Network::markApicalGrowth(std::string growth_type) {
 
     while (pointer) {
 
-      //      std::cout << " " << std::endl;
-      //      std::cout << "Type of growth: apical_taf_based" << std::endl;
+      //      oss << " " << std::endl;
+      //      oss << "Type of growth: apical_taf_based" << std::endl;
 
       if ((pointer->typeOfVGNode == TypeOfNode::DirichletNode and
            d_update_number > 0) or
@@ -2031,9 +2046,10 @@ unsigned int netfv::Network::markApicalGrowth(std::string growth_type) {
     }
   } else {
 
-    std::cout << " " << std::endl;
-    std::cout << "Criterion not implemented!!! Program is terminated here"
+    oss << " " << std::endl;
+    oss << "Criterion not implemented!!! Program is terminated here"
               << std::endl;
+    d_model_p->d_log(oss);
     exit(1);
   }
 
@@ -2056,8 +2072,8 @@ unsigned int netfv::Network::processApicalGrowthTest() {
 
     if (pointer->apicalGrowth) {
 
-    //      std::cout << " " << std::endl;
-    //      std::cout << "Type of growth: Test, Create new node at node:"
+    //      oss << " " << std::endl;
+    //      oss << "Type of growth: Test, Create new node at node:"
     //                << pointer->index << std::endl;
 
       netfv::VGNode new_node;
@@ -2190,7 +2206,8 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
 
     if (pointer->apicalGrowth) {
 
-      out << "\n      Processing node: " << pointer->index << "\n";
+      oss << "\n      Processing node: " << pointer->index << "\n";
+      d_model_p->d_log(oss);
 
       // compute radius, direction, length
       unsigned int num_segments = pointer->neighbors.size();
@@ -2243,12 +2260,13 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
       Point parent_grad_taf;
       get_taf_and_gradient(parent_taf, parent_grad_taf, pointer->coord);
 
-      out << "      Parent info R: " << parent_r << ", L: " << parent_l
+      oss << "      Parent info R: " << parent_r << ", L: " << parent_l
           << ", d: " << util::io::printStr(parent_d)
           << ", x: (" << util::io::printStr(pointer->coord) << ")\n";
-      out << "        taf: " << parent_taf
+      oss << "        taf: " << parent_taf
           << ", Grad(TAF): " <<  util::io::printStr(parent_grad_taf)
           << "\n";
+      d_model_p->d_log(oss);
 
       // compute child direction
       Point child_d = input.d_net_direction_lambda_g * parent_d;
@@ -2303,10 +2321,11 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
             check_new_node(pointer->index, pointer->coord, child_end_point,
                            0.1 * child_l, domain_size, check_code);
 
-        out << "      Child info R: " << child_r << ", L: " << child_l
+        oss << "      Child info R: " << child_r << ", L: " << child_l
             << ", d: " << util::io::printStr(child_d)
             << ", check point: " << check_code
             << ", x end: (" << util::io::printStr(child_end_point) << ")\n";
+        d_model_p->d_log(oss);
 
         // check if the new point is too close to existing node
         if (check_code == 0)
@@ -2325,7 +2344,8 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
                                                     child_d_2,
                                           input.d_branch_angle);
 
-        out << "      Bifurcation angle: " << angle << "\n";
+        oss << "      Bifurcation angle: " << angle << "\n";
+        d_model_p->d_log(oss);
 
 
         if (pointer->typeOfVGNode == TypeOfNode::DirichletNode)
@@ -2373,10 +2393,11 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
               check_new_node(pointer->index, pointer->coord, child_end_point,
                              0.1 * child_l, domain_size, check_code);
 
-          out << "      Child 1 info R: " << child_r << ", L: " << child_l
+          oss << "      Child 1 info R: " << child_r << ", L: " << child_l
               << ", d: " << util::io::printStr(child_d)
               << ", check point: " << check_code
               << ", x end: (" << util::io::printStr(child_end_point) << ")\n";
+          d_model_p->d_log(oss);
 
           // check if the new point is too close to existing node
           if (check_code == 0)
@@ -2400,10 +2421,11 @@ unsigned int netfv::Network::processApicalGrowthTAF() {
               check_new_node(pointer->index, pointer->coord, child_end_point,
                              0.1 * child_l_2, domain_size, check_code);
 
-          out << "      Child 2 info R: " << child_r_2 << ", L: " << child_l_2
+          oss << "      Child 2 info R: " << child_r_2 << ", L: " << child_l_2
               << ", d: " << util::io::printStr(child_d_2)
               << ", check point: " << check_code
               << ", x end: (" << util::io::printStr(child_end_point) << ")\n";
+          d_model_p->d_log(oss);
 
           // check if the new point is too close to existing node
           if (check_code == 0)
@@ -2695,9 +2717,10 @@ void netfv::Network::get_taf_and_gradient(double &taf_val, Point &grad_taf_val,
       }
 
       if (nd == 0) {
-        out << "Error computing gradient of taf at point = ("
+        oss << "Error computing gradient of taf at point = ("
             << util::io::printStr(coord) << ") belonging to "
             << "element = " << elem_i->id() << "\n";
+        d_model_p->d_log(oss);
         exit(1);
       }
       grad_taf_val(var) = grad_taf_val(var) / nd;
@@ -2719,7 +2742,7 @@ void netfv::Network::get_taf_and_gradient(double &taf_val, Point &grad_taf_val,
   //    if (grad_taf_val(1) > 0.)
   //      y_error = true;
   //
-  //    out << "      Check grad taf x err: " << util::io::printStr(x_error)
+  //    oss << "      Check grad taf x err: " << util::io::printStr(x_error)
   //        << ", y err: " << util::io::printStr(y_error) << "\n";
   //
   //    if (x_error or y_error)

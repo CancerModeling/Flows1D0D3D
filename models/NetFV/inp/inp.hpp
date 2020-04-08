@@ -119,10 +119,14 @@ struct OutputDeck {
   unsigned int d_dt_output_interval;
   unsigned int d_dt_restart_save_interval;
   int d_debug_lvl;
+  bool d_quiet;
+  std::string d_outfile_tag;
+  std::string d_outfilename;
+  std::string d_outfilename_net;
 
   explicit OutputDeck(const std::string &filename = "")
       : d_perform_output(true), d_restart_save(false), d_dt_output_interval(1),
-        d_dt_restart_save_interval(1), d_debug_lvl(2) {
+        d_dt_restart_save_interval(1), d_debug_lvl(2), d_quiet(false) {
 
     if (!filename.empty())
       read_parameters(filename);

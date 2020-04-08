@@ -50,7 +50,8 @@ public:
         TransientLinearImplicitSystem &mde,
         TransientLinearImplicitSystem &pres,
         TransientLinearImplicitSystem &grad_taf,
-        TransientLinearImplicitSystem &vel);
+        TransientLinearImplicitSystem &vel,
+        util::Logger &log);
 
   /*! @brief Get equation system */
   const EquationSystems &get_system() const { return d_tum_sys; }
@@ -118,6 +119,9 @@ public:
 
   /*! @brief Is this growth time step */
   bool d_is_growth_step;
+
+  /*! @brief Reference to logger */
+  util::Logger &d_log;
 
 private:
 
