@@ -127,17 +127,34 @@ class Logger {
 
 public:
 
-  Logger() : d_comm_p(nullptr) {};
+  Logger() : d_comm_p(nullptr), d_screen_out(true) {};
 
-  Logger(const std::string &log_file, Parallel::Communicator *comm)
-      : d_comm_p(comm) {
+  Logger(const std::string &log_file, Parallel::Communicator *comm, bool
+                                                                        screen_out = true)
+      : d_comm_p(comm), d_screen_out(screen_out) {
 
     d_dbg_file.open(log_file, std::ios_base::out);
   };
 
-  void log(std::ostringstream &oss, bool screen_out = true) {
+  // overload function call
+  void operator()(std::ostringstream &oss, bool screen_out) {
+    log(oss, screen_out);
+  }
+  void operator()(std::ostringstream &oss) {
+    log(oss, d_screen_out);
+  }
 
-    out << oss.str();
+  void operator()(const std::string &str, bool screen_out) {
+    log(str, screen_out);
+  }
+  void operator()(const std::string &str) {
+    log(str, d_screen_out);
+  }
+
+  void log(std::ostringstream &oss, bool screen_out) {
+
+    if (screen_out)
+      out << oss.str();
     if (d_comm_p->rank() == 0)
       d_dbg_file << oss.str();
 
@@ -145,11 +162,21 @@ public:
     oss.clear();
   };
 
-  void log(const std::string &str, bool screen_out = true) {
+  void log(std::ostringstream &oss) {
+    log(oss, d_screen_out);
+  };
 
-    out << str;
+  void log(const std::string &str, bool screen_out) {
+
+    if (screen_out)
+      out << str;
     if (d_comm_p->rank() == 0)
       d_dbg_file << str;
+  };
+
+  void log(const std::string &str) {
+
+    log(str, d_screen_out);
   };
 
   ~Logger() { d_dbg_file.close(); }
@@ -162,6 +189,7 @@ public:
 private:
   Parallel::Communicator *d_comm_p;
   std::ofstream d_dbg_file;
+  bool d_screen_out{};
 };
 
 /*!
