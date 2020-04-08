@@ -6,11 +6,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "model.hpp"
-#include "ghosting_functor.hpp"
-#include "systems.hpp"
-#include "utilIO.hpp"
-#include "utils.hpp"
-#include <random>
 
 namespace {
 std::ostringstream oss;
@@ -54,7 +49,6 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
 
 // Model setup and run
 void netfv::model_setup_run(int argc, char **argv,
-                             std::vector<double> &QOI_MASS,
                              const std::string &filename,
                              Parallel::Communicator *comm) {
 
@@ -82,7 +76,7 @@ void netfv::model_setup_run(int argc, char **argv,
   if (input.d_read_mesh_flag)
     mesh.read(input.d_mesh_filename);
   else
-    create_mesh(input, mesh);
+    util::create_mesh(input, mesh);
 
   oss << "Creating tumor system\n";
   log(oss);
@@ -175,108 +169,21 @@ void netfv::model_setup_run(int argc, char **argv,
     boundary_condition_nut(tum_sys);
   }
 
-  // create ghosting functor
-  //  netfv::GhostingFunctorNet ghosting_fun(mesh);
-  //  tum.get_dof_map().add_coupling_functor(ghosting_fun);
-  //  hyp.get_dof_map().add_coupling_functor(ghosting_fun);
-  //  nec.get_dof_map().add_coupling_functor(ghosting_fun);
-  //  taf.get_dof_map().add_coupling_functor(ghosting_fun);
-  //  mde.get_dof_map().add_coupling_functor(ghosting_fun);
-  //  ecm.get_dof_map().add_coupling_functor(ghosting_fun);
-
   //
   // Create Model class
   //
-  auto model = Model(argc, argv, QOI_MASS, filename, comm, input, mesh, tum_sys,
+  auto model = Model(argc, argv, filename, comm, input, mesh, tum_sys,
                      nec, tum, nut, hyp, taf, ecm, mde, pres, grad_taf, vel, 
                      log);
-}
 
-void netfv::create_mesh(InpDeck &input, ReplicatedMesh &mesh) {
-
-  double xmax = input.d_domain_params[1];
-  double ymax = input.d_domain_params[3];
-  double zmax = input.d_domain_params[5];
-  unsigned int nelx, nely, nelz;
-  double hx, hy, hz;
-  if (input.d_dim == 2) {
-
-    if (input.d_use_mesh_size_for_disc) {
-      hx = input.d_mesh_size;
-      hy = input.d_mesh_size;
-      nelx = xmax / hx;
-      nely = ymax / hy;
-    } else {
-      nelx = input.d_num_elems;
-      nely = input.d_num_elems;
-      hx = xmax  / nelx;
-      hy = ymax / nely;
-    }
-
-    input.d_elem_face_size = hx;
-    input.d_elem_size = hx * hx;
-    input.d_face_by_h = 1.;
-
-    // check if length of element in x and y direction are same
-    if (std::abs(hx - hy) > 0.001 * hx) {
-      libmesh_error_msg("Size of element needs to be same in both direction, "
-                        "ie. element needs to be square\n"
-                        "If domain is rectangle than specify number of "
-                        "elements in x and y different so that element is "
-                        "square\n");
-    }
-
-    // either read or create mesh
-    if (input.d_restart)
-      mesh.read(input.d_mesh_restart_file);
-    else
-      MeshTools::Generation::build_square(mesh, nelx, nely, 0., xmax, 0., ymax,
-                                          QUAD4);
-
-  } else if (input.d_dim == 3) {
-
-    if (input.d_use_mesh_size_for_disc) {
-      hx = input.d_mesh_size;
-      hy = input.d_mesh_size;
-      hz = input.d_mesh_size;
-      nelx = xmax / hx;
-      nely = ymax / hy;
-      nelz = zmax / hz;
-    } else {
-      nelx = input.d_num_elems;
-      nely = input.d_num_elems;
-      nelz = input.d_num_elems;
-      hx = xmax / nelx;
-      hy = ymax / nely;
-      hz = zmax / nelz;
-    }
-
-    input.d_elem_face_size = hx * hx;
-    input.d_elem_size = hx * hx * hx;
-    input.d_face_by_h = hx;
-
-    // check if length of element in x and y direction are same
-    if (std::abs(hx - hy) > 0.001 * hx or std::abs(hx - hz) > 0.001 * hx) {
-      libmesh_error_msg("Size of element needs to be same in all three "
-                        "direction, ie. element needs to be square\n"
-                        "If domain is cuboid than specify number of "
-                        "elements in x, y and z different so that element is "
-                        "cube\n");
-    }
-
-    // either read or create mesh
-    if (input.d_restart)
-      mesh.read(input.d_mesh_restart_file);
-    else
-      MeshTools::Generation::build_cube(mesh, nelx, nely, nelz, 0., xmax, 0.,
-                                        ymax, 0., zmax, HEX8);
-  }
+  // run model
+  model.run();
 }
 
 // Model class
 netfv::Model::Model(
-    int argc, char **argv, std::vector<double> &QOI_MASS,
-    const std::string &filename, Parallel::Communicator *comm,
+    int argc, char **argv, const std::string &filename,
+    Parallel::Communicator *comm,
     InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
     TransientLinearImplicitSystem &nec, TransientLinearImplicitSystem &tum,
     TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
@@ -285,18 +192,18 @@ netfv::Model::Model(
     TransientLinearImplicitSystem &grad_taf,
     TransientLinearImplicitSystem &vel,
     util::Logger &log)
-    : d_step(0), d_time(0.), d_dt(0.), d_hmin(0.), d_hmax(0.),
-      d_bounding_box(Point(), Point()), d_nonlinear_step(0),
-      d_is_output_step(false), d_is_growth_step(false),
-      d_input(input), d_comm_p(comm),
-      d_mesh(mesh), d_tum_sys(tum_sys), d_network(this),
-      d_nec_assembly(this, "Necrotic", nec), d_tum_assembly(this, "Tumor", tum),
-      d_nut_assembly(this, "Nutrient", nut),
-      d_hyp_assembly(this, "Hypoxic", hyp), d_taf_assembly(this, "TAF", taf),
-      d_ecm_assembly(this, "ECM", ecm), d_mde_assembly(this, "MDE", mde),
-      d_pres_assembly(this, "Pressure", pres),
-      d_grad_taf_assembly(this, "TAF_Gradient", grad_taf),
-      d_vel_assembly(this, "Velocity", vel), d_log(log) {
+    : util::BaseModel(comm, input, mesh, tum_sys, log),
+      d_network(this),
+      d_nec_assembly(this, "Necrotic", d_mesh, nec),
+      d_tum_assembly(this, "Tumor", d_mesh, tum),
+      d_nut_assembly(this, "Nutrient", d_mesh, nut),
+      d_hyp_assembly(this, "Hypoxic", d_mesh, hyp),
+      d_taf_assembly(this, "TAF", d_mesh, taf),
+      d_ecm_assembly(this, "ECM", d_mesh, ecm),
+      d_mde_assembly(this, "MDE", d_mesh, mde),
+      d_pres_assembly(this, "Pressure", d_mesh, pres),
+      d_grad_taf_assembly(this, "TAF_Gradient", d_mesh, grad_taf),
+      d_vel_assembly(this, "Velocity", d_mesh, vel) {
 
   // bounding box
   d_bounding_box.first =
@@ -393,20 +300,22 @@ netfv::Model::Model(
   oss << "\n\nCreating 1-D network\n";
   d_log(oss);
   d_network.create_initial_network();
+}
 
-  //
-  // File to print solution
-  //
-  // Tumor model
-  if (d_input.d_perform_output)
-    write_system(0);
+void netfv::Model::run() {
 
-  // network
-  d_network.writeDataToVTKTimeStep_VGM(0);
+  // print initial state
+  {
+    //
+    // Tumor model
+    if (d_input.d_perform_output)
+      write_system(0);
 
-  //
+    // network
+    d_network.writeDataToVTKTimeStep_VGM(0);
+  }
+
   // set time parameters
-  //
   d_step = d_input.d_init_step;
   d_time = d_input.d_init_time;
   d_dt = d_input.d_dt;
@@ -417,15 +326,6 @@ netfv::Model::Model(
   //
   // Solve
   //
-
-  //  if (d_input.d_test_name == "test_net_tum_2") {
-  //    // decouple 1d-3d pressure
-  //    d_input.d_tissue_flow_L_p = 0.;
-  //
-  //    // solve only for 1d pressure
-  //    oss << std::endl << "Solving Network pressure system" << std::endl;
-  //    d_network.solveVGMforPressure();
-  //  }
 
   if (!d_input.d_test_name.empty()) {
     oss << "\n\nSolving sub-system for test: " << d_input.d_test_name << "\n\n";
@@ -449,7 +349,7 @@ netfv::Model::Model(
   if (d_input.d_test_name == "test_pressure") {
 
     // write tumor solution
-    write_system(1, &QOI_MASS);
+    write_system(1);
     d_network.writeDataToVTKTimeStep_VGM(1);
     return;
   }
@@ -488,31 +388,14 @@ netfv::Model::Model(
     d_log(oss);
 
     // solve tumor-network system
-    if (d_input.d_test_name == "test_nut")
-      test_nut();
-    else if (d_input.d_test_name == "test_nut_2")
-      test_nut_2();
-    else if (d_input.d_test_name == "test_taf")
-      test_taf();
-    else if (d_input.d_test_name == "test_taf_2")
-      test_taf_2();
-    else if (d_input.d_test_name == "test_tum")
-      test_tum();
-    else if (d_input.d_test_name == "test_tum_2")
-      test_tum_2();
-    else if (d_input.d_test_name == "test_net_tum")
-      test_net_tum();
-    else if (d_input.d_test_name == "test_net_tum_2")
-      test_net_tum_2();
-    else
-      solve_system();
+    solve_system();
 
     // update network
     if (d_is_growth_step) {
       oss << "\n  ____________________________________\n";
       oss << "  Updating Network ";
       d_log(oss);
-      d_network.update_network();
+      d_network.update_network(d_taf_assembly, d_grad_taf_assembly);
     }
 
     // Post-processing
@@ -520,8 +403,7 @@ netfv::Model::Model(
 
       // write tumor solution
       write_system((d_step - d_input.d_init_step) /
-                       d_input.d_dt_output_interval,
-                   &QOI_MASS);
+                       d_input.d_dt_output_interval);
       d_network.writeDataToVTKTimeStep_VGM((d_step - d_input.d_init_step) /
                                            d_input.d_dt_output_interval);
     }
@@ -529,35 +411,15 @@ netfv::Model::Model(
   } while (d_step < d_input.d_steps);
 }
 
-void netfv::Model::write_system(const unsigned int &t_step,
-                                 std::vector<double> *QOI_MASS) {
+void netfv::Model::write_system(const unsigned int &t_step) {
 
   ExodusII_IO exodus(d_mesh);
 
+  // scale pressure for visualization
   std::vector<Number> p_save;
   std::vector<unsigned int> p_dofs;
-  {
-    double factor = d_input.d_mmhgFactor;
-    // double factor = 1.0;
-
-    // Looping through elements
-    for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
-
-      d_pres_assembly.init_dof(elem);
-      double pt = d_pres_assembly.get_current_sol(0);
-
-      p_save.push_back(pt);
-      p_dofs.push_back(d_pres_assembly.get_global_dof_id(0));
-
-      pt = pt / factor;
-
-      d_pres_assembly.d_sys.solution->set(d_pres_assembly.get_global_dof_id(0),
-                                          pt);
-    }
-
-    d_pres_assembly.d_sys.solution->close();
-    d_pres_assembly.d_sys.update();
-  }
+  util::scale_pres(d_mesh, d_pres_assembly, d_input.d_mmhgFactor, p_save,
+                   p_dofs);
 
   // compute total integral of order parameter u
   double value_mass, total_mass;
@@ -567,20 +429,9 @@ void netfv::Model::write_system(const unsigned int &t_step,
   MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
 
-  //
-  if (QOI_MASS != nullptr)
-    QOI_MASS->push_back(total_mass);
-
   // print to screen
   oss << "\n\n  Total tumor Mass: " << total_mass << "\n";
   d_log(oss);
-
-  // print to file
-  std::ofstream out_file;
-  out_file.precision(16);
-  out_file.open("tumor_volumes_" + d_input.d_outfile_tag + ".txt",
-                std::ios_base::app | std::ios_base::out);
-  out_file << std::scientific << d_time << " " << total_mass << std::endl;
 
   // write mesh and simulation results
   std::string filename = d_input.d_outfilename + ".e";
@@ -610,50 +461,36 @@ void netfv::Model::write_system(const unsigned int &t_step,
     d_tum_sys.write(solutions_file, WRITE);
   }
 
-  {
-    for (unsigned int i = 0; i < p_dofs.size(); i++) {
-
-      d_pres_assembly.d_sys.solution->set(p_dofs[i], p_save[i]);
-    }
-    d_pres_assembly.d_sys.solution->close();
-    d_pres_assembly.d_sys.update();
-  }
-}
-
-void netfv::Model::project_solution_to_physical_range(
-    const MeshBase &mesh, TransientLinearImplicitSystem &sys) {
-
-  if (!d_input.d_project_solution_to_physical_range)
-    return;
-
-  // loop over dofs and project solution to [0,1] range
-  const auto &sys_name = sys.name();
-
-  unsigned int num_vars = 1;
-  unsigned int sys_number = sys.number();
-  unsigned int var_number = 0;
-  if (sys_name == "Tumor")
-    num_vars = 2;
-
-  // loop over nodes and modify dofs
-  for (const auto &node : mesh.local_node_ptr_range()) {
-
-    const auto &dof = node->dof_number(sys_number, var_number, 0);
-
-    auto val = sys.current_solution(dof);
-    if (val < 0.)
-      sys.solution->add(dof, -val);
-    else if (val > 1.)
-      sys.solution->add(dof, -val + 1.);
-    else
-      continue;
-  }
-
-  sys.solution->close();
-  sys.update();
+  // store pressure to original value
+  util::store_pres(d_mesh, d_pres_assembly, d_input.d_mmhgFactor, p_save,
+                   p_dofs);
 }
 
 void netfv::Model::solve_system() {
+
+  if (!d_input.d_test_name.empty()) {
+    if (d_input.d_test_name == "test_nut")
+      test_nut();
+    else if (d_input.d_test_name == "test_nut_2")
+      test_nut_2();
+    else if (d_input.d_test_name == "test_taf")
+      test_taf();
+    else if (d_input.d_test_name == "test_taf_2")
+      test_taf_2();
+    else if (d_input.d_test_name == "test_tum")
+      test_tum();
+    else if (d_input.d_test_name == "test_tum_2")
+      test_tum_2();
+    else if (d_input.d_test_name == "test_net_tum")
+      test_net_tum();
+    else if (d_input.d_test_name == "test_net_tum_2")
+      test_net_tum_2();
+    else
+      libmesh_error_msg("Test name " + d_input.d_test_name +
+                        " not recognized.");
+
+    return;
+  }
 
   // get systems
   auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
@@ -666,6 +503,7 @@ void netfv::Model::solve_system() {
   auto &pres = d_tum_sys.get_system<TransientLinearImplicitSystem>("Pressure");
   auto &grad_taf =
       d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+  auto &vel = d_tum_sys.get_system<TransientLinearImplicitSystem>("Velocity");
 
   // update time
   nut.time = d_time;
@@ -700,7 +538,7 @@ void netfv::Model::solve_system() {
   if (d_input.d_decouple_nutrients) {
     oss << "\n      Solving [1D nutrient]\n";
     d_log(oss);
-    d_network.solveVGMforNutrient();
+    d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
   }
 
   // to compute the nonlinear convergence
@@ -727,7 +565,7 @@ void netfv::Model::solve_system() {
     if (!d_input.d_decouple_nutrients) {
       oss << "[1D nutrient] -> ";
       d_log(oss);
-      d_network.solveVGMforNutrient();
+      d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
     }
 
     // solve nutrient
@@ -781,15 +619,15 @@ void netfv::Model::solve_system() {
       const Real final_linear_residual = tum.final_linear_residual();
 
       oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
+          << ", residual: " << final_linear_residual
+          << ", Nonlinear convergence: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
       d_log(oss);
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
       oss << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
+          << std::endl;
       d_log(oss);
 
       break;
@@ -836,6 +674,7 @@ void netfv::Model::test_nut() {
   oss << "\n  Nonlinear loop\n";
   d_log(oss);
 
+
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
     // for (unsigned int l = 0; l < 1; ++l) {
@@ -849,7 +688,7 @@ void netfv::Model::test_nut() {
     // solver for 1-D nutrient
     oss << "[1D nutrient] -> ";
     d_log(oss);
-    d_network.solveVGMforNutrient();
+    d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
 
     // solve for nutrient in tissue
     last_nonlinear_soln_nut->zero();
@@ -873,15 +712,15 @@ void netfv::Model::test_nut() {
       const Real final_linear_residual = nut.final_linear_residual();
 
       oss << "    Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error_nut << std::endl << std::endl;
+          << ", residual: " << final_linear_residual
+          << ", Nonlinear convergence: ||u - u_old|| = "
+          << nonlinear_global_error_nut << std::endl << std::endl;
       d_log(oss);
     }
     if (nonlinear_global_error_nut < d_input.d_nonlin_tol) {
 
       oss << "    Nonlinear converged at step: " << l << std::endl
-                << std::endl;
+          << std::endl;
       d_log(oss);
 
       break;
@@ -911,7 +750,7 @@ void netfv::Model::test_nut_2() {
   // solver for 1-D nutrient
   oss << "      Solving [1D nutrient] -> ";
   d_log(oss);
-  d_network.solveVGMforNutrient();
+  d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
 
   oss << "[3D nutrient]\n";
   d_log(oss);
@@ -941,11 +780,10 @@ void netfv::Model::solve_pressure() {
   // Solve pressure system
   oss << "\n\n  Nonlinear loop for pressure\n";
   d_log(oss);
-
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
-  // Debug
-  // for (unsigned int l = 0; l < 10; ++l) {
+    // Debug
+    // for (unsigned int l = 0; l < 10; ++l) {
 
     d_nonlinear_step = l;
     oss << "    ____________________\n";
@@ -956,7 +794,7 @@ void netfv::Model::solve_pressure() {
     // solver for 1-D pressure and nutrient
     oss << "[1D pressure] -> ";
     d_log(oss);
-    d_network.solveVGMforPressure();
+    d_network.solveVGMforPressure(d_taf_assembly);
 
     // solve for pressure in tissue
     last_nonlinear_soln_pres->zero();
@@ -979,15 +817,15 @@ void netfv::Model::solve_pressure() {
       const Real final_linear_residual = pres.final_linear_residual();
 
       oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error_pres << std::endl << std::endl;
+          << ", residual: " << final_linear_residual
+          << ", Nonlinear convergence: ||u - u_old|| = "
+          << nonlinear_global_error_pres << std::endl << std::endl;
       d_log(oss);
     }
     if (nonlinear_global_error_pres < d_input.d_nonlin_tol) {
 
       oss << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
+          << std::endl;
       d_log(oss);
 
       break;
@@ -1023,7 +861,6 @@ void netfv::Model::test_taf() {
   oss << "[gradient of taf]\n";
   d_log(oss);
   d_grad_taf_assembly.solve();
-  d_grad_taf_assembly.d_sys.update();
 }
 
 void netfv::Model::test_taf_2() {
@@ -1150,15 +987,15 @@ void netfv::Model::test_tum() {
       const Real final_linear_residual = tum.final_linear_residual();
 
       oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
+          << ", residual: " << final_linear_residual
+          << ", Nonlinear convergence: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
       d_log(oss);
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
       oss << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
+          << std::endl;
       d_log(oss);
 
       break;
@@ -1247,15 +1084,15 @@ void netfv::Model::test_tum_2() {
       const Real final_linear_residual = tum.final_linear_residual();
 
       oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
+          << ", residual: " << final_linear_residual
+          << ", Nonlinear convergence: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
       d_log(oss);
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
       oss << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
+          << std::endl;
       d_log(oss);
 
       break;
@@ -1306,7 +1143,7 @@ void netfv::Model::test_net_tum() {
   if (d_input.d_decouple_nutrients) {
     oss << "\n      Solving [1D nutrient]\n";
     d_log(oss);
-    d_network.solveVGMforNutrient();
+    d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
   }
 
   // to compute the nonlinear convergence
@@ -1333,7 +1170,7 @@ void netfv::Model::test_net_tum() {
     if (!d_input.d_decouple_nutrients) {
       oss << "[1D nutrient] -> ";
       d_log(oss);
-      d_network.solveVGMforNutrient();
+      d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
     }
 
     // solve nutrient
@@ -1372,15 +1209,15 @@ void netfv::Model::test_net_tum() {
       const Real final_linear_residual = tum.final_linear_residual();
 
       oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
+          << ", residual: " << final_linear_residual
+          << ", Nonlinear convergence: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
       d_log(oss);
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
       oss << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
+          << std::endl;
       d_log(oss);
 
       break;
@@ -1394,21 +1231,21 @@ void netfv::Model::test_net_tum() {
   // direct role in evolution of sub-system
   if (d_is_output_step or d_is_growth_step) {
 
-    // solve for velocity
-    oss << "      Solving [velocity] -> ";
-    d_log(oss);
-    d_vel_assembly.solve();
-
     // solve for taf
     *taf.old_local_solution = *taf.current_local_solution;
-    oss << "[taf species] -> ";
+    oss << "      Solving [taf species] -> ";
     d_log(oss);
     taf.solve();
 
     // solve for gradient of taf
-    oss << "[gradient of taf]\n";
+    oss << "[gradient of taf] -> ";
     d_log(oss);
     d_grad_taf_assembly.solve();
+
+    // solve for velocity
+    oss << "[velocity]\n";
+    d_log(oss);
+    d_vel_assembly.solve();
   }
 }
 
@@ -1449,7 +1286,7 @@ void netfv::Model::test_net_tum_2() {
   if (d_input.d_decouple_nutrients) {
     oss << "\n      Solving [1D nutrient]\n";
     d_log(oss);
-    d_network.solveVGMforNutrient();
+    d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
   }
 
   // to compute the nonlinear convergence
@@ -1476,7 +1313,7 @@ void netfv::Model::test_net_tum_2() {
     if (!d_input.d_decouple_nutrients) {
       oss << "[1D nutrient] -> ";
       d_log(oss);
-      d_network.solveVGMforNutrient();
+      d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
     }
 
     // solve nutrient
@@ -1515,15 +1352,15 @@ void netfv::Model::test_net_tum_2() {
       const Real final_linear_residual = tum.final_linear_residual();
 
       oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
+          << ", residual: " << final_linear_residual
+          << ", Nonlinear convergence: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
       d_log(oss);
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
       oss << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
+          << std::endl;
       d_log(oss);
 
       break;
@@ -1535,23 +1372,23 @@ void netfv::Model::test_net_tum_2() {
 
   // compute below only when we are performing output as these do not play
   // direct role in evolution of sub-system
-  if (d_is_output_step) {
-
-    // solve for velocity
-    oss << "      Solving [velocity] -> ";
-    d_log(oss);
-    d_vel_assembly.solve();
+  if (d_is_output_step or d_is_growth_step) {
 
     // solve for taf
     *taf.old_local_solution = *taf.current_local_solution;
-    oss << "[taf species] -> ";
+    oss << "      Solving [taf species] -> ";
     d_log(oss);
     taf.solve();
 
     // solve for gradient of taf
-    oss << "[gradient of taf]\n";
+    oss << "[gradient of taf] -> ";
     d_log(oss);
     d_grad_taf_assembly.solve();
+
+    // solve for velocity
+    oss << "[velocity]\n";
+    d_log(oss);
+    d_vel_assembly.solve();
   }
 }
 

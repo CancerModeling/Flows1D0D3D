@@ -8,27 +8,19 @@
 #include "../model.hpp"
 
 namespace {
-double get_nut_source(const std::string &test_name, const Point &x, const
-std::vector<double> &x0, const double &r) {
+double get_nut_source(const std::string &test_name, const Point &x,
+                      const std::vector<double> &x0, const double &r) {
 
   if (test_name != "test_tum_2")
     return 0.;
 
-  double L_source_x = x0[0];
-  double L_source_y = x0[1];
-  double L_source_z = x0[2];
-  const Point xc = Point(L_source_x, L_source_y, L_source_z);
-  // spherical source
-  if (false) {
-    if ((x - xc).norm() < r)
-      return 1.;
-  } else {
-    Point dx = Point(x(0), x(1), 0.) - xc;
-    if (dx.norm() < r) {
+  // For cylinder, take z-coord as 0
+  const Point xc = util::to_point({x0[0], x0[1], 0.});
 
-      return 1.;
-    }
-  }
+  // spherical source
+  Point dx = Point(x(0), x(1), 0.) - xc;
+  if (dx.norm() < r)
+    return 1.;
 
   return 0.;
 }
@@ -77,28 +69,12 @@ void netfv::boundary_condition_nut(EquationSystems &es) {
 
 // Assembly class
 void netfv::NutAssembly::assemble() {
-
-  const auto &deck = d_model_p->get_input_deck();
-
   assemble_1d_coupling();
-
   assemble_face();
-
-  if (deck.d_assembly_method == 1)
-    assemble_1();
-  else if (deck.d_assembly_method == 2)
-    assemble_2();
-  else if (deck.d_assembly_method == 3)
-    assemble_3();
+  assemble_1();
 }
 
 void netfv::NutAssembly::assemble_1d_coupling() {
-
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
 
   // Get required system alias
   // auto &nut = d_model_p->get_nut_assembly();
@@ -106,7 +82,7 @@ void netfv::NutAssembly::assemble_1d_coupling() {
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
-  const Real dt = es.parameters.get<Real>("time_step");
+  const Real dt = d_model_p->d_dt;
   const Real factor_nut = deck.d_assembly_factor_c_t;
 
   // coupling between tissue pressure and vessel pressure
@@ -135,7 +111,7 @@ void netfv::NutAssembly::assemble_1d_coupling() {
           auto e_w = J_b_data.elem_weight[e];
 
           // get 3d pressure
-          const auto *elem = mesh.elem_ptr(e_id);
+          const auto *elem = d_mesh.elem_ptr(e_id);
           pres.init_dof(elem);
           auto p_t_k = pres.get_current_sol(0);
 
@@ -174,12 +150,6 @@ void netfv::NutAssembly::assemble_1d_coupling() {
 
 void netfv::NutAssembly::assemble_face() {
 
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
-
   // Get required system alias
   // auto &nut = d_model_p->get_nut_assembly();
   auto &tum = d_model_p->get_tum_assembly();
@@ -188,7 +158,7 @@ void netfv::NutAssembly::assemble_face() {
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
-  const Real dt = es.parameters.get<Real>("time_step");
+  const Real dt = d_model_p->d_dt;
   const Real factor_nut = deck.d_assembly_factor_c_t;
 
   // store boundary condition constraints
@@ -220,15 +190,16 @@ void netfv::NutAssembly::assemble_face() {
   Real tum_neigh_cur = 0.;
   Real chem_tum_neigh_cur = 0.;
 
+  Real compute_rhs = 0.;
+  Real compute_mat = 0.;
+
   // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
-    tum.init_var_dof(elem);
+    tum.init_dof(elem);
     hyp.init_dof(elem);
     pres.init_dof(elem);
-
-    // const unsigned int n_dofs = d_dof_indices_sys.size();
 
     // reset matrix and force
     Ke_dof_col.clear();
@@ -242,65 +213,60 @@ void netfv::NutAssembly::assemble_face() {
     tum_cur = tum.get_current_sol_var(0, 0);
     chem_tum_cur = tum.get_current_sol_var(0, 1);
 
-    // face terms
-    {
+    // loop over sides of the element
+    for (auto side : elem->side_index_range()) {
 
-      // loop over sides of the element
-      for (auto side : elem->side_index_range()) {
+      if (elem->neighbor_ptr(side) != nullptr) {
 
-        if (elem->neighbor_ptr(side) != nullptr) {
+        const Elem *neighbor = elem->neighbor_ptr(side);
 
-          const Elem *neighbor = elem->neighbor_ptr(side);
+        // get dof id
+        // nut
+        init_dof(neighbor, dof_indices_nut_neigh);
 
-          // get dof id
-          // nut
-          init_dof(neighbor, dof_indices_nut_neigh);
+        // pres
+        pres.init_dof(neighbor, dof_indices_pres_neigh);
+        pres_neigh_cur =
+            pres.get_current_sol(0, dof_indices_pres_neigh);
 
-          // pres
-          pres.init_dof(neighbor, dof_indices_pres_neigh);
-          pres_neigh_cur =
-              pres.get_current_sol(0, dof_indices_pres_neigh);
+        // tum
+        tum.init_var_dof(neighbor, dof_indices_tum_neigh, dof_indices_tum_var_neigh);
+        tum_neigh_cur = tum.get_current_sol_var(0, 0,
+                                                     dof_indices_tum_var_neigh);
+        chem_tum_neigh_cur = tum.get_current_sol_var(0, 1,
+                                                          dof_indices_tum_var_neigh);
 
-          // tum
-          tum.init_var_dof(neighbor, dof_indices_tum_neigh, dof_indices_tum_var_neigh);
-          tum_neigh_cur = tum.get_current_sol_var(0, 0,
-                                                       dof_indices_tum_var_neigh);
-          chem_tum_neigh_cur = tum.get_current_sol_var(0, 1,
-                                                            dof_indices_tum_var_neigh);
+        // diffusion
+        compute_mat =
+            factor_nut * dt * deck.d_D_sigma * deck.d_face_by_h;
+        util::add_unique(get_global_dof_id(0), compute_mat, Ke_dof_col,
+                         Ke_val_col);
+        util::add_unique(dof_indices_nut_neigh[0], -compute_mat, Ke_dof_col,
+                         Ke_val_col);
 
-          // diffusion
-          const Real a_diff =
-              factor_nut * dt * deck.d_D_sigma * deck.d_face_by_h;
-          util::add_unique(get_global_dof_id(0), a_diff, Ke_dof_col,
-                           Ke_val_col);
-          util::add_unique(dof_indices_nut_neigh[0], -a_diff, Ke_dof_col,
-                           Ke_val_col);
+        // advection
+        compute_mat = 0.;
+        if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.0E-12)
+          compute_mat = 2. * chem_tum_cur * chem_tum_neigh_cur /
+                         (chem_tum_cur + chem_tum_neigh_cur);
+        Real v = deck.d_tissue_flow_coeff * deck.d_face_by_h *
+                   ((pres_cur - pres_neigh_cur) -
+                       compute_mat * (tum_cur - tum_neigh_cur));
 
-          // advection
-          Real mu_two_point = 0.;
-          if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.0E-12)
-            mu_two_point = 2. * chem_tum_cur * chem_tum_neigh_cur /
-                           (chem_tum_cur + chem_tum_neigh_cur);
-          Real v = deck.d_tissue_flow_coeff * deck.d_face_by_h *
-                     ((pres_cur - pres_neigh_cur) -
-                      mu_two_point * (tum_cur - tum_neigh_cur));
+        // upwinding
+        if (v >= 0.)
+          util::add_unique(get_global_dof_id(0), factor_nut * dt * v,
+                           Ke_dof_col, Ke_val_col);
+        else
+          util::add_unique(dof_indices_nut_neigh[0], factor_nut * dt * v,
+                           Ke_dof_col, Ke_val_col);
 
-          // upwinding
-          if (v >= 0.)
-            util::add_unique(get_global_dof_id(0), factor_nut * dt * v,
-                             Ke_dof_col, Ke_val_col);
-          else
-            util::add_unique(dof_indices_nut_neigh[0], factor_nut * dt * v,
-                             Ke_dof_col, Ke_val_col);
-
-          // chemotactic term
-          Number b_chi_c = factor_nut * dt * deck.d_chi_c * deck.d_D_sigma *
-                           deck.d_face_by_h;
-          Fe(0) += b_chi_c * (tum_cur - tum_neigh_cur);
-        } // elem neighbor is not null
-      }   // loop over faces
-
-    } // terms over face of element
+        // chemotactic term
+        compute_rhs = factor_nut * dt * deck.d_chi_c * deck.d_D_sigma *
+                         deck.d_face_by_h;
+        Fe(0) += compute_rhs * (tum_cur - tum_neigh_cur);
+      } // elem neighbor is not null
+    }   // loop over faces
 
     // add to matrix
     Ke.resize(1, Ke_dof_col.size());
@@ -316,12 +282,6 @@ void netfv::NutAssembly::assemble_face() {
 
 void netfv::NutAssembly::assemble_1() {
 
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
-
   // Get required system alias
   //auto &nut = d_model_p->get_nut_assembly();
   auto &tum = d_model_p->get_tum_assembly();
@@ -333,7 +293,7 @@ void netfv::NutAssembly::assemble_1() {
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
-  const Real dt = es.parameters.get<Real>("time_step");
+  const Real dt = d_model_p->d_dt;
   const Real factor_nut = deck.d_assembly_factor_c_t;
 
   // local matrix and vector
@@ -348,263 +308,81 @@ void netfv::NutAssembly::assemble_1() {
   Real ecm_cur = 0.;
   Real mde_cur = 0.;
 
-  // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-    init_dof(elem);
-    tum.init_var_dof(elem);
-    hyp.init_dof(elem);
-    nec.init_dof(elem);
-    taf.init_dof(elem);
-    ecm.init_dof(elem);
-    mde.init_dof(elem);
-
-    // const unsigned int n_dofs = d_dof_indices_sys.size();
-
-    // reset matrix and force
-    Ke(0,0) = 0.;
-    Fe(0) = 0.;
-
-    // volume terms
-    {
-      // get solution in this element
-      nut_old = get_old_sol(0);
-      tum_cur = tum.get_current_sol_var(0, 0);
-      hyp_cur = hyp.get_current_sol(0);
-      nec_cur = nec.get_current_sol(0);
-      ecm_cur = ecm.get_current_sol(0);
-      mde_cur = mde.get_current_sol(0);
-
-      // mass matrix
-      Ke(0,0) += factor_nut * deck.d_elem_size;
-
-      // previous time step term
-      Fe(0) += factor_nut * nut_old * deck.d_elem_size;
-
-      // add source
-      Fe(0) += factor_nut * deck.d_elem_size * dt *
-               deck.d_lambda_ECM_D * ecm_cur * mde_cur;
-
-      // handle all coupling with nutrient as source term
-      Number a_source = deck.d_elem_size * dt *
-                        (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
-                         deck.d_lambda_Ph * hyp_cur +
-                         deck.d_lambda_ECM_P * (1. - ecm_cur) *
-                             util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
-      Ke(0,0) += factor_nut * a_source;
-
-      // add artificial source if asked
-      double articial_source =
-          get_nut_source(deck.d_test_name, elem->centroid(),
-                         deck.d_nut_source_center, deck.d_nut_source_radius) -
-          nut_old;
-      if (articial_source > 0.)
-        Fe(0) += deck.d_elem_size * dt * articial_source;
-    }
-
-    // add to matrix
-    d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
-
-    // add to vector
-    d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
-  }
-
-  // finish
-  d_sys.matrix->close();
-  d_sys.rhs->close();
-}
-
-void netfv::NutAssembly::assemble_2() {
-
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
-
-  // Get required system alias
-  // auto &nut = d_model_p->get_nut_assembly();
-  auto &tum = d_model_p->get_tum_assembly();
-  auto &hyp = d_model_p->get_hyp_assembly();
-  auto &nec = d_model_p->get_nec_assembly();
-  auto &taf = d_model_p->get_taf_assembly();
-  auto &ecm = d_model_p->get_ecm_assembly();
-  auto &mde = d_model_p->get_mde_assembly();
-
-  // Model parameters
-  const auto &deck = d_model_p->get_input_deck();
-  const Real dt = es.parameters.get<Real>("time_step");
-  const Real factor_nut = deck.d_assembly_factor_c_t;
-
-  // local matrix and vector
-  DenseMatrix<Number> Ke(1,1);
-  DenseVector<Number> Fe(1);
-
-  // Store current and old solution
-  Real nut_old = 0.;
   Real tum_proj = 0.;
   Real hyp_proj = 0.;
   Real nec_proj = 0.;
   Real ecm_proj = 0.;
   Real mde_proj = 0.;
 
+  Real compute_rhs = 0.;
+  Real compute_mat = 0.;
+
   // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
-    tum.init_var_dof(elem);
+    tum.init_dof(elem);
     hyp.init_dof(elem);
     nec.init_dof(elem);
     taf.init_dof(elem);
     ecm.init_dof(elem);
     mde.init_dof(elem);
 
-    const unsigned int n_dofs = d_dof_indices_sys.size();
-
-    // reset matrix and force
-    Ke(0,0) = 0.;
-    Fe(0) = 0.;
-    
-    // volume terms
-    {
-      // get solution in this element
-      nut_old = get_old_sol(0);
-
-      // get projected values of species
-      tum_proj = util::project_concentration(tum.get_current_sol_var(0, 0));
-      hyp_proj = util::project_concentration(hyp.get_current_sol(0));
-      nec_proj = util::project_concentration(nec.get_current_sol(0));
-      ecm_proj = util::project_concentration(ecm.get_current_sol(0));
-      mde_proj = util::project_concentration(mde.get_current_sol(0));
-
-      // mass matrix
-      Ke(0,0) += factor_nut * deck.d_elem_size;
-
-      // previous time step term
-      Fe(0) += factor_nut * nut_old * deck.d_elem_size;
-
-      // add source
-      Fe(0) += factor_nut * deck.d_elem_size * dt *
-               deck.d_lambda_ECM_D * ecm_proj * mde_proj;
-
-      // handle all coupling with nutrient as source term
-      auto a_source = deck.d_elem_size * dt *
-                        (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
-                         deck.d_lambda_Ph * hyp_proj +
-                         deck.d_lambda_ECM_P * (1. - ecm_proj) *
-                         util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
-      Ke(0,0) += factor_nut * a_source;
-
-      // add artificial source if asked
-      double articial_source = get_nut_source(deck.d_test_name, elem->centroid(),
-                                              deck.d_nut_source_center, deck.d_nut_source_radius) - nut_old;
-      if (articial_source > 0.)
-        Fe(0) += deck.d_elem_size * dt * articial_source;
-    }
-
-    // add to matrix
-    d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
-
-    // add to vector
-    d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
-  }
-
-  // finish
-  d_sys.matrix->close();
-  d_sys.rhs->close();
-}
-
-void netfv::NutAssembly::assemble_3() {
-
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
-
-  // Get required system alias
-  //auto &nut = d_model_p->get_nut_assembly();
-  auto &tum = d_model_p->get_tum_assembly();
-  auto &hyp = d_model_p->get_hyp_assembly();
-  auto &nec = d_model_p->get_nec_assembly();
-  auto &taf = d_model_p->get_taf_assembly();
-  auto &ecm = d_model_p->get_ecm_assembly();
-  auto &mde = d_model_p->get_mde_assembly();
-
-  // Model parameters
-  const auto &deck = d_model_p->get_input_deck();
-  const Real dt = es.parameters.get<Real>("time_step");
-  const Real factor_nut = deck.d_assembly_factor_c_t;
-
-  // local matrix and vector
-  DenseMatrix<Number> Ke(1,1);
-  DenseVector<Number> Fe(1);
-
-  // Store current and old solution
-  Real nut_cur = 0.;
-  Real nut_old = 0.;
-  Real tum_proj = 0.;
-  Real hyp_proj = 0.;
-  Real nec_proj = 0.;
-  Real ecm_proj = 0.;
-  Real mde_proj = 0.;
-
-  // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-    init_dof(elem);
-    tum.init_var_dof(elem);
-    hyp.init_dof(elem);
-    nec.init_dof(elem);
-    taf.init_dof(elem);
-    ecm.init_dof(elem);
-    mde.init_dof(elem);
-
-    // const unsigned int n_dofs = d_dof_indices_sys.size();
-
     // reset matrix and force
     Ke(0,0) = 0.;
     Fe(0) = 0.;
 
-    // volume terms
-    {
-      // get solution in this element
-      nut_cur = get_current_sol(0);
-      nut_old = get_old_sol(0);
+    // get solution in this element
+    nut_old = get_old_sol(0);
+    tum_cur = tum.get_current_sol_var(0, 0);
+    hyp_cur = hyp.get_current_sol(0);
+    nec_cur = nec.get_current_sol(0);
+    ecm_cur = ecm.get_current_sol(0);
+    mde_cur = mde.get_current_sol(0);
 
-      // get projected values of species
-      tum_proj = util::project_concentration(tum.get_current_sol_var(0, 0));
-      hyp_proj = util::project_concentration(hyp.get_current_sol(0));
-      nec_proj = util::project_concentration(nec.get_current_sol(0));
-      ecm_proj = util::project_concentration(ecm.get_current_sol(0));
-      mde_proj = util::project_concentration(mde.get_current_sol(0));
+    if (deck.d_assembly_method == 1) {
 
-      // mass matrix
-      Ke(0,0) += factor_nut * deck.d_elem_size;
+      compute_rhs =
+          deck.d_elem_size * (nut_old + dt * deck.d_lambda_ECM_D *
+                                                      ecm_cur * mde_cur);
 
-      // previous time step term
-      Fe(0) += factor_nut * nut_old * deck.d_elem_size;
+      compute_mat =
+          deck.d_elem_size *
+          (1. + dt * (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
+                      deck.d_lambda_Ph * hyp_cur +
+                      deck.d_lambda_ECM_P * (1. - ecm_cur) *
+                          util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P)));
 
-      // add source
-      Fe(0) += factor_nut * deck.d_elem_size * dt *
-               deck.d_lambda_ECM_D * ecm_proj * mde_proj;
+    } else {
 
-      // handle all coupling with nutrient as source term
-      auto a_source = deck.d_elem_size * dt *
-                      (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
-                       deck.d_lambda_Ph * hyp_proj +
-                       deck.d_lambda_ECM_P * (1. - ecm_proj) *
-                       util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
+      mde_proj = util::project_concentration(mde_cur);
+      ecm_proj = util::project_concentration(ecm_cur);
+      tum_proj = util::project_concentration(tum_cur);
+      hyp_proj = util::project_concentration(hyp_cur);
+      nec_proj = util::project_concentration(nec_cur);
 
-      // in this, instead of implicit, we consider it as a explicit forcing term
-      Fe(0) += -factor_nut * a_source * nut_cur;
+      compute_rhs = deck.d_elem_size *
+                    (nut_old + dt * deck.d_lambda_ECM_D * ecm_proj * mde_proj);
 
-      // add artificial source if asked
-      double articial_source = get_nut_source(deck.d_test_name, elem->centroid(),
-                                              deck.d_nut_source_center, deck.d_nut_source_radius) - nut_old;
-      if (articial_source > 0.)
-        Fe(0) += deck.d_elem_size * dt * articial_source;
+      compute_mat =
+          deck.d_elem_size *
+          (1. + dt * (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
+                      deck.d_lambda_Ph * hyp_proj +
+                      deck.d_lambda_ECM_P * (1. - ecm_proj) *
+                          util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P)));
     }
+
+    // add artificial source if asked
+    Real artificial_source =
+        get_nut_source(deck.d_test_name, elem->centroid(),
+                       deck.d_nut_source_center, deck.d_nut_source_radius) -
+        nut_old;
+    if (artificial_source > 0.)
+      compute_rhs += deck.d_elem_size * dt * artificial_source;
+
+    // add
+    Ke(0,0) += factor_nut * compute_mat;
+    Fe(0) += factor_nut * compute_rhs;
 
     // add to matrix
     d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);

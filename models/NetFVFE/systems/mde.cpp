@@ -93,12 +93,12 @@ void netfvfe::MdeAssembly::assemble_1() {
 
       if (deck.d_assembly_method == 1) {
 
-        Real aux_1 = dt * deck.d_lambda_MDE_P * (tum_cur - nec_cur) * ecm_cur *
+        Real aux_1 = deck.d_lambda_MDE_P * (tum_cur - nec_cur) * ecm_cur *
                      deck.d_sigma_HP / (1. + nut_cur);
 
-        compute_rhs = d_JxW[qp] * (mde_old + aux_1);
+        compute_rhs = d_JxW[qp] * (mde_old + dt * aux_1);
 
-        compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_MDE_D + aux_1 +
+        compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_MDE_D + dt * aux_1 +
                                    dt * deck.d_lambda_ECM_D * ecm_cur);
       } else {
 
@@ -106,12 +106,12 @@ void netfvfe::MdeAssembly::assemble_1() {
         nec_proj = util::project_concentration(nec_cur);
         ecm_proj = util::project_concentration(ecm_cur);
 
-        Real aux_1 = dt * deck.d_lambda_MDE_P * (tum_proj - nec_proj) *
+        Real aux_1 = deck.d_lambda_MDE_P * (tum_proj - nec_proj) *
                      ecm_proj * deck.d_sigma_HP / (1. + nut_proj);
 
-        compute_rhs = d_JxW[qp] * (mde_old + aux_1);
+        compute_rhs = d_JxW[qp] * (mde_old + dt * aux_1);
 
-        compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_MDE_D + aux_1 +
+        compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_MDE_D + dt * aux_1 +
                                    dt * deck.d_lambda_ECM_D * ecm_proj);
       }
 

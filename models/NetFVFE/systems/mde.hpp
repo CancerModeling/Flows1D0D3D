@@ -15,42 +15,21 @@ namespace netfvfe {
 // forward declare
 class Model;
 
-/*!
- * @brief Initial condition for MDE
- *
- * @param p Point at which ic is computed
- * @param es Equation system
- * @param system_name Name of system
- * @param var_name Name of the variable
- * @param value Initial condition at given point
- */
+/*! @brief Initial condition for MDE */
 Number initial_condition_mde(const Point &p, const Parameters &es,
                              const std::string &system_name, const std::string &var_name);
 
-/*!
- * @brief Class to perform assembly of MDE
- */
+/*! @brief Class to perform assembly of MDE */
 class MdeAssembly : public util::BaseAssembly {
 
 public:
-  /*!
-   * @brief Constructor
-   *
-   * @param model Model class
-   * @param sys_name Name of system
-   * @param sys System
-   */
+  /*! @brief Constructor */
   MdeAssembly(Model * model, const std::string system_name, MeshBase &mesh,
       TransientLinearImplicitSystem & sys)
       : util::BaseAssembly(system_name, mesh, sys, 1,
                      {sys.variable_number("mde")}), d_model_p(model) {}
 
-  /*!
-   * @brief Assembly function
-   *
-   * Overrides the default assembly function. It calls assemble_1,
-   * assemble_2, or assemble_3 depending on user flag
-   */
+  /*! @brief Assembly function. Overrides the default assembly function */
   void assemble() override;
 
 public:
@@ -60,18 +39,7 @@ public:
 
 private:
 
-  /*!
-   * @brief Assembly over volume of element
-   *
-   * If assembly method == 1
-   * In this we simply implement the assembly under iterative nonlinear
-   * scheme. In source terms, those which are linear with respect to system
-   * variable, we consider implicit scheme.
-   *
-   * If assembly method == 2
-   * Same as above, but now we project the species concentration to
-   * physical range [0,1].
-   */
+  /*! @brief Assembly */
   void assemble_1();
 };
 

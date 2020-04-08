@@ -95,6 +95,7 @@ void netfvfe::TumAssembly::assemble_1() {
   Real pro_cur = 0.;
 
   Real nut_proj = 0.;
+  Real tum_proj = 0.;
   Real nec_proj = 0.;
   Real hyp_proj = 0.;
   Real pro_proj = 0.;
@@ -136,7 +137,9 @@ void netfvfe::TumAssembly::assemble_1() {
 
       // get projected solution
       hyp_proj = util::project_concentration(hyp_cur);
-      pro_proj = util::project_concentration(pro_cur);
+      tum_proj = util::project_concentration(tum_cur);
+      nec_proj = util::project_concentration(nec_cur);
+      pro_proj = tum_proj - hyp_proj - nec_proj;
 
       mobility = deck.d_bar_M_P * pow(pro_proj, 2) * pow(1. - pro_proj, 2) +
                  deck.d_bar_M_H * pow(hyp_proj, 2) * pow(1. - hyp_proj, 2);
@@ -157,8 +160,6 @@ void netfvfe::TumAssembly::assemble_1() {
             d_JxW[qp] * (1. + dt * deck.d_lambda_A +
                          dt * deck.d_lambda_P * nut_cur * pro_cur);
       } else {
-
-        nec_proj = util::project_concentration(nec_cur);
 
         // compute quantities independent of dof loop
         compute_rhs_tum =

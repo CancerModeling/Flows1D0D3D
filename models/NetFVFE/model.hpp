@@ -13,6 +13,9 @@
 #include "systems/systems.hpp"
 #include "unet/network.hpp"
 
+// typedef network
+typedef util::Network Net;
+
 /*!
  * @brief Namespace for coupled 3d tumor growth model and 1d blood flow
  * network model. See
@@ -50,10 +53,10 @@ public:
         TransientLinearImplicitSystem &vel,
         util::Logger &log);
 
-  const util::Network &get_network() const {
+  const Net &get_network() const {
     return d_network;
   }
-  util::Network &get_network() {
+  Net &get_network() {
     return d_network;
   }
 
@@ -171,7 +174,7 @@ private:
   void test_net_tum_2();
 
   /*! @brief Network class */
-  util::Network d_network;
+  Net d_network;
 
   /*! @brief Assembly objects */
   NecAssembly d_nec_assembly;

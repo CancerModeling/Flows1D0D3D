@@ -22,31 +22,18 @@
 
 namespace netfv {
 
-/*!
- * @brief Compute matrix contribution from diffusion
- *
- * @param sys System for which assembly is performed
- */
-void assemble_diffusion(BaseAssembly &sys);
+// forward declare
+class Model;
 
-/*!
- * @brief Compute matrix contribution from diffusion and advection
- *
- * @param sys System for which assembly is performed
- * @param pres Pressure system
- * @param tum Tumor system
- */
-void assemble_diffusion_advection(BaseAssembly &sys, PressureAssembly &pres,
-                                  TumAssembly &tum);
+/*! @brief Compute matrix contribution from diffusion */
+void assemble_diffusion(util::BaseAssembly &sys, Model *model);
 
-/*!
- * @brief Compute matrix contribution from advection
- *
- * @param sys System for which assembly is performed
- * @param pres Pressure system
- * @param tum Tumor system
- */
-void assemble_advection(BaseAssembly &sys, PressureAssembly &pres, TumAssembly &tum);
+/*! @brief Compute matrix contribution from diffusion and advection */
+void assemble_diffusion_advection(util::BaseAssembly &sys, PressureAssembly &pres,
+                                  TumAssembly &tum, Model *model);
+
+/*! @brief Compute matrix contribution from advection */
+void assemble_advection(util::BaseAssembly &sys, PressureAssembly &pres, TumAssembly &tum, Model *model);
 
 } // namespace netfv
 

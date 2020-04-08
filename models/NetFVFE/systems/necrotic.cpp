@@ -6,7 +6,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "../model.hpp"
-#include "systems.hpp"
 
 Number netfvfe::initial_condition_nec(const Point &p, const Parameters &es,
                               const std::string &system_name, const std::string &var_name){
@@ -35,8 +34,9 @@ void netfvfe::NecAssembly::assemble_1() {
   // Store current and old solution
   Real nec_old = 0.;
   Real nut_cur = 0.;
-  Real nut_proj = 0.;
   Real hyp_cur = 0.;
+
+  Real nut_proj = 0.;
   Real hyp_proj = 0.;
 
   Real compute_rhs = 0.;

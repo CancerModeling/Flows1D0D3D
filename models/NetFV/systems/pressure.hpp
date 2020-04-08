@@ -8,77 +8,47 @@
 #ifndef NETFV_PRESSURE_H
 #define NETFV_PRESSURE_H
 
-#include "abstraction.hpp"
+#include "usystem/abstraction.hpp"
 
 namespace netfv {
 
-/*!
- * @brief Initial condition for pressure
- *
- * @param p Point at which ic is computed
- * @param es Equation system
- * @param system_name Name of system
- * @param var_name Name of the variable
- * @param value Initial condition at given point
- */
-Number initial_condition_pres(const Point &p, const Parameters &es,
-                             const std::string &system_name, const std::string &var_name);
+// forward declare
+class Model;
 
-/*!
- * @brief Boundary condition for pressure
- *
- * @param es Equation system
- */
+/*! @brief Initial condition for pressure */
+Number initial_condition_pres(const Point &p, const Parameters &es,
+                              const std::string &system_name, const std::string &var_name);
+
+/*! @brief Boundary condition for pressure */
 void boundary_condition_pres(EquationSystems &es);
 
-/*!
- * @brief Class to perform assembly of pressure in tissue domain
- */
-class PressureAssembly : public BaseAssembly {
+/*! @brief Class to perform assembly of pressure in tissue domain */
+class PressureAssembly : public util::BaseAssembly {
 
 public:
-  /*!
-   * @brief Constructor
-   *
-   * @param model Model class
-   * @param sys_name Name of system
-   * @param sys System
-   */
-  PressureAssembly(Model *model, const std::string system_name,
+  /*! @brief Constructor */
+  PressureAssembly(Model *model, const std::string system_name, MeshBase &mesh,
                    TransientLinearImplicitSystem &sys)
-      : BaseAssembly(model, system_name, sys, 1,
-                     {sys.variable_number("pressure")}) {}
+      : util::BaseAssembly(system_name, mesh, sys, 1,
+                           {sys.variable_number("pressure")}), d_model_p(model) {}
 
-  /*!
-   * @brief Assembly function
-   *
-   * Overrides the default assembly function. It calls assemble_1,
-   * assemble_2, or assemble_3 depending on user flag
-   */
+  /*! @brief Assembly function. Overrides the default assembly function */
   void assemble() override;
+
+public:
+
+  /*! @brief Pointer reference to model */
+  Model *d_model_p;
 
 private:
 
-  /*!
-   * @brief Assembly over volume of element
-   *
-   * In this we simply implement the assembly under iterative nonlinear
-   * scheme. In source terms, those which are linear with respect to system
-   * variable, we consider implicit scheme.
-   */
+  /*! @brief Assembly */
   void assemble_1();
 
-  /*!
-   * @brief Assemble coupling between 3d and 1d pressure
-   *
-   * In this function, we handle the coupling between tissue pressure and
-   * blood pressure.
-   */
+  /*! @brief Assemble coupling between 3d and 1d pressure */
   void assemble_1d_coupling();
 
-  /*!
-   * @brief Assembly of terms over face of element
-   */
+  /*! @brief Assembly of terms over face of element */
   void assemble_face();
 };
 

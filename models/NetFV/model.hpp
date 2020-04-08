@@ -8,19 +8,13 @@
 #ifndef NETFV_MODEL_H
 #define NETFV_MODEL_H
 
-#include "uinp/inp.hpp"
-#include "net/network.hpp"
+#include "umodel/model.hpp"
+#include "modelUtil.hpp"
 #include "systems/systems.hpp"
-#include "utilLibs.hpp"
-#include "utils.hpp"
-#include <numeric>
-#include <string>
-#include <vector>
+#include "unet/network.hpp"
 
-// typedef input deck so that change its namespace or name does not effect
-// the rest of the code
-typedef util::InputDeck InpDeck;
-
+// typedef network
+typedef util::Network Net;
 
 /*!
  * @brief Namespace for coupled 3d tumor growth model and 1d blood flow
@@ -29,22 +23,23 @@ typedef util::InputDeck InpDeck;
  */
 namespace netfv {
 
-void model_setup_run(int argc, char **argv, std::vector<double> &QOI_MASS,
+void model_setup_run(int argc,
+                     char **argv,
                      const std::string &filename,
                      Parallel::Communicator *comm);
-
-void create_mesh(InpDeck &input, ReplicatedMesh &mesh);
 
 /*!
  * @brief Coupled 3D-1D tumor growth model driver
  */
-class Model {
+class Model : public util::BaseModel {
 
 public:
   /*! @brief Constructor */
-  Model(int argc, char **argv, std::vector<double> &QOI_MASS,
-        const std::string &filename, Parallel::Communicator *comm,
-        InpDeck &input, ReplicatedMesh &mesh,
+  Model(int argc, char **argv,
+        const std::string &filename,
+        Parallel::Communicator *comm,
+        InpDeck &input,
+        ReplicatedMesh &mesh,
         EquationSystems &tum_sys,
         TransientLinearImplicitSystem &nec,
         TransientLinearImplicitSystem &tum,
@@ -58,33 +53,12 @@ public:
         TransientLinearImplicitSystem &vel,
         util::Logger &log);
 
-  /*! @brief Get equation system */
-  const EquationSystems &get_system() const { return d_tum_sys; }
-  EquationSystems &get_system() { return d_tum_sys; }
-
-  const MeshBase &get_mesh() const { return d_mesh; }
-  MeshBase &get_mesh() { return d_mesh; }
-
-  const netfv::Network &get_network() const {
+  const Net &get_network() const {
     return d_network;
   }
-  netfv::Network &get_network() {
+  Net &get_network() {
     return d_network;
   }
-
-  const netfv::ListStructure<netfv::VGNode> &get_network_mesh() const {
-    return d_network.get_mesh();
-  }
-  netfv::ListStructure<netfv::VGNode> &get_network_mesh() {
-    return d_network.get_mesh();
-  }
-
-  /*! @brief Get input deck */
-  const InpDeck &get_input_deck() const { return d_input; }
-  InpDeck &get_input_deck() { return d_input; }
-
-  /*! @brief Get network data */
-  bool is_network_changed() const { return d_network.d_is_network_changed; }
 
   /*! @brief Get various system classes */
   PressureAssembly &get_pres_assembly() {return d_pres_assembly;}
@@ -98,48 +72,16 @@ public:
   MdeAssembly &get_mde_assembly() {return d_mde_assembly;}
   VelAssembly &get_vel_assembly() {return d_vel_assembly;}
 
-
-public:
-  /*! @brief To store input parameters */
-  unsigned int d_step;
-
-  /*! @brief Current time */
-  double d_time;
-
-  /*! @brief Current time step */
-  double d_dt;
-
-  /*! @brief hmax and hmin */
-  double d_hmin;
-  double d_hmax;
-
-  /*! @brief Bounding box */
-  std::pair<Point, Point> d_bounding_box;
-
-  /*! @brief Current nonlinear step */
-  unsigned int d_nonlinear_step;
-
-  /*! @brief Is this output time step */
-  bool d_is_output_step;
-
-  /*! @brief Is this growth time step */
-  bool d_is_growth_step;
-
-  /*! @brief Reference to logger */
-  util::Logger &d_log;
+  /*! @brief Run model */
+  void run() override ;
 
 private:
 
   /*! @brief Output results of tumor system and network system */
-  void write_system(const unsigned int &t_step,
-                    std::vector<double> *QOI_MASS = nullptr);
-
-  /*! @brief Projects species concentrations to their physical range [0,1] */
-  void project_solution_to_physical_range(const MeshBase &mesh,
-                                          TransientLinearImplicitSystem &sys);
+  void write_system(const unsigned int &t_step) override ;
 
   /*! @brief Solves tumor system */
-  void solve_system();
+  void solve_system() override ;
 
   /*! @brief Solves 1D-3D pressure system
    * At given time step, it solves for 1D and 3D pressure in a nonlinear loop
@@ -231,20 +173,8 @@ private:
   void test_net_tum();
   void test_net_tum_2();
 
-  /*! @brief To store input parameters */
-  InpDeck &d_input;
-
-  /*! @brief Pointer to communicator */
-  Parallel::Communicator *d_comm_p;
-
-  /*! @brief Store the network mesh */
-  ReplicatedMesh &d_mesh;
-
-  /*! @brief Store the 2d/3d tumor system */
-  EquationSystems &d_tum_sys;
-
   /*! @brief Network class */
-  Network d_network;
+  Net d_network;
 
   /*! @brief Assembly objects */
   NecAssembly d_nec_assembly;

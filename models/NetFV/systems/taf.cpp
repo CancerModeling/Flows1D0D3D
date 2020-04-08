@@ -41,37 +41,22 @@ Number netfv::initial_condition_taf(const Point &p, const Parameters &es,
 
 // Assembly class
 void netfv::TafAssembly::assemble() {
-
-  const auto &deck = d_model_p->get_input_deck();
-
   assemble_face();
-
-  if (deck.d_assembly_method == 1)
-    assemble_1();
-  else if (deck.d_assembly_method == 2)
-    assemble_2();
-  else if (deck.d_assembly_method == 3)
-    assemble_3();
+  assemble_1();
 }
 
 void netfv::TafAssembly::assemble_face() {
 
   // call diffusion-advection calculation function
   if (d_model_p->get_input_deck().d_advection_active)
-    netfv::assemble_diffusion_advection(d_model_p->get_taf_assembly(),
+    netfv::assemble_diffusion_advection(*this,
                                        d_model_p->get_pres_assembly(),
-                                       d_model_p->get_tum_assembly());
+                                       d_model_p->get_tum_assembly(), this->d_model_p);
   else
-    netfv::assemble_diffusion(d_model_p->get_taf_assembly());
+    netfv::assemble_diffusion(*this, this->d_model_p);
 }
 
 void netfv::TafAssembly::assemble_1() {
-
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
 
   // Get required system alias
   // auto &taf = d_model_p->get_ecm_assembly();
@@ -79,7 +64,7 @@ void netfv::TafAssembly::assemble_1() {
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
-  const Real dt = es.parameters.get<Real>("time_step");
+  const Real dt = d_model_p->d_dt;
 
   // local matrix and vector
   DenseMatrix<Number> Ke(1,1);
@@ -89,198 +74,48 @@ void netfv::TafAssembly::assemble_1() {
   Real taf_old = 0.;
   Real hyp_cur = 0.;
 
-  // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-    init_dof(elem);
-    hyp.init_dof(elem);
-
-    // const unsigned int n_dofs = taf.d_dof_indices_sys.size();
-
-    // reset matrix and force
-    Ke(0,0) = 0.;
-    Fe(0) = 0.;
-
-    // volume terms
-    {
-      // get fields at this element
-      hyp_cur = hyp.get_current_sol(0);
-      taf_old = get_old_sol(0);
-
-      // mass matrix
-      Ke(0,0) += deck.d_elem_size;
-
-      // previous time step term
-      Fe(0) += taf_old * deck.d_elem_size;
-
-      // matrix contribution
-      Real a_source = deck.d_elem_size * dt * deck.d_lambda_TAF * hyp_cur;
-      Ke(0,0) += a_source;
-
-      // add source
-      Fe(0) += deck.d_elem_size * dt * deck.d_lambda_TAF * hyp_cur;
-
-      // add artificial source if asked
-      Fe(0) += deck.d_elem_size * dt * deck.d_lambda_TAF *
-               get_taf_source(deck.d_test_name, elem->centroid(),
-                              deck.d_taf_source_type,
-                              deck.d_taf_source_center, deck.d_taf_source_radius);
-    }
-
-    // add to matrix
-    d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
-
-    // add to vector
-    d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
-  }
-
-  // finish
-  d_sys.matrix->close();
-  d_sys.rhs->close();
-}
-
-void netfv::TafAssembly::assemble_2() {
-
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
-
-  // Get required system alias
-  // auto &taf = d_model_p->get_ecm_assembly();
-  auto &hyp = d_model_p->get_hyp_assembly();
-
-  // Model parameters
-  const auto &deck = d_model_p->get_input_deck();
-  const Real dt = es.parameters.get<Real>("time_step");
-
-  // local matrix and vector
-  DenseMatrix<Number> Ke(1,1);
-  DenseVector<Number> Fe(1);
-
-  // Store current and old solution
-  Real taf_old = 0.;
   Real hyp_proj = 0.;
 
+  Real compute_rhs = 0.;
+  Real compute_mat = 0.;
+
   // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
     hyp.init_dof(elem);
-
-    // const unsigned int n_dofs = taf.d_dof_indices_sys.size();
 
     // reset matrix and force
     Ke(0,0) = 0.;
     Fe(0) = 0.;
 
-    // volume terms
-    {
-      // get fields at this element
-      taf_old = get_old_sol(0);
+    // get fields at this element
+    hyp_cur = hyp.get_current_sol(0);
+    taf_old = get_old_sol(0);
 
-      // get projected values of species
-      hyp_proj = util::project_concentration(hyp.get_current_sol(0));
+    if (deck.d_assembly_method == 1) {
 
-      // mass matrix
-      Ke(0,0) += deck.d_elem_size;
+      compute_rhs = deck.d_elem_size * (taf_old + dt * deck.d_lambda_TAF * hyp_cur);
+      compute_mat = deck.d_elem_size * (1. + dt * deck.d_lambda_TAF * hyp_cur);
 
-      // previous time step term
-      Fe(0) += taf_old * deck.d_elem_size;
+    } else {
 
-      // matrix contribution
-      Real a_source = deck.d_elem_size * dt * deck.d_lambda_TAF * hyp_proj;
-      Ke(0,0) += a_source;
+      hyp_proj = util::project_concentration(hyp_cur);
 
-      // add source
-      Fe(0) += deck.d_elem_size * dt * deck.d_lambda_TAF * hyp_proj;
-
-      // add artificial source if asked
-      Fe(0) += deck.d_elem_size * dt * deck.d_lambda_TAF *
-               get_taf_source(deck.d_test_name, elem->centroid(),
-                              deck.d_taf_source_type,
-                              deck.d_taf_source_center, deck.d_taf_source_radius);
+      compute_rhs = deck.d_elem_size * (taf_old + dt * deck.d_lambda_TAF * hyp_proj);
+      compute_mat = deck.d_elem_size * (1. + dt * deck.d_lambda_TAF * hyp_proj);
     }
 
-    // add to matrix
-    d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
+    // add artificial source if any
+    compute_rhs +=
+        deck.d_elem_size * dt * deck.d_lambda_TAF *
+        get_taf_source(deck.d_test_name, elem->centroid(),
+                       deck.d_taf_source_type,
+                       deck.d_taf_source_center, deck.d_taf_source_radius);
 
-    // add to vector
-    d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
-  }
-
-  // finish
-  d_sys.matrix->close();
-  d_sys.rhs->close();
-}
-
-void netfv::TafAssembly::assemble_3() {
-
-  // get tumor equation system
-  EquationSystems &es = d_model_p->get_system();
-
-  // Mesh
-  const MeshBase &mesh = es.get_mesh();
-
-  // Get required system alias
-  // auto &taf = d_model_p->get_ecm_assembly();
-  auto &hyp = d_model_p->get_hyp_assembly();
-
-  // Model parameters
-  const auto &deck = d_model_p->get_input_deck();
-  const Real dt = es.parameters.get<Real>("time_step");
-
-  // local matrix and vector
-  DenseMatrix<Number> Ke(1,1);
-  DenseVector<Number> Fe(1);
-
-  // Store current and old solution
-  Real taf_old = 0.;
-  Real taf_cur = 0.;
-  Real hyp_proj = 0.;
-
-  // Looping through elements
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-    init_dof(elem);
-    hyp.init_dof(elem);
-
-    // const unsigned int n_dofs = taf.d_dof_indices_sys.size();
-
-    // reset matrix and force
-    Ke(0,0) = 0.;
-    Fe(0) = 0.;
-
-    // volume terms
-    {
-      // get fields at this element
-      taf_old = get_old_sol(0);
-      taf_cur = get_current_sol(0);
-
-      // get projected values of species
-      hyp_proj = util::project_concentration(hyp.get_current_sol(0));
-
-      // mass matrix
-      Ke(0,0) += deck.d_elem_size;
-
-      // previous time step term
-      Fe(0) += taf_old * deck.d_elem_size;
-
-      // source contribution (in assemble_2 this term was implicit and here
-      // we consider it explicitly)
-      Real a_source = deck.d_elem_size * dt * deck.d_lambda_TAF * hyp_proj;
-      Fe(0) += -a_source * taf_cur;
-
-      // add source
-      Fe(0) += deck.d_elem_size * dt * deck.d_lambda_TAF * hyp_proj;
-
-      // add artificial source if asked
-      Fe(0) += deck.d_elem_size * dt * deck.d_lambda_TAF *
-               get_taf_source(deck.d_test_name, elem->centroid(),
-                              deck.d_taf_source_type,
-                              deck.d_taf_source_center, deck.d_taf_source_radius);
-    }
+    // add
+    Ke(0,0) += compute_mat;
+    Fe(0) += compute_rhs;
 
     // add to matrix
     d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);

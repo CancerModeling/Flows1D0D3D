@@ -6,11 +6,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "model.hpp"
-#include "systems.hpp"
-#include "utilIO.hpp"
-#include "utils.hpp"
-#include "ghosting_functor.hpp"
-#include <random>
 
 namespace {
 std::ostringstream oss;
@@ -174,15 +169,6 @@ void netfvfe::model_setup_run(int argc, char **argv,
     // Add boundary condition
     boundary_condition_nut(tum_sys);
   }
-
-  // create ghosting functor
-  //  netfvfe::GhostingFunctorNet ghosting_fun(mesh);
-  //  tum.get_dof_map().add_coupling_functor(ghosting_fun);
-  //  hyp.get_dof_map().add_coupling_functor(ghosting_fun);
-  //  nec.get_dof_map().add_coupling_functor(ghosting_fun);
-  //  taf.get_dof_map().add_coupling_functor(ghosting_fun);
-  //  mde.get_dof_map().add_coupling_functor(ghosting_fun);
-  //  ecm.get_dof_map().add_coupling_functor(ghosting_fun);
 
   //
   // Create Model class
