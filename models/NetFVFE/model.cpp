@@ -689,9 +689,9 @@ void netfvfe::Model::solve_system() {
     // solver for 1D nutrient
     if (!d_input.d_decouple_nutrients) {
       oss << "[1D nutrient] -> ";
+      d_log(oss);
       d_network.solveVGMforNutrient();
     }
-    d_log(oss);
 
     // solve nutrient
     oss << "[3D nutrient] -> ";
