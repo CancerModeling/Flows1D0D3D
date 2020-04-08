@@ -63,7 +63,7 @@ void netfvfe::model_setup_run(int argc, char **argv,
   random_init();
 
   // read input file
-  auto input = netfvfe::InputDeck(filename);
+  auto input = InpDeck(filename);
 
   // create logger
   util::Logger log("sim_" + input.d_outfile_tag + ".log", comm, !input.d_quiet);
@@ -89,7 +89,7 @@ void netfvfe::model_setup_run(int argc, char **argv,
   log(oss);
   EquationSystems tum_sys(mesh);
   // add parameters to system
-  tum_sys.parameters.set<netfvfe::InputDeck *>("input_deck") = &input;
+  tum_sys.parameters.set<InpDeck *>("input_deck") = &input;
   tum_sys.parameters.set<Real>("time_step") = input.d_dt;
 
   // read if available
@@ -193,7 +193,7 @@ void netfvfe::model_setup_run(int argc, char **argv,
                      log);
 }
 
-void netfvfe::create_mesh(netfvfe::InputDeck &input, ReplicatedMesh &mesh) {
+void netfvfe::create_mesh(InpDeck &input, ReplicatedMesh &mesh) {
 
   double xmax = input.d_domain_params[1];
   double ymax = input.d_domain_params[3];
@@ -278,7 +278,7 @@ void netfvfe::create_mesh(netfvfe::InputDeck &input, ReplicatedMesh &mesh) {
 netfvfe::Model::Model(
     int argc, char **argv, std::vector<double> &QOI_MASS,
     const std::string &filename, Parallel::Communicator *comm,
-    netfvfe::InputDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
+    InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
     TransientLinearImplicitSystem &nec, TransientLinearImplicitSystem &tum,
     TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
     TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &ecm,

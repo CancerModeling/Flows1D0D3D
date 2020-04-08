@@ -8,15 +8,23 @@
 #include "../model.hpp"
 
 Number netfvfe::initial_condition_mde(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                    const std::string &system_name, const std::string &var_name){
 
   libmesh_assert_equal_to(system_name,"MDE");
 
   if (var_name == "mde") {
 
-    const auto *deck = es.get<netfvfe::InputDeck *>("input_deck");
+    const auto *deck = es.get<InpDeck *>("input_deck");
 
-    return deck->d_mde_ic_val * initial_condition_hyp_kernel(p, deck);
+    double val = 0.;
+    for (unsigned int i=0; i<deck->d_tum_ic_data.size(); i++)
+      val += initial_condition_hyp_kernel(p, deck->d_dim,
+                                          deck->d_tum_ic_data[i].d_ic_type,
+                                          deck->d_tum_ic_data[i].d_ic_center,
+                                          deck->d_tum_ic_data[i].d_tum_ic_radius,
+                                          deck->d_tum_ic_data[i].d_hyp_ic_radius);
+
+    return deck->d_mde_ic_val * val;
   }
 
   return 0.;

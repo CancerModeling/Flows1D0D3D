@@ -24,7 +24,7 @@ Number netfvfe::initial_condition_pres(const Point &p, const Parameters &es,
 
   if (var_name == "pressure") {
 
-    const auto *deck = es.get<netfvfe::InputDeck *>("input_deck");
+    const auto *deck = es.get<InpDeck *>("input_deck");
 
     return deck->d_pressure_ic_val;
   }
@@ -34,7 +34,7 @@ Number netfvfe::initial_condition_pres(const Point &p, const Parameters &es,
 
 void netfvfe::boundary_condition_pres(EquationSystems &es) {
 
-  const auto *deck = es.parameters.get<netfvfe::InputDeck *>("input_deck");
+  const auto *deck = es.parameters.get<InpDeck *>("input_deck");
 
   std::set<boundary_id_type> ids;
   if (deck->d_nutrient_bc_north)
