@@ -526,7 +526,9 @@ void netfv::Network::writeDataToVTK_VGM() {
 
 void netfv::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
-  std::string path = "ratbrain_secomb_vgm_";
+  const auto &input = d_model_p->get_input_deck();
+
+  std::string path = input.d_outfilename_net + "_";
   path += std::to_string(timeStep);
   path.append(".vtk");
 
@@ -2639,6 +2641,31 @@ void netfv::Network::get_taf_and_gradient(double &taf_val, Point &grad_taf_val,
   // grad taf
   auto &grad_taf = d_model_p->get_grad_taf_assembly();
 
+  if ((input.d_test_name == "test_taf" or
+       input.d_test_name == "test_taf_2") and !input.d_taf_source_type.empty()) {
+
+    auto x = util::to_point(coord);
+    taf_val = 0.;
+    grad_taf_val = Point();
+
+    for (int i=0; i<input.d_taf_source_type.size(); i++) {
+
+      // get center
+      auto xc = util::to_point(input.d_taf_source_center[i]);
+
+      if ((xc - x).norm() < input.d_taf_source_radius[i]) {
+        taf_val += 0.;
+        grad_taf_val += Point();
+      } else {
+
+        taf_val += (xc - x).norm();
+        grad_taf_val += (xc - x) / taf_val;
+      }
+    }
+
+    return;
+  }
+
   // get taf
   const auto *elem_i = mesh.elem_ptr(
       util::get_elem_id(coord, input.d_mesh_size, input.d_num_elems,
@@ -2646,20 +2673,6 @@ void netfv::Network::get_taf_and_gradient(double &taf_val, Point &grad_taf_val,
 
   taf.init_dof(elem_i);
   taf_val = taf.get_current_sol(0);
-
-  if (input.d_test_name == "test_taf" or input.d_test_name == "test_taf_2") {
-
-    auto xc =
-        Point(input.d_taf_source_center[0], input.d_taf_source_center[1], 0.);
-    auto x = Point(coord[0], coord[1], 0.);
-
-    if ((x - xc).norm() < input.d_taf_source_radius)
-      grad_taf_val = Point(0., 0., 0.);
-    else
-      grad_taf_val = xc - x;
-
-    return;
-  }
 
   // get grad taf
   bool direct_comp = false;
