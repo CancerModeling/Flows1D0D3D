@@ -8,7 +8,7 @@
 #ifndef AVAFV_MODEL_H
 #define AVAFV_MODEL_H
 
-#include "netinp/inp.hpp"
+#include "uinp/inp.hpp"
 #include "systems/systems.hpp"
 #include "utilLibs.hpp"
 #include "utils.hpp"

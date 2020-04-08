@@ -10,7 +10,6 @@
 #include "systems.hpp"
 #include "utilIO.hpp"
 #include "utils.hpp"
-#include "netinp/inp.hpp"
 #include <random>
 
 namespace {

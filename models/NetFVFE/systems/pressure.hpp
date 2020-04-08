@@ -8,7 +8,7 @@
 #ifndef NETFVFE_PRESSURE_H
 #define NETFVFE_PRESSURE_H
 
-#include "abstraction.hpp"
+#include "usystem/abstraction.hpp"
 
 namespace netfvfe {
 
@@ -34,7 +34,7 @@ void boundary_condition_pres(EquationSystems &es);
 /*!
  * @brief Class to perform assembly of pressure in tissue domain
  */
-class PressureAssembly : public BaseAssembly {
+class PressureAssembly : public util::BaseAssembly {
 
 public:
   /*!
@@ -46,8 +46,8 @@ public:
    */
   PressureAssembly(Model *model, const std::string system_name, MeshBase &mesh,
                    TransientLinearImplicitSystem &sys)
-      : BaseAssembly(model, system_name, mesh, sys, 1,
-                     {sys.variable_number("pressure")}) {}
+      : util::BaseAssembly(system_name, mesh, sys, 1,
+                     {sys.variable_number("pressure")}), d_model_p(model) {}
 
   /*!
    * @brief Assembly function
@@ -56,6 +56,11 @@ public:
    * assemble_2, or assemble_3 depending on user flag
    */
   void assemble() override;
+
+public:
+
+  /*! @brief Pointer reference to model */
+  Model *d_model_p;
 
 private:
 

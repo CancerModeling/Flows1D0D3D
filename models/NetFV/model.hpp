@@ -8,7 +8,7 @@
 #ifndef NETFV_MODEL_H
 #define NETFV_MODEL_H
 
-#include "netinp/inp.hpp"
+#include "uinp/inp.hpp"
 #include "net/network.hpp"
 #include "systems/systems.hpp"
 #include "utilLibs.hpp"

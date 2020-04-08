@@ -8,7 +8,7 @@
 #ifndef NETFVFE_HYPOXIC_H
 #define NETFVFE_HYPOXIC_H
 
-#include "abstraction.hpp"
+#include "usystem/abstraction.hpp"
 
 namespace netfvfe {
 
@@ -44,7 +44,7 @@ Number initial_condition_hyp_kernel(const Point &p,
 /*!
  * @brief Class to perform assembly of hypoxic species
  */
-class HypAssembly : public BaseAssembly {
+class HypAssembly : public util::BaseAssembly {
 
 public:
   /*!
@@ -54,10 +54,11 @@ public:
    * @param sys_name Name of system
    * @param sys System
    */
-  HypAssembly(Model * model, const std::string system_name, MeshBase &mesh,
-      TransientLinearImplicitSystem & sys)
-      : BaseAssembly(model, system_name, mesh, sys, 1,
-                     {sys.variable_number("hypoxic")}) {}
+  HypAssembly(Model *model, const std::string system_name, MeshBase &mesh,
+              TransientLinearImplicitSystem &sys)
+      : util::BaseAssembly(system_name, mesh, sys, 1,
+                           {sys.variable_number("hypoxic")}),
+        d_model_p(model) {}
 
   /*!
    * @brief Assembly function
@@ -66,6 +67,11 @@ public:
    * assemble_2, or assemble_3 depending on user flag
    */
   void assemble() override;
+
+public:
+
+  /*! @brief Pointer reference to model */
+  Model *d_model_p;
 
 private:
 

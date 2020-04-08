@@ -8,7 +8,7 @@
 #ifndef NETFVFE_TUMOR_H
 #define NETFVFE_TUMOR_H
 
-#include "abstraction.hpp"
+#include "usystem/abstraction.hpp"
 
 namespace netfvfe {
 
@@ -30,7 +30,7 @@ Number initial_condition_tum(const Point &p, const Parameters &es,
 /*!
  * @brief Class to perform assembly of tumor species
  */
-class TumAssembly : public BaseAssembly {
+class TumAssembly : public util::BaseAssembly {
 
 public:
   /*!
@@ -42,9 +42,10 @@ public:
    */
   TumAssembly(Model *model, const std::string system_name, MeshBase &mesh,
               TransientLinearImplicitSystem &sys)
-      : BaseAssembly(model, system_name, mesh, sys, 2,
-                     {sys.variable_number("tumor"),
-                      sys.variable_number("chemical_tumor")}) {}
+      : util::BaseAssembly(system_name, mesh, sys, 2,
+                           {sys.variable_number("tumor"),
+                            sys.variable_number("chemical_tumor")}),
+        d_model_p(model) {}
 
   /*!
    * @brief Assembly function
@@ -53,6 +54,11 @@ public:
    * assemble_2, or assemble_3 depending on user flag
    */
   void assemble() override ;
+
+public:
+
+  /*! @brief Pointer reference to model */
+  Model *d_model_p;
 
 private:
 

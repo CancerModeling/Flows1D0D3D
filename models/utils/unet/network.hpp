@@ -5,27 +5,31 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef NETFVFE_NETWORK_H
-#define NETFVFE_NETWORK_H
+#ifndef UTIL_NETWORK_H
+#define UTIL_NETWORK_H
 
-#include "../systems/systems.hpp"
+// Libmesh
+#include "utils.hpp"
+
+// gmm dependencies
 #include "gmm.h"
+
+// custom data structures
 #include "list_structure.hpp"
 #include "nodes.hpp"
-#include "utilLibs.hpp"
-#include "utils.hpp"
-#include <string>
-#include <vector>
+
+// model class
+#include "umodel/model.hpp"
+
+// assembly class
+#include "usystem/abstraction.hpp"
 
 /*!
  * @brief Namespace for coupled 3d tumor growth model and 1d blood flow
  * network model. See
  * docs/NetTum/network_and_tumor_model.pdf for more details.
  */
-namespace netfvfe {
-
-// forward declare Model class
-class Model;
+namespace util {
 
 /*!
  * @brief Coupled 3D-1D tumor growth model driver
@@ -34,12 +38,12 @@ class Network {
 
 public:
   /*! @brief Constructor */
-  Network(netfvfe::Model *model)
+  Network(util::BaseModel *model)
       : d_is_network_changed(false), d_model_p(model), d_update_number(0) {}
 
-  const netfvfe::ListStructure<netfvfe::VGNode> &get_mesh() const { return VGM; }
+  const util::ListStructure<util::VGNode> &get_mesh() const { return VGM; }
 
-  netfvfe::ListStructure<netfvfe::VGNode> &get_mesh() { return VGM; }
+  util::ListStructure<util::VGNode> &get_mesh() { return VGM; }
 
   /**
    * @name Input-output
@@ -60,8 +64,6 @@ public:
 
   void printDataVGM();
 
-  void writeDataToVTK_VGM();
-
   void writeDataToVTKTimeStep_VGM(int timeStep);
 
   /** @}*/
@@ -72,20 +74,19 @@ public:
   /**@{*/
 
   /*! @brief Solve 1-d system */
-  void solve_system();
-  void assembleVGMSystemForPressure();
+  void assembleVGMSystemForPressure(BaseAssembly &pres_sys);
 
-  void solveVGMforPressure();
+  void solveVGMforPressure(BaseAssembly &pres_sys);
 
-  void assembleVGMSystemForNutrient();
+  void assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys);
 
-  void assembleVGMSystemForNutrientDecouple();
+  void assembleVGMSystemForNutrientDecouple(BaseAssembly &pres_sys, BaseAssembly &nut_sys);
 
-  void solveVGMforNutrient();
+  void solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys);
 
   void update_old_concentration() { C_v_old = C_v; };
 
-  std::vector<netfvfe::ElemWeights>
+  std::vector<util::ElemWeights>
   compute_elem_weights_at_node(std::shared_ptr<VGNode> &pointer) const;
 
   /** @}*/
@@ -98,17 +99,14 @@ public:
   void refine1DMesh();
 
   /*! @brief Update network */
-  void update_network();
+  void update_network(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys);
 
   /*! @brief Compute intersecting element and weight in tumor domain */
   void compute_elem_weights();
 
-  unsigned int markApicalGrowth(std::string growth_type);
-  unsigned int processApicalGrowthTAF();
-  unsigned int processApicalGrowthTest();
-
-  void sproutingGrowth(std::string growth_type);
-
+  unsigned int markApicalGrowth(std::string growth_type, BaseAssembly &taf_sys);
+  unsigned int processApicalGrowthTAF(BaseAssembly &taf_sys,
+                                      BaseAssembly &grad_taf_sys);
   std::shared_ptr<VGNode>
   check_new_node(const int &parent_index,
                  const std::vector<double> &parent_coord,
@@ -120,8 +118,9 @@ public:
   void add_new_node_at_existing_node(std::shared_ptr<VGNode> &pointer,
                                      std::shared_ptr<VGNode> &near_node);
 
-  void get_taf_and_gradient(double &taf_val, Point &grad_taf_val,
-                            const std::vector<double> &coord);
+  void get_taf_and_gradient(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys,
+                            double &taf_val, Point &grad_taf_val,
+                            const std::vector<double> &coord) const;
 
   /** @}*/
 
@@ -129,10 +128,10 @@ public:
   bool d_is_network_changed;
 
   /*! @brief Reference to model class */
-  netfvfe::Model *d_model_p;
+  util::BaseModel *d_model_p;
 
   /*! @brief 1-D mesh */
-  netfvfe::ListStructure<netfvfe::VGNode> VGM;
+  util::ListStructure<util::VGNode> VGM;
 
   /*! @brief System matrix for vessel pressure */
   gmm::row_matrix<gmm::wsvector<double>> A_VGM;
@@ -162,6 +161,6 @@ public:
   unsigned int d_update_number;
 };
 
-} // namespace netfvfe
+} // namespace util
 
-#endif // NETFVFE_NETWORK_H
+#endif // UTIL_NETWORK_H
