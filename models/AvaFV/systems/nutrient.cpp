@@ -15,7 +15,7 @@ Number avafv::initial_condition_nut(const Point &p, const Parameters &es,
 
   if (var_name == "nutrient") {
 
-    const auto *deck = es.get<avafv::InputDeck *>("input_deck");
+    const auto *deck = es.get<InpDeck *>("input_deck");
 
     return deck->d_nut_ic_value;
   }
@@ -25,7 +25,7 @@ Number avafv::initial_condition_nut(const Point &p, const Parameters &es,
 
 void avafv::boundary_condition_nut(EquationSystems &es) {
 
-  const auto *deck = es.parameters.get<avafv::InputDeck *>("input_deck");
+  const auto *deck = es.parameters.get<InpDeck *>("input_deck");
 
   std::set<boundary_id_type> ids;
   if (deck->d_nutrient_bc_north)

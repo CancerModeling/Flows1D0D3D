@@ -8,13 +8,17 @@
 #ifndef AVAFV_MODEL_H
 #define AVAFV_MODEL_H
 
-#include "inp/inp.hpp"
+#include "netinp/inp.hpp"
 #include "systems/systems.hpp"
 #include "utilLibs.hpp"
 #include "utils.hpp"
 #include <numeric>
 #include <string>
 #include <vector>
+
+// typedef input deck so that change its namespace or name does not effect
+// the rest of the code
+typedef util::InputDeck InpDeck;
 
 /*!
  * @brief Namespace for coupled 3d tumor growth model and 1d blood flow
@@ -27,7 +31,7 @@ void model_setup_run(int argc, char **argv, std::vector<double> &QOI_MASS,
                      const std::string &filename,
                      Parallel::Communicator *comm);
 
-void create_mesh(avafv::InputDeck &input, ReplicatedMesh &mesh);
+void create_mesh(InpDeck &input, ReplicatedMesh &mesh);
 
 /*!
  * @brief Coupled 3D-1D tumor growth model driver
@@ -38,7 +42,7 @@ public:
   /*! @brief Constructor */
   Model(int argc, char **argv, std::vector<double> &QOI_MASS,
         const std::string &filename, Parallel::Communicator *comm,
-        avafv::InputDeck &input, ReplicatedMesh &mesh,
+        InpDeck &input, ReplicatedMesh &mesh,
         EquationSystems &tum_sys,
         TransientLinearImplicitSystem &nec,
         TransientLinearImplicitSystem &tum,
@@ -55,8 +59,8 @@ public:
   MeshBase &get_mesh() { return d_mesh; }
 
   /*! @brief Get input deck */
-  const InputDeck &get_input_deck() const { return d_input; }
-  InputDeck &get_input_deck() { return d_input; }
+  const InpDeck &get_input_deck() const { return d_input; }
+  InpDeck &get_input_deck() { return d_input; }
 
   /*! @brief Get various system classes */
   NutAssembly &get_nut_assembly() {return d_nut_assembly;}
@@ -108,7 +112,7 @@ private:
   void test_tum_2();
 
   /*! @brief To store input parameters */
-  avafv::InputDeck &d_input;
+  InpDeck &d_input;
 
   /*! @brief Pointer to communicator */
   Parallel::Communicator *d_comm_p;

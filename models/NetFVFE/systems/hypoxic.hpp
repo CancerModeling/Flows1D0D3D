@@ -35,7 +35,11 @@ Number initial_condition_hyp(const Point &p, const Parameters &es,
  * @param value Initial condition function at given point
  */
 Number initial_condition_hyp_kernel(const Point &p,
-                                    const netfvfe::InputDeck *deck);
+                                    const unsigned int &dim,
+                                    const std::string &ic_type,
+                                    const std::vector<double> &ic_center,
+                                    const std::vector<double> &tum_ic_radius,
+                                    const std::vector<double> &hyp_ic_radius);
 
 /*!
  * @brief Class to perform assembly of hypoxic species
