@@ -8,35 +8,27 @@
 #include "../model.hpp"
 
 namespace {
-double get_taf_source(const std::string &test_name, const Point &x, const
-                      std::vector<double> &x0, const double &r) {
+
+double get_taf_source(const std::string &test_name, const Point &x,
+                      const std::vector<int> &type,
+                      const std::vector<std::vector<double>> &centers,
+                      const std::vector<double> &rads) {
 
   if (test_name != "test_taf" and test_name != "test_taf_2")
     return 0.;
 
-  double L_source_x = x0[0];
-  double L_source_y = x0[1];
-  double L_source_z = x0[2];
-  const Point xc = Point(L_source_x, L_source_y, L_source_z);
-  // spherical source
-  if (false) {
-    if ((x - xc).norm() < r)
-      return 1.;
-  } else {
-    if (x(0) > L_source_x - r and x(0) < L_source_x + r and
-        x(1) > L_source_y - r and x(1) < L_source_y + r) {
+  for (int i=0; i < type.size(); i++) {
 
-      //            compute_rhs += d_JxW[qp] * dt * deck->d_lambda_TAF *
-      //                           std::sin(2. * (2. * M_PI) * x(2) / L_source);
-      const Point x_plane = Point(x(0), x(1), 0.);
-      const Point xc_plane = Point(L_source_x, L_source_y, 0.);
-      if ((x_plane - xc_plane).norm() < r)
-        return 1.;
-    }
+    const Point xc = util::to_point(centers[i]);
+    auto d = (x - xc).norm();
+
+    if (d < rads[i])
+      return 1.;
   }
 
   return 0.;
 }
+
 }
 
 Number netfvfe::initial_condition_taf(const Point &p, const Parameters &es,
@@ -106,6 +98,7 @@ void netfvfe::TafAssembly::assemble_1() {
       compute_rhs +=
           d_JxW[qp] * dt * deck.d_lambda_TAF *
           get_taf_source(deck.d_test_name, d_qpoints[qp],
+                         deck.d_taf_source_type,
                          deck.d_taf_source_center, deck.d_taf_source_radius);
 
       // Assembling matrix

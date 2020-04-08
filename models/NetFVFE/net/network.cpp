@@ -2642,6 +2642,32 @@ void netfvfe::Network::get_taf_and_gradient(double &taf_val, Point &grad_taf_val
   // grad taf
   auto &grad_taf = d_model_p->get_grad_taf_assembly();
 
+  // compute analytically
+  if ((input.d_test_name == "test_taf" or
+       input.d_test_name == "test_taf_2") and !input.d_taf_source_type.empty()) {
+
+    auto x = util::to_point(coord);
+    taf_val = 0.;
+    grad_taf_val = Point();
+
+    for (int i=0; i<input.d_taf_source_type.size(); i++) {
+
+      // get center
+      auto xc = util::to_point(input.d_taf_source_center[i]);
+
+      if ((xc - x).norm() < input.d_taf_source_radius[i]) {
+        taf_val += 0.;
+        grad_taf_val += Point();
+      } else {
+
+        taf_val += (xc - x).norm();
+        grad_taf_val += (xc - x) / taf_val;
+      }
+    }
+
+    return;
+  }
+
   // get element, update dof maps, update quadrature data
   const auto *elem_i = mesh.elem_ptr(
       util::get_elem_id(coord, input.d_mesh_size, input.d_num_elems,
@@ -2676,22 +2702,5 @@ void netfvfe::Network::get_taf_and_gradient(double &taf_val, Point &grad_taf_val
     // of the problem), we use get_current_sol_var
     for (unsigned int i=0; i<input.d_dim; i++)
       grad_taf_val(i) += taf.d_phi[l][qp_near] * grad_taf.get_current_sol_var(l, i);
-  }
-
-  bool use_analytical_field = false;
-  if (use_analytical_field) {
-    if (input.d_test_name == "test_taf" or input.d_test_name == "test_taf_2") {
-
-      auto xc =
-          Point(input.d_taf_source_center[0], input.d_taf_source_center[1], 0.);
-      auto x = Point(coord[0], coord[1], 0.);
-
-      if ((x - xc).norm() < input.d_taf_source_radius)
-        grad_taf_val = Point(0., 0., 0.);
-      else
-        grad_taf_val = xc - x;
-
-      return;
-    }
   }
 }

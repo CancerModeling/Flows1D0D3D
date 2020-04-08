@@ -513,10 +513,29 @@ void netfv::TAFDeck::read_parameters(const std::string &filename) {
   d_delta_TAF = input("delta_TAF", 1.);
   d_lambda_TAF = input("lambda_TAF", 10.);
 
-  d_taf_source_center[0] = input("taf_source_center_x", 0.);
-  d_taf_source_center[1] = input("taf_source_center_y", 0.);
-  d_taf_source_center[2] = input("taf_source_center_z", 0.);
-  d_taf_source_radius = input("taf_source_radius", 0.);
+  // see if taf source file is provided
+  bool read_csv = false;
+  std::string csv_file = input("taf_source_file", "");
+  if (!csv_file.empty())
+    read_csv = true;
+
+  if (read_csv) {
+
+    // header
+    // type (int), center (x,y,z), tum_radius(r1, r2, r3), hyp_radius(r1, r2,
+    // r3)
+    io::CSVReader<5> in(csv_file);
+
+    in.read_header(io::ignore_extra_column, "type", "cx", "cy", "cz", "r");
+
+    int type;
+    double cx, cy, cz, r;
+    while (in.read_row(type, cx, cy, cz, r)) {
+      d_taf_source_type.push_back(type);
+      d_taf_source_center.push_back({cx, cy, cz});
+      d_taf_source_radius.push_back(r);
+    }
+  }
 }
 
 void netfv::TAFDeck::print(unsigned int level) {

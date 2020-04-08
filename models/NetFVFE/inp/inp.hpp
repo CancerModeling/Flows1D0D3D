@@ -258,13 +258,12 @@ struct TAFDeck {
   double d_delta_TAF;
   double d_lambda_TAF;
 
-  std::vector<double> d_taf_source_center;
-  double d_taf_source_radius;
+  std::vector<int> d_taf_source_type;
+  std::vector<std::vector<double>> d_taf_source_center;
+  std::vector<double> d_taf_source_radius;
 
   explicit TAFDeck(const std::string &filename = "")
-      : d_D_TAF(0.), d_delta_TAF(0.), d_lambda_TAF(0.),
-        d_taf_source_center(std::vector<double>(3, 0.)),
-        d_taf_source_radius(0.) {
+      : d_D_TAF(0.), d_delta_TAF(0.), d_lambda_TAF(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
