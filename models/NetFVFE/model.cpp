@@ -412,9 +412,6 @@ void netfvfe::Model::run() {
       d_network.update_network(d_taf_assembly, d_grad_taf_assembly);
     }
 
-    // add to log
-    d_log.d_ts.add_solve_time(util::TimePair(solve_clock, steady_clock::now()));
-
     // Post-processing
     if (d_is_output_step) {
 
@@ -424,6 +421,9 @@ void netfvfe::Model::run() {
       d_network.writeDataToVTKTimeStep_VGM((d_step - d_input.d_init_step) /
                                            d_input.d_dt_output_interval);
     }
+
+    // add to log
+    d_log.d_ts.add_solve_time(util::TimePair(solve_clock, steady_clock::now()));
 
     // output time logger info
     d_log.log_ts();
