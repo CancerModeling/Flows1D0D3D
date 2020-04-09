@@ -6,12 +6,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "model.hpp"
-#include "systems.hpp"
-#include "utilIO.hpp"
-#include "utils.hpp"
-#include <random>
 
 namespace {
+std::ostringstream oss;
+
 void random_init() { srand(time(nullptr)); }
 } // namespace
 
@@ -45,28 +43,37 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
 
 // Model setup and run
 void avafv::model_setup_run(int argc, char **argv,
-                             std::vector<double> &QOI_MASS,
                              const std::string &filename,
                              Parallel::Communicator *comm) {
-
-  // initialize logger
-  out << " ********** AvaFV **************\n";
 
   // init seed for random number
   random_init();
 
-  // read input file
+  // test util inp
   auto input = InpDeck(filename);
 
+  // create logger
+  util::Logger log("sim_" + input.d_outfile_tag + ".log", comm, !input.d_quiet);
+
+  // disable reference counter information
+  if (input.d_quiet)
+    ReferenceCounter::disable_print_counter_info();
+
+  //
+  oss << " ********** AvaFV **************\n";
+  log(oss);
+
   // create mesh
-  out << "Creating tumor mesh\n";
+  oss << "Creating tumor mesh\n";
+  log(oss);
   ReplicatedMesh mesh(*comm);
   if (input.d_read_mesh_flag)
     mesh.read(input.d_mesh_filename);
   else
-    create_mesh(input, mesh);
+    util::create_mesh(input, mesh);
 
-  out << "Creating tumor system\n";
+  oss << "Creating tumor system\n";
+  log(oss);
   EquationSystems tum_sys(mesh);
   // add parameters to system
   tum_sys.parameters.set<InpDeck *>("input_deck") = &input;
@@ -132,108 +139,29 @@ void avafv::model_setup_run(int argc, char **argv,
   //
   // Create Model class
   //
-  auto model = Model(argc, argv, QOI_MASS, filename, comm, input, mesh, tum_sys,
-                     nec, tum, nut, hyp, taf, grad_taf);
-}
+  auto model = Model(argc, argv, filename, comm, input, mesh, tum_sys,
+                     nec, tum, nut, hyp, taf, grad_taf, log);
 
-void avafv::create_mesh(InpDeck &input, ReplicatedMesh &mesh) {
-
-  double xmax = input.d_domain_params[1];
-  double ymax = input.d_domain_params[3];
-  double zmax = input.d_domain_params[5];
-  unsigned int nelx, nely, nelz;
-  double hx, hy, hz;
-  if (input.d_dim == 2) {
-
-    if (input.d_use_mesh_size_for_disc) {
-      hx = input.d_mesh_size;
-      hy = input.d_mesh_size;
-      nelx = xmax / hx;
-      nely = ymax / hy;
-    } else {
-      nelx = input.d_num_elems;
-      nely = input.d_num_elems;
-      hx = xmax  / nelx;
-      hy = ymax / nely;
-    }
-
-    input.d_elem_face_size = hx;
-    input.d_elem_size = hx * hx;
-    input.d_face_by_h = 1.;
-
-    // check if length of element in x and y direction are same
-    if (std::abs(hx - hy) > 0.001 * hx) {
-      libmesh_error_msg("Size of element needs to be same in both direction, "
-                        "ie. element needs to be square\n"
-                        "If domain is rectangle than specify number of "
-                        "elements in x and y different so that element is "
-                        "square\n");
-    }
-
-    // either read or create mesh
-    if (input.d_restart)
-      mesh.read(input.d_mesh_restart_file);
-    else
-      MeshTools::Generation::build_square(mesh, nelx, nely, 0., xmax, 0., ymax,
-                                          QUAD4);
-
-  } else if (input.d_dim == 3) {
-
-    if (input.d_use_mesh_size_for_disc) {
-      hx = input.d_mesh_size;
-      hy = input.d_mesh_size;
-      hz = input.d_mesh_size;
-      nelx = xmax / hx;
-      nely = ymax / hy;
-      nelz = zmax / hz;
-    } else {
-      nelx = input.d_num_elems;
-      nely = input.d_num_elems;
-      nelz = input.d_num_elems;
-      hx = xmax / nelx;
-      hy = ymax / nely;
-      hz = zmax / nelz;
-    }
-
-    input.d_elem_face_size = hx * hx;
-    input.d_elem_size = hx * hx * hx;
-    input.d_face_by_h = hx;
-
-    // check if length of element in x and y direction are same
-    if (std::abs(hx - hy) > 0.001 * hx or std::abs(hx - hz) > 0.001 * hx) {
-      libmesh_error_msg("Size of element needs to be same in all three "
-                        "direction, ie. element needs to be square\n"
-                        "If domain is cuboid than specify number of "
-                        "elements in x, y and z different so that element is "
-                        "cube\n");
-    }
-
-    // either read or create mesh
-    if (input.d_restart)
-      mesh.read(input.d_mesh_restart_file);
-    else
-      MeshTools::Generation::build_cube(mesh, nelx, nely, nelz, 0., xmax, 0.,
-                                        ymax, 0., zmax, HEX8);
-  }
+  // run model
+  model.run();
 }
 
 // Model class
 avafv::Model::Model(
-    int argc, char **argv, std::vector<double> &QOI_MASS,
-    const std::string &filename, Parallel::Communicator *comm,
+    int argc, char **argv, const std::string &filename,
+    Parallel::Communicator *comm,
     InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
     TransientLinearImplicitSystem &nec, TransientLinearImplicitSystem &tum,
     TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
-    TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &grad_taf)
-    : d_step(0), d_time(0.), d_dt(0.), d_hmin(0.), d_hmax(0.),
-      d_bounding_box(Point(), Point()),
-      d_nonlinear_step(0), d_is_output_step(false),
-      d_input(input), d_comm_p(comm),
-      d_mesh(mesh), d_tum_sys(tum_sys),
-      d_nec_assembly(this, "Necrotic", nec), d_tum_assembly(this, "Tumor", tum),
-      d_nut_assembly(this, "Nutrient", nut),
-      d_hyp_assembly(this, "Hypoxic", hyp), d_taf_assembly(this, "TAF", taf),
-      d_grad_taf_assembly(this, "TAF_Gradient", grad_taf){
+    TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &grad_taf,
+    util::Logger &log)
+    : util::BaseModel(comm, input, mesh, tum_sys, log),
+      d_nec_assembly(this, "Necrotic", d_mesh, nec),
+      d_tum_assembly(this, "Tumor", d_mesh, tum),
+      d_nut_assembly(this, "Nutrient", d_mesh, nut),
+      d_hyp_assembly(this, "Hypoxic", d_mesh, hyp),
+      d_taf_assembly(this, "TAF", d_mesh, taf),
+      d_grad_taf_assembly(this, "TAF_Gradient", d_mesh, grad_taf) {
 
   // bounding box
   d_bounding_box.first =
@@ -254,8 +182,6 @@ avafv::Model::Model(
     // Note: For grad taf, we do not need to perform assembly
     // simply compute grad of taf at center of each element and update grad_taf
     // grad_taf.attach_assemble_object(d_grad_taf_assembly);
-    // Note: For velocity, we also do not perform assembly
-    // vel.attach_assemble_object(d_vel_assembly);
 
     //
     // Initialize and print system
@@ -270,10 +196,10 @@ avafv::Model::Model(
     taf.time = d_input.d_init_time;
     grad_taf.time = d_input.d_init_time;
 
-    if (d_input.d_perform_output) {
+    if (d_input.d_perform_output and !d_input.d_quiet) {
       d_mesh.print_info();
       d_tum_sys.print_info();
-      d_mesh.write("mesh.e");
+      d_mesh.write("mesh_" + d_input.d_outfile_tag + ".e");
     }
 
     // set Petsc matrix option to suppress the error
@@ -303,18 +229,19 @@ avafv::Model::Model(
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
   }
+}
 
-  //
-  // File to print solution
-  //
-  // Tumor model
-  if (d_input.d_perform_output)
-    write_system(0);
+void avafv::Model::run() {
 
+  // print initial state
+  {
+    //
+    // Tumor model
+    if (d_input.d_perform_output)
+      write_system(0);
+  }
 
-  //
   // set time parameters
-  //
   d_step = d_input.d_init_step;
   d_time = d_input.d_init_time;
   d_dt = d_input.d_dt;
@@ -322,20 +249,21 @@ avafv::Model::Model(
   d_tum_sys.parameters.set<unsigned int>("linear solver maximum iterations") =
       d_input.d_linear_max_iters;
 
-  if (!d_input.d_test_name.empty())
-    out << "\n\nSolving sub-system for test: " << d_input.d_test_name << "\n\n";
+  //
+  // Solve
+  //
+
+  if (!d_input.d_test_name.empty()) {
+    oss << "\n\nSolving sub-system for test: " << d_input.d_test_name << "\n\n";
+    d_log(oss);
+  }
 
   // based on test_name, decide what systems to output
   if (!d_input.d_test_name.empty()) {
 
-    // hide output of certain systems
-    d_taf_assembly.d_sys.hide_output() = true;
     d_grad_taf_assembly.d_sys.hide_output() = true;
+    d_taf_assembly.d_sys.hide_output() = true;
   }
-
-  //
-  // Solve
-  //
 
   do {
 
@@ -350,31 +278,23 @@ avafv::Model::Model(
         d_step == 0)
       d_is_output_step = true;
 
-    out << "\n\n________________________________________________________\n";
-    out << "At time step: " << d_step << ", time: " << d_time << "\n\n";
+    oss << "\n\n________________________________________________________\n";
+    oss << "At time step: " << d_step << ", time: " << d_time << "\n\n";
+    d_log(oss);
 
     // solve tumor-network system
-    if (d_input.d_test_name == "test_tum")
-      test_tum();
-    else if (d_input.d_test_name == "test_tum_2")
-      test_tum_2();
-    else
-      solve_system();
+    solve_system();
 
     // Post-processing
-    if (d_is_output_step) {
-
+    if (d_is_output_step)
       // write tumor solution
       write_system((d_step - d_input.d_init_step) /
-                       d_input.d_dt_output_interval,
-                   &QOI_MASS);
-    }
+                       d_input.d_dt_output_interval);
 
   } while (d_step < d_input.d_steps);
 }
 
-void avafv::Model::write_system(const unsigned int &t_step,
-                                 std::vector<double> *QOI_MASS) {
+void avafv::Model::write_system(const unsigned int &t_step) {
 
   ExodusII_IO exodus(d_mesh);
 
@@ -386,79 +306,52 @@ void avafv::Model::write_system(const unsigned int &t_step,
   MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
 
-  //
-  if (QOI_MASS != nullptr)
-    QOI_MASS->push_back(total_mass);
-
   // print to screen
-  out << "\n\n  Total tumor Mass: " << total_mass << "\n";
-
-  // print to file
-  std::ofstream out_file;
-  out_file.precision(16);
-  out_file.open("sim_info.txt", std::ios_base::app | std::ios_base::out);
-  out_file << std::scientific << d_time << " " << total_mass << std::endl;
+  oss << "\n\n  Total tumor Mass: " << total_mass << "\n";
+  d_log(oss);
 
   // write mesh and simulation results
-  std::string filename = "sim_" + std::to_string(t_step) + ".e";
+  std::string filename = d_input.d_outfilename + ".e";
 
   // write to exodus
   // exodus.write_timestep(filename, d_tum_sys, 1, d_time);
 
   //
   VTKIO(d_mesh).write_equation_systems(
-      "sim_" + std::to_string(t_step) + ".pvtu", d_tum_sys);
+      d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
+      d_tum_sys);
 
   // save for restart
   if (d_input.d_restart_save &&
       (d_step % d_input.d_dt_restart_save_interval == 0)) {
 
-    out << "\n  Saving files for restart\n";
+    oss << "\n  Saving files for restart\n";
+    d_log(oss);
     if (t_step == 0) {
 
-      std::string mesh_file = "mesh.e";
+      std::string mesh_file = "mesh_" + d_input.d_outfile_tag + ".e";
       d_mesh.write(mesh_file);
     }
 
-    std::string solutions_file = "solution_" + std::to_string(d_step) + ".e";
+    std::string solutions_file = "solution_" + d_input.d_outfile_tag + "_" +
+                                 std::to_string(d_step) + ".e";
     d_tum_sys.write(solutions_file, WRITE);
   }
 }
 
-void avafv::Model::project_solution_to_physical_range(
-    const MeshBase &mesh, TransientLinearImplicitSystem &sys) {
-
-  if (!d_input.d_project_solution_to_physical_range)
-    return;
-
-  // loop over dofs and project solution to [0,1] range
-  const auto &sys_name = sys.name();
-
-  unsigned int num_vars = 1;
-  unsigned int sys_number = sys.number();
-  unsigned int var_number = 0;
-  if (sys_name == "Tumor")
-    num_vars = 2;
-
-  // loop over nodes and modify dofs
-  for (const auto &node : mesh.local_node_ptr_range()) {
-
-    const auto &dof = node->dof_number(sys_number, var_number, 0);
-
-    auto val = sys.current_solution(dof);
-    if (val < 0.)
-      sys.solution->add(dof, -val);
-    else if (val > 1.)
-      sys.solution->add(dof, -val + 1.);
-    else
-      continue;
-  }
-
-  sys.solution->close();
-  sys.update();
-}
-
 void avafv::Model::solve_system() {
+
+  if (!d_input.d_test_name.empty()) {
+    if (d_input.d_test_name == "test_tum")
+      test_tum();
+    else if (d_input.d_test_name == "test_tum_2")
+      test_tum_2();
+    else
+      libmesh_error_msg("Test name " + d_input.d_test_name +
+                        " not recognized.");
+
+    return;
+  }
 
   // get systems
   auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
@@ -484,12 +377,14 @@ void avafv::Model::solve_system() {
   *tum.old_local_solution = *tum.current_local_solution;
   *hyp.old_local_solution = *hyp.current_local_solution;
   *nec.old_local_solution = *nec.current_local_solution;
+  *taf.old_local_solution = *taf.current_local_solution;
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
-  out << "\n  Nonlinear loop\n\n";
+  oss << "\n  Nonlinear loop\n\n";
+  d_log(oss);
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
@@ -499,29 +394,39 @@ void avafv::Model::solve_system() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    out << "    ____________________\n";
-    out << "    Nonlinear step: " << l << "\n\n";
-    out << "      Solving ";
+    oss << "    ____________________\n";
+    oss << "    Nonlinear step: " << l << "\n\n";
+    oss << "      Solving ";
+    d_log(oss);
 
     // solve nutrient
-    out << "[3D nutrient] -> ";
+    oss << "[3D nutrient] -> ";
+    d_log(oss);
     nut.solve();
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << "[tumor species] -> ";
+    oss << "[tumor species] -> ";
+    d_log(oss);
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << "[hypoxic species] -> ";
+    oss << "[hypoxic species] -> ";
+    d_log(oss);
     hyp.solve();
 
     // solve necrotic
-    out << "[necrotic species]\n";
+    oss << "[necrotic species] -> ";
+    d_log(oss);
     nec.solve();
+
+    // solve taf
+    oss << "[taf species] -> ";
+    d_log(oss);
+    taf.solve();
 
     // Nonlinear iteration error
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
@@ -534,35 +439,29 @@ void avafv::Model::solve_system() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      std::cout << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl;
+      oss << "      Linear converged at step: " << n_linear_iterations
+          << ", residual: " << final_linear_residual
+          << ", Nonlinear convergence: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
+      d_log(oss);
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      std::cout << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
+      oss << "      Nonlinear converged at step: " << l << std::endl
+          << std::endl;
+      d_log(oss);
 
       break;
     }
   } // nonlinear solver loop
 
-  out << "\n  End of nonlinear loop\n";
+  oss << "\n  End of nonlinear loop\n";
+  d_log(oss);
 
-  // compute below only when we are performing output as these do not play
-  // direct role in evolution of sub-system
-  if (d_is_output_step) {
-
-    // solve for taf
-    *taf.old_local_solution = *taf.current_local_solution;
-    out << "      Solving [taf species] -> ";
-    taf.solve();
-
-    // solve for gradient of taf
-    out << "[gradient of taf]\n";
-    d_grad_taf_assembly.solve();
-  }
+  // solve for gradient of taf
+  oss << "      Solving [gradient of taf]\n";
+  d_log(oss);
+  d_grad_taf_assembly.solve();
 }
 
 void avafv::Model::test_tum() {
@@ -613,7 +512,8 @@ void avafv::Model::test_tum() {
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
-  out << "\n  Nonlinear loop\n";
+  oss << "\n  Nonlinear loop\n";
+  d_log(oss);
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
@@ -623,24 +523,28 @@ void avafv::Model::test_tum() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    out << "    ____________________\n";
-    out << "    Nonlinear step: " << l << "\n\n";
-    out << "      Solving ";
+    oss << "    ____________________\n";
+    oss << "    Nonlinear step: " << l << "\n\n";
+    oss << "      Solving ";
+    d_log(oss);
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << "[tumor species] -> ";
+    oss << "[tumor species] -> ";
+    d_log(oss);
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << "[hypoxic species] -> ";
+    oss << "[hypoxic species] -> ";
+    d_log(oss);
     hyp.solve();
 
     // solve necrotic
-    out << "[necrotic species]\n";
+    oss << "[necrotic species]\n";
+    d_log(oss);
     nec.solve();
 
     // Nonlinear iteration error
@@ -654,21 +558,24 @@ void avafv::Model::test_tum() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      std::cout << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
+      oss << "      Linear converged at step: " << n_linear_iterations
+          << ", residual: " << final_linear_residual
+          << ", Nonlinear convergence: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
+      d_log(oss);
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      std::cout << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
+      oss << "      Nonlinear converged at step: " << l << std::endl
+          << std::endl;
+      d_log(oss);
 
       break;
     }
   } // nonlinear solver loop
 
-  out << "\n  End of nonlinear loop\n";
+  oss << "\n  End of nonlinear loop\n";
+  d_log(oss);
 }
 
 void avafv::Model::test_tum_2() {
@@ -697,7 +604,8 @@ void avafv::Model::test_tum_2() {
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
-  out << "\n  Nonlinear loop\n";
+  oss << "\n  Nonlinear loop\n";
+  d_log(oss);
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
@@ -707,28 +615,33 @@ void avafv::Model::test_tum_2() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    out << "    ____________________\n";
-    out << "    Nonlinear step: " << l << "\n\n";
-    out << "      Solving ";
+    oss << "    ____________________\n";
+    oss << "    Nonlinear step: " << l << "\n\n";
+    oss << "      Solving ";
+    d_log(oss);
 
     // solve nutrient
-    out << "[3D nutrient] -> ";
+    oss << "[3D nutrient] -> ";
+    d_log(oss);
     nut.solve();
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << "[tumor species] -> ";
+    oss << "[tumor species] -> ";
+    d_log(oss);
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << "[hypoxic species] -> ";
+    oss << "[hypoxic species] -> ";
+    d_log(oss);
     hyp.solve();
 
     // solve necrotic
-    out << "[necrotic species]\n";
+    oss << "[necrotic species]\n";
+    d_log(oss);
     nec.solve();
 
     // Nonlinear iteration error
@@ -742,19 +655,22 @@ void avafv::Model::test_tum_2() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      std::cout << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
+      oss << "      Linear converged at step: " << n_linear_iterations
+          << ", residual: " << final_linear_residual
+          << ", Nonlinear convergence: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
+      d_log(oss);
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      std::cout << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
+      oss << "      Nonlinear converged at step: " << l << std::endl
+          << std::endl;
+      d_log(oss);
 
       break;
     }
   } // nonlinear solver loop
 
-  out << "\n  End of nonlinear loop\n";
+  oss << "\n  End of nonlinear loop\n";
+  d_log(oss);
 }

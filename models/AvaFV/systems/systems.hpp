@@ -18,12 +18,11 @@
 
 namespace avafv {
 
-/*!
- * @brief Compute matrix contribution from diffusion and advection
- *
- * @param sys System for which assembly is performed
- */
-void assemble_diffusion(BaseAssembly &sys);
+// forward declare
+class Model;
+
+/*! @brief Compute matrix contribution from diffusion */
+void assemble_diffusion(util::BaseAssembly &sys, Model *model);
 
 } // namespace avafv
 
