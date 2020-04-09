@@ -76,7 +76,7 @@ namespace gmm {
   }
 # define GMM_THROW_(type, errormsg) {					\
     std::stringstream msg;						\
-    msg << "Error in "__FILE__ << ", line "				\
+    msg << "Error in " __FILE__ << ", line "				\
 	<< __LINE__ << " " << GMM_PRETTY_FUNCTION << ": \n"		\
 	<< errormsg << ends;						\
     throw (type)(msg.str());						\
@@ -91,7 +91,7 @@ namespace gmm {
   }
 # define GMM_THROW_(type, errormsg) {					\
     std::stringstream msg;						\
-    msg << "Error in "__FILE__ << ", line "				\
+    msg << "Error in " __FILE__ << ", line "				\
 	<< __LINE__ << " " << GMM_PRETTY_FUNCTION << ": \n"		\
 	<< errormsg   << ends;						\
     ::abort();								\
@@ -148,7 +148,7 @@ namespace gmm {
 
 #define GMM_WARNING_MSG(level_, thestr)  {			       \
       std::stringstream msg;                                           \
-      msg << "Level " << level_ << " Warning in "__FILE__ << ", line " \
+      msg << "Level " << level_ << " Warning in " __FILE__ << ", line " \
           << __LINE__ << ": " << thestr << ends;		       \
        std::cerr << msg.str() << std::endl;                            \
     }
@@ -210,7 +210,7 @@ namespace gmm {
 #define GMM_TRACE_MSG(level_, thestr)  {			       \
     GMM_TRACE_MSG_MPI {						       \
       std::stringstream msg;                                           \
-      msg << "Trace " << level_ << " in "__FILE__ << ", line "         \
+      msg << "Trace " << level_ << " in " __FILE__ << ", line "         \
           << __LINE__ << ": " << thestr				       \
           << ends;						       \
       std::cout << msg.str() << std::endl;			       \

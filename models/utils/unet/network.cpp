@@ -988,7 +988,7 @@ void util::Network::assembleVGMSystemForNutrientDecouple(BaseAssembly &pres_sys,
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
-  double dt = d_model_p->d_dt;
+  const double dt = d_model_p->d_dt;
 
   while (pointer) {
 
@@ -1103,6 +1103,8 @@ void util::Network::assembleVGMSystemForNutrientDecouple(BaseAssembly &pres_sys,
 
         b_c[indexOfNode] += factor_c * length * C_v_old[indexOfNode];
 
+
+
         // coupling between 3d and 1d nutrient
         // we decouple it by evaluating coupling at old time step
         {
@@ -1158,12 +1160,6 @@ void util::Network::assembleVGMSystemForNutrientDecouple(BaseAssembly &pres_sys,
 
 void util::Network::solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys) {
 
-  int numberOfNodes = VGM.getNumberOfNodes();
-
-  // Solver
-  gmm::iteration iter(5.0e-11);
-  gmm::identity_matrix PR;
-
   // std::cout << " " << std::endl;
   // std::cout << "Assemble nutrient matrix and right hand side" << std::endl;
   if (d_model_p->get_input_deck().d_decouple_nutrients)
@@ -1175,9 +1171,26 @@ void util::Network::solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nu
   // concentration as old concentration
   if (d_model_p->d_nonlinear_step == 0)
     C_v = C_v_old;
+  if (d_model_p->d_step == 1)
+    C_v = b_c;
 
+  // get preconditioner
   gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> P(Ac_VGM, 50, 1e-6);
 
+  // debug
+  if (false) {
+    out << "nonlinear iter: " << d_model_p->d_nonlinear_step << "\n";
+    out << "Ac_VGM rows: " << Ac_VGM.nrows()
+        << " Ac_VGM cols: " << Ac_VGM.ncols() << " C_v size: " << C_v.size()
+        << " b_c size: " << b_c.size() << "\n";
+
+    out << Ac_VGM << "\n\n";
+    out << C_v << "\n\n";
+    out << b_c << "\n\n";
+  }
+
+  // solve
+  gmm::iteration iter(5.0e-11);
   gmm::bicgstab(Ac_VGM, C_v, b_c, P, iter);
 
   // std::cout << C_v << std::endl;

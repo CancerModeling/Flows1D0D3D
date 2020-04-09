@@ -8,6 +8,14 @@
 #include "model.hpp"
 
 namespace {
+
+steady_clock::time_point clock_begin = steady_clock::now();
+steady_clock::time_point clock_end = steady_clock::now();
+
+void reset_clock() {
+  clock_begin = steady_clock::now();
+}
+
 std::ostringstream oss;
 
 void random_init() { srand(time(nullptr)); }
@@ -53,6 +61,8 @@ void netfvfe::model_setup_run(int argc, char **argv,
                              const std::string &filename,
                              Parallel::Communicator *comm) {
 
+  reset_clock();
+
   // init seed for random number
   random_init();
 
@@ -60,14 +70,14 @@ void netfvfe::model_setup_run(int argc, char **argv,
   auto input = InpDeck(filename);
 
   // create logger
-  util::Logger log("sim_" + input.d_outfile_tag + ".log", comm, !input.d_quiet);
+  util::Logger log("info_" + input.d_outfile_tag, comm, !input.d_quiet);
 
   // disable reference counter information
   if (input.d_quiet)
     ReferenceCounter::disable_print_counter_info();
 
   //
-  oss << " ********** NetTum **************\n";
+  oss << " ********** NetFVFE **************\n";
   log(oss);
 
   // create mesh
@@ -205,6 +215,36 @@ netfvfe::Model::Model(
       d_grad_taf_assembly(this, "TAF_Gradient", d_mesh, grad_taf),
       d_vel_assembly(this, "Velocity", d_mesh, vel) {
 
+  d_nut_id = d_nut_assembly.d_sys.number();
+  d_tum_id = d_tum_assembly.d_sys.number();
+  d_hyp_id = d_hyp_assembly.d_sys.number();
+  d_nec_id = d_nec_assembly.d_sys.number();
+  d_taf_id = d_taf_assembly.d_sys.number();
+  d_ecm_id = d_ecm_assembly.d_sys.number();
+  d_mde_id = d_mde_assembly.d_sys.number();
+  d_pres_id = d_pres_assembly.d_sys.number();
+  d_grad_taf_id = d_grad_taf_assembly.d_sys.number();
+  d_vel_id = d_vel_assembly.d_sys.number();
+  d_pres_1d_id = d_vel_id + 1;
+  d_nut_1d_id = d_vel_id + 2;
+
+  d_sys_names.resize(d_vel_id + 3);
+  d_sys_names[d_nut_id] = "Nutrient";
+  d_sys_names[d_tum_id] = "Tummor";
+  d_sys_names[d_hyp_id] = "Hypoxic";
+  d_sys_names[d_nec_id] = "Necrotic";
+  d_sys_names[d_taf_id] = "TAF";
+  d_sys_names[d_ecm_id] = "ECM";
+  d_sys_names[d_mde_id] = "MDE";
+  d_sys_names[d_pres_id] = "Pressure";
+  d_sys_names[d_grad_taf_id] = "TAF_Gradient";
+  d_sys_names[d_vel_id] = "Velocity";
+  d_sys_names[d_pres_1d_id] = "Pressure_1D";
+  d_sys_names[d_nut_1d_id] = "Nutrient_1D";
+
+  // init timestep log
+  d_log.d_ts.init(d_sys_names);
+
   // bounding box
   d_bounding_box.first =
       Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
@@ -267,13 +307,16 @@ netfvfe::Model::Model(
   oss << "\n\nCreating 1-D network\n";
   d_log(oss);
   d_network.create_initial_network();
+
+  // save setup end time
+  clock_end = steady_clock::now();
+  d_log.d_ts.d_setup_time = util::TimePair(clock_begin, clock_end);
 }
 
 void netfvfe::Model::run() {
 
   // print initial state
   {
-    //
     // Tumor model
     if (d_input.d_perform_output)
       write_system(0);
@@ -339,6 +382,10 @@ void netfvfe::Model::run() {
     d_step++;
     d_time += d_dt;
 
+    // init ts log
+    d_log.d_ts.ready_new_step(int(d_step) - 1);
+    auto solve_clock = steady_clock::now();
+
     // check if this is output step
     d_is_output_step = false;
     if ((d_step >= d_input.d_dt_output_interval and
@@ -365,6 +412,9 @@ void netfvfe::Model::run() {
       d_network.update_network(d_taf_assembly, d_grad_taf_assembly);
     }
 
+    // add to log
+    d_log.d_ts.add_solve_time(util::TimePair(solve_clock, steady_clock::now()));
+
     // Post-processing
     if (d_is_output_step) {
 
@@ -374,6 +424,9 @@ void netfvfe::Model::run() {
       d_network.writeDataToVTKTimeStep_VGM((d_step - d_input.d_init_step) /
                                            d_input.d_dt_output_interval);
     }
+
+    // output time logger info
+    d_log.log_ts();
 
   } while (d_step < d_input.d_steps);
 }
@@ -501,11 +554,19 @@ void netfvfe::Model::solve_system() {
   // solve for pressure
   solve_pressure();
 
+  // reset nonlinear step
+  d_nonlinear_step = 0;
+
   // check if we are decoupling the nutrients
   if (d_input.d_decouple_nutrients) {
+
+    reset_clock();
+
     oss << "\n      Solving [1D nutrient]\n";
     d_log(oss);
     d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_1d_id);
   }
 
   // to compute the nonlinear convergence
@@ -530,17 +591,25 @@ void netfvfe::Model::solve_system() {
 
     // solver for 1D nutrient
     if (!d_input.d_decouple_nutrients) {
+
+      reset_clock();
+
       oss << "[1D nutrient] -> ";
       d_log(oss);
       d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+
+      d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_1d_id);
     }
 
     // solve nutrient
+    reset_clock();
     oss << "[3D nutrient] -> ";
     d_log(oss);
     nut.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_id);
 
     // solve tumor
+    reset_clock();
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
     oss << "[tumor species] -> ";
@@ -548,31 +617,42 @@ void netfvfe::Model::solve_system() {
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_tum_id);
 
     // solve hypoxic
+    reset_clock();
     oss << "[hypoxic species] -> ";
     d_log(oss);
     hyp.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_hyp_id);
 
     // solve necrotic
+    reset_clock();
     oss << "[necrotic species] -> ";
     d_log(oss);
     nec.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_nec_id);
 
     // solve taf
+    reset_clock();
     oss << "[taf species] -> ";
     d_log(oss);
     taf.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_taf_id);
 
     // solve mde
+    reset_clock();
     oss << "[mde species] -> ";
     d_log(oss);
     mde.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_mde_id);
 
     // solve ecm
+    reset_clock();
     oss << "[ecm species]\n";
     d_log(oss);
     ecm.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_ecm_id);
 
     // Nonlinear iteration error
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
@@ -603,16 +683,121 @@ void netfvfe::Model::solve_system() {
 
   oss << "\n  End of nonlinear loop\n";
   d_log(oss);
+  d_log.d_ts.add_nonlin_iter(d_nonlinear_step);
 
   // solve for gradient of taf
+  reset_clock();
   oss << "      Solving [gradient of taf] -> ";
   d_log(oss);
   grad_taf.solve();
+  d_log.d_ts.add_sys_solve_time(clock_begin, d_grad_taf_id);
 
   // solve for velocity
+  reset_clock();
   oss << "[velocity]\n";
   d_log(oss);
   vel.solve();
+  d_log.d_ts.add_sys_solve_time(clock_begin, d_vel_id);
+}
+
+void netfvfe::Model::solve_pressure() {
+
+  auto solve_clock = steady_clock::now();
+  reset_clock();
+
+  // get systems
+  auto &pres = d_tum_sys.get_system<TransientLinearImplicitSystem>("Pressure");
+
+  // update time
+  pres.time = d_time;
+
+  d_tum_sys.parameters.set<Real>("time") = d_time;
+
+  // update old solution
+  *pres.old_local_solution = *pres.current_local_solution;
+
+  // to compute the nonlinear convergence
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_pres(
+      pres.solution->clone());
+
+  // Nonlinear iteration loop
+  d_tum_sys.parameters.set<Real>("linear solver tolerance") =
+      d_input.d_linear_tol;
+
+  // reset nonlinear step
+  d_nonlinear_step = 0;
+
+  // Solve pressure system
+  oss << "\n\n  Nonlinear loop for pressure\n";
+  d_log(oss);
+  // nonlinear loop
+  for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
+    // Debug
+    // for (unsigned int l = 0; l < 10; ++l) {
+
+    d_nonlinear_step = l;
+    oss << "    ____________________\n";
+    oss << "    Nonlinear step: " << l << "\n\n";
+    oss << "      Solving ";
+    d_log(oss);
+
+    // solver for 1-D pressure and nutrient
+    reset_clock();
+    oss << "[1D pressure] -> ";
+    d_log(oss);
+    d_network.solveVGMforPressure(d_taf_assembly);
+    if (d_log.d_ts.d_cur_step >= 0)
+      d_log.d_ts.add_sys_solve_time(clock_begin, d_pres_1d_id);
+
+
+    // solve for pressure in tissue
+    reset_clock();
+    last_nonlinear_soln_pres->zero();
+    last_nonlinear_soln_pres->add(*pres.solution);
+    oss << "[3D pressure]\n";
+    d_log(oss);
+    pres.solve();
+    last_nonlinear_soln_pres->add(-1., *pres.solution);
+    last_nonlinear_soln_pres->close();
+    if (d_log.d_ts.d_cur_step >= 0)
+      d_log.d_ts.add_sys_solve_time(clock_begin, d_pres_id);
+
+    // Nonlinear iteration error
+    double nonlinear_loc_error_pres = last_nonlinear_soln_pres->linfty_norm();
+    double nonlinear_global_error_pres = 0.;
+    MPI_Allreduce(&nonlinear_loc_error_pres, &nonlinear_global_error_pres, 1,
+                  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+    if (d_input.d_perform_output) {
+
+      const unsigned int n_linear_iterations = pres.n_linear_iterations();
+      const Real final_linear_residual = pres.final_linear_residual();
+
+      oss << "      Linear converged at step: " << n_linear_iterations
+          << ", residual: " << final_linear_residual
+          << ", Nonlinear convergence: ||u - u_old|| = "
+          << nonlinear_global_error_pres << std::endl << std::endl;
+      d_log(oss);
+    }
+    if (nonlinear_global_error_pres < d_input.d_nonlin_tol) {
+
+      oss << "      Nonlinear converged at step: " << l << std::endl
+          << std::endl;
+      d_log(oss);
+
+      break;
+    }
+
+  } // nonlinear solver loop
+
+  oss << "\n  End of nonlinear loop for pressure\n";
+  d_log(oss);
+
+  clock_end = std::chrono::steady_clock::now();
+  if (d_log.d_ts.d_cur_step >= 0) {
+    d_log.d_ts.add_pres_solve_time(util::TimePair(solve_clock, clock_end));
+    d_log.d_ts.add_pres_nonlin_iter(d_nonlinear_step);
+  }
 }
 
 void netfvfe::Model::test_nut() {
@@ -722,86 +907,6 @@ void netfvfe::Model::test_nut_2() {
   oss << "[3D nutrient]\n";
   d_log(oss);
   nut.solve();
-}
-
-void netfvfe::Model::solve_pressure() {
-  // get systems
-  auto &pres = d_tum_sys.get_system<TransientLinearImplicitSystem>("Pressure");
-
-  // update time
-  pres.time = d_time;
-
-  d_tum_sys.parameters.set<Real>("time") = d_time;
-
-  // update old solution
-  *pres.old_local_solution = *pres.current_local_solution;
-
-  // to compute the nonlinear convergence
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_pres(
-      pres.solution->clone());
-
-  // Nonlinear iteration loop
-  d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
-
-  // Solve pressure system
-  oss << "\n\n  Nonlinear loop for pressure\n";
-  d_log(oss);
-  // nonlinear loop
-  for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
-  // Debug
-  // for (unsigned int l = 0; l < 10; ++l) {
-
-    d_nonlinear_step = l;
-    oss << "    ____________________\n";
-    oss << "    Nonlinear step: " << l << "\n\n";
-    oss << "      Solving ";
-    d_log(oss);
-
-    // solver for 1-D pressure and nutrient
-    oss << "[1D pressure] -> ";
-    d_log(oss);
-    d_network.solveVGMforPressure(d_taf_assembly);
-
-    // solve for pressure in tissue
-    last_nonlinear_soln_pres->zero();
-    last_nonlinear_soln_pres->add(*pres.solution);
-    oss << "[3D pressure]\n";
-    d_log(oss);
-    pres.solve();
-    last_nonlinear_soln_pres->add(-1., *pres.solution);
-    last_nonlinear_soln_pres->close();
-
-    // Nonlinear iteration error
-    double nonlinear_loc_error_pres = last_nonlinear_soln_pres->linfty_norm();
-    double nonlinear_global_error_pres = 0.;
-    MPI_Allreduce(&nonlinear_loc_error_pres, &nonlinear_global_error_pres, 1,
-                  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-    if (d_input.d_perform_output) {
-
-      const unsigned int n_linear_iterations = pres.n_linear_iterations();
-      const Real final_linear_residual = pres.final_linear_residual();
-
-      oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error_pres << std::endl << std::endl;
-      d_log(oss);
-    }
-    if (nonlinear_global_error_pres < d_input.d_nonlin_tol) {
-
-      oss << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
-      d_log(oss);
-
-      break;
-    }
-
-  } // nonlinear solver loop
-
-  oss << "\n  End of nonlinear loop for pressure\n";
-  d_log(oss);
 }
 
 void netfvfe::Model::test_taf() {
@@ -1249,11 +1354,18 @@ void netfvfe::Model::test_net_tum_2() {
   // update old concentration in network
   d_network.update_old_concentration();
 
+  // reset nonlinear step
+  d_nonlinear_step = 0;
+
   // check if we are decoupling the nutrients
   if (d_input.d_decouple_nutrients) {
+    reset_clock();
+
     oss << "\n      Solving [1D nutrient]\n";
     d_log(oss);
     d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_1d_id);
   }
 
   // to compute the nonlinear convergence
@@ -1278,17 +1390,24 @@ void netfvfe::Model::test_net_tum_2() {
 
     // solver for 1D nutrient
     if (!d_input.d_decouple_nutrients) {
+      reset_clock();
+
       oss << "[1D nutrient] -> ";
       d_log(oss);
       d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+
+      d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_1d_id);
     }
 
     // solve nutrient
+    reset_clock();
     oss << "[3D nutrient] -> ";
     d_log(oss);
     nut.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_id);
 
     // solve tumor
+    reset_clock();
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
     oss << "[tumor species] -> ";
@@ -1296,16 +1415,21 @@ void netfvfe::Model::test_net_tum_2() {
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_tum_id);
 
     // solve hypoxic
+    reset_clock();
     oss << "[hypoxic species] -> ";
     d_log(oss);
     hyp.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_hyp_id);
 
     // solve necrotic
+    reset_clock();
     oss << "[necrotic species]\n";
     d_log(oss);
     nec.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
@@ -1336,26 +1460,33 @@ void netfvfe::Model::test_net_tum_2() {
 
   oss << "\n  End of nonlinear loop\n";
   d_log(oss);
+  d_log.d_ts.add_nonlin_iter(d_nonlinear_step);
 
   // compute below only when we are performing output as these do not play
   // direct role in evolution of sub-system
   if (d_is_output_step or d_is_growth_step) {
 
     // solve for taf
+    reset_clock();
     *taf.old_local_solution = *taf.current_local_solution;
     oss << "      Solving [taf species] -> ";
     d_log(oss);
     taf.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_taf_id);
 
     // solve for gradient of taf
+    reset_clock();
     oss << "[gradient of taf] -> ";
     d_log(oss);
     grad_taf.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_grad_taf_id);
 
     // solve for velocity
+    reset_clock();
     oss << "[velocity]\n";
     d_log(oss);
     vel.solve();
+    d_log.d_ts.add_sys_solve_time(clock_begin, d_vel_id);
   }
 }
 

@@ -10,6 +10,7 @@
 
 #include "utilLibs.hpp"
 #include "utilIO.hpp"
+#include "logger.hpp"
 
 #define X_POSITIVE_BOUNDARY 0
 #define X_NEGATIVE_BOUNDARY 1
@@ -119,78 +120,6 @@ int positionIndex(double x, double y, int Nelx);
  * @return value Value between 0 and 1
  */
 double project_concentration(double x);
-
-/*!
- * @brief Prints message to std::cout and also writes to the file
- */
-class Logger {
-
-public:
-
-  Logger() : d_comm_p(nullptr), d_screen_out(true) {};
-
-  Logger(const std::string &log_file, Parallel::Communicator *comm, bool
-                                                                        screen_out = true)
-      : d_comm_p(comm), d_screen_out(screen_out) {
-
-    d_dbg_file.open(log_file, std::ios_base::out);
-  };
-
-  // overload function call
-  void operator()(std::ostringstream &oss, bool screen_out) {
-    log(oss, screen_out);
-  }
-  void operator()(std::ostringstream &oss) {
-    log(oss, d_screen_out);
-  }
-
-  void operator()(const std::string &str, bool screen_out) {
-    log(str, screen_out);
-  }
-  void operator()(const std::string &str) {
-    log(str, d_screen_out);
-  }
-
-  void log(std::ostringstream &oss, bool screen_out) {
-
-    if (screen_out)
-      out << oss.str();
-    if (d_comm_p->rank() == 0)
-      d_dbg_file << oss.str();
-
-    oss.str("");
-    oss.clear();
-  };
-
-  void log(std::ostringstream &oss) {
-    log(oss, d_screen_out);
-  };
-
-  void log(const std::string &str, bool screen_out) {
-
-    if (screen_out)
-      out << str;
-    if (d_comm_p->rank() == 0)
-      d_dbg_file << str;
-  };
-
-  void log(const std::string &str) {
-
-    log(str, d_screen_out);
-  };
-
-  ~Logger() { d_dbg_file.close(); }
-
-  void init(const std::string &log_file, Parallel::Communicator *comm) {
-    d_comm_p = comm;
-    d_dbg_file.open(log_file, std::ios_base::out);
-  }
-
-private:
-  Parallel::Communicator *d_comm_p;
-  std::ofstream d_dbg_file;
-  bool d_screen_out{};
-};
 
 /*!
  * @brief Find node closer to given point
@@ -463,6 +392,23 @@ Point to_point(const std::vector<double> &p);
 
 Point determineRotator( const Point & dir );
 std::vector<double> determineRotator( const std::vector<double> &dir );
+
+inline float time_diff(std::chrono::steady_clock::time_point begin,
+                 std::chrono::steady_clock::time_point end) {
+
+  return std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                        begin).count();
+}
+
+template <class T>
+inline int locate_in_set(const T &key, const std::vector<T> &set) {
+
+  for (int i =0; i<set.size(); i++)
+    if (set[i] == key)
+      return i;
+
+  return -1;
+}
 } // namespace util
 
 #endif // UTILS_H
