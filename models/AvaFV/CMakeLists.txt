@@ -10,6 +10,7 @@ set(ProjectLib "Lib${ProjectName}")
 # Include directories
 # ****************************************************************************
 include_directories(systems)
+include_directories(${CMAKE_SOURCE_DIR}/external/gmm)
 
 # ****************************************************************************
 # Add subprojects

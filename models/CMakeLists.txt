@@ -21,7 +21,7 @@ add_subdirectory(utils)
 add_subdirectory(AvaFV)
 add_subdirectory(NetFV)
 add_subdirectory(NetFVFE)
-#add_subdirectory(NetFC)
+add_subdirectory(NetFC)
 
 # # ****************************************************************************
 # # Create executible
