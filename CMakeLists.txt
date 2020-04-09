@@ -91,11 +91,13 @@ include_directories(${MPI_INCLUDE_PATH})
 # ****************************************************************************
 # Add subprojects
 # ****************************************************************************
-set(LIBTG_BUILD TRUE CACHE BOOL "Build LibTG")
-if(${LIBTG_BUILD})
-    message("Gnerating build files for LibTG ")
-    add_subdirectory(models)
-endif()
+set(LIBTG_BUILD_FLAG "Build_All" CACHE STRING "Specify which if all or subset
+of models to build")
+
+message("LIBTG_BUILD_FLAG: ${LIBTG_BUILD_FLAG}")
+
+message("Gnerating build files for LibTG ")
+add_subdirectory(models)
 
 set(TEST_BUILD TRUE CACHE BOOL "Build Test")
 if(${TEST_BUILD})
