@@ -187,6 +187,20 @@ private:
   PressureAssembly d_pres_assembly;
   GradTafAssembly d_grad_taf_assembly;
   VelAssembly d_vel_assembly;
+
+  /*! @brief Ids of system to be used in logger */
+  int d_nec_id;
+  int d_tum_id;
+  int d_nut_id;
+  int d_hyp_id;
+  int d_taf_id;
+  int d_ecm_id;
+  int d_mde_id;
+  int d_pres_id;
+  int d_grad_taf_id;
+  int d_vel_id;
+  int d_pres_1d_id;
+  int d_nut_1d_id;
 };
 
 } // namespace netfvfe

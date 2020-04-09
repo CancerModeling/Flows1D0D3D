@@ -79,6 +79,9 @@ public:
   /*! @brief Reference to logger */
   util::Logger &d_log;
 
+  /*! @brief List of systems */
+  std::vector<std::string> d_sys_names;
+
 protected:
 
   /*! @brief Output results of tumor system and network system */
