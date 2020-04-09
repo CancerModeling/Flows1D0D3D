@@ -18,15 +18,27 @@ include_directories(${CMAKE_SOURCE_DIR}/external/gmm)
 # Add subprojects
 # ****************************************************************************
 add_subdirectory(utils)
-add_subdirectory(AvaFV)
-add_subdirectory(NetFV)
-add_subdirectory(NetFVFE)
-add_subdirectory(NetFC)
 
-# # ****************************************************************************
-# # Create executible
-# # ****************************************************************************
-# add_executable(LibTG main.cpp ../docs/temp.txt)
-# target_link_libraries(LibTG Utils LibAvaLima LibAngLima LibAvaMech LibNetTum
-#         ${LIBMESH_LIBRARIES}
-#         ${PETSC_LIB} ${MPI_CXX_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
+        STREQUAL "Build_Prashant" OR "${LIBTG_BUILD_FLAG}" STREQUAL
+        "Build_AvaFV")
+    add_subdirectory(AvaFV)
+endif ()
+
+if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
+        STREQUAL "Build_Prashant" OR "${LIBTG_BUILD_FLAG}" STREQUAL
+        "Build_NetFV")
+    add_subdirectory(NetFV)
+endif ()
+
+if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
+        STREQUAL "Build_Prashant" OR "${LIBTG_BUILD_FLAG}" STREQUAL
+        "Build_NetFVFE")
+    add_subdirectory(NetFVFE)
+endif ()
+
+if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
+        STREQUAL "Build_Tobias" OR "${LIBTG_BUILD_FLAG}" STREQUAL
+        "Build_NetFC")
+    add_subdirectory(NetFC)
+endif ()
