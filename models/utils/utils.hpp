@@ -10,7 +10,6 @@
 
 #include "utilLibs.hpp"
 #include "utilIO.hpp"
-#include "logger.hpp"
 
 #define X_POSITIVE_BOUNDARY 0
 #define X_NEGATIVE_BOUNDARY 1
