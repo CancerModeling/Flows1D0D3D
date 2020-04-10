@@ -1,33 +1,32 @@
-/* -*- c++ -*- (enables emacs c++ mode) */
-/*===========================================================================
-
- Copyright (C) 2003-2017 Yves Renard, Julien Pommier
-
- This file is a part of GetFEM++
-
- GetFEM++  is  free software;  you  can  redistribute  it  and/or modify it
- under  the  terms  of the  GNU  Lesser General Public License as published
- by  the  Free Software Foundation;  either version 3 of the License,  or
- (at your option) any later version along with the GCC Runtime Library
- Exception either version 3.1 or (at your option) any later version.
- This program  is  distributed  in  the  hope  that it will be useful,  but
- WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- or  FITNESS  FOR  A PARTICULAR PURPOSE.  See the GNU Lesser General Public
- License and GCC Runtime Library Exception for more details.
- You  should  have received a copy of the GNU Lesser General Public License
- along  with  this program;  if not, write to the Free Software Foundation,
- Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
-
- As a special exception, you  may use  this file  as it is a part of a free
- software  library  without  restriction.  Specifically,  if   other  files
- instantiate  templates  or  use macros or inline functions from this file,
- or  you compile this  file  and  link  it  with other files  to produce an
- executable, this file  does  not  by itself cause the resulting executable
- to be covered  by the GNU Lesser General Public License.  This   exception
- does not  however  invalidate  any  other  reasons why the executable file
- might be covered by the GNU Lesser General Public License.
-
-===========================================================================*/
+// -*- c++ -*- (enables emacs c++ mode)
+//===========================================================================
+//
+// Copyright (C) 2003-2008 Yves Renard
+//
+// This file is a part of GETFEM++
+//
+// Getfem++  is  free software;  you  can  redistribute  it  and/or modify it
+// under  the  terms  of the  GNU  Lesser General Public License as published
+// by  the  Free Software Foundation;  either version 2.1 of the License,  or
+// (at your option) any later version.
+// This program  is  distributed  in  the  hope  that it will be useful,  but
+// WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+// or  FITNESS  FOR  A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+// License for more details.
+// You  should  have received a copy of the GNU Lesser General Public License
+// along  with  this program;  if not, write to the Free Software Foundation,
+// Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
+//
+// As a special exception, you  may use  this file  as it is a part of a free
+// software  library  without  restriction.  Specifically,  if   other  files
+// instantiate  templates  or  use macros or inline functions from this file,
+// or  you compile this  file  and  link  it  with other files  to produce an
+// executable, this file  does  not  by itself cause the resulting executable
+// to be covered  by the GNU Lesser General Public License.  This   exception
+// does not  however  invalidate  any  other  reasons why the executable file
+// might be covered by the GNU Lesser General Public License.
+//
+//===========================================================================
 
 /**@file gmm_inoutput.h
    @author Yves Renard <Yves.Renard@insa-lyon.fr>
@@ -210,7 +209,7 @@ namespace gmm {
       int i,ind,col,offset,count;
       int Ptrperline, Ptrwidth, Indperline, Indwidth;
       int Valperline, Valwidth, Valprec, Nentries;
-      int Valflag = 'D';           /* Indicates 'E','D', or 'F' float format */
+      int Valflag;           /* Indicates 'E','D', or 'F' float format */
       char line[BUFSIZ];
       gmm::standard_locale sl;
 
@@ -327,7 +326,7 @@ namespace gmm {
   template <typename T, int shift> void
   HarwellBoeing_IO::read(csc_matrix<T, shift>& A) {
 
-    // typedef typename csc_matrix<T, shift>::IND_TYPE IND_TYPE;
+    typedef typename csc_matrix<T, shift>::IND_TYPE IND_TYPE;
 
     GMM_ASSERT1(f, "no file opened!");
     GMM_ASSERT1(Type[0] != 'P',
@@ -927,25 +926,25 @@ namespace gmm {
   }
 
 
-  inline int mm_read_mtx_crd_data(FILE *f, int, int, int nz, int II[],
+  inline int mm_read_mtx_crd_data(FILE *f, int, int, int nz, int I[],
 				  int J[], double val[], MM_typecode matcode) {
     int i;
     if (mm_is_complex(matcode)) {
       for (i=0; i<nz; i++)
-	if (SECURE_NONCHAR_FSCANF(f, "%d %d %lg %lg", &II[i], &J[i],
+	if (SECURE_NONCHAR_FSCANF(f, "%d %d %lg %lg", &I[i], &J[i],
 				  &val[2*i], &val[2*i+1])
 	    != 4) return MM_PREMATURE_EOF;
     }
     else if (mm_is_real(matcode)) {
       for (i=0; i<nz; i++) {
-	if (SECURE_NONCHAR_FSCANF(f, "%d %d %lg\n", &II[i], &J[i], &val[i])
+	if (SECURE_NONCHAR_FSCANF(f, "%d %d %lg\n", &I[i], &J[i], &val[i])
 	    != 3) return MM_PREMATURE_EOF;
 	
       }
     }
     else if (mm_is_pattern(matcode)) {
       for (i=0; i<nz; i++)
-	if (SECURE_NONCHAR_FSCANF(f, "%d %d", &II[i], &J[i])
+	if (SECURE_NONCHAR_FSCANF(f, "%d %d", &I[i], &J[i])
 	    != 2) return MM_PREMATURE_EOF;
     }
     else return MM_UNSUPPORTED_TYPE;
@@ -954,7 +953,7 @@ namespace gmm {
   }
 
   inline int mm_write_mtx_crd(const char *fname, int M, int N, int nz,
-			      int II[], int J[], const double val[],
+			      int I[], int J[], const double val[],
 			      MM_typecode matcode) {
     FILE *f;
     int i;
@@ -979,15 +978,15 @@ namespace gmm {
     /* print values */
     if (mm_is_pattern(matcode))
       for (i=0; i<nz; i++)
-	fprintf(f, "%d %d\n", II[i], J[i]);
+	fprintf(f, "%d %d\n", I[i], J[i]);
     else
       if (mm_is_real(matcode))
         for (i=0; i<nz; i++)
-	  fprintf(f, "%d %d %20.16g\n", II[i], J[i], val[i]);
+	  fprintf(f, "%d %d %20.16g\n", I[i], J[i], val[i]);
       else
 	if (mm_is_complex(matcode))
 	  for (i=0; i<nz; i++)
-            fprintf(f, "%d %d %20.16g %20.16g\n", II[i], J[i], val[2*i], 
+            fprintf(f, "%d %d %20.16g %20.16g\n", I[i], J[i], val[2*i], 
 		    val[2*i+1]);
 	else {
 	  if (f != stdout) fclose(f);
@@ -1083,27 +1082,12 @@ namespace gmm {
     A = Matrix(row, col);
     gmm::clear(A);
     
-    std::vector<int> II(nz), J(nz);
+    std::vector<int> I(nz), J(nz);
     std::vector<typename Matrix::value_type> PR(nz);
-    mm_read_mtx_crd_data(f, row, col, nz, &II[0], &J[0],
+    mm_read_mtx_crd_data(f, row, col, nz, &I[0], &J[0],
 			 (double*)&PR[0], matcode);
     
-    for (size_type i = 0; i < size_type(nz); ++i) {
-        A(II[i]-1, J[i]-1) = PR[i];
-
-        // FIXED MM Format
-        if (mm_is_hermitian(matcode) && (II[i] != J[i]) ) {
-            A(J[i]-1, II[i]-1) = gmm::conj(PR[i]);
-        }
-
-        if (mm_is_symmetric(matcode) && (II[i] != J[i]) ) {
-            A(J[i]-1, II[i]-1) = PR[i];
-        }
-
-        if (mm_is_skew(matcode) && (II[i] != J[i]) ) {
-            A(J[i]-1, II[i]-1) = -PR[i];
-        }
-    }
+    for (size_type i = 0; i < size_type(nz); ++i) A(I[i]-1, J[i]-1) = PR[i];
   }
 
   template <typename T, int shift> void 
@@ -1124,15 +1108,15 @@ namespace gmm {
     if (is_complex_double__(T())) std::copy(&(t2[0]), &(t2[0])+4, &(t[0]));
     else std::copy(&(t1[0]), &(t1[0])+4, &(t[0]));
     size_type nz = A.jc[mat_ncols(A)];
-    std::vector<int> II(nz), J(nz);
+    std::vector<int> I(nz), J(nz);
     for (size_type j=0; j < mat_ncols(A); ++j) {      
       for (size_type i = A.jc[j]; i < A.jc[j+1]; ++i) {
-	II[i] = A.ir[i] + 1 - shift;
+	I[i] = A.ir[i] + 1 - shift;
 	J[i] = int(j + 1);
       }
     }
     mm_write_mtx_crd(filename, int(mat_nrows(A)), int(mat_ncols(A)),
-		     int(nz), &II[0], &J[0], (const double *)A.pr, t);
+		     int(nz), &I[0], &J[0], (const double *)A.pr, t);
   }
 
 
@@ -1144,31 +1128,21 @@ namespace gmm {
     MatrixMarket_IO::write(filename, tmp);
   }
 
-  template<typename VEC> static void vecsave(std::string fname, const VEC& V,
-                                             bool binary=false) {
-    if (binary) {
-      std::ofstream f(fname.c_str(), std::ofstream::binary);
-      for (size_type i=0; i < gmm::vect_size(V); ++i)
-        f.write(reinterpret_cast<const char*>(&V[i]), sizeof(V[i]));
-    }
-    else {
-      std::ofstream f(fname.c_str()); f.precision(16); f.imbue(std::locale("C"));
-      for (size_type i=0; i < gmm::vect_size(V); ++i) f << V[i] << "\n";
-    }
+  template<typename VEC> static void vecsave(std::string fname, const VEC& V) {
+    std::ofstream f(fname.c_str()); f.precision(16); f.imbue(std::locale("C"));
+    for (size_type i=0; i < gmm::vect_size(V); ++i) f << V[i] << "\n"; 
   } 
 
-  template<typename VEC> static void vecload(std::string fname, const VEC& V_,
-                                             bool binary=false) {
+  template<typename VEC> static void vecload(std::string fname,
+					     const VEC& V_) {
     VEC &V(const_cast<VEC&>(V_));
-    if (binary) {
-      std::ifstream f(fname.c_str(), std::ifstream::binary);
-      for (size_type i=0; i < gmm::vect_size(V); ++i)
-        f.read(reinterpret_cast<char*>(&V[i]), sizeof(V[i]));
-    }
-    else {
-      std::ifstream f(fname.c_str()); f.imbue(std::locale("C"));
-      for (size_type i=0; i < gmm::vect_size(V); ++i) f >> V[i];
-    }
+    std::ifstream f(fname.c_str());
+    GMM_ASSERT1(!(f.fail()), "Bad file name");
+    f.imbue(std::locale("C"));
+    for (size_type i=0; i < gmm::vect_size(V); ++i) {
+      GMM_ASSERT1(!(f.eof()), "File too short");
+      f >> V[i];
+    } 
   }
 }
 
