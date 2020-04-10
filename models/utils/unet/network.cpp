@@ -1185,8 +1185,8 @@ void util::Network::solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nu
         << " b_c size: " << b_c.size() << "\n";
 
     out << Ac_VGM << "\n\n";
-    out << C_v << "\n\n";
-    out << b_c << "\n\n";
+//    out << C_v << "\n\n";
+//    out << b_c << "\n\n";
   }
 
   // solve

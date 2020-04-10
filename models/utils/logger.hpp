@@ -9,6 +9,7 @@
 #define UTILS_LOGGER_H
 
 #include "utilLibs.hpp"
+#include "aixlog.hpp"
 
 namespace {
 

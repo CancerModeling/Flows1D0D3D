@@ -10,6 +10,7 @@
 
 // Libmesh
 #include "utils.hpp"
+#include "logger.hpp"
 
 // input deck
 #include "uinp/inp.hpp"
