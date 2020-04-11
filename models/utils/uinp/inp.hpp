@@ -124,6 +124,8 @@ struct OutputDeck {
   std::string d_outfile_tag;
   std::string d_outfilename;
   std::string d_outfilename_net;
+  std::string d_output_path;
+  std::string d_log_path;
 
   explicit OutputDeck(const std::string &filename = "")
       : d_perform_output(true), d_restart_save(false), d_dt_output_interval(1),

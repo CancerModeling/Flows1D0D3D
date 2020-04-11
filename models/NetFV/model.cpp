@@ -243,7 +243,7 @@ netfv::Model::Model(
   d_sys_names[d_nut_1d_id] = "Nutrient_1D";
 
   // init timestep log
-  d_log.d_ts.init(d_sys_names);
+  d_log.init_ts(d_sys_names);
 
   // bounding box
   d_bounding_box.first =
@@ -343,7 +343,7 @@ netfv::Model::Model(
 
   // save setup end time
   clock_end = steady_clock::now();
-  d_log.d_ts.d_setup_time = util::TimePair(clock_begin, clock_end);
+  d_log.d_setup_time = util::TimePair(clock_begin, clock_end);
 }
 
 void netfv::Model::run() {
@@ -417,7 +417,7 @@ void netfv::Model::run() {
     d_time += d_dt;
 
     // init ts log
-    d_log.d_ts.ready_new_step(int(d_step) - 1);
+    d_log.ready_new_step(int(d_step) - 1);
     auto solve_clock = steady_clock::now();
 
     // check if this is output step
@@ -457,7 +457,7 @@ void netfv::Model::run() {
     }
 
     // add to log
-    d_log.d_ts.add_solve_time(util::TimePair(solve_clock, steady_clock::now()));
+    d_log.add_solve_time(util::TimePair(solve_clock, steady_clock::now()));
 
     // output time logger info
     d_log.log_ts();
@@ -600,7 +600,7 @@ void netfv::Model::solve_system() {
     d_log(oss);
     d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
 
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_1d_id);
+    d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
   }
 
   // to compute the nonlinear convergence
@@ -632,7 +632,7 @@ void netfv::Model::solve_system() {
       d_log(oss);
       d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
 
-      d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_1d_id);
+      d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
     }
 
     // solve nutrient
@@ -640,7 +640,7 @@ void netfv::Model::solve_system() {
     oss << "[3D nutrient] -> ";
     d_log(oss);
     nut.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_id);
+    d_log.add_sys_solve_time(clock_begin, d_nut_id);
 
     // solve tumor
     reset_clock();
@@ -651,42 +651,42 @@ void netfv::Model::solve_system() {
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_tum_id);
+    d_log.add_sys_solve_time(clock_begin, d_tum_id);
 
     // solve hypoxic
     reset_clock();
     oss << "[hypoxic species] -> ";
     d_log(oss);
     hyp.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_hyp_id);
+    d_log.add_sys_solve_time(clock_begin, d_hyp_id);
 
     // solve necrotic
     reset_clock();
     oss << "[necrotic species] -> ";
     d_log(oss);
     nec.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_nec_id);
+    d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // solve taf
     reset_clock();
     oss << "[taf species] -> ";
     d_log(oss);
     taf.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_taf_id);
+    d_log.add_sys_solve_time(clock_begin, d_taf_id);
 
     // solve mde
     reset_clock();
     oss << "[mde species] -> ";
     d_log(oss);
     mde.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_mde_id);
+    d_log.add_sys_solve_time(clock_begin, d_mde_id);
 
     // solve ecm
     reset_clock();
     oss << "[ecm species]\n";
     d_log(oss);
     ecm.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_ecm_id);
+    d_log.add_sys_solve_time(clock_begin, d_ecm_id);
 
     // Nonlinear iteration error
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
@@ -717,21 +717,21 @@ void netfv::Model::solve_system() {
 
   oss << "\n  End of nonlinear loop\n";
   d_log(oss);
-  d_log.d_ts.add_nonlin_iter(d_nonlinear_step);
+  d_log.add_nonlin_iter(d_nonlinear_step);
 
   // solve for gradient of taf
   reset_clock();
   oss << "      Solving [gradient of taf] -> ";
   d_log(oss);
   grad_taf.solve();
-  d_log.d_ts.add_sys_solve_time(clock_begin, d_grad_taf_id);
+  d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
 
   // solve for velocity
   reset_clock();
   oss << "[velocity]\n";
   d_log(oss);
   vel.solve();
-  d_log.d_ts.add_sys_solve_time(clock_begin, d_vel_id);
+  d_log.add_sys_solve_time(clock_begin, d_vel_id);
 }
 
 void netfv::Model::solve_pressure() {
@@ -780,8 +780,8 @@ void netfv::Model::solve_pressure() {
     oss << "[1D pressure] -> ";
     d_log(oss);
     d_network.solveVGMforPressure(d_taf_assembly);
-    if (d_log.d_ts.d_cur_step >= 0)
-      d_log.d_ts.add_sys_solve_time(clock_begin, d_pres_1d_id);
+    if (d_log.d_cur_step >= 0)
+      d_log.add_sys_solve_time(clock_begin, d_pres_1d_id);
 
 
     // solve for pressure in tissue
@@ -793,8 +793,8 @@ void netfv::Model::solve_pressure() {
     pres.solve();
     last_nonlinear_soln_pres->add(-1., *pres.solution);
     last_nonlinear_soln_pres->close();
-    if (d_log.d_ts.d_cur_step >= 0)
-      d_log.d_ts.add_sys_solve_time(clock_begin, d_pres_id);
+    if (d_log.d_cur_step >= 0)
+      d_log.add_sys_solve_time(clock_begin, d_pres_id);
 
     // Nonlinear iteration error
     double nonlinear_loc_error_pres = last_nonlinear_soln_pres->linfty_norm();
@@ -828,9 +828,9 @@ void netfv::Model::solve_pressure() {
   d_log(oss);
 
   clock_end = std::chrono::steady_clock::now();
-  if (d_log.d_ts.d_cur_step >= 0) {
-    d_log.d_ts.add_pres_solve_time(util::TimePair(solve_clock, clock_end));
-    d_log.d_ts.add_pres_nonlin_iter(d_nonlinear_step);
+  if (d_log.d_cur_step >= 0) {
+    d_log.add_pres_solve_time(util::TimePair(solve_clock, clock_end));
+    d_log.add_pres_nonlin_iter(d_nonlinear_step);
   }
 }
 
@@ -1399,7 +1399,7 @@ void netfv::Model::test_net_tum_2() {
     d_log(oss);
     d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
 
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_1d_id);
+    d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
   }
 
   // to compute the nonlinear convergence
@@ -1430,7 +1430,7 @@ void netfv::Model::test_net_tum_2() {
       d_log(oss);
       d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
 
-      d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_1d_id);
+      d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
     }
 
     // solve nutrient
@@ -1438,7 +1438,7 @@ void netfv::Model::test_net_tum_2() {
     oss << "[3D nutrient] -> ";
     d_log(oss);
     nut.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_nut_id);
+    d_log.add_sys_solve_time(clock_begin, d_nut_id);
 
     // solve tumor
     reset_clock();
@@ -1449,21 +1449,21 @@ void netfv::Model::test_net_tum_2() {
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_tum_id);
+    d_log.add_sys_solve_time(clock_begin, d_tum_id);
 
     // solve hypoxic
     reset_clock();
     oss << "[hypoxic species] -> ";
     d_log(oss);
     hyp.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_hyp_id);
+    d_log.add_sys_solve_time(clock_begin, d_hyp_id);
 
     // solve necrotic
     reset_clock();
     oss << "[necrotic species]\n";
     d_log(oss);
     nec.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_nec_id);
+    d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
@@ -1494,7 +1494,7 @@ void netfv::Model::test_net_tum_2() {
 
   oss << "\n  End of nonlinear loop\n";
   d_log(oss);
-  d_log.d_ts.add_nonlin_iter(d_nonlinear_step);
+  d_log.add_nonlin_iter(d_nonlinear_step);
 
   // compute below only when we are performing output as these do not play
   // direct role in evolution of sub-system
@@ -1506,21 +1506,21 @@ void netfv::Model::test_net_tum_2() {
     oss << "      Solving [taf species] -> ";
     d_log(oss);
     taf.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_taf_id);
+    d_log.add_sys_solve_time(clock_begin, d_taf_id);
 
     // solve for gradient of taf
     reset_clock();
     oss << "[gradient of taf] -> ";
     d_log(oss);
     grad_taf.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_grad_taf_id);
+    d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
 
     // solve for velocity
     reset_clock();
     oss << "[velocity]\n";
     d_log(oss);
     vel.solve();
-    d_log.d_ts.add_sys_solve_time(clock_begin, d_vel_id);
+    d_log.add_sys_solve_time(clock_begin, d_vel_id);
   }
 }
 

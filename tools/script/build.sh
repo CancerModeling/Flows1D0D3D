@@ -1,6 +1,5 @@
 #!/bin/bash
-
-PWD=$pwd
+MY_PWD=$pwd
 local="${HOME}/Softwares/local_libmesh"
 
 # libraries
@@ -11,24 +10,19 @@ petsc="$local/petsc/3.12.1-opt"
 target_build=$pwd
 
 # source of code (TGMOdels directory)
-source="../."
+source="../../."
 
 # cmake (can use different versions of cmake)
 cmake_c="cmake"
 
-# debug/release
-build_type="dbg"
-
 "$cmake_c" -DLIBMESH_DIR="$libmesh" \
 					 -DPETSC_DIR="$petsc" \
+					 -DVTK_DIR="/usr/lib/cmake/vtk-7.1" \
+					 -DLIBTG_BUILD_FLAG="Build_Prashant" \
 					 -DCMAKE_INSTALL_PREFIX="$target_build" \
-			  	 -DCMAKE_BUILD_TYPE=Release \
+			  	 -DCMAKE_BUILD_TYPE=Debug \
 			  	 "$source"
 
 # compile
-make -j 4
-
-# documentation (optional)
-# make doc_AvaLima
-# make doc_AngLima
+make -j 8
 

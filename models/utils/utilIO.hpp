@@ -27,6 +27,14 @@ inline std::string getTabS(int nt) {
   return tabS;
 }
 
+inline std::string getSpaceS(int nt) {
+  std::string tabS = "";
+  for (int i = 0; i < nt; i++)
+    tabS += " ";
+
+  return tabS;
+}
+
 inline std::string printStr(const bool flag, int nt = 0) {
   auto tabS = getTabS(nt);
   std::ostringstream oss;

@@ -9,7 +9,6 @@
 #define UTILS_LOGGER_H
 
 #include "utilLibs.hpp"
-#include "aixlog.hpp"
 
 namespace {
 
@@ -65,9 +64,11 @@ struct TimePair {
 };
 
 /*!
- * @brief Struct to store simulation information at each step
+ * @brief class to store simulation information at each step
  */
-struct TimeStepLog {
+class TimeStepLog {
+
+public:
 
   /*! @brief Total systems */
   int d_n;
@@ -118,7 +119,7 @@ struct TimeStepLog {
         d_sys_names(sys_names),
         d_sys_assembly_time(std::vector<TimePair>(d_n, TimePair())) {}
 
-  void init(const std::vector<std::string> &sys_names) {
+  void init_ts(const std::vector<std::string> &sys_names) {
     d_sys_names = sys_names;
     d_n = d_sys_names.size();
     d_sys_assembly_time = std::vector<TimePair>(d_n, TimePair());
@@ -198,33 +199,36 @@ struct TimeStepLog {
 /*!
  * @brief Prints message to std::cout and also writes to the file
  */
-class Logger {
+class Logger : public TimeStepLog {
 
 public:
 
-  Logger() : d_ts(), d_comm_p(nullptr), d_screen_out(true) {};
-
   Logger(const std::string &log_file, Parallel::Communicator *comm,
-         bool screen_out = true)
-      : d_ts(), d_comm_p(comm), d_screen_out(screen_out) {
+         bool screen_out = true);
 
-    if (d_dbg_file.is_open())
-      d_dbg_file.close();
-    d_dbg_file = std::ofstream(log_file + "_dbg.log", std::ios_base::out);
+  ~Logger();
 
-    if (d_ts_file.is_open())
-      d_ts_file.close();
-    d_ts_file = std::ofstream(log_file + "_time.log", std::ios_base::out);
+  // Output string message
+  void log(const std::string &str, bool screen_out);
+
+  // All methods below overload above log function
+  void log(const std::string &str) {
+    log(str, d_screen_out);
+  };
+  void log(std::ostringstream &oss) {
+    log(oss.str(), d_screen_out);
+  };
+  void log(std::ostringstream &oss, bool screen_out) {
+    log(oss.str(), screen_out);
   };
 
   // overload function call
   void operator()(std::ostringstream &oss, bool screen_out) {
-    log(oss, screen_out);
+    log(oss.str(), screen_out);
   }
   void operator()(std::ostringstream &oss) {
-    log(oss, d_screen_out);
+    log(oss.str(), d_screen_out);
   }
-
   void operator()(const std::string &str, bool screen_out) {
     log(str, screen_out);
   }
@@ -232,133 +236,30 @@ public:
     log(str, d_screen_out);
   }
 
-  void log(std::ostringstream &oss, bool screen_out) {
-
-    if (screen_out)
-      out << oss.str();
-    if (d_comm_p->rank() == 0)
-      d_dbg_file << oss.str();
-
-    oss.str("");
-    oss.clear();
-  };
-
-  void log(std::ostringstream &oss) {
-    log(oss, d_screen_out);
-  };
-
-  void log(const std::string &str, bool screen_out) {
-
-    if (screen_out)
-      out << str;
-    if (d_comm_p->rank() == 0)
-      d_dbg_file << str;
-  };
-
-  void log(const std::string &str) {
-
-    log(str, d_screen_out);
-  };
-
-
-  std::string log_ts_step(const int i) {
-
-    std::ostringstream oss;
-
-    if (d_comm_p->rank() == 0) {
-
-      // initial stuff
-      if (i == 0) {
-        oss << "# TimeStepLog\n";
-        oss << "Setup_Time " << d_ts.d_setup_time.time_diff() << "\n";
-
-        oss << "#\n";
-        oss << "SysNames\n";
-        for (unsigned int j=0; j < d_ts.d_n; j++)
-          oss << d_ts.d_sys_names[j] << " " << j << "\n";
-
-        oss << "#\n";
-        oss << "SysAssemblyTimes\n";
-        for (unsigned int j=0; j < d_ts.d_n; j++) {
-
-          oss << d_ts.d_sys_assembly_time[j].time_diff();
-
-          if (j < d_ts.d_n - 1)
-            oss << ", ";
-          else
-            oss << "\n";
-        }
-
-        oss << "#\n";
-
-        // add header for next step
-        oss << "StepLog\n";
-        oss << "T, ST, PST, NETT, NLI, PNLI, ";
-
-        for (unsigned int j=0; j < d_ts.d_n; j++) {
-
-          oss << "S" + std::to_string(j);
-
-          if (j < d_ts.d_sys_solve_time[i].size() - 1)
-            oss << ", ";
-          else
-            oss << "\n";
-        }
-      }
-
-      oss << d_ts.d_times[i] << ", "
-          << d_ts.d_solve_time[i].time_diff() << ", "
-          << d_ts.d_pres_solve_time[i].time_diff() << ", "
-          << d_ts.d_update_network_time[i].time_diff() << ", "
-          << d_ts.d_nonlinear_iters[i] << ", "
-          << d_ts.d_pres_nonlinear_iters[i] << ", ";
-
-      for (unsigned int j=0; j < d_ts.d_sys_solve_time[i].size(); j++) {
-
-        oss << d_ts.d_sys_solve_time[i][j].time_diff();
-
-        if (j < d_ts.d_sys_solve_time[i].size() - 1)
-          oss << ", ";
-        else
-          oss << "\n";
-      }
-
-      d_ts_file << oss.str();
-    }
-
-    return oss.str();
-  }
+  // output time step log
+  std::string log_ts_base(const int i, const int ns);
 
   void log_ts() {
 
-    const auto i = d_ts.d_cur_step;
-    std::string str = "\n\n___________\nTimeStepLog\n  " + log_ts_step(i);
+    const auto i = d_cur_step;
 
+    // first call without any format
+    if (d_comm_p->rank() == 0)
+      d_ts_file << log_ts_base(i, 0);
+
+    // second call with space format
+    std::string str = "\n\n  _____________\n  Time Step Log\n" + log_ts_base(i,
+        2);
     if (i > 0)
       log(str);
   }
 
   void log_ts_all() {
-    for (int i=0; i<d_ts.d_solve_time.size(); i++)
-      log_ts_step(i);
+    for (int i=0; i<d_solve_time.size(); i++) {
+      if (d_comm_p->rank() == 0)
+        d_ts_file << log_ts_base(i, 0);
+    }
   }
-
-  ~Logger() {
-
-    if (d_dbg_file.is_open())
-      d_dbg_file.close();
-
-    if (d_ts_file.is_open())
-      d_ts_file.close();
-  }
-
-  void init(const std::string &log_file, Parallel::Communicator *comm) {
-    d_comm_p = comm;
-    d_dbg_file.open(log_file, std::ios_base::out);
-  }
-
-public:
-  TimeStepLog d_ts;
 
 private:
   Parallel::Communicator *d_comm_p;
