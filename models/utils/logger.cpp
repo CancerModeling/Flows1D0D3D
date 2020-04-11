@@ -9,7 +9,7 @@
 #include "aixlog.hpp"
 #include "utilIO.hpp"
 
-using namespace AixLog;
+// using namespace AixLog;
 
 namespace {
 
@@ -18,32 +18,110 @@ namespace {
  * Formatted logging to libmesh out
  */
 
-struct SinkLibmeshOut : public SinkFormat {
+struct SinkLibmeshOut : public AixLog::SinkFormat {
 
-  SinkLibmeshOut(Type type,
-                 const std::string &format =
-                     "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)")
-      : SinkFormat(severity, type, format) {}
+  SinkLibmeshOut(AixLog::Severity severity, AixLog::Type type,
+                 const std::string &format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)")
+      : AixLog::SinkFormat(severity, type, format) {}
 
-  void log(const Metadata &metadata,
+//  SinkLibmeshOut(AixLog::Severity severity, AixLog::Type type,
+//                 const std::string &format = "%Y-%m-%d %H-%M-%S.#ms")
+//      : AixLog::SinkFormat(severity, type, format) {}
+
+  void log(const AixLog::Metadata &metadata,
            const std::string &message) override {
     do_log(out, metadata, message);
   }
 };
 
+struct MySinkFile : public AixLog::SinkFormat {
+  MySinkFile(AixLog::Severity severity, AixLog::Type type,
+             const std::string &filename,
+             const std::string &format =
+                 "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)")
+      : AixLog::SinkFormat(severity, type, format) {
+    ofs.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+  }
+
+//  MySinkFile(AixLog::Severity severity, AixLog::Type type,
+//             const std::string &filename,
+//             const std::string &format =
+//             "%Y-%m-%d %H-%M-%S.#ms")
+//      : AixLog::SinkFormat(severity, type, format) {
+//    ofs.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+//  }
+
+  ~MySinkFile() override { ofs.close(); }
+
+  void log(const AixLog::Metadata &metadata,
+           const std::string &message) override {
+    do_log(ofs, metadata, message);
+  }
+
+protected:
+  mutable std::ofstream ofs;
+};
+
+std::string helper(int width, const std::string &severity, std::string &tag) {
+  int len = severity.length() + tag.length() + 5;
+  if (width < len) {
+    return "[" + severity + "] (" + tag + ")";
+  }
+
+  int diff = width - len;
+  int pad1 = diff / 2;
+  int pad2 = diff - pad1;
+  return "[" + severity + "]" + std::string(pad1, ' ') + "(" + tag + ")" +
+         std::string(pad2, ' ');
 }
 
+std::string helper(int width, int s_width, std::string
+&tag) {
+  int len = s_width + tag.length() + 5;
+  if (width < len) {
+    return tag;
+  }
+
+  int diff = width - len;
+  return tag + std::string(diff, ' ');
+}
+
+std::string helper2(int width, int s_width, std::string
+&tag) {
+  int len = s_width + tag.length() + 5;
+  if (width < len) {
+    return tag;
+  }
+
+  int diff = width - len;
+  int pad1 = diff/2;
+  int pad2 = diff - pad1;
+  return std::string(pad1, ' ') + tag + std::string(pad2, ' ');
+}
+
+} // namespace
+
 util::Logger::Logger(const std::string &log_file, Parallel::Communicator *comm,
-         bool screen_out)
-      : TimeStepLog(), d_comm_p(comm), d_screen_out(screen_out) {
+                     bool screen_out)
+    : TimeStepLog(), d_comm_p(comm), d_screen_out(screen_out) {
 
-    if (d_dbg_file.is_open())
-      d_dbg_file.close();
-    d_dbg_file = std::ofstream(log_file + "_dbg.log", std::ios_base::out);
+  if (screen_out) {
+    auto sink_cout = std::make_shared<SinkLibmeshOut>(AixLog::Severity::trace,
+                                                      AixLog::Type::normal);
+    auto sink_file = std::make_shared<MySinkFile>(
+        AixLog::Severity::trace, AixLog::Type::all, log_file + ".log");
+    AixLog::Log::init({sink_cout, sink_file});
+  } else {
+    auto sink_cout = std::make_shared<SinkLibmeshOut>(AixLog::Severity::notice,
+                                                      AixLog::Type::normal);
+    auto sink_file = std::make_shared<MySinkFile>(
+        AixLog::Severity::trace, AixLog::Type::all, log_file + ".log");
+    AixLog::Log::init({sink_cout, sink_file});
+  }
 
-    if (d_ts_file.is_open())
-      d_ts_file.close();
-    d_ts_file = std::ofstream(log_file + "_time.log", std::ios_base::out);
+  if (d_ts_file.is_open())
+    d_ts_file.close();
+  d_ts_file = std::ofstream(log_file + "_ts.txt", std::ios_base::out);
 }
 
 util::Logger::~Logger() {
@@ -55,71 +133,61 @@ util::Logger::~Logger() {
     d_ts_file.close();
 }
 
-void util::Logger::log(const std::string &str, bool screen_out) {
+void util::Logger::log(const std::string &str, std::string tag,
+                       std::string severity) {
 
-    if (screen_out)
-      out << str;
-    if (d_comm_p->rank() == 0)
-      d_dbg_file << str;
+  if (severity == "info")
+    LOG(INFO, helper2(22, 4, tag)) << str;
+  else if (severity == "notice")
+    LOG(NOTICE, helper2(22, 6, tag)) << str;
+  else if (severity == "warning")
+    LOG(WARNING, helper2(22, 7, tag)) << str;
+  else if (severity == "debug")
+    LOG(DEBUG, helper2(22, 5, tag)) << str;
 }
 
 std::string util::Logger::log_ts_base(const int i, const int ns) {
 
-    std::ostringstream oss;
+  std::ostringstream oss;
 
-    auto spS = util::io::getSpaceS(ns);
+  auto spS = util::io::getSpaceS(ns);
 
-    if (d_comm_p->rank() == 0) {
+  if (d_comm_p->rank() == 0) {
 
-      // initial stuff
-      if (i == 0) {
-        oss << "# TimeStepLog\n";
-        oss << "Setup_Time " << d_setup_time.time_diff() << "\n";
+    // initial stuff
+    if (i == 0) {
+      oss << spS << "# TimeStepLog\n";
+      oss << spS << "Setup_Time " << d_setup_time.time_diff() << "\n";
 
-        oss << "#\n";
-        oss << "SysNames\n";
-        for (unsigned int j=0; j < d_n; j++)
-          oss << d_sys_names[j] << " " << j << "\n";
+      oss << spS << "#\n";
+      oss << spS << "SysNames\n";
+      for (unsigned int j = 0; j < d_n; j++)
+        oss << spS << d_sys_names[j] << " " << j << "\n";
 
-        oss << "#\n";
-        oss << "SysAssemblyTimes\n";
-        for (unsigned int j=0; j < d_n; j++) {
+      oss << spS << "#\n";
+      oss << "SysAssemblyTimes\n";
+      for (unsigned int j = 0; j < d_n; j++) {
 
-          oss << d_sys_assembly_time[j].time_diff();
+        if (j == 0)
+          oss << spS;
 
-          if (j < d_n - 1)
-            oss << ", ";
-          else
-            oss << "\n";
-        }
+        oss << d_sys_assembly_time[j].time_diff();
 
-        oss << "#\n";
-
-        // add header for next step
-        oss << "StepLog\n";
-        oss << "T, ST, PST, NETT, NLI, PNLI, ";
-
-        for (unsigned int j=0; j < d_n; j++) {
-
-          oss << "S" + std::to_string(j);
-
-          if (j < d_sys_solve_time[i].size() - 1)
-            oss << ", ";
-          else
-            oss << "\n";
-        }
+        if (j < d_n - 1)
+          oss << ", ";
+        else
+          oss << "\n";
       }
 
-      oss << d_times[i] << ", "
-          << d_solve_time[i].time_diff() << ", "
-          << d_pres_solve_time[i].time_diff() << ", "
-          << d_update_network_time[i].time_diff() << ", "
-          << d_nonlinear_iters[i] << ", "
-          << d_pres_nonlinear_iters[i] << ", ";
+      oss << spS << "#\n";
 
-      for (unsigned int j=0; j < d_sys_solve_time[i].size(); j++) {
+      // add header for next step
+      oss << spS << "StepLog\n";
+      oss << spS << "T, ST, PST, NETT, NLI, PNLI, ";
 
-        oss << d_sys_solve_time[i][j].time_diff();
+      for (unsigned int j = 0; j < d_n; j++) {
+
+        oss << "S" + std::to_string(j);
 
         if (j < d_sys_solve_time[i].size() - 1)
           oss << ", ";
@@ -128,5 +196,21 @@ std::string util::Logger::log_ts_base(const int i, const int ns) {
       }
     }
 
-    return oss.str();
+    oss << spS << d_times[i] << ", " << d_solve_time[i].time_diff() << ", "
+        << d_pres_solve_time[i].time_diff() << ", "
+        << d_update_network_time[i].time_diff() << ", " << d_nonlinear_iters[i]
+        << ", " << d_pres_nonlinear_iters[i] << ", ";
+
+    for (unsigned int j = 0; j < d_sys_solve_time[i].size(); j++) {
+
+      oss << d_sys_solve_time[i][j].time_diff();
+
+      if (j < d_sys_solve_time[i].size() - 1)
+        oss << ", ";
+      else
+        oss << "\n";
+    }
+  }
+
+  return oss.str();
 }

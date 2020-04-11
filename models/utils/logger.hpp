@@ -209,31 +209,49 @@ public:
   ~Logger();
 
   // Output string message
-  void log(const std::string &str, bool screen_out);
+  void log(const std::string &str, std::string tag,
+           std::string severity);
 
   // All methods below overload above log function
+  void log(const std::string &str, std::string tag) {
+    log(str, tag, "info");
+  };
   void log(const std::string &str) {
-    log(str, d_screen_out);
+    log(str, "debug", "info");
+  };
+  void log(std::ostringstream &oss, std::string tag,
+           std::string severity) {
+    log(oss.str(), tag, severity);
+    oss.str("");
+    oss.clear();
+  };
+  void log(std::ostringstream &oss, std::string tag) {
+    log(oss, tag, "info");
   };
   void log(std::ostringstream &oss) {
-    log(oss.str(), d_screen_out);
-  };
-  void log(std::ostringstream &oss, bool screen_out) {
-    log(oss.str(), screen_out);
+    log(oss, "debug", "info");
   };
 
   // overload function call
-  void operator()(std::ostringstream &oss, bool screen_out) {
-    log(oss.str(), screen_out);
+  void operator()(std::ostringstream &oss, std::string tag,
+                  std::string severity) {
+    log(oss, tag, severity);
+  }
+  void operator()(std::ostringstream &oss, std::string tag) {
+    log(oss, tag, "info");
   }
   void operator()(std::ostringstream &oss) {
-    log(oss.str(), d_screen_out);
+    log(oss, "debug", "info");
   }
-  void operator()(const std::string &str, bool screen_out) {
-    log(str, screen_out);
+  void operator()(const std::string &str, std::string tag,
+                  std::string severity) {
+    log(str, tag, severity);
+  }
+  void operator()(const std::string &str, std::string tag) {
+    log(str, tag, "info");
   }
   void operator()(const std::string &str) {
-    log(str, d_screen_out);
+    log(str, "debug", "info");
   }
 
   // output time step log
@@ -248,8 +266,7 @@ public:
       d_ts_file << log_ts_base(i, 0);
 
     // second call with space format
-    std::string str = "\n\n  _____________\n  Time Step Log\n" + log_ts_base(i,
-        2);
+    std::string str = "\n  Time step log\n" + log_ts_base(i,2) + " \n";
     if (i > 0)
       log(str);
   }
