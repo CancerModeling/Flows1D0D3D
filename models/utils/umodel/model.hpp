@@ -34,7 +34,8 @@ public:
       : d_step(0), d_time(0.), d_dt(0.), d_hmin(0.), d_hmax(0.),
         d_bounding_box(Point(), Point()), d_nonlinear_step(0),
         d_is_output_step(false), d_is_growth_step(false),
-        d_log(log), d_input(input), d_comm_p(comm), d_mesh(mesh),
+        d_log(log), d_delayed_msg(""),
+        d_input(input), d_comm_p(comm), d_mesh(mesh),
         d_tum_sys(tum_sys) {}
 
   /*! @brief Get equation system */
@@ -82,6 +83,9 @@ public:
 
   /*! @brief List of systems */
   std::vector<std::string> d_sys_names;
+
+  /*! @brief Store delayed message */
+  std::string d_delayed_msg;
 
 protected:
 

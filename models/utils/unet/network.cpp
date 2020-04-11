@@ -102,12 +102,10 @@ void util::Network::create_initial_network() {
   transferDataToVGM(vertices, pressures, radii, elements);
   int numberOfNodes = VGM.getNumberOfNodes();
   oss << "  Number of nodes: " << numberOfNodes << std::endl;
-  d_model_p->d_log(oss);
 
   // refine mesh
   //  std::cout << " " << std::endl;
   oss << "  Refine mesh" << std::endl;
-  d_model_p->d_log(oss);
 
   int refinementLevel = input.d_network_init_refinement;
 
@@ -120,11 +118,13 @@ void util::Network::create_initial_network() {
   numberOfNodes = VGM.getNumberOfNodes();
 
   oss << "  Number of nodes: " << numberOfNodes << std::endl;
-  d_model_p->d_log(oss);
 
   // compute element and weights
   if (input.d_compute_elem_weights)
     compute_elem_weights();
+
+  d_model_p->d_delayed_msg = oss.str();
+  util::clear_oss(oss);
 
   // Print data
   // std::cout << " " << std::endl;
@@ -698,7 +698,8 @@ void util::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
 
   if (P_v.size() < 20) {
     oss << "        P_v = (" << util::io::printStr(P_v) << ")" << std::endl;
-    d_model_p->d_log(oss);
+    d_model_p->d_delayed_msg = oss.str();
+    util::clear_oss(oss);
   }
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();

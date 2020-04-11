@@ -408,6 +408,11 @@ inline int locate_in_set(const T &key, const std::vector<T> &set) {
 
   return -1;
 }
+
+inline void clear_oss(std::ostringstream &oss) {
+  oss.str("");
+  oss.clear();
+}
 } // namespace util
 
 #endif // UTILS_H

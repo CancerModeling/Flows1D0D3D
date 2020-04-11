@@ -19,6 +19,13 @@ void reset_clock() {
 std::ostringstream oss;
 
 void random_init() { srand(time(nullptr)); }
+
+void log_msg(std::string &msg, util::Logger &log) {
+  if (!msg.empty()) {
+    log(msg, "debug");
+    msg = "";
+  }
+}
 } // namespace
 
 namespace netfvfe {
@@ -70,28 +77,25 @@ void netfvfe::model_setup_run(int argc, char **argv,
   auto input = InpDeck(filename);
 
   // create logger
-  util::Logger log(input.d_log_path + "info_" + input.d_outfile_tag, comm,
-                   !input.d_quiet);
+  util::Logger log(input.d_log_path + "info_" + input.d_outfile_tag,
+                   comm, !input.d_quiet);
 
   // disable reference counter information
   if (input.d_quiet)
     ReferenceCounter::disable_print_counter_info();
 
   //
-  oss << " ********** NetFVFE **************\n";
-  log(oss);
+  log("Model: NetFVFE\n", "init");
 
   // create mesh
-  oss << "Creating tumor mesh\n";
-  log(oss);
+  oss << "Setup [Mesh] -> ";
   ReplicatedMesh mesh(*comm);
   if (input.d_read_mesh_flag)
     mesh.read(input.d_mesh_filename);
   else
     util::create_mesh(input, mesh);
 
-  oss << "Creating tumor system\n";
-  log(oss);
+  oss << " [Tumor system] -> ";
   EquationSystems tum_sys(mesh);
   // add parameters to system
   tum_sys.parameters.set<InpDeck *>("input_deck") = &input;
@@ -305,9 +309,10 @@ netfvfe::Model::Model(
   }
 
   // 1-D network
-  oss << "\n\nCreating 1-D network\n";
-  d_log(oss);
+  d_log(" [Network]\n", "init");
   d_network.create_initial_network();
+  log_msg(d_delayed_msg, d_log);
+  d_log(" \n", "init");
 
   // save setup end time
   clock_end = steady_clock::now();
@@ -339,8 +344,9 @@ void netfvfe::Model::run() {
   //
 
   if (!d_input.d_test_name.empty()) {
-    oss << "\n\nSolving sub-system for test: " << d_input.d_test_name << "\n\n";
-    d_log(oss);
+    oss << "Solving sub-system: " << d_input.d_test_name << "\n";
+    d_log(oss, "general", "debug");
+    d_log(" \n", "init");
   }
 
   // check for tumor-network test
@@ -398,19 +404,18 @@ void netfvfe::Model::run() {
     if (d_step % d_input.d_network_update_interval == 0)
       d_is_growth_step = true;
 
-    oss << "\n\n________________________________________________________\n";
-    oss << "At time step: " << d_step << ", time: " << d_time << "\n\n";
-    d_log(oss);
+    oss << "Time step: " << d_step << ", time: " << d_time << "\n";
+    d_log(oss, "integrate");
+    d_log(" \n", "integrate");
 
     // solve tumor-network system
     solve_system();
 
     // update network
     if (d_is_growth_step) {
-      oss << "\n  ____________________________________\n";
-      oss << "  Updating Network ";
-      d_log(oss);
+      d_log("  Updating Network\n", "net update");
       d_network.update_network(d_taf_assembly, d_grad_taf_assembly);
+      d_log(" \n", "net update");
     }
 
     // Post-processing
@@ -451,8 +456,9 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
                 MPI_COMM_WORLD);
 
   // print to screen
-  oss << "\n\n  Total tumor Mass: " << total_mass << "\n";
-  d_log(oss);
+  oss << "  Tumor Mass: " << total_mass << "\n\n";
+  d_log(oss, "result");
+  d_log(" \n", "result");
 
   // write mesh and simulation results
   std::string filename = d_input.d_outfilename + ".e";
@@ -729,23 +735,20 @@ void netfvfe::Model::solve_pressure() {
   d_nonlinear_step = 0;
 
   // Solve pressure system
-  oss << "\n\n  Nonlinear loop for pressure\n";
-  d_log(oss);
+  d_log("  Nonlinear loop for pressure\n\n", "solve pres");
+  d_log(" \n", "solve pres");
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
     // Debug
     // for (unsigned int l = 0; l < 10; ++l) {
 
     d_nonlinear_step = l;
-    oss << "    ____________________\n";
-    oss << "    Nonlinear step: " << l << "\n\n";
-    oss << "      Solving ";
-    d_log(oss);
+    oss << "    Nonlinear step: " << l;
+    d_log(oss, "solve pres");
 
     // solver for 1-D pressure and nutrient
     reset_clock();
-    oss << "[1D pressure] -> ";
-    d_log(oss);
+    d_log( " |1D pressure| -> ", "solve pres");
     d_network.solveVGMforPressure(d_taf_assembly);
     if (d_log.d_cur_step >= 0)
       d_log.add_sys_solve_time(clock_begin, d_pres_1d_id);
@@ -755,9 +758,9 @@ void netfvfe::Model::solve_pressure() {
     reset_clock();
     last_nonlinear_soln_pres->zero();
     last_nonlinear_soln_pres->add(*pres.solution);
-    oss << "[3D pressure]\n";
-    d_log(oss);
+    d_log("|3D pressure|\n", "solve pres");
     pres.solve();
+
     last_nonlinear_soln_pres->add(-1., *pres.solution);
     last_nonlinear_soln_pres->close();
     if (d_log.d_cur_step >= 0)
@@ -774,25 +777,27 @@ void netfvfe::Model::solve_pressure() {
       const unsigned int n_linear_iterations = pres.n_linear_iterations();
       const Real final_linear_residual = pres.final_linear_residual();
 
-      oss << "      Linear converged at step: " << n_linear_iterations
-          << ", residual: " << final_linear_residual
-          << ", Nonlinear convergence: ||u - u_old|| = "
+      oss << "      LC step: " << n_linear_iterations
+          << ", res: " << final_linear_residual
+          << ", NC: ||u - u_old|| = "
           << nonlinear_global_error_pres << std::endl << std::endl;
-      d_log(oss);
+      d_log(oss, "debug");
     }
     if (nonlinear_global_error_pres < d_input.d_nonlin_tol) {
 
-      oss << "      Nonlinear converged at step: " << l << std::endl
+      d_log(" \n", "debug");
+      oss << "\n      NC step: " << l << std::endl
           << std::endl;
-      d_log(oss);
+      d_log(oss, "converge pres");
 
       break;
     }
 
+    log_msg(d_delayed_msg, d_log);
+
   } // nonlinear solver loop
 
-  oss << "\n  End of nonlinear loop for pressure\n";
-  d_log(oss);
+  d_log(" \n", "solve pres");
 
   clock_end = std::chrono::steady_clock::now();
   if (d_log.d_cur_step >= 0) {
@@ -1362,8 +1367,9 @@ void netfvfe::Model::test_net_tum_2() {
   if (d_input.d_decouple_nutrients) {
     reset_clock();
 
-    oss << "\n      Solving [1D nutrient]\n";
-    d_log(oss);
+
+    d_log("      Solving |1D nutrient|\n", "solve sys");
+    d_log( " \n", "solve sys");
     d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
 
     d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
@@ -1373,8 +1379,8 @@ void netfvfe::Model::test_net_tum_2() {
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
-  oss << "\n  Nonlinear loop\n";
-  d_log(oss);
+  d_log("  Nonlinear loop\n", "solve sys");
+  d_log(" \n", "solve sys");
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
@@ -1384,17 +1390,15 @@ void netfvfe::Model::test_net_tum_2() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    oss << "    ____________________\n";
-    oss << "    Nonlinear step: " << l << "\n\n";
-    oss << "      Solving ";
-    d_log(oss);
+    d_nonlinear_step = l;
+    oss << "    Nonlinear step: " << l << " ";
+    d_log(oss, "solve sys");
 
     // solver for 1D nutrient
     if (!d_input.d_decouple_nutrients) {
       reset_clock();
 
-      oss << "[1D nutrient] -> ";
-      d_log(oss);
+      d_log("|1D nutrient| -> ", "solve sys");
       d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
 
       d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
@@ -1402,8 +1406,7 @@ void netfvfe::Model::test_net_tum_2() {
 
     // solve nutrient
     reset_clock();
-    oss << "[3D nutrient] -> ";
-    d_log(oss);
+    d_log("|3D nutrient| -> ", "solve sys");
     nut.solve();
     d_log.add_sys_solve_time(clock_begin, d_nut_id);
 
@@ -1411,8 +1414,7 @@ void netfvfe::Model::test_net_tum_2() {
     reset_clock();
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    oss << "[tumor species] -> ";
-    d_log(oss);
+    d_log("|tumor| -> ", "solve sys");
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
@@ -1420,15 +1422,13 @@ void netfvfe::Model::test_net_tum_2() {
 
     // solve hypoxic
     reset_clock();
-    oss << "[hypoxic species] -> ";
-    d_log(oss);
+    d_log("|hypoxic| -> ", "solve sys");
     hyp.solve();
     d_log.add_sys_solve_time(clock_begin, d_hyp_id);
 
     // solve necrotic
     reset_clock();
-    oss << "[necrotic species]\n";
-    d_log(oss);
+    d_log("|necrotic|\n", "solve sys");
     nec.solve();
     d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
@@ -1443,24 +1443,24 @@ void netfvfe::Model::test_net_tum_2() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
+      oss << "      LC step: " << n_linear_iterations
+                << ", res: " << final_linear_residual
+                << ", NC: ||u - u_old|| = "
                 << nonlinear_global_error << std::endl << std::endl;
-      d_log(oss);
+      d_log(oss, "debug");
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      oss << "      Nonlinear converged at step: " << l << std::endl
+      d_log(" \n", "debug");
+      oss << "      NC step: " << l << std::endl
                 << std::endl;
-      d_log(oss);
+      d_log(oss, "converge sys");
 
       break;
     }
   } // nonlinear solver loop
 
-  oss << "\n  End of nonlinear loop\n";
-  d_log(oss);
+  d_log(" \n", "solve sys");
   d_log.add_nonlin_iter(d_nonlinear_step);
 
   // compute below only when we are performing output as these do not play
@@ -1470,24 +1470,22 @@ void netfvfe::Model::test_net_tum_2() {
     // solve for taf
     reset_clock();
     *taf.old_local_solution = *taf.current_local_solution;
-    oss << "      Solving [taf species] -> ";
-    d_log(oss);
+    d_log("      Solving |taf| -> ", "solve sys");
     taf.solve();
     d_log.add_sys_solve_time(clock_begin, d_taf_id);
 
     // solve for gradient of taf
     reset_clock();
-    oss << "[gradient of taf] -> ";
-    d_log(oss);
+    d_log("|grad taf| -> ", "solve sys");
     grad_taf.solve();
     d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
 
     // solve for velocity
     reset_clock();
-    oss << "[velocity]\n";
-    d_log(oss);
+    d_log("|velocity|\n", "solve sys");
     vel.solve();
     d_log.add_sys_solve_time(clock_begin, d_vel_id);
   }
+  d_log(" \n", "solve sys");
 }
 
