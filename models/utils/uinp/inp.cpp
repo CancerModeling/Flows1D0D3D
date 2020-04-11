@@ -250,9 +250,13 @@ void util::OutputDeck::read_parameters(const std::string &filename) {
   bool dbg_out = input("output_debug_info", true);
   d_quiet = !dbg_out;
 
+  d_output_path = input("output_path", "");
+  d_log_path = input("log_output_path", "");
   d_outfile_tag = input("output_tag", "");
-  d_outfilename = "output";
-  d_outfilename_net = "net_output";
+
+  d_outfilename = d_output_path + "output";
+  d_outfilename_net = d_output_path + "net_output";
+
   if (!d_outfile_tag.empty()) {
     d_outfilename += "_" + d_outfile_tag;
     d_outfilename_net += "_" + d_outfile_tag;
