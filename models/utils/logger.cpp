@@ -160,7 +160,7 @@ std::string util::Logger::log_ts_base(const int i, const int ns) {
       oss << spS << "Setup_Time " << d_setup_time.time_diff() << "\n";
 
       oss << spS << "#\n";
-      oss << spS << "SysNames\n";
+      oss << spS << "SysNames " << d_n << "\n";
       for (unsigned int j = 0; j < d_n; j++)
         oss << spS << d_sys_names[j] << " " << j << "\n";
 
@@ -182,31 +182,31 @@ std::string util::Logger::log_ts_base(const int i, const int ns) {
       oss << spS << "#\n";
 
       // add header for next step
-      oss << spS << "StepLog\n";
-      oss << spS << "T, ST, PST, NETT, NLI, PNLI, ";
+      oss << spS << "StepLog " << 6 + d_n << "\n";
+      oss << spS << "'T' 'ST' 'PST' 'NETT' 'NLI' 'PNLI' ";
 
       for (unsigned int j = 0; j < d_n; j++) {
 
-        oss << "S" + std::to_string(j);
+        oss << "'S" + std::to_string(j) + "'";
 
         if (j < d_sys_solve_time[i].size() - 1)
-          oss << ", ";
+          oss << " ";
         else
           oss << "\n";
       }
     }
 
-    oss << spS << d_times[i] << ", " << d_solve_time[i].time_diff() << ", "
-        << d_pres_solve_time[i].time_diff() << ", "
-        << d_update_network_time[i].time_diff() << ", " << d_nonlinear_iters[i]
-        << ", " << d_pres_nonlinear_iters[i] << ", ";
+    oss << spS << d_times[i] << " " << d_solve_time[i].time_diff() << " "
+        << d_pres_solve_time[i].time_diff() << " "
+        << d_update_network_time[i].time_diff() << " " << d_nonlinear_iters[i]
+        << " " << d_pres_nonlinear_iters[i] << " ";
 
     for (unsigned int j = 0; j < d_sys_solve_time[i].size(); j++) {
 
       oss << d_sys_solve_time[i][j].time_diff();
 
       if (j < d_sys_solve_time[i].size() - 1)
-        oss << ", ";
+        oss << " ";
       else
         oss << "\n";
     }
