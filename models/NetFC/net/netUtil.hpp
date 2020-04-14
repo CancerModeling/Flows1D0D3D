@@ -32,6 +32,10 @@ std::vector<double> getCenterNeighbor(std::vector<double> center,
 
 std::vector<std::vector<double>> defineDirections();
 
+std::vector<std::vector<double>> defineDirectionsNeighboring();
+
+std::vector<double> getCenterFromIndex( int index, int N_3D, double h_3D );
+
 bool isCenterInDomain(std::vector<double> center, double L_x);
 
 int getElementIndex(std::vector<double> center, double h_3D, int N_3D);
@@ -59,6 +63,8 @@ void updateWeightsAndIds(int N_s, int N_theta, int elementIndex,
 
 void determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<double> coord, std::vector<double> coord_neighbor, 
                             double radius, double h_3D, double& length_edge, std::vector<double> &weights, std::vector<int> &id_3D_elements);
+
+std::vector<int> getNeighboringElementIndices( std::vector<double> coord, double h_3D, double L_x, int N_3D );
 
 }
 
