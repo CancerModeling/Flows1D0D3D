@@ -11,7 +11,6 @@
 #include "utilLibs.hpp"
 #include "../inp/inp.hpp"
 #include "../systems/systems.hpp"
-#include "gmm.h"
 #include "utils.hpp"
 #include "list_structure.hpp"
 #include "nodes.hpp"
@@ -124,6 +123,10 @@ public:
   double sourceTermTAFTwoVessels( std::vector<double> coord );
 
   void createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer );
+
+  void linkTerminalVessels();
+
+  bool testCollision( std::vector<double> point_1, std::vector<double> point_2, double radius );
 
   /** @}*/
 
