@@ -480,6 +480,7 @@ void netfc::NecroticDeck::print(unsigned int level) {
   out << "# Constant for mobility of necrotic tumor cells\n";
   out << "# Default: 0\n";
   out << "bar_M_N = " << d_bar_M_N << "\n\n";
+
 }
 
 void netfc::TAFDeck::read_parameters(const std::string &filename) {
