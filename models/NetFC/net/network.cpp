@@ -77,18 +77,25 @@ void netfc::Network::create_initial_network() {
      double L_x = input.d_domain_params[1];
      h_3D = L_x/(double) N_3D;
 
-     A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D+numberOfNodes, N_tot_3D+numberOfNodes);
      b_flow_3D1D = std::vector<double>(N_tot_3D+numberOfNodes, 0.0);
      P_3D1D = std::vector<double>(N_tot_3D+numberOfNodes, 0.0);
+     P_3D = std::vector<double>(N_tot_3D, 0.0);
 
      A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D+numberOfNodes, N_tot_3D+numberOfNodes);
      b_nut_3D1D = std::vector<double>(N_tot_3D+numberOfNodes, 0.0);
 
+     A_TAF_3D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D, N_tot_3D);
+     b_TAF_3D = std::vector<double>(N_tot_3D, 0.0);
+
      phi_sigma = std::vector<double>(N_tot_3D+numberOfNodes, 0.0);
      phi_sigma_old = std::vector<double>(N_tot_3D+numberOfNodes, 0.0);
+     phi_sigma_3D = std::vector<double>(N_tot_3D, 0.0);
 
      phi_P = std::vector<double>(N_tot_3D, 0.0);
      phi_P_old = std::vector<double>(N_tot_3D, 0.0);
+
+     phi_TAF = std::vector<double>(N_tot_3D, 0.0);
+     phi_TAF_old = std::vector<double>(N_tot_3D, 0.0);
 
      sol_Vec_Phi_P = std::vector<double>(2*N_tot_3D, 0.0);
      sol_Vec_Phi_P_old = std::vector<double>(2*N_tot_3D, 0.0);
@@ -96,6 +103,8 @@ void netfc::Network::create_initial_network() {
      mu = input.d_init_vessel_mu;
 
      D_v = input.d_D_sigma_v;
+
+     D_TAF = input.d_D_TAF;
 
      osmotic_sigma = input.d_osmotic_sigma;
 
@@ -128,6 +137,7 @@ void netfc::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
             filevtk << coord[0] << " " << coord[1] << " " << coord[2] << std::endl;
 
             pointer = pointer->global_successor;
+
      }
 
      int numberOfNodes = 0;
@@ -314,6 +324,12 @@ void netfc::Network::assemble3D1DSystemForPressure(){
      std::cout << "Assemble 3D Matrix and right hand side (pressure)" << std::endl;
      std::cout << "K_3D: " << K_3D << std::endl;
 
+     int numberOfNodes = VGM.getNumberOfNodes();
+
+     std::cout << "numberOfNodes: " << N_tot_3D+numberOfNodes << std::endl;
+
+     A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D+numberOfNodes, N_tot_3D+numberOfNodes);
+
      for(int i = 0; i < A_flow_3D1D.nrows(); i++){
  
          A_flow_3D1D[i].clear();
@@ -324,10 +340,9 @@ void netfc::Network::assemble3D1DSystemForPressure(){
 
          b_flow_3D1D[i] = 0.0;
 
-     }
+     } 
 
      std::vector<  std::vector< double > > directions;
-
      directions = defineDirections();
 
      for(int i=0;i<N_3D;i++){ // x-loop
@@ -352,9 +367,13 @@ void netfc::Network::assemble3D1DSystemForPressure(){
 
                      if( isInnerFace ){
 
-                         int index_neighbor = getElementIndex( center_neighbor, h_3D, N_3D );
+                       //  std::cout << "index: " << index << std::endl;
 
+                         int index_neighbor = getElementIndex( center_neighbor, h_3D, N_3D );
+                         
                          A_flow_3D1D( index, index ) = A_flow_3D1D( index, index ) + K_3D*h_3D*h_3D/h_3D;
+
+                       //  std::cout << "index_neighbor: " << index_neighbor << std::endl;
 
                          A_flow_3D1D( index, index_neighbor ) = -K_3D*h_3D*h_3D/h_3D;
 
@@ -488,7 +507,7 @@ void netfc::Network::assemble3D1DSystemForNutrients(){
 
      double L_x = input.d_domain_params[1];
 
-     // 3D-1D coupled flow problem on a unit cube 
+     // 3D-1D coupled flow problem on a cube 
      std::cout << " " << std::endl;
      std::cout << "3D-1D coupled nutrient transport problem on a cube \Omega = (0," << L_x << ")^3" << std::endl;
 
@@ -513,6 +532,12 @@ void netfc::Network::assemble3D1DSystemForNutrients(){
      std::cout << "Assemble 3D Matrix and right hand side (nutrients)" << std::endl;
      std::cout << "K_3D: " << K_3D << std::endl;
      std::cout << "D_v: " << D_v << std::endl;
+
+     int numberOfNodes = VGM.getNumberOfNodes();
+
+     std::cout << "numberOfNodes: " << N_tot_3D+numberOfNodes << std::endl;
+
+     A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D+numberOfNodes, N_tot_3D+numberOfNodes);
 
      for(int i = 0; i < A_nut_3D1D.nrows(); i++){
  
@@ -1045,11 +1070,9 @@ void netfc::Network::solve3D1DNutrientProblem( int timeStep, double time ) {
      std::cout<< " " << std::endl;
      std::cout<< "Extract nutrient concentrations" << std::endl;
 
-     std::vector< double > phi_sigma_3D;
-
      for(int i=0;i<N_tot_3D;i++){
 
-         phi_sigma_3D.push_back( phi_sigma[ i ] );
+         phi_sigma_3D[ i ] =  phi_sigma[ i ];
 
      }
 
@@ -1187,11 +1210,9 @@ void netfc::Network::solve3D1DFlowProblem( int timeStep, double time ){
      std::cout<< " " << std::endl;
      std::cout<< "Extract pressures" << std::endl;
 
-     std::vector< double > P_flow_3D;
-
      for(int i=0;i<N_tot_3D;i++){
 
-         P_flow_3D.push_back( P_3D1D[ i ] );
+         P_3D[ i ] = P_3D1D[ i ];
 
      }
 
@@ -1230,7 +1251,7 @@ void netfc::Network::solve3D1DFlowProblem( int timeStep, double time ){
 
                          for(int l=0;l<3;l++){
 
-                             vel_element[ l ] += -K_3D*( P_flow_3D[ index_neighbor ] - P_flow_3D[ index ] )/h_3D*directions[ face ][l];
+                             vel_element[ l ] += -K_3D*( P_3D[ index_neighbor ] - P_3D[ index ] )/h_3D*directions[ face ][l];
 
                          }
 
@@ -1250,7 +1271,7 @@ void netfc::Network::solve3D1DFlowProblem( int timeStep, double time ){
      
          std::cout << " " << std::endl;
          std::cout<< "Plot solutions" << std::endl;
-         writeDataToVTK3D_Pressure( P_flow_3D, V_3D, N_3D, h_3D, timeStep );
+         writeDataToVTK3D_Pressure( P_3D, V_3D, N_3D, h_3D, timeStep );
 
      }
 

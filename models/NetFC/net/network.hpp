@@ -11,7 +11,6 @@
 #include "utilLibs.hpp"
 #include "../inp/inp.hpp"
 #include "../systems/systems.hpp"
-#include "gmm.h"
 #include "utils.hpp"
 #include "list_structure.hpp"
 #include "nodes.hpp"
@@ -36,7 +35,7 @@ class Network {
 public:
   /*! @brief Constructor */
   Network(netfc::Model *model)
-      : d_is_network_changed(false), d_model_p(model), d_update_number(0) {}
+      : d_is_network_changed(false), d_model_p(model) {}
 
   const netfc::ListStructure<netfc::VGNode> &get_mesh() const { return VGM; }
 
@@ -79,7 +78,11 @@ public:
 
   void assemble3D1DSystemForNutrients();
 
+  void assemble3DSystemForTAF();
+
   void solveVGMforNutrient(  int timeStep, double time );
+
+  void solve3DTAFProblem(  int timeStep, double time );
 
   void solve3D1DFlowProblem( int timeStep, double time );
 
@@ -107,13 +110,23 @@ public:
 
   void writeDataToVTK3D_Nutrients(std::vector<double> C_3D, int N_3D, double h_3D, int timeStep);
 
+  void writeDataToVTK3D_TAF(std::vector<double> phi_TAF_3D, int N_3D, double h_3D, int timeStep);
+
   void rescaleSecombData( std::vector< std::vector<double> >& vertices, std::vector<double>& pressures, std::vector<double>& radii, double epsilon );
 
   void updateNetwork();
 
   void markApicalGrowth();
 
-  unsigned int processApicalGrowth();
+  int processApicalGrowth();
+
+  double sourceTermTAFTwoVessels( std::vector<double> coord );
+
+  void createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer );
+
+  void linkTerminalVessels();
+
+  bool testCollision( std::vector<double> point_1, std::vector<double> point_2, double radius );
 
   /** @}*/
 
@@ -135,6 +148,9 @@ public:
   /*! @brief System matrix for 3D1D nutrient model*/
   gmm::row_matrix<gmm::wsvector<double>> A_nut_3D1D;
 
+  /*! @brief System matrix for 3D1D nutrient model*/
+  gmm::row_matrix<gmm::wsvector<double>> A_TAF_3D;
+
   /*! @brief System force for vessel nutrient */
   std::vector<double> b_c;
 
@@ -143,6 +159,9 @@ public:
 
   /*! @brief Right hand side nutrients 3D1D */
   std::vector<double> b_nut_3D1D;
+
+  /*! @brief Right hand side nutrients 3D1D */
+  std::vector<double> b_TAF_3D;
 
   /*! @brief Current vessel pressure */
   std::vector<double> P_v;
@@ -156,11 +175,17 @@ public:
   /*! @brief Current 3D1D pressure */
   std::vector<double> P_3D1D;
 
+  /*! @brief Current 3D pressure */
+  std::vector<double> P_3D;
+
   /*! @brief Current 3D1D nutrient concentration */
   std::vector<double> phi_sigma;
 
   /*! @brief Old 3D1D nutrient concentration */
   std::vector<double> phi_sigma_old;
+
+  /*! @brief Current 3D nutrient concentration */
+  std::vector<double> phi_sigma_3D;
 
   /*! @brief Current prolific cell concentration */
   std::vector<double> phi_P;
@@ -174,13 +199,19 @@ public:
   /*! @Old solution vector prolific cell concentration */
   std::vector<double> sol_Vec_Phi_P_old;
 
+  /*! @brief Current TAF concentration */
+  std::vector<double> phi_TAF;
+
+  /*! @brief Old TAF concentration */
+  std::vector<double> phi_TAF_old;
+
   double mu;
 
   double D_v;
 
-  double osmotic_sigma;
+  double D_TAF;
 
-  unsigned int d_update_number;
+  double osmotic_sigma;
 
   std::string scenario;
 
