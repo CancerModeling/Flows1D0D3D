@@ -24,6 +24,7 @@ void netfc::angle_correction(const Point &parent_d, Point &child_d,
     // rotate parent direction by allowed angle
     child_d = util::rotate(parent_d, max_angle, axis);
   }
+
 }
 
 void netfc::compute_bifurcate_child_direction(const Point &parent_d,
@@ -99,34 +100,156 @@ std::vector<double> netfc::getCenterNeighbor(std::vector<double> center,
   return center_neighbor;
 }
 
-std::vector<std::vector<double>> netfc::defineDirections() {
+std::vector<std::vector<double>> netfc::defineDirections(){
 
-  std::vector<std::vector<double>> directions;
+                                 std::vector<std::vector<double>> directions;
 
-  for (int i = 0; i < 3; i++) {
+				 for(int i = 0; i < 3; i++){
 
-    std::vector<double> direction_p;
-    std::vector<double> direction_m;
+				     std::vector<double> direction_p;
+				     std::vector<double> direction_m;
 
-    for (int j = 0; j < 3; j++) {
+				     for(int j = 0; j < 3; j++){
 
-      if (i == j) {
+				         if(i == j){
 
-        direction_p.push_back(1.0);
-        direction_m.push_back(-1.0);
+				            direction_p.push_back(1.0);
+				            direction_m.push_back(-1.0);
 
-      } else {
+				         } 
+                                         else{
 
-        direction_p.push_back(0.0);
-        direction_m.push_back(0.0);
-      }
-    }
+				            direction_p.push_back(0.0);
+				            direction_m.push_back(0.0);
+				         }
 
-    directions.push_back(direction_p);
-    directions.push_back(direction_m);
-  }
+				     }
 
-  return directions;
+				     directions.push_back(direction_p);
+				     directions.push_back(direction_m);
+
+				}
+
+				return directions;
+
+}
+
+
+std::vector<std::vector<double>> netfc::defineDirectionsNeighboring(){
+
+                                 std::vector<std::vector<double>> directions;
+
+				 for(int i = 0; i < 3; i++){
+
+				     std::vector<double> direction_p;
+				     std::vector<double> direction_m;
+
+				     for(int j = 0; j < 3; j++){
+
+				         if(i == j){
+
+				            direction_p.push_back(1.0);
+				            direction_m.push_back(-1.0);
+
+				         } 
+                                         else{
+
+				            direction_p.push_back(0.0);
+				            direction_m.push_back(0.0);
+
+				         }
+
+				     }
+
+				     directions.push_back(direction_p);
+				     directions.push_back(direction_m);
+
+				}
+
+				for(int i = 0; i < 3; i++){
+
+				     std::vector<double> direction_p;
+				     std::vector<double> direction_m;
+
+				     for(int j = 0; j < 3; j++){
+
+				         if(i != j){
+
+				            direction_p.push_back(1.0);
+				            direction_m.push_back(-1.0);
+
+				         } 
+                                         else{
+
+				            direction_p.push_back(0.0);
+				            direction_m.push_back(0.0);
+
+				         }
+
+				     }
+
+				     directions.push_back(direction_p);
+				     directions.push_back(direction_m);
+
+				}
+
+
+				for(int i = 0; i < 3; i++){
+
+				     std::vector<double> direction_p;
+				     std::vector<double> direction_m;
+
+				     for(int j = 0; j < 3; j++){
+
+				         if(i == j){
+
+				            direction_p.push_back(0.0);
+				            direction_m.push_back(-1.0);
+
+				         } 
+                                         else{
+
+				            direction_p.push_back(1.0);
+				            direction_m.push_back(1.0);
+
+				         }
+
+				     }
+
+				     directions.push_back(direction_p);
+				     directions.push_back(direction_m);
+
+				}				
+
+				for(int i = 0; i < 3; i++){
+
+				     std::vector<double> direction_p;
+				     std::vector<double> direction_m;
+
+				     for(int j = 0; j < 3; j++){
+
+				         if(i != j){
+
+				            direction_p.push_back(0.0);
+				            direction_m.push_back(-1.0);
+
+				         } 
+                                         else{
+
+				            direction_p.push_back(1.0);
+				            direction_m.push_back(1.0);
+
+				         }
+
+				     }
+
+				     directions.push_back(direction_p);
+				     directions.push_back(direction_m);
+
+				}
+
+                                return directions;
+
 }
 
 bool netfc::isCenterInDomain(std::vector<double> center, double L_x) {
@@ -146,7 +269,7 @@ bool netfc::isCenterInDomain(std::vector<double> center, double L_x) {
   return isInDomain;
 }
 
-int netfc::getElementIndex(std::vector<double> center, double h_3D, int N_3D) {
+int netfc::getElementIndex(std::vector<double> center, double h_3D, int N_3D){
 
   int index = 0;
 
@@ -159,8 +282,7 @@ int netfc::getElementIndex(std::vector<double> center, double h_3D, int N_3D) {
   return index;
 }
 
-std::vector<double> netfc::getCenterFace(std::vector<double> center,
-                                  std::vector<double> direction, double h_3D) {
+std::vector<double> netfc::getCenterFace(std::vector<double> center, std::vector<double> direction, double h_3D) {
 
   std::vector<double> center_face;
 
@@ -172,8 +294,7 @@ std::vector<double> netfc::getCenterFace(std::vector<double> center,
   return center_face;
 }
 
-double netfc::getDirichletValue(std::vector<double> center_face, double L_p,
-                         double radius) {
+double netfc::getDirichletValue(std::vector<double> center_face, double L_p, double radius) {
 
   double dirichlet_value = 0.0;
 
@@ -357,5 +478,60 @@ void netfc::determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<d
          }
 
      }
+
+}
+
+std::vector<double> netfc::getCenterFromIndex( int index, int N_3D, double h_3D ){
+
+                    std::vector<double> center = std::vector<double>(3,0.0);
+
+                    int k = index/( N_3D*N_3D );
+
+                    index = index - ( k*N_3D*N_3D );
+
+                    int j = index/N_3D;
+
+                    int i = index - ( j*N_3D );
+
+                    center[ 0 ] = (double)i * h_3D + 0.5 * h_3D;
+                    center[ 1 ] = (double)j * h_3D + 0.5 * h_3D;
+                    center[ 2 ] = (double)k * h_3D + 0.5 * h_3D; 
+
+                    return center;
+
+}
+
+std::vector<int> netfc::getNeighboringElementIndices( std::vector<double> coord, double h_3D, double L, int N_3D ){
+
+                 std::vector<int> indicesNeighbors;
+
+                 int element_index = getElementIndex( coord, h_3D, N_3D );
+
+                 std::vector<  std::vector< double > > directions;
+                 directions = defineDirectionsNeighboring();            
+
+                 std::vector<double> center = std::vector<double>(3,0.0);
+
+                 for( int i=0;i<directions.size();i++ ){
+
+                      for( int j=0;j<3;j++ ){
+ 
+                           center[ j ] = coord[ j ] + h_3D*directions[ i ][ j ]; 
+                            
+                      }
+
+                      int centerIndex = getElementIndex( center, h_3D, N_3D );
+
+                      bool isInside = isCenterInDomain( center, L );
+
+                      if( isInside ){
+
+                          indicesNeighbors.push_back( centerIndex );
+
+                      }
+
+                 }
+
+                 return indicesNeighbors;
 
 }

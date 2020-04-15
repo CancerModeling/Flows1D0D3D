@@ -114,10 +114,6 @@ netfc::Model::Model(int argc, char **argv, std::vector<double> &QOI_MASS,
   d_step = d_input.d_init_step;
   d_time = d_input.d_init_time;
   d_dt = d_input.d_dt;
-  double d_dt_output = d_input.d_dt_output_interval;
-
-  d_tum_sys.parameters.set<unsigned int>("linear solver maximum iterations") =
-      d_input.d_linear_max_iters;
 
   do{
 
@@ -132,9 +128,14 @@ netfc::Model::Model(int argc, char **argv, std::vector<double> &QOI_MASS,
 
     d_network.solve3D1DFlowProblem( d_step, d_time );
     d_network.solve3D1DNutrientProblem( d_step, d_time );
-    d_network.solve3DProlificCellProblem( d_step, d_time );
+    //d_network.solve3DProlificCellProblem( d_step, d_time );
+    d_network.solve3DTAFProblem( d_step, d_time );
 
-    d_network.updateNetwork();
+    if( d_step%2 ){
+
+        d_network.updateNetwork();
+
+    }
 
     //d_network.printDataVGM();
 
