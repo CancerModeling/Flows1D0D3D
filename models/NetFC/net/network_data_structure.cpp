@@ -109,100 +109,82 @@ void netfc::Network::readData( std::vector<std::vector<double>> &vertices, std::
 
 
 void netfc::Network::transferDataToVGM( std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
-                                         std::vector<double> &radii, std::vector<std::vector<unsigned int>> &elements ) {
+                                        std::vector<double> &radii, std::vector<std::vector<unsigned int>> &elements ) {
 
-  int numberOfVertices = vertices.size();
+     int numberOfVertices = vertices.size();
 
-  const auto &input = d_model_p->get_input_deck();
+     const auto &input = d_model_p->get_input_deck();
 
-  double L_x = input.d_domain_params[1];
+     double L_x = input.d_domain_params[1];
 
-  if( scenario == "network_secomb" ){
+     if( scenario == "network_secomb" ){
   
-      rescaleSecombData( vertices, pressures, radii, 0.08 );        
+         rescaleSecombData( vertices, pressures, radii, 0.08 );        
 
-  }
+     }
 
-  for(int i = 0; i < numberOfVertices; i++) {
+     for(int i = 0; i < numberOfVertices; i++) {
 
-      netfc::VGNode new_node;
+         netfc::VGNode new_node;
 
-      new_node.index = i;
+         new_node.index = i;
 
-      std::vector<double> coord = vertices[i];
+         std::vector<double> coord = vertices[i];
 
-      new_node.coord = coord;
+         new_node.coord = coord; 
+         new_node.p_boundary = pressures[i];
+         new_node.p_v = 0.0;
+         new_node.c_boundary = input.d_in_nutrient;
+         new_node.c_v = 0.0;
 
-      new_node.p_boundary = pressures[i];
+         if( new_node.p_boundary > 0.0 ){
 
-      new_node.p_v = 0.0;
+             new_node.typeOfVGNode = TypeOfNode::DirichletNode;
 
-      new_node.c_boundary = input.d_in_nutrient;
+         } 
+         else{
 
-      new_node.c_v = 0.0;
+             new_node.typeOfVGNode = TypeOfNode::InnerNode;
 
-    if (new_node.p_boundary > 0.0) {
+         }
 
-        new_node.typeOfVGNode = TypeOfNode::DirichletNode;
+         VGM.attachNode(new_node);
 
-    } 
-    else {
+     }
 
-        new_node.typeOfVGNode = TypeOfNode::InnerNode;
+     std::shared_ptr<VGNode> pointer_1, pointer_2;
 
-    }
+     int numberOfElements = elements.size();
 
-    VGM.attachNode(new_node);
+     for(int i = 0; i < numberOfElements; i++){
 
-  }
+         int index_1 = elements[i][0];
+         int index_2 = elements[i][1];
 
-  std::shared_ptr<VGNode> pointer_1, pointer_2;
+         std::vector<double> coord_1 = vertices[index_1];
+         std::vector<double> coord_2 = vertices[index_2];
 
-  int numberOfElements = elements.size();
+         double length = 0.0;
+         double radius = radii[i];
 
-  for(int i = 0; i < numberOfElements; i++){
+         pointer_1 = VGM.findNode(index_1);
+         pointer_2 = VGM.findNode(index_2);
 
-      int index_1 = elements[i][0];
+         pointer_1->radii.push_back(radius);
+         pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
+         pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
+         pointer_1->neighbors.push_back(pointer_2);
+         pointer_1->edge_touched.push_back(false);
+         pointer_1->sprouting_edge.push_back(false);
 
-      int index_2 = elements[i][1];
+         pointer_2->radii.push_back(radius);
+         pointer_2->L_p.push_back(input.d_tissue_flow_L_p);
+         pointer_2->L_s.push_back(input.d_tissue_nut_L_s);
+         pointer_2->neighbors.push_back(pointer_1);
+         pointer_2->edge_touched.push_back(false);
+         pointer_2->sprouting_edge.push_back(false);
 
-      std::vector<double> coord_1 = vertices[index_1];
-
-      std::vector<double> coord_2 = vertices[index_2];
-
-      double length = 0.0;
-
-      double radius = radii[i];
-
-      pointer_1 = VGM.findNode(index_1);
-
-      pointer_2 = VGM.findNode(index_2);
-
-      pointer_1->radii.push_back(radius);
-
-      pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
-
-      pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
-
-      pointer_1->neighbors.push_back(pointer_2);
-
-      pointer_1->edge_touched.push_back(false);
-
-      pointer_1->sprouting_edge.push_back(false);
-
-      pointer_2->radii.push_back(radius);
-
-      pointer_2->L_p.push_back(input.d_tissue_flow_L_p);
-
-      pointer_2->L_s.push_back(input.d_tissue_nut_L_s);
-
-      pointer_2->neighbors.push_back(pointer_1);
-
-      pointer_2->edge_touched.push_back(false);
-
-      pointer_2->sprouting_edge.push_back(false);
-
-  }
+     }
 
 }
 
