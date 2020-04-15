@@ -39,7 +39,7 @@ void netfc::Network::updateNetwork(){
 
      std::cout << " " << std::endl;
      std::cout << "Link terminal vessels" << std::endl;
-     //linkTerminalVessels();
+     linkTerminalVessels();
 
      std::cout << " " << std::endl;
      std::cout << "Number of nodes after linking terminal vessels to the network: " << numberOfNodes << std::endl;
@@ -100,65 +100,67 @@ void netfc::Network::linkTerminalVessels(){
 
                 std::shared_ptr<VGNode> pointer_1 = VGM.getHead();  
 
-                double radius = pointer->radii[ 0 ];             
+                double radius = pointer->radii[ 0 ];    
+
+                int index = pointer->index;   
+
+                std::cout << "index: " << index << "\n";
+
+                std::vector<double> dir_term_vessel = std::vector<double>(3,0.0);  
+   
+                for(int i=0;i<3;i++){
+
+                    dir_term_vessel[ i ] = coord[ i ] - pointer->neighbors[ 0 ]->coord[ i ];
+          
+                } 
+
+                double length_dir = gmm::vect_norm2( dir_term_vessel );
+
+                std::vector<double> normal_plane = std::vector<double>(3,0.0); 
+
+                for(int i=0;i<3;i++){
+
+                    normal_plane[ i ] = dir_term_vessel[ i ]/length_dir;
+                   
+                }
 
                 while( pointer_1 ) {
-
+/*
                        std::vector<double> coord_1 = pointer_1->coord;
+
+                       int index_1 = pointer->index; 
+
+                       std::cout << "index_1: " << index_1 << "\n";
 
                        double dist = util::dist_between_points( coord, coord_1 );
 
-                       std::vector<double> diff = std::vector<double>(3,0.0);
-
-                       std::vector<double> dir_term_vessel = std::vector<double>(3,0.0);
+                       std::vector<double> diff, normal_plane = std::vector<double>(3,0.0);
 
                        for(int i=0;i<3;i++){
 
                            diff[ i ] = coord_1[ i ] - coord[ i ];
-                           dir_term_vessel[ i ] = coord[ i ] - pointer->neighbors[ 0 ]->coord[ i ];
           
                        } 
 
                        double length_diff = gmm::vect_norm2( diff );
-                       double length_dir  = gmm::vect_norm2( dir_term_vessel );
-
-                       double angle = 0.0;
+                       double dist_plane  = 0.0;
 
                        for(int i=0;i<3;i++){
 
-                           angle += diff[ i ]*dir_term_vessel[ i ];
+                           dist_plane += normal_plane[ i ]*diff[ i ];
 
                        }
 
-                       if( length_diff>1.0e-8 && length_dir>1.0e-8 ){
+                       std::cout << "dist_plane: " << dist_plane << "\n";
 
-                           angle = angle/( length_diff*length_dir );
-
-                       }
-                       else{
-
-                           angle = 0.0;
-
-                       }
-
-                       if( std::abs( angle ) < 1.0 ){
-
-                           angle = std::acos( angle );
-
-                       }
-                       else{
- 
-                           angle = 0.0;
-
-                       }
-
-                       if( angle*120.0/M_PI<120.0 && dist<3.0*h_3D){
+                       if( dist_plane>0.02 && index != index_1 && dist < 3.0*h_3D ){
 
                            std::cout << " " << std::endl;
                            std::cout << "dist: " << dist << "\n";
-                           std::cout << "angle: " << angle << "\n";
+                           std::cout << "index: " << index << "\n";
+                           std::cout << "index_1: " << index_1 << "\n";
                            std::cout << "Update pointer" << "\n";
-
+/*
                            pointer->p_boundary = 0.0;
                            pointer->c_boundary = 0.0;
                            pointer->typeOfVGNode = TypeOfNode::InnerNode;
@@ -184,7 +186,7 @@ void netfc::Network::linkTerminalVessels(){
                            pointer_1->neighbors.push_back( pointer );                                                     
 
                        }
-
+*/
                        pointer_1 = pointer_1->global_successor;
 
                 }
@@ -339,38 +341,13 @@ int netfc::Network::processApicalGrowth(){
                double length_diff = gmm::vect_norm2( diff );
                double length_dir  = gmm::vect_norm2( dir_term_vessel );
 
-               double angle, prod_coord, dist_new_point = 0.0;
+               double prod_coord, dist_new_point = 0.0;
 
                for(int i=0;i<3;i++){
 
-                   angle += diff[ i ]*dir_term_vessel[ i ];
                    normal_plane[ i ] = dir_term_vessel[ i ]/length_dir;
                    
                }
-/*
-               if( length_diff>1.0e-8 && length_dir>1.0e-8 ){
-
-                   angle = angle/( length_diff*length_dir );
-
-               }
-               else{
-
-                   angle = 0.0;
-
-               }
-
-               if( std::abs( angle ) < 1.0 ){
-
-                   angle = std::acos( angle );
-
-               }
-               else{
- 
-                   angle = 0.0;
-
-               }
-*/
-
 
                // lognormal distribution
                double log_dist = log_normal_distribution(generator);
@@ -387,7 +364,7 @@ int netfc::Network::processApicalGrowth(){
 
                for(int i=0;i<3;i++){
 
-                   new_point_1[ i ] = coord[ i ] + length*diff[ i ]/length_diff;
+                   new_point_1[ i ] = coord[ i ] + ( length*diff[ i ]/length_diff );
                    dist_new_point += normal_plane[ i ]*(new_point_1[ i ]-coord[ i ]);
 
                }
@@ -405,7 +382,7 @@ int netfc::Network::processApicalGrowth(){
 
                double prob =  0.5 + 0.5 * std::erf((std::log(log_dist) - input.d_log_normal_mean) / std::sqrt(2. * input.d_log_normal_std_dev * input.d_log_normal_std_dev));
 
-               if( prob > 0.95 ){
+               if( prob > 0.85 ){
 
                    bifurcate = true;
 
@@ -415,7 +392,7 @@ int netfc::Network::processApicalGrowth(){
 
                if( !bifurcate ){
 
-                   if( dist_new_point>0.02 ){
+                   if( dist_new_point>0.0 ){
 
                        createASingleNode( new_point_1, radius_p, pointer );
 
@@ -508,8 +485,8 @@ int netfc::Network::processApicalGrowth(){
 
                            for(int i=0;i<3;i++){
 
-                               new_point_1[ i ] = coord[ i ] + length_1*diff[ i ]/length_diff_1;
-                               new_point_2[ i ] = coord[ i ] + length_2*diff_2[ i ]/length_diff_2;
+                               new_point_1[ i ] = coord[ i ] + ( length_1*diff[ i ]/length_diff_1 );
+                               new_point_2[ i ] = coord[ i ] + ( length_2*diff_2[ i ]/length_diff_2 );
           
                            }
 
