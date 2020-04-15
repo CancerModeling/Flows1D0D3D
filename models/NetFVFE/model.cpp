@@ -23,7 +23,7 @@ void random_init() { srand(time(nullptr)); }
 void log_msg(std::string &msg, util::Logger &log) {
   if (!msg.empty()) {
     log(msg, "debug");
-    msg = "";
+    msg.clear();
   }
 }
 } // namespace
@@ -569,8 +569,8 @@ void netfvfe::Model::solve_system() {
 
     reset_clock();
 
-    oss << "\n      Solving [1D nutrient]\n";
-    d_log(oss);
+    d_log("      Solving |1D nutrient|\n", "solve sys");
+    d_log( " \n", "solve sys");
     d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
 
     d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
@@ -580,8 +580,8 @@ void netfvfe::Model::solve_system() {
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
-  oss << "\n  Nonlinear loop\n\n";
-  d_log(oss);
+  d_log("  Nonlinear loop\n", "solve sys");
+  d_log(" \n", "solve sys");
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
@@ -591,18 +591,14 @@ void netfvfe::Model::solve_system() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    oss << "    ____________________\n";
-    oss << "    Nonlinear step: " << l << "\n\n";
-    oss << "      Solving ";
-    d_log(oss);
+    oss << "    Nonlinear step: " << l << " ";
+    d_log(oss, "solve sys");
 
     // solver for 1D nutrient
     if (!d_input.d_decouple_nutrients) {
-
       reset_clock();
 
-      oss << "[1D nutrient] -> ";
-      d_log(oss);
+      d_log("|1D nutrient| -> ", "solve sys");
       d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
 
       d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
@@ -610,8 +606,7 @@ void netfvfe::Model::solve_system() {
 
     // solve nutrient
     reset_clock();
-    oss << "[3D nutrient] -> ";
-    d_log(oss);
+    d_log("|3D nutrient| -> ", "solve sys");
     nut.solve();
     d_log.add_sys_solve_time(clock_begin, d_nut_id);
 
@@ -619,8 +614,7 @@ void netfvfe::Model::solve_system() {
     reset_clock();
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    oss << "[tumor species] -> ";
-    d_log(oss);
+    d_log("|tumor| -> ", "solve sys");
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
@@ -628,36 +622,31 @@ void netfvfe::Model::solve_system() {
 
     // solve hypoxic
     reset_clock();
-    oss << "[hypoxic species] -> ";
-    d_log(oss);
+    d_log("|hypoxic| -> ", "solve sys");
     hyp.solve();
     d_log.add_sys_solve_time(clock_begin, d_hyp_id);
 
     // solve necrotic
     reset_clock();
-    oss << "[necrotic species] -> ";
-    d_log(oss);
+    d_log("|necrotic| -> ", "solve sys");
     nec.solve();
     d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // solve taf
     reset_clock();
-    oss << "[taf species] -> ";
-    d_log(oss);
+    d_log("|taf| -> ", "solve sys");
     taf.solve();
     d_log.add_sys_solve_time(clock_begin, d_taf_id);
 
     // solve mde
     reset_clock();
-    oss << "[mde species] -> ";
-    d_log(oss);
+    d_log("|mde| -> ", "solve sys");
     mde.solve();
     d_log.add_sys_solve_time(clock_begin, d_mde_id);
 
     // solve ecm
     reset_clock();
-    oss << "[ecm species]\n";
-    d_log(oss);
+    d_log("|ecm|\n", "solve sys");
     ecm.solve();
     d_log.add_sys_solve_time(clock_begin, d_ecm_id);
 
@@ -672,39 +661,38 @@ void netfvfe::Model::solve_system() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
-      d_log(oss);
+      oss << "      LC step: " << n_linear_iterations
+          << ", res: " << final_linear_residual
+          << ", NC: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
+      d_log(oss, "debug");
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      oss << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
-      d_log(oss);
+      d_log(" \n", "debug");
+      oss << "      NC step: " << l << std::endl
+          << std::endl;
+      d_log(oss, "converge sys");
 
       break;
     }
   } // nonlinear solver loop
 
-  oss << "\n  End of nonlinear loop\n";
-  d_log(oss);
+  d_log(" \n", "solve sys");
   d_log.add_nonlin_iter(d_nonlinear_step);
 
   // solve for gradient of taf
   reset_clock();
-  oss << "      Solving [gradient of taf] -> ";
-  d_log(oss);
+  d_log("      Solving |grad taf| -> ", "solve sys");
   grad_taf.solve();
   d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
 
   // solve for velocity
   reset_clock();
-  oss << "[velocity]\n";
-  d_log(oss);
+  d_log("|velocity|\n", "solve sys");
   vel.solve();
   d_log.add_sys_solve_time(clock_begin, d_vel_id);
+  d_log(" \n", "solve sys");
 }
 
 void netfvfe::Model::solve_pressure() {
@@ -821,6 +809,9 @@ void netfvfe::Model::test_nut() {
   // update old concentration in network
   d_network.update_old_concentration();
 
+  // reset nonlinear step
+  d_nonlinear_step = 0;
+
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_nut(
       nut.solution->clone());
@@ -829,8 +820,8 @@ void netfvfe::Model::test_nut() {
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
       d_input.d_linear_tol;
 
-  oss << "\n  Nonlinear loop\n";
-  d_log(oss);
+  d_log("  Nonlinear loop\n", "solve sys");
+  d_log(" \n", "solve sys");
 
 
   // nonlinear loop
@@ -838,22 +829,22 @@ void netfvfe::Model::test_nut() {
     // for (unsigned int l = 0; l < 1; ++l) {
 
     d_nonlinear_step = l;
-    oss << "    ____________________\n";
-    oss << "    Nonlinear step: " << l << "\n\n";
-    oss << "      Solving ";
-    d_log(oss);
+    oss << "    Nonlinear step: " << l << " ";
+    d_log(oss, "solve sys");
 
     // solver for 1-D nutrient
-    oss << "[1D nutrient] -> ";
-    d_log(oss);
+    reset_clock();
+    d_log("|1D nutrient| -> ", "solve sys");
     d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+    d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
 
     // solve for nutrient in tissue
     last_nonlinear_soln_nut->zero();
     last_nonlinear_soln_nut->add(*nut.solution);
-    oss << "[3D nutrient]\n";
-    d_log(oss);
+    reset_clock();
+    d_log("|3D nutrient|\n", "solve sys");
     nut.solve();
+    d_log.add_sys_solve_time(clock_begin, d_nut_id);
     last_nonlinear_soln_nut->add(-1., *nut.solution);
     last_nonlinear_soln_nut->close();
 
@@ -869,25 +860,26 @@ void netfvfe::Model::test_nut() {
       const unsigned int n_linear_iterations = nut.n_linear_iterations();
       const Real final_linear_residual = nut.final_linear_residual();
 
-      oss << "    Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error_nut << std::endl << std::endl;
-      d_log(oss);
+      oss << "      LC step: " << n_linear_iterations
+          << ", res: " << final_linear_residual
+          << ", NC: ||u - u_old|| = "
+          << nonlinear_global_error_nut << std::endl << std::endl;
+      d_log(oss, "debug");
     }
     if (nonlinear_global_error_nut < d_input.d_nonlin_tol) {
 
-      oss << "    Nonlinear converged at step: " << l << std::endl
-                << std::endl;
-      d_log(oss);
+      d_log(" \n", "debug");
+      oss << "      NC step: " << l << std::endl
+          << std::endl;
+      d_log(oss, "converge sys");
 
       break;
     }
 
   } // nonlinear solver loop
 
-  oss << "\n  End of nonlinear loop\n";
-  d_log(oss);
+  d_log(" \n", "solve sys");
+  d_log.add_nonlin_iter(d_nonlinear_step);
 }
 
 void netfvfe::Model::test_nut_2() {
@@ -906,13 +898,15 @@ void netfvfe::Model::test_nut_2() {
   d_network.update_old_concentration();
 
   // solver for 1-D nutrient
-  oss << "      Solving [1D nutrient] -> ";
-  d_log(oss);
+  reset_clock();
+  d_log("      Solving |1D nutrient| \n", "solve sys");
   d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+  d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
 
-  oss << "[3D nutrient]\n";
-  d_log(oss);
+  reset_clock();
+  d_log("|3D nutrient| \n", "solve sys");
   nut.solve();
+  d_log.add_sys_solve_time(clock_begin, d_nut_id);
 }
 
 void netfvfe::Model::test_taf() {
@@ -931,14 +925,16 @@ void netfvfe::Model::test_taf() {
   // update old solution
   *taf.old_local_solution = *taf.current_local_solution;
 
-  oss << "      Solving [taf] -> ";
-  d_log(oss);
+  reset_clock();
+  d_log("      Solving |taf| \n", "solve sys");
   taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_taf_id);
 
   // solve for gradient of taf
-  oss << "[gradient of taf]\n";
-  d_log(oss);
+  reset_clock();
+  d_log("|grad taf| \n", "solve sys");
   grad_taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
 }
 
 void netfvfe::Model::test_taf_2() {
@@ -960,14 +956,16 @@ void netfvfe::Model::test_taf_2() {
   // update old solution
   *taf.old_local_solution = *taf.current_local_solution;
 
-  oss << "      Solving [taf] -> ";
-  d_log(oss);
+  reset_clock();
+  d_log("      Solving |taf| \n", "solve sys");
   taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_taf_id);
 
   // solve for gradient of taf
-  oss << "[gradient of taf]\n";
-  d_log(oss);
+  reset_clock();
+  d_log("|grad taf| \n", "solve sys");
   grad_taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
 }
 
 void netfvfe::Model::test_tum() {
@@ -1014,12 +1012,15 @@ void netfvfe::Model::test_tum() {
   *hyp.old_local_solution = *hyp.current_local_solution;
   *nec.old_local_solution = *nec.current_local_solution;
 
+  // reset nonlinear step
+  d_nonlinear_step = 0;
+
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
-  oss << "\n  Nonlinear loop\n";
-  d_log(oss);
+  d_log("  Nonlinear loop\n", "solve sys");
+  d_log(" \n", "solve sys");
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
@@ -1029,29 +1030,30 @@ void netfvfe::Model::test_tum() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    oss << "    ____________________\n";
-    oss << "    Nonlinear step: " << l << "\n\n";
-    oss << "      Solving ";
-    d_log(oss);
+    oss << "    Nonlinear step: " << l << " ";
+    d_log(oss, "solve sys");
 
     // solve tumor
+    reset_clock();
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    oss << "[tumor species] -> ";
-    d_log(oss);
+    d_log("|tumor| -> ", "solve sys");
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
+    d_log.add_sys_solve_time(clock_begin, d_tum_id);
 
     // solve hypoxic
-    oss << "[hypoxic species] -> ";
-    d_log(oss);
+    reset_clock();
+    d_log("|hypoxic| -> ", "solve sys");
     hyp.solve();
+    d_log.add_sys_solve_time(clock_begin, d_hyp_id);
 
     // solve necrotic
-    oss << "[necrotic species]\n";
-    d_log(oss);
+    reset_clock();
+    d_log("|necrotic|\n", "solve sys");
     nec.solve();
+    d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
@@ -1064,24 +1066,25 @@ void netfvfe::Model::test_tum() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
-      d_log(oss);
+      oss << "      LC step: " << n_linear_iterations
+          << ", res: " << final_linear_residual
+          << ", NC: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
+      d_log(oss, "debug");
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      oss << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
-      d_log(oss);
+      d_log(" \n", "debug");
+      oss << "      NC step: " << l << std::endl
+          << std::endl;
+      d_log(oss, "converge sys");
 
       break;
     }
   } // nonlinear solver loop
 
-  oss << "\n  End of nonlinear loop\n";
-  d_log(oss);
+  d_log(" \n", "solve sys");
+  d_log.add_nonlin_iter(d_nonlinear_step);
 }
 
 void netfvfe::Model::test_tum_2() {
@@ -1106,12 +1109,15 @@ void netfvfe::Model::test_tum_2() {
   *hyp.old_local_solution = *hyp.current_local_solution;
   *nec.old_local_solution = *nec.current_local_solution;
 
+  // reset nonlinear step
+  d_nonlinear_step = 0;
+
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
-  oss << "\n  Nonlinear loop\n";
-  d_log(oss);
+  d_log("  Nonlinear loop\n", "solve sys");
+  d_log(" \n", "solve sys");
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
@@ -1121,34 +1127,36 @@ void netfvfe::Model::test_tum_2() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    oss << "    ____________________\n";
-    oss << "    Nonlinear step: " << l << "\n\n";
-    oss << "      Solving ";
-    d_log(oss);
+    oss << "    Nonlinear step: " << l << " ";
+    d_log(oss, "solve sys");
 
     // solve nutrient
-    oss << "[3D nutrient] -> ";
-    d_log(oss);
+    reset_clock();
+    d_log("|3D nutrient| -> ", "solve sys");
     nut.solve();
+    d_log.add_sys_solve_time(clock_begin, d_nut_id);
 
     // solve tumor
+    reset_clock();
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    oss << "[tumor species] -> ";
-    d_log(oss);
+    d_log("|tumor| -> ", "solve sys");
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
+    d_log.add_sys_solve_time(clock_begin, d_tum_id);
 
     // solve hypoxic
-    oss << "[hypoxic species] -> ";
-    d_log(oss);
+    reset_clock();
+    d_log("|hypoxic| -> ", "solve sys");
     hyp.solve();
+    d_log.add_sys_solve_time(clock_begin, d_hyp_id);
 
     // solve necrotic
-    oss << "[necrotic species]\n";
-    d_log(oss);
+    reset_clock();
+    d_log("|necrotic|\n", "solve sys");
     nec.solve();
+    d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
@@ -1161,24 +1169,25 @@ void netfvfe::Model::test_tum_2() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
-      d_log(oss);
+      oss << "      LC step: " << n_linear_iterations
+          << ", res: " << final_linear_residual
+          << ", NC: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
+      d_log(oss, "debug");
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      oss << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
-      d_log(oss);
+      d_log(" \n", "debug");
+      oss << "      NC step: " << l << std::endl
+          << std::endl;
+      d_log(oss, "converge sys");
 
       break;
     }
   } // nonlinear solver loop
 
-  oss << "\n  End of nonlinear loop\n";
-  d_log(oss);
+  d_log(" \n", "solve sys");
+  d_log.add_nonlin_iter(d_nonlinear_step);
 }
 
 void netfvfe::Model::test_net_tum() {
@@ -1217,19 +1226,26 @@ void netfvfe::Model::test_net_tum() {
   // solve for pressure
   solve_pressure();
 
+  // reset nonlinear step
+  d_nonlinear_step = 0;
+
   // check if we are decoupling the nutrients
   if (d_input.d_decouple_nutrients) {
-    oss << "\n      Solving [1D nutrient]\n";
-    d_log(oss);
+    reset_clock();
+
+
+    d_log("      Solving |1D nutrient| \n", "solve sys");
     d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+
+    d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
   }
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
 
-  oss << "\n  Nonlinear loop\n";
-  d_log(oss);
+  d_log("  Nonlinear loop\n", "solve sys");
+  d_log(" \n", "solve sys");
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
@@ -1239,41 +1255,46 @@ void netfvfe::Model::test_net_tum() {
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
     d_nonlinear_step = l;
-    oss << "    ____________________\n";
-    oss << "    Nonlinear step: " << l << "\n\n";
-    oss << "      Solving ";
-    d_log(oss);
+    oss << "    Nonlinear step: " << l << " ";
+    d_log(oss, "solve sys");
 
     // solver for 1D nutrient
     if (!d_input.d_decouple_nutrients) {
-      oss << "[1D nutrient] -> ";
-      d_log(oss);
+      reset_clock();
+
+      d_log("|1D nutrient| -> ", "solve sys");
       d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+
+      d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
     }
 
     // solve nutrient
-    oss << "[3D nutrient] -> ";
-    d_log(oss);
+    reset_clock();
+    d_log("|3D nutrient| -> ", "solve sys");
     nut.solve();
+    d_log.add_sys_solve_time(clock_begin, d_nut_id);
 
     // solve tumor
+    reset_clock();
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    oss << "[tumor species] -> ";
-    d_log(oss);
+    d_log("|tumor| -> ", "solve sys");
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
+    d_log.add_sys_solve_time(clock_begin, d_tum_id);
 
     // solve hypoxic
-    oss << "[hypoxic species] -> ";
-    d_log(oss);
+    reset_clock();
+    d_log("|hypoxic| -> ", "solve sys");
     hyp.solve();
+    d_log.add_sys_solve_time(clock_begin, d_hyp_id);
 
     // solve necrotic
-    oss << "[necrotic species]\n";
-    d_log(oss);
+    reset_clock();
+    d_log("|necrotic|\n", "solve sys");
     nec.solve();
+    d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
@@ -1286,45 +1307,51 @@ void netfvfe::Model::test_net_tum() {
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
       const Real final_linear_residual = tum.final_linear_residual();
 
-      oss << "      Linear converged at step: " << n_linear_iterations
-                << ", residual: " << final_linear_residual
-                << ", Nonlinear convergence: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
-      d_log(oss);
+      oss << "      LC step: " << n_linear_iterations
+          << ", res: " << final_linear_residual
+          << ", NC: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
+      d_log(oss, "debug");
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
-      oss << "      Nonlinear converged at step: " << l << std::endl
-                << std::endl;
-      d_log(oss);
+      d_log(" \n", "debug");
+      oss << "      NC step: " << l << std::endl
+          << std::endl;
+      d_log(oss, "converge sys");
 
       break;
     }
   } // nonlinear solver loop
 
-  oss << "\n  End of nonlinear loop\n";
-  d_log(oss);
+  d_log(" \n", "solve sys");
+  d_log.add_nonlin_iter(d_nonlinear_step);
 
   // compute below only when we are performing output as these do not play
   // direct role in evolution of sub-system
+
   if (d_is_output_step or d_is_growth_step) {
 
     // solve for taf
+    reset_clock();
     *taf.old_local_solution = *taf.current_local_solution;
-    oss << "      Solving [taf species] -> ";
-    d_log(oss);
+    d_log("      Solving |taf| -> ", "solve sys");
     taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_taf_id);
 
     // solve for gradient of taf
-    oss << "[gradient of taf] -> ";
-    d_log(oss);
+    reset_clock();
+    d_log("|grad taf| -> ", "solve sys");
     grad_taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
 
     // solve for velocity
-    oss << "[velocity]\n";
-    d_log(oss);
+    reset_clock();
+    d_log("|velocity|\n", "solve sys");
     vel.solve();
+    d_log.add_sys_solve_time(clock_begin, d_vel_id);
   }
+  d_log(" \n", "solve sys");
 }
 
 void netfvfe::Model::test_net_tum_2() {
@@ -1368,8 +1395,7 @@ void netfvfe::Model::test_net_tum_2() {
     reset_clock();
 
 
-    d_log("      Solving |1D nutrient|\n", "solve sys");
-    d_log( " \n", "solve sys");
+    d_log("      Solving |1D nutrient| \n", "solve sys");
     d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
 
     d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
@@ -1389,7 +1415,6 @@ void netfvfe::Model::test_net_tum_2() {
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
-    d_nonlinear_step = l;
     d_nonlinear_step = l;
     oss << "    Nonlinear step: " << l << " ";
     d_log(oss, "solve sys");
@@ -1465,6 +1490,7 @@ void netfvfe::Model::test_net_tum_2() {
 
   // compute below only when we are performing output as these do not play
   // direct role in evolution of sub-system
+
   if (d_is_output_step or d_is_growth_step) {
 
     // solve for taf
