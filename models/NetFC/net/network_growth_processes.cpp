@@ -104,8 +104,6 @@ void netfc::Network::linkTerminalVessels(){
 
                 int index = pointer->index;   
 
-                std::cout << "index: " << index << "\n";
-
                 std::vector<double> dir_term_vessel = std::vector<double>(3,0.0);  
    
                 for(int i=0;i<3;i++){
@@ -125,16 +123,14 @@ void netfc::Network::linkTerminalVessels(){
                 }
 
                 while( pointer_1 ) {
-/*
+
                        std::vector<double> coord_1 = pointer_1->coord;
 
-                       int index_1 = pointer->index; 
-
-                       std::cout << "index_1: " << index_1 << "\n";
+                       int index_1 = pointer_1->index; 
 
                        double dist = util::dist_between_points( coord, coord_1 );
 
-                       std::vector<double> diff, normal_plane = std::vector<double>(3,0.0);
+                       std::vector<double> diff = std::vector<double>(3,0.0);
 
                        for(int i=0;i<3;i++){
 
@@ -151,16 +147,14 @@ void netfc::Network::linkTerminalVessels(){
 
                        }
 
-                       std::cout << "dist_plane: " << dist_plane << "\n";
-
-                       if( dist_plane>0.02 && index != index_1 && dist < 3.0*h_3D ){
+                       if( dist_plane>0.5*h_3D && index != index_1 && dist < 1.25*h_3D ){
 
                            std::cout << " " << std::endl;
                            std::cout << "dist: " << dist << "\n";
                            std::cout << "index: " << index << "\n";
                            std::cout << "index_1: " << index_1 << "\n";
                            std::cout << "Update pointer" << "\n";
-/*
+
                            pointer->p_boundary = 0.0;
                            pointer->c_boundary = 0.0;
                            pointer->typeOfVGNode = TypeOfNode::InnerNode;
@@ -183,10 +177,11 @@ void netfc::Network::linkTerminalVessels(){
                            pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
                            pointer_1->edge_touched.push_back( true );
                            pointer_1->sprouting_edge.push_back( false );
-                           pointer_1->neighbors.push_back( pointer );                                                     
+                           pointer_1->neighbors.push_back( pointer ); 
 
+                           break;
                        }
-*/
+
                        pointer_1 = pointer_1->global_successor;
 
                 }
@@ -196,6 +191,27 @@ void netfc::Network::linkTerminalVessels(){
             pointer = pointer->global_successor;
 
      }
+
+     //Reset values
+
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfNeighbors = pointer->neighbors.size();
+
+            pointer->apicalGrowth = false;
+
+            for( int i=0; i<numberOfNeighbors; i++){
+
+                 pointer->sprouting_edge[i] = false;
+                 pointer->edge_touched[i] = false;
+
+            }
+
+            pointer = pointer->global_successor;
+ 
+      }
 
 }
 
@@ -341,6 +357,16 @@ int netfc::Network::processApicalGrowth(){
                double length_diff = gmm::vect_norm2( diff );
                double length_dir  = gmm::vect_norm2( dir_term_vessel );
 
+               if( length_diff < 1.0e-6 ){
+
+                   for(int i=0;i<3;i++){
+
+                       diff[ i ] = h_3D*diff[ i ];
+
+                   }
+
+               }
+
                double prod_coord, dist_new_point = 0.0;
 
                for(int i=0;i<3;i++){
@@ -382,7 +408,7 @@ int netfc::Network::processApicalGrowth(){
 
                double prob =  0.5 + 0.5 * std::erf((std::log(log_dist) - input.d_log_normal_mean) / std::sqrt(2. * input.d_log_normal_std_dev * input.d_log_normal_std_dev));
 
-               if( prob > 0.85 ){
+               if( prob > 0.92 ){
 
                    bifurcate = true;
 
@@ -490,14 +516,19 @@ int netfc::Network::processApicalGrowth(){
           
                            }
 
+                           std::cout << "rotation_axis: " << rotation_axis << "\n";
                            std::cout << "branch_angle: " << branch_angle << "\n";
                            std::cout << "length_1: " << length_1 << "\n";
                            std::cout << "length_2: " << length_2 << "\n";
                            std::cout << "new_point_1: " << new_point_1 << "\n";
                            std::cout << "new_point_2: " << new_point_2 << "\n";
 
-                           createASingleNode( new_point_1, radius_b1, pointer );
-                           createASingleNode( new_point_2, radius_b2, pointer );
+                           if( gmm::vect_norm2( rotation_axis )>0.0 ){
+
+                               createASingleNode( new_point_1, radius_b1, pointer );
+                               createASingleNode( new_point_2, radius_b2, pointer );
+
+                           }
 
                        }
 

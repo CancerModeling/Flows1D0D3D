@@ -1055,11 +1055,14 @@ void netfc::Network::solve3D1DNutrientProblem( int timeStep, double time ) {
 
      auto pointer = VGM.getHead();
 
+     std::cout << " " << std::endl;
+
      while( pointer ) {
 
             int indexOfNode = pointer->index;
 
-            pointer->c_v = phi_sigma[  N_tot_3D + indexOfNode ];           
+            pointer->c_v = phi_sigma[  N_tot_3D + indexOfNode ];  
+            std::cout << "index: " << pointer->index << " c_v: " << pointer->c_v << " p_v: " << pointer->p_v << " coord: " << pointer->coord << std::endl;         
             pointer = pointer->global_successor;
 
      }
