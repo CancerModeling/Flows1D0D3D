@@ -1039,7 +1039,7 @@ void netfc::Network::solve3D1DNutrientProblem( int timeStep, double time ) {
      int numberOfNodes = VGM.getNumberOfNodes();
 
      // Solver
-     gmm::iteration iter(5.0e-11);
+     gmm::iteration iter(4.0e-11);
 
      std::cout << " " << std::endl;
      std::cout << "Assemble 3D1D nutrient matrix and right hand side" << std::endl;
@@ -1047,7 +1047,7 @@ void netfc::Network::solve3D1DNutrientProblem( int timeStep, double time ) {
 
      phi_sigma = phi_sigma_old;
 
-     gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> P(A_nut_3D1D, 50, 1e-6);
+     gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> P(A_nut_3D1D, 60, 1e-8);
 
      std::cout << " " << std::endl;
      std::cout << "Solve linear system of equations (nutrients)" << std::endl;
@@ -1060,6 +1060,12 @@ void netfc::Network::solve3D1DNutrientProblem( int timeStep, double time ) {
      while( pointer ) {
 
             int indexOfNode = pointer->index;
+
+            if( phi_sigma[  N_tot_3D + indexOfNode ]>1.0 ){
+
+                phi_sigma[  N_tot_3D + indexOfNode ] = 1.0;
+               
+            }
 
             pointer->c_v = phi_sigma[  N_tot_3D + indexOfNode ];  
             std::cout << "index: " << pointer->index << " c_v: " << pointer->c_v << " p_v: " << pointer->p_v << " coord: " << pointer->coord << std::endl;         
