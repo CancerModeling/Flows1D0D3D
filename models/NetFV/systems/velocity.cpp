@@ -84,7 +84,7 @@ void netfv::VelAssembly::solve() {
 
         Real a = -deck.d_tissue_flow_coeff *
                  ((pres_cur - pres_neigh_cur) -
-                  chem_tum_neigh_cur * (tum_cur - tum_neigh_cur));
+                     chem_tum_cur * (tum_cur - tum_neigh_cur));
 
         if (dx_align == "x") {
           ns[0]++;
@@ -104,6 +104,6 @@ void netfv::VelAssembly::solve() {
       d_sys.solution->set(get_var_global_dof_id(0, i), velocity(i) / ns[i]);
   }
 
-  d_sys.solution->close();
-  d_sys.update();
+  this->d_sys.solution->close();
+  this->d_sys.update();
 }

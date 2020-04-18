@@ -530,7 +530,6 @@ void netfvfe::Model::solve_system() {
   auto &pres = d_tum_sys.get_system<TransientLinearImplicitSystem>("Pressure");
   auto &grad_taf =
       d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
-  auto &vel = d_tum_sys.get_system<TransientLinearImplicitSystem>("Velocity");
 
   // update time
   nut.time = d_time;
@@ -571,7 +570,7 @@ void netfvfe::Model::solve_system() {
 
     d_log("      Solving |1D nutrient|\n", "solve sys");
     d_log( " \n", "solve sys");
-    d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+    d_network.solveVGMforNutrient(d_pres_assembly, d_nut_assembly);
 
     d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
   }
@@ -599,7 +598,7 @@ void netfvfe::Model::solve_system() {
       reset_clock();
 
       d_log("|1D nutrient| -> ", "solve sys");
-      d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+      d_network.solveVGMforNutrient(d_pres_assembly, d_nut_assembly);
 
       d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
     }
@@ -683,16 +682,9 @@ void netfvfe::Model::solve_system() {
 
   // solve for gradient of taf
   reset_clock();
-  d_log("      Solving |grad taf| -> ", "solve sys");
+  d_log("      Solving |grad taf| \n", "solve sys");
   grad_taf.solve();
   d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
-
-  // solve for velocity
-  reset_clock();
-  d_log("|velocity|\n", "solve sys");
-  vel.solve();
-  d_log.add_sys_solve_time(clock_begin, d_vel_id);
-  d_log(" \n", "solve sys");
 }
 
 void netfvfe::Model::solve_pressure() {
@@ -702,9 +694,11 @@ void netfvfe::Model::solve_pressure() {
 
   // get systems
   auto &pres = d_tum_sys.get_system<TransientLinearImplicitSystem>("Pressure");
+  auto &vel = d_tum_sys.get_system<TransientLinearImplicitSystem>("Velocity");
 
   // update time
   pres.time = d_time;
+  vel.time = d_time;
 
   d_tum_sys.parameters.set<Real>("time") = d_time;
 
@@ -737,7 +731,7 @@ void netfvfe::Model::solve_pressure() {
     // solver for 1-D pressure and nutrient
     reset_clock();
     d_log( " |1D pressure| -> ", "solve pres");
-    d_network.solveVGMforPressure(d_taf_assembly);
+    d_network.solveVGMforPressure(d_pres_assembly);
     if (d_log.d_cur_step >= 0)
       d_log.add_sys_solve_time(clock_begin, d_pres_1d_id);
 
@@ -792,6 +786,12 @@ void netfvfe::Model::solve_pressure() {
     d_log.add_pres_solve_time(util::TimePair(solve_clock, clock_end));
     d_log.add_pres_nonlin_iter(d_nonlinear_step);
   }
+
+  // solve for velocity
+  reset_clock();
+  d_log("      Solving |velocity| \n", "solve sys");
+  vel.solve();
+  d_log.add_sys_solve_time(clock_begin, d_vel_id);
 }
 
 void netfvfe::Model::test_nut() {
@@ -835,7 +835,7 @@ void netfvfe::Model::test_nut() {
     // solver for 1-D nutrient
     reset_clock();
     d_log("|1D nutrient| -> ", "solve sys");
-    d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+    d_network.solveVGMforNutrient(d_pres_assembly, d_nut_assembly);
     d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
 
     // solve for nutrient in tissue
@@ -900,7 +900,7 @@ void netfvfe::Model::test_nut_2() {
   // solver for 1-D nutrient
   reset_clock();
   d_log("      Solving |1D nutrient| \n", "solve sys");
-  d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+  d_network.solveVGMforNutrient(d_pres_assembly, d_nut_assembly);
   d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
 
   reset_clock();
@@ -1197,8 +1197,6 @@ void netfvfe::Model::test_net_tum() {
   auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
   auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
   auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
-  auto &vel =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("Velocity");
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
   auto &grad_taf =
       d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
@@ -1209,7 +1207,6 @@ void netfvfe::Model::test_net_tum() {
   hyp.time = d_time;
   nec.time = d_time;
   taf.time = d_time;
-  vel.time = d_time;
   grad_taf.time = d_time;
 
   d_tum_sys.parameters.set<Real>("time") = d_time;
@@ -1235,7 +1232,7 @@ void netfvfe::Model::test_net_tum() {
 
 
     d_log("      Solving |1D nutrient| \n", "solve sys");
-    d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+    d_network.solveVGMforNutrient(d_pres_assembly, d_nut_assembly);
 
     d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
   }
@@ -1263,7 +1260,7 @@ void netfvfe::Model::test_net_tum() {
       reset_clock();
 
       d_log("|1D nutrient| -> ", "solve sys");
-      d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+      d_network.solveVGMforNutrient(d_pres_assembly, d_nut_assembly);
 
       d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
     }
@@ -1341,15 +1338,9 @@ void netfvfe::Model::test_net_tum() {
 
     // solve for gradient of taf
     reset_clock();
-    d_log("|grad taf| -> ", "solve sys");
+    d_log("|grad taf|\n", "solve sys");
     grad_taf.solve();
     d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
-
-    // solve for velocity
-    reset_clock();
-    d_log("|velocity|\n", "solve sys");
-    vel.solve();
-    d_log.add_sys_solve_time(clock_begin, d_vel_id);
   }
   d_log(" \n", "solve sys");
 }
@@ -1361,8 +1352,6 @@ void netfvfe::Model::test_net_tum_2() {
   auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
   auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
   auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
-  auto &vel =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("Velocity");
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
   auto &grad_taf =
       d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
@@ -1373,7 +1362,6 @@ void netfvfe::Model::test_net_tum_2() {
   hyp.time = d_time;
   nec.time = d_time;
   taf.time = d_time;
-  vel.time = d_time;
   grad_taf.time = d_time;
 
   d_tum_sys.parameters.set<Real>("time") = d_time;
@@ -1396,7 +1384,7 @@ void netfvfe::Model::test_net_tum_2() {
 
 
     d_log("      Solving |1D nutrient| \n", "solve sys");
-    d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+    d_network.solveVGMforNutrient(d_pres_assembly, d_nut_assembly);
 
     d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
   }
@@ -1424,7 +1412,7 @@ void netfvfe::Model::test_net_tum_2() {
       reset_clock();
 
       d_log("|1D nutrient| -> ", "solve sys");
-      d_network.solveVGMforNutrient(d_taf_assembly, d_grad_taf_assembly);
+      d_network.solveVGMforNutrient(d_pres_assembly, d_nut_assembly);
 
       d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
     }
@@ -1469,16 +1457,16 @@ void netfvfe::Model::test_net_tum_2() {
       const Real final_linear_residual = tum.final_linear_residual();
 
       oss << "      LC step: " << n_linear_iterations
-                << ", res: " << final_linear_residual
-                << ", NC: ||u - u_old|| = "
-                << nonlinear_global_error << std::endl << std::endl;
+          << ", res: " << final_linear_residual
+          << ", NC: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
 
       d_log(" \n", "debug");
       oss << "      NC step: " << l << std::endl
-                << std::endl;
+          << std::endl;
       d_log(oss, "converge sys");
 
       break;
@@ -1502,16 +1490,9 @@ void netfvfe::Model::test_net_tum_2() {
 
     // solve for gradient of taf
     reset_clock();
-    d_log("|grad taf| -> ", "solve sys");
+    d_log("|grad taf|\n", "solve sys");
     grad_taf.solve();
     d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
-
-    // solve for velocity
-    reset_clock();
-    d_log("|velocity|\n", "solve sys");
-    vel.solve();
-    d_log.add_sys_solve_time(clock_begin, d_vel_id);
   }
   d_log(" \n", "solve sys");
 }
-
