@@ -33,6 +33,8 @@ inline void create_mesh(InpDeck &input, ReplicatedMesh &mesh) {
       nely = input.d_num_elems;
       hx = xmax  / nelx;
       hy = ymax / nely;
+
+      input.d_mesh_size = hx;
     }
 
     input.d_elem_face_size = hx;
@@ -71,6 +73,8 @@ inline void create_mesh(InpDeck &input, ReplicatedMesh &mesh) {
       hx = xmax / nelx;
       hy = ymax / nely;
       hz = zmax / nelz;
+
+      input.d_mesh_size = hx;
     }
 
     input.d_elem_face_size = hx * hx;

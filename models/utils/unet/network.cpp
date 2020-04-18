@@ -682,6 +682,9 @@ void util::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
 
 void util::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
 
+  if (pres_sys.d_sys_name != "Pressure")
+    libmesh_error_msg("Must pass Pressure system to solve 1D pressure");
+
   // std::cout << "Assemble pressure matrix and right hand side" << std::endl;
   assembleVGMSystemForPressure(pres_sys);
 
@@ -1161,6 +1164,10 @@ void util::Network::assembleVGMSystemForNutrientDecouple(BaseAssembly &pres_sys,
 
 void util::Network::solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys) {
 
+  if (pres_sys.d_sys_name != "Pressure" or nut_sys.d_sys_name != "Nutrient")
+    libmesh_error_msg("Must pass Pressure and Nutrient system to solve 1D "
+                      "nutrient");
+
   // std::cout << " " << std::endl;
   // std::cout << "Assemble nutrient matrix and right hand side" << std::endl;
   if (d_model_p->get_input_deck().d_decouple_nutrients)
@@ -1340,6 +1347,10 @@ void util::Network::refine1DMesh() {
 
 void util::Network::update_network(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys) {
 
+  if (taf_sys.d_sys_name != "TAF" or grad_taf_sys.d_sys_name != "TAF_Gradient")
+    libmesh_error_msg("Must pass TAF and TAF_Gradient system to update "
+                      "network");
+
   oss << "[Mark]";
   d_model_p->d_log(oss);
   auto num_nodes_marked = markApicalGrowth("apical_taf_based", taf_sys);
@@ -1379,8 +1390,7 @@ void util::Network::compute_elem_weights() {
 
     pointer->J_b_points.resize(numberOfNeighbors);
 
-    const Point i_coords =
-        Point(pointer->coord[0], pointer->coord[1], pointer->coord[2]);
+    const Point i_coords = util::to_point(pointer->coord);
 
     for (int j = 0; j < numberOfNeighbors; j++) {
 
@@ -1388,9 +1398,7 @@ void util::Network::compute_elem_weights() {
       auto &J_b_ij = pointer->J_b_points[j];
 
       // const auto &j_coords = pointer->neighbors[j]->coord;
-      const Point j_coords = Point(pointer->neighbors[j]->coord[0],
-                                   pointer->neighbors[j]->coord[1],
-                                   pointer->neighbors[j]->coord[2]);
+      const Point j_coords = util::to_point(pointer->neighbors[j]->coord);
 
       const auto &ij_rad = pointer->radii[j];
 
@@ -1446,11 +1454,8 @@ void util::Network::compute_elem_weights() {
           // out << "sum_weights: " << sum_weights << std::endl;
 
           // get element of point x
-          unsigned int elem_id = 0;
-          if (direct_find) {
-            elem_id =
+          unsigned int elem_id =
                 util::get_elem_id(x, input.d_mesh_size, input.d_num_elems, input.d_dim);
-          }
           //          else {
           //            const auto *elem_x = mesh_locator(x);
           //            elem_id = elem_x->id();
@@ -1459,15 +1464,18 @@ void util::Network::compute_elem_weights() {
           // add data to J_b_ij
           J_b_ij.add_unique(elem_id, w);
 
-          // out << "elem_x->id(): " << elem_x->id() << std::endl;
+          //          out << "x: " << util::io::printStr(x)
+          //              << ", mesh size: " << input.d_mesh_size
+          //              << ", num elems: " << input.d_num_elems
+          //              << ", dim: " << input.d_dim
+          //              << ", elem_id: " << elem_id << "\n";
 
         } // loop over theta
 
       } // loop over length
 
-      // std::cout << " "<<std::endl;
-      // out << "Node: " << pointer->index  << ", sum weights: " << sum_weights
-      // << "\n";
+      //       out << "Node: " << pointer->index  << ", sum weights: " << sum_weights
+      //       << "\n";
     }
 
     pointer = pointer->global_successor;
