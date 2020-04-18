@@ -67,10 +67,10 @@ void netfv::PressureAssembly::assemble() {
   assemble_face();
   assemble_1();
 
-//  out << "\n\n elem_0_count: " << elem_0_count
-//      << ", elem_N_count: " << elem_N_count << "\n\n";
-//  elem_0_count = 0;
-//  elem_N_count = 0;
+  //  out << "\n\n elem_0_count: " << elem_0_count
+  //      << ", elem_N_count: " << elem_N_count << "\n\n";
+  //  elem_0_count = 0;
+  //  elem_N_count = 0;
 }
 
 void netfv::PressureAssembly::assemble_1d_coupling() {
@@ -129,11 +129,11 @@ void netfv::PressureAssembly::assemble_1d_coupling() {
           d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
           d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
 
-//          // Debug
-//          if (d_dof_indices_sys[0] == 0)
-//            elem_0_count += 1;
-//          if (d_dof_indices_sys[0] == d_mesh.n_elem() - 1)
-//            elem_N_count += 1;
+          //          // Debug
+          //          if (d_dof_indices_sys[0] == 0)
+          //            elem_0_count += 1;
+          //          if (d_dof_indices_sys[0] == d_mesh.n_elem() - 1)
+          //            elem_N_count += 1;
         }
       } // loop over neighbor segments
 
