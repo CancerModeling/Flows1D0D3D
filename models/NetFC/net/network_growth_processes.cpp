@@ -147,7 +147,9 @@ void netfc::Network::linkTerminalVessels(){
 
                        }
 
-                       if( dist_plane>0.5*h_3D && index != index_1 && dist < 1.25*h_3D ){
+                       double pv_1 = pointer_1->p_v;
+
+                       if( dist_plane>0.5*h_3D && index != index_1 && dist < 1.25*h_3D && pv_1 > 0.0){
 
                            std::cout << " " << std::endl;
                            std::cout << "dist: " << dist << "\n";
@@ -286,19 +288,12 @@ int netfc::Network::processApicalGrowth(){
                std::cout << "Processing node: " << pointer->index << "\n";
 
                std::vector<double> coord = pointer->coord;
-               std::cout << "coord: " << coord << "\n";
                std::cout << "Compute direction based on TAF" << "\n";
 
                int element_index = getElementIndex( coord, h_3D, N_3D );
                std::cout << "element_index: " << element_index << "\n";
 
-               std::vector<double> node_center = getCenterFromIndex( element_index, N_3D, h_3D );
-               std::cout << "node_center: " << node_center << "\n";
-
-               std::vector<int> indicesNeighbors = getNeighboringElementIndices( coord, h_3D, L_x, N_3D );
-
-               double TAF_node = phi_TAF[ element_index ];
-
+               std::vector<int> indicesNeighbors = getNeighboringElementIndices( element_index, N_3D, h_3D, L_x );
                std::vector<double> TAF_neighbors;
 
                for(int i=0;i<indicesNeighbors.size();i++){
@@ -313,9 +308,7 @@ int netfc::Network::processApicalGrowth(){
 
                for(int i=0;i<indicesNeighbors.size();i++){
 
-                   double TAF = std::abs( TAF_neighbors[ i ] );
-
-                   //std::cout << "TAF: " << TAF << " TAF_max: " << TAF_max << " " << std::endl;
+                   double TAF = TAF_neighbors[ i ];
 
                    if( TAF > TAF_max-1.0e-8 ){
 
@@ -337,7 +330,6 @@ int netfc::Network::processApicalGrowth(){
                std::cout << "max_index: " << max_index << "\n";
                std::cout << "max_index_2: " << max_index_2 << "\n";
                std::cout << "TAF_neighbors: " << TAF_neighbors << "\n";
-               std::cout << "TAF_node: " << TAF_node << "\n";
 
                std::vector<double> new_point_1  = std::vector<double>(3,0.0);
                std::vector<double> max_center   = getCenterFromIndex( max_index, N_3D, h_3D );
@@ -408,7 +400,7 @@ int netfc::Network::processApicalGrowth(){
 
                double prob =  0.5 + 0.5 * std::erf((std::log(log_dist) - input.d_log_normal_mean) / std::sqrt(2. * input.d_log_normal_std_dev * input.d_log_normal_std_dev));
 
-               if( prob > 0.92 ){
+               if( prob > 0.95 ){
 
                    bifurcate = true;
 
@@ -617,4 +609,12 @@ void netfc::Network::createASingleNode( std::vector<double> new_point, double ra
 
 }
 
+
+bool netfc::Network::testCollision( std::vector<double> point ){
+
+     bool isColliding = false;
+
+     return isColliding;
+
+}
 
