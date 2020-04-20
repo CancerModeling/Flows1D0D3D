@@ -727,6 +727,9 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
 
   // factor to enhance condition of matrix
   const double factor_c = input.d_assembly_factor_c_t;
+  double coupling_theta = input.d_coupling_method_theta;
+  if (input.d_decouple_nutrients)
+    coupling_theta = 0.;
 
   int numberOfNodes = VGM.getNumberOfNodes();
 
@@ -784,6 +787,13 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
 
     double c_v_k = pointer->c_v;
 
+    double c_couple = c_v_k;
+    if (input.d_decouple_nutrients)
+      c_couple = C_v_old[indexOfNode];
+
+    // init
+    Ac_VGM(indexOfNode, indexOfNode) = 0.;
+
     if (numberOfNeighbors == 1) {
 
       double radius = pointer->radii[0];
@@ -809,28 +819,62 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
 
       double volume = length / 2.0 * radius * radius * M_PI;
 
+      // init
+      Ac_VGM(indexOfNode, indexNeighbor) = 0.;
+
       if (v_interface > 0.0) {
+        // inlet
 
-        Ac_VGM(indexOfNode, indexOfNode) = 1.0;
+        // if artery
+        if (p_v_k >= 133.322 * input.d_identify_vein_pres) {
 
-        // Debug
-        // Remove when done debugging
-        if (p_v_k < 133.322 * input.d_identify_vein_pres)
-          b_c[indexOfNode] = input.d_in_nutrient_vein;
-        else
-          b_c[indexOfNode] = input.d_in_nutrient;
+          // Dirichlet on inlet
+          Ac_VGM(indexOfNode, indexOfNode) += factor_c * 1.0;
+          b_c[indexOfNode] += factor_c * input.d_in_nutrient;
+
+        }
+        else {
+
+          // Dirchlet on inlet
+          bool dirichlet_on_vein = false;
+          if (dirichlet_on_vein) {
+            Ac_VGM(indexOfNode, indexOfNode) += factor_c * 1.0;
+            b_c[indexOfNode] += factor_c * input.d_in_nutrient_vein;
+          } else {
+
+            // mass matrix
+            Ac_VGM(indexOfNode, indexOfNode) += factor_c * length;
+
+            // diffusion
+            Ac_VGM(indexOfNode, indexOfNode) += factor_c * dt * D_v / length;
+            Ac_VGM(indexOfNode, indexNeighbor) += - factor_c * dt * D_v /
+                length;
+
+            // advection
+            Ac_VGM(indexOfNode, indexOfNode) += factor_c * dt * v_interface;
+            Ac_VGM(indexOfNode, indexNeighbor) -= factor_c * dt * v_interface;
+
+            // old time step
+            b_c[indexOfNode] += factor_c * length * C_v_old[indexOfNode];
+          }
+        }
 
       } else {
+        // outlet
 
-        Ac_VGM(indexOfNode, indexOfNode) = length;
+        // mass matrix
+        Ac_VGM(indexOfNode, indexOfNode) += factor_c * length;
 
-        Ac_VGM(indexOfNode, indexNeighbor) =
-            dt * v_interface - dt * D_v / length;
+        // diffusion
+        Ac_VGM(indexOfNode, indexOfNode) += factor_c * dt * D_v / length;
+        Ac_VGM(indexOfNode, indexNeighbor) += - factor_c * dt * D_v / length;
 
-        Ac_VGM(indexOfNode, indexOfNode) = Ac_VGM(indexOfNode, indexOfNode) -
-                                           dt * v_interface + dt * D_v / length;
+        // advection
+        Ac_VGM(indexOfNode, indexOfNode) -= factor_c * dt * v_interface;
+        Ac_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
 
-        b_c[indexOfNode] = length * C_v_old[indexOfNode];
+        // old time step
+        b_c[indexOfNode] += factor_c * length * C_v_old[indexOfNode];
       }
 
     } else {
@@ -849,6 +893,7 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
 
         int indexNeighbor = pointer->neighbors[i]->index;
 
+        // init
         Ac_VGM(indexOfNode, indexNeighbor) = 0.0;
 
         std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
@@ -889,7 +934,7 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
         {
           // implicit part of the coupling
           Ac_VGM(indexOfNode, indexOfNode) +=
-              factor_c * dt * input.d_coupling_method_theta * pointer->L_s[i] *
+              factor_c * dt * coupling_theta * pointer->L_s[i] *
               J_b_data.half_cyl_surf;
 
           // compute explicit part of the coupling
@@ -910,7 +955,7 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
             // explicit
             double source =
                 dt * pointer->L_s[i] * J_b_data.half_cyl_surf * e_w *
-                ((1. - input.d_coupling_method_theta) * c_v_k - c_t_k);
+                ((1. - coupling_theta) * c_couple - c_t_k);
             b_c[indexOfNode] -= factor_c * source;
 
             //            if (pointer->p_v <
@@ -927,229 +972,9 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
             // term due to pressure difference
             double c_transport = 0.;
             if (p_v_k - p_t_k >= 0.)
-              c_transport = c_v_k;
+              c_transport = c_couple;
             else
               c_transport = c_t_k;
-            b_c[indexOfNode] -= factor_c * dt * (1. - osmotic_sigma) *
-                                pointer->L_p[i] * J_b_data.half_cyl_surf * e_w *
-                                (p_v_k - p_t_k) * c_transport;
-          }
-        } // coupling
-      }
-    }
-
-    pointer = pointer->global_successor;
-  }
-}
-
-void util::Network::assembleVGMSystemForNutrientDecouple(BaseAssembly &pres_sys, BaseAssembly &nut_sys) {
-
-  const auto &mesh = d_model_p->get_mesh();
-  const auto &input = d_model_p->get_input_deck();
-
-  // factor to enhance condition of matrix
-  const double factor_c = input.d_assembly_factor_c_t;
-
-  int numberOfNodes = VGM.getNumberOfNodes();
-
-  // reinitialize data
-  //  Ac_VGM =
-  //      gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
-  if (Ac_VGM.nrows() != numberOfNodes) {
-
-    Ac_VGM =
-        gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
-
-  } else {
-
-    // Ac_VGM.clear_mat();
-
-    for (unsigned int i = 0; i < Ac_VGM.nrows(); i++)
-      Ac_VGM[i].clear();
-  }
-
-  if (b_c.size() != numberOfNodes) {
-
-    b_c.resize(numberOfNodes);
-  }
-
-  for (unsigned int i = 0; i < b_c.size(); i++) {
-
-    b_c[i] = 0.;
-  }
-
-  if (C_v.size() != numberOfNodes) {
-
-    C_v.resize(numberOfNodes);
-  }
-
-  //  for (unsigned int i=0; i<C_v.size(); i++) {
-  //
-  //    C_v[i] = 0.;
-  //  }
-
-  std::vector<util::ElemWeights> J_b_points;
-
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
-
-  const double dt = d_model_p->d_dt;
-
-  while (pointer) {
-
-    int indexOfNode = pointer->index;
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    std::vector<double> coord = pointer->coord;
-
-    double p_v_k = pointer->p_v;
-
-    double c_v_k = pointer->c_v;
-
-    if (numberOfNeighbors == 1) {
-
-      double radius = pointer->radii[0];
-
-      int indexNeighbor = pointer->neighbors[0]->index;
-
-      std::vector<double> coord_neighbor = pointer->neighbors[0]->coord;
-
-      double length = 0.0;
-
-      for (int j = 0; j < 3; j++) {
-
-        length +=
-            (coord[j] - coord_neighbor[j]) * (coord[j] - coord_neighbor[j]);
-      }
-
-      length = std::sqrt(length);
-
-      double p_neighbor = pointer->neighbors[0]->p_v;
-
-      double v_interface = -(radius * radius * M_PI) / (8.0 * length * mu) *
-                           (p_neighbor - p_v_k);
-
-      double volume = length / 2.0 * radius * radius * M_PI;
-
-      if (v_interface > 0.0) {
-
-        Ac_VGM(indexOfNode, indexOfNode) = 1.0;
-
-        // Debug
-        // Remove when done debugging
-        if (p_v_k < 133.322 * input.d_identify_vein_pres)
-          b_c[indexOfNode] = input.d_in_nutrient_vein;
-        else
-          b_c[indexOfNode] = input.d_in_nutrient;
-
-      } else {
-
-        Ac_VGM(indexOfNode, indexOfNode) = length;
-
-        Ac_VGM(indexOfNode, indexNeighbor) =
-            dt * v_interface - dt * D_v / length;
-
-        Ac_VGM(indexOfNode, indexOfNode) = Ac_VGM(indexOfNode, indexOfNode) -
-                                           dt * v_interface + dt * D_v / length;
-
-        b_c[indexOfNode] = length * C_v_old[indexOfNode];
-      }
-
-    } else {
-
-      // get element data at points on cylinder surface
-      if (input.d_compute_elem_weights)
-        J_b_points = pointer->J_b_points;
-      else
-        J_b_points = compute_elem_weights_at_node(pointer);
-
-      for (int i = 0; i < numberOfNeighbors; i++) {
-
-        const auto &J_b_data = J_b_points[i];
-
-        double radius = pointer->radii[i];
-
-        int indexNeighbor = pointer->neighbors[i]->index;
-
-        Ac_VGM(indexOfNode, indexNeighbor) = 0.0;
-
-        std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
-
-        double length = 0.0;
-
-        for (int j = 0; j < 3; j++) {
-
-          length +=
-              (coord[j] - coord_neighbor[j]) * (coord[j] - coord_neighbor[j]);
-        }
-
-        length = std::sqrt(length);
-
-        double p_neighbor = pointer->neighbors[i]->p_v;
-
-        double v_interface = -(radius * radius * M_PI) / (8.0 * length * mu) *
-                             (p_neighbor - p_v_k);
-
-        Ac_VGM(indexOfNode, indexOfNode) += factor_c * length;
-
-        if (v_interface > 0.0) {
-
-          Ac_VGM(indexOfNode, indexOfNode) += factor_c * dt * v_interface;
-
-        } else {
-
-          Ac_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
-        }
-
-        Ac_VGM(indexOfNode, indexOfNode) += factor_c * dt * D_v / length;
-
-        Ac_VGM(indexOfNode, indexNeighbor) -= factor_c * dt * D_v / length;
-
-        b_c[indexOfNode] += factor_c * length * C_v_old[indexOfNode];
-
-
-
-        // coupling between 3d and 1d nutrient
-        // we decouple it by evaluating coupling at old time step
-        {
-
-          for (unsigned int e = 0; e < J_b_data.elem_id.size(); e++) {
-
-            auto e_id = J_b_data.elem_id[e];
-            auto e_w = J_b_data.elem_weight[e];
-
-            // get 3d pressure
-            const auto *elem = mesh.elem_ptr(e_id);
-            pres_sys.init_dof(elem);
-            Real p_t_k = pres_sys.get_current_sol(0);
-
-            // get 3d nutrient
-            nut_sys.init_dof(elem);
-            Real c_t_n = nut_sys.get_old_sol(0);
-
-            // explicit
-            double source =
-                dt * pointer->L_s[i] * J_b_data.half_cyl_surf * e_w *
-                (C_v_old[indexOfNode] - c_t_n);
-            b_c[indexOfNode] -= factor_c * source;
-
-            //            if (pointer->p_v <
-            //                    input.d_mmhgFactor *
-            //                    input.d_identify_vein_pres &&
-            //                i == 0 && e < 2)
-            //              out << "index: " << indexOfNode << ", neighbor: " <<
-            //              indexNeighbor
-            //                  << ", source: " << source << ", pressure: " <<
-            //                  p_v_k
-            //                  << ", radius: " << radius << ", c_t: " << c_t_k
-            //                  << ", L_s: " << pointer->L_s[i] << "\n";
-
-            // term due to pressure difference
-            double c_transport = 0.;
-            if (p_v_k - p_t_k >= 0.)
-              c_transport = C_v_old[indexOfNode];
-            else
-              c_transport = c_t_n;
             b_c[indexOfNode] -= factor_c * dt * (1. - osmotic_sigma) *
                                 pointer->L_p[i] * J_b_data.half_cyl_surf * e_w *
                                 (p_v_k - p_t_k) * c_transport;
@@ -1170,10 +995,7 @@ void util::Network::solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nu
 
   // std::cout << " " << std::endl;
   // std::cout << "Assemble nutrient matrix and right hand side" << std::endl;
-  if (d_model_p->get_input_deck().d_decouple_nutrients)
-    assembleVGMSystemForNutrientDecouple(pres_sys, nut_sys);
-  else
-    assembleVGMSystemForNutrient(pres_sys, nut_sys);
+  assembleVGMSystemForNutrient(pres_sys, nut_sys);
 
   // if this is first call inside nonlinear loop, we guess current
   // concentration as old concentration

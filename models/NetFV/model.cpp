@@ -948,14 +948,15 @@ void netfv::Model::test_nut_2() {
 
   // solver for 1-D nutrient
   reset_clock();
-  d_log("      Solving |1D nutrient| -> ", "solve sys");
-  d_network.solveVGMforNutrient(d_pres_assembly, d_nut_assembly);
-  d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
-
-  reset_clock();
-  d_log("|3D nutrient| \n", "solve sys");
+  d_log("      Solving |3D nutrient| -> ", "solve sys");
   nut.solve();
   d_log.add_sys_solve_time(clock_begin, d_nut_id);
+
+
+  reset_clock();
+  d_log("|1D nutrient| \n", "solve sys");
+  d_network.solveVGMforNutrient(d_pres_assembly, d_nut_assembly);
+  d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
 }
 
 void netfv::Model::test_taf() {

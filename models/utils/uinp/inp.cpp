@@ -257,10 +257,12 @@ void util::OutputDeck::read_parameters(const std::string &filename) {
   d_outfilename = d_output_path + "output";
   d_outfilename_net = d_output_path + "net_output";
 
-  if (!d_outfile_tag.empty()) {
-    d_outfilename += "_" + d_outfile_tag;
-    d_outfilename_net += "_" + d_outfile_tag;
-  }
+  // For now do not put tag on output files so that paraview state
+  // could be reused for any simulation
+  //  if (!d_outfile_tag.empty()) {
+  //    d_outfilename += "_" + d_outfile_tag;
+  //    d_outfilename_net += "_" + d_outfile_tag;
+  //  }
 }
 
 void util::OutputDeck::print(unsigned int level) {
