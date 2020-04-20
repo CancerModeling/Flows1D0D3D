@@ -24,7 +24,7 @@ void netfc::Network::updateNetwork(){
      std::cout << "Number of nodes: " << numberOfNodes << std::endl;
 
      std::cout << " " << std::endl;
-     std::cout << "Mark nodes for growth " << std::endl;
+     std::cout << "Mark nodes for apical growth " << std::endl;
      markApicalGrowth();
 
      std::cout << " " << std::endl;
@@ -36,6 +36,21 @@ void netfc::Network::updateNetwork(){
 
      std::cout << " " << std::endl;
      std::cout << "Number of nodes after growing the network: " << numberOfNodes << std::endl;
+
+     std::cout << " " << std::endl;
+     std::cout << "Mark edges for sprouting " << std::endl;
+
+     std::cout << " " << std::endl;
+     std::cout << "Process sprouting growth" << std::endl;
+
+     numberOfNodes = VGM.getNumberOfNodes();
+
+     std::cout << " " << std::endl;
+     std::cout << "Number of nodes after growing the network: " << numberOfNodes << std::endl;
+
+     std::cout << " " << std::endl;
+     std::cout << "Remove terminal vessels" << std::endl;
+     removeRedundantTerminalVessels();
 
      std::cout << " " << std::endl;
      std::cout << "Link terminal vessels" << std::endl;
@@ -326,11 +341,7 @@ int netfc::Network::processApicalGrowth(){
                    }
 
                }
-
-               std::cout << "max_index: " << max_index << "\n";
-               std::cout << "max_index_2: " << max_index_2 << "\n";
-               std::cout << "TAF_neighbors: " << TAF_neighbors << "\n";
-
+               
                std::vector<double> new_point_1  = std::vector<double>(3,0.0);
                std::vector<double> max_center   = getCenterFromIndex( max_index, N_3D, h_3D );
                std::vector<double> max_center_2 = getCenterFromIndex( max_index_2, N_3D, h_3D );
@@ -408,9 +419,11 @@ int netfc::Network::processApicalGrowth(){
 
                std::cout << "prob: " << prob << "\n";
 
+               bool isColliding_1 = testCollision( new_point_1 );
+
                if( !bifurcate ){
 
-                   if( dist_new_point>0.0 ){
+                   if( dist_new_point>0.0 && !isColliding_1 ){
 
                        createASingleNode( new_point_1, radius_p, pointer );
 
@@ -515,10 +528,22 @@ int netfc::Network::processApicalGrowth(){
                            std::cout << "new_point_1: " << new_point_1 << "\n";
                            std::cout << "new_point_2: " << new_point_2 << "\n";
 
+                           bool isColliding_1 = testCollision( new_point_1 );
+                           bool isColliding_2 = testCollision( new_point_2 );
+
                            if( gmm::vect_norm2( rotation_axis )>0.0 ){
 
-                               createASingleNode( new_point_1, radius_b1, pointer );
-                               createASingleNode( new_point_2, radius_b2, pointer );
+                               if( !isColliding_1 ){
+
+                                   createASingleNode( new_point_1, radius_b1, pointer );
+
+                               }
+
+                               if( !isColliding_2 ){
+ 
+                                   createASingleNode( new_point_2, radius_b2, pointer );
+
+                               }
 
                            }
 
@@ -614,7 +639,127 @@ bool netfc::Network::testCollision( std::vector<double> point ){
 
      bool isColliding = false;
 
+     std::shared_ptr<VGNode> pointer = VGM.getHead();
+
+     std::cout << "Test Collision" << "\n";
+
+     while( pointer ){
+
+            std::vector<double> coord = pointer->coord;
+
+            std::vector<double> diff = std::vector<double>(3,0.0);
+
+            for(int i=0;i<3;i++){
+
+                diff[ i ] = coord[ i ] - point[ i ];
+
+            }
+
+            double dist = gmm::vect_norm2( diff );
+
+            if( dist<3.0e-2 ){
+
+                std::cout << "Node not inserted, dist: " << dist << "\n";
+
+                isColliding = true;
+
+                break;
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
      return isColliding;
+
+}
+
+void netfc::Network::removeRedundantTerminalVessels(){
+
+     const auto &input = d_model_p->get_input_deck();
+
+     double L_x = input.d_domain_params[1];
+
+     std::shared_ptr<VGNode> pointer = VGM.getHead();
+
+     while( pointer ){
+
+            if( pointer->typeOfVGNode == TypeOfNode::DirichletNode ){
+
+                const auto &coord = pointer->coord;
+
+                // if node is near the boundary, we do not process Omega = (0,L)^3 
+                if( 0.01<coord[0] && coord[0]<L_x-0.01 && 0.01<coord[1] && coord[1]<L_x-0.01 && 0.01<coord[2] && coord[2]<L_x-0.01 ){
+
+                    int updateNumber = pointer->notUpdated;
+
+                    pointer->notUpdated = updateNumber+1;
+
+                }
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            if( pointer->typeOfVGNode == TypeOfNode::DirichletNode && pointer->notUpdated>3 ){
+
+                int index = pointer->index;
+
+                std::cout<< "Remove node with index: " << index << std::endl;
+
+                int numberOfNeighbors_neighbor = pointer->neighbors[ 0 ]->neighbors.size();
+
+                std::vector< std::shared_ptr<VGNode> > new_neighbors;
+
+                std::vector< bool >   new_edge_touched;
+                std::vector< bool >   new_sprouting_edge;
+                std::vector< double > new_radii;
+                std::vector< double > new_L_p;
+                std::vector< double > new_L_s;
+
+                for(int i=0;i<numberOfNeighbors_neighbor;i++){
+
+                    if( index != pointer->neighbors[ 0 ]->neighbors[ i ]->index ){
+
+                        new_neighbors.push_back( pointer->neighbors[ 0 ]->neighbors[ i ] );
+                        new_edge_touched.push_back( pointer->neighbors[ 0 ]->edge_touched[ i ] );
+                        new_sprouting_edge.push_back( pointer->neighbors[ 0 ]->sprouting_edge[ i ] );
+                        new_radii.push_back( pointer->neighbors[ 0 ]->radii[ i ] ); 
+                        new_L_p.push_back( pointer->neighbors[ 0 ]->L_p[ i ] ); 
+                        new_L_s.push_back( pointer->neighbors[ 0 ]->L_s[ i ] );                       
+
+                    }
+
+                }
+
+                pointer->neighbors[ 0 ]->neighbors = new_neighbors;
+                pointer->neighbors[ 0 ]->edge_touched = new_edge_touched;  
+                pointer->neighbors[ 0 ]->sprouting_edge = new_sprouting_edge;             
+                pointer->neighbors[ 0 ]->radii = new_radii;
+                pointer->neighbors[ 0 ]->L_p = new_L_p;
+                pointer->neighbors[ 0 ]->L_s = new_L_s; 
+    
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     //remove nodes without neighbors
+
+     int numberOfNodes = VGM.getNumberOfNodes();
+
+     std::cout << " " << std::endl;
+     std::cout << "Number of nodes after removing redundant nodes: " << numberOfNodes << std::endl;
+
+     //renumber nodes
 
 }
 
