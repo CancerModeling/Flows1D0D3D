@@ -501,34 +501,69 @@ std::vector<double> netfc::getCenterFromIndex( int index, int N_3D, double h_3D 
 
 }
 
-std::vector<int> netfc::getNeighboringElementIndices( std::vector<double> coord, double h_3D, double L, int N_3D ){
+std::vector<int> netfc::getNeighboringElementIndices( int index, int N_3D, double h_3D, double L_x ){
 
                  std::vector<int> indicesNeighbors;
 
-                 int element_index = getElementIndex( coord, h_3D, N_3D );
+                 std::vector<int> directions;
 
-                 std::vector<  std::vector< double > > directions;
-                 directions = defineDirectionsNeighboring();            
+                 directions.push_back( -1 );
+                 directions.push_back(  1 );
 
-                 std::vector<double> center = std::vector<double>(3,0.0);
+                 directions.push_back( -N_3D );
+                 directions.push_back(  N_3D );
 
-                 for( int i=0;i<directions.size();i++ ){
+                 directions.push_back(  N_3D-1 );
+                 directions.push_back(  N_3D+1 );
 
-                      for( int j=0;j<3;j++ ){
- 
-                           center[ j ] = coord[ j ] + h_3D*directions[ i ][ j ]; 
-                            
-                      }
+                 directions.push_back( -N_3D-1 );
+                 directions.push_back( -N_3D+1 );
 
-                      int centerIndex = getElementIndex( center, h_3D, N_3D );
+                 directions.push_back( -1+( N_3D*N_3D ) );
+                 directions.push_back(  1+( N_3D*N_3D ) );
 
-                      bool isInside = isCenterInDomain( center, L );
+                 directions.push_back( -N_3D+( N_3D*N_3D ) );
+                 directions.push_back(  N_3D+( N_3D*N_3D ) );
 
-                      if( isInside ){
+                 directions.push_back(  N_3D-1+( N_3D*N_3D ) );
+                 directions.push_back(  N_3D+1+( N_3D*N_3D ) );
 
-                          indicesNeighbors.push_back( centerIndex );
+                 directions.push_back( -N_3D-1+( N_3D*N_3D ) );
+                 directions.push_back( -N_3D+1+( N_3D*N_3D ) );
 
-                      }
+                 directions.push_back( -1-( N_3D*N_3D ) );
+                 directions.push_back(  1-( N_3D*N_3D ) );
+
+                 directions.push_back( -N_3D-( N_3D*N_3D ) );
+                 directions.push_back(  N_3D-( N_3D*N_3D ) );
+
+                 directions.push_back(  N_3D-1-( N_3D*N_3D ) );
+                 directions.push_back(  N_3D+1-( N_3D*N_3D ) );
+
+                 directions.push_back( -N_3D-1-( N_3D*N_3D ) );
+                 directions.push_back( -N_3D+1-( N_3D*N_3D ) );
+
+                 for(int i=0;i<directions.size();i++){
+
+                     int index_neighbor = index+directions[ i ];
+
+                     std::vector<double> center = getCenterFromIndex( index_neighbor, N_3D, h_3D );
+
+                     bool isInDomain = true;
+
+                     for(int j=0;j<3;j++){
+
+                         if( center[ i ]<0.0 || center[ i ]>L_x ){
+
+                             isInDomain = false;
+
+                             break;
+                             
+                         }
+
+                     }
+
+                     indicesNeighbors.push_back( index_neighbor );
 
                  }
 

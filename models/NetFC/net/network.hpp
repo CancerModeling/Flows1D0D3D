@@ -126,7 +126,7 @@ public:
 
   void linkTerminalVessels();
 
-  bool testCollision( std::vector<double> point_1, std::vector<double> point_2, double radius );
+  bool testCollision( std::vector<double> point );
 
   /** @}*/
 
