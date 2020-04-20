@@ -309,7 +309,8 @@ netfvfe::Model::Model(
   }
 
   // 1-D network
-  d_log(" [Network]\n", "init");
+  oss << "[Network]\n";
+  d_log(oss, "init");
   d_network.create_initial_network();
   log_msg(d_delayed_msg, d_log);
   d_log(" \n", "init");
@@ -791,7 +792,8 @@ void netfvfe::Model::solve_pressure() {
   reset_clock();
   d_log("      Solving |velocity| \n", "solve sys");
   vel.solve();
-  d_log.add_sys_solve_time(clock_begin, d_vel_id);
+  if (d_log.d_cur_step >= 0)
+    d_log.add_sys_solve_time(clock_begin, d_vel_id);
 }
 
 void netfvfe::Model::test_nut() {
