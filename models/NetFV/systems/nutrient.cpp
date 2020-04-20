@@ -11,7 +11,8 @@ namespace {
 double get_nut_source(const std::string &test_name, const Point &x,
                       const std::vector<double> &x0, const double &r) {
 
-  if (test_name != "test_tum_2" and test_name != "test_nut_2")
+  //if (test_name != "test_tum_2" and test_name != "test_nut_2")
+  if (test_name != "test_tum_2")
     return 0.;
 
   // For cylinder, take z-coord as 0
