@@ -29,20 +29,24 @@ ListStructure(): numberOfNodes(0){
 
 bool isEmpty(){
 
-    return (head == NULL) ? true : false;
+     return (head == NULL) ? true : false;
 
 }
 
 void attachNode(Node newNode){
 
-    auto sp_newNode = std::make_shared<Node>( newNode );
+     auto sp_newNode = std::make_shared<Node>( newNode );
 
-    if( isEmpty() ){
-        tail = head = sp_newNode;
-    }
-    else{
-        tail->global_successor = sp_newNode;
-        tail = sp_newNode;
+     if( isEmpty() ){
+
+         tail = head = sp_newNode;
+
+     }
+     else{
+
+         tail->global_successor = sp_newNode;
+         tail = sp_newNode;
+
     }
 
     numberOfNodes = numberOfNodes+1;
@@ -52,11 +56,15 @@ void attachNode(Node newNode){
 void attachPointerToNode( std::shared_ptr<Node> pointer ){
 
     if( isEmpty() ){
+
         tail = head = pointer;
+
     }
     else{
+
         tail->global_successor = pointer;
         tail = pointer;
+
     }
 
     numberOfNodes = numberOfNodes+1;
@@ -65,15 +73,15 @@ void attachPointerToNode( std::shared_ptr<Node> pointer ){
 
 std::shared_ptr<Node> getHead(){
 
-    return head;
+     return head;
 
 }
 
-  const std::shared_ptr<Node> getHead() const{
+const std::shared_ptr<Node> getHead() const{
 
-    return head;
+      return head;
 
-  }
+}
 
 
 std::shared_ptr<Node> getTail(){
@@ -96,17 +104,17 @@ void resetNumberOfNodes(){
 
 void determineNumberOfNodes(){
 
-    std::shared_ptr<Node> pointer = head;
+     std::shared_ptr<Node> pointer = head;
 
-    numberOfNodes = 0;
+     numberOfNodes = 0;
 
-    while( pointer ){
+     while( pointer ){
 
-           numberOfNodes = numberOfNodes+1;
+            numberOfNodes = numberOfNodes+1;
 
-           pointer = pointer->global_successor;
+            pointer = pointer->global_successor;
 
-    }
+     }
 
 }
 

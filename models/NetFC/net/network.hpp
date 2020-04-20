@@ -128,6 +128,8 @@ public:
 
   bool testCollision( std::vector<double> point );
 
+  void removeRedundantTerminalVessels();
+
   /** @}*/
 
   /*! @brief Did we change network from last step */
