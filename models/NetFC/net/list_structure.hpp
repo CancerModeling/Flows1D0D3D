@@ -45,6 +45,7 @@ void attachNode(Node newNode){
      else{
 
          tail->global_successor = sp_newNode;
+         sp_newNode->global_predecessor = tail;
          tail = sp_newNode;
 
     }
@@ -63,6 +64,7 @@ void attachPointerToNode( std::shared_ptr<Node> pointer ){
     else{
 
         tail->global_successor = pointer;
+        pointer->global_predecessor = tail;
         tail = pointer;
 
     }

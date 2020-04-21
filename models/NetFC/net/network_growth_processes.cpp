@@ -56,6 +56,8 @@ void netfc::Network::updateNetwork(){
      std::cout << "Link terminal vessels" << std::endl;
      linkTerminalVessels();
 
+     numberOfNodes = VGM.getNumberOfNodes();
+
      std::cout << " " << std::endl;
      std::cout << "Number of nodes after linking terminal vessels to the network: " << numberOfNodes << std::endl;
 
@@ -65,6 +67,7 @@ void netfc::Network::updateNetwork(){
      Ac_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
      b_c = std::vector<double>(numberOfNodes, 0.0);
 
+     A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D+numberOfNodes, N_tot_3D+numberOfNodes);
      b_flow_3D1D = std::vector<double>(N_tot_3D+numberOfNodes, 0.0);
 
      A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D+numberOfNodes, N_tot_3D+numberOfNodes);
@@ -708,13 +711,20 @@ void netfc::Network::removeRedundantTerminalVessels(){
 
      while( pointer ){
 
-            if( pointer->typeOfVGNode == TypeOfNode::DirichletNode && pointer->notUpdated>3 ){
+            if( pointer->typeOfVGNode == TypeOfNode::DirichletNode && pointer->notUpdated>0 ){
 
                 int index = pointer->index;
 
                 std::cout<< "Remove node with index: " << index << std::endl;
+                std::cout<< "coord: " << pointer->coord << std::endl;
 
                 int numberOfNeighbors_neighbor = pointer->neighbors[ 0 ]->neighbors.size();
+
+                int index_neighbor = pointer->neighbors[ 0 ]->index;
+
+                std::cout<< "numberOfNeighbors: " << pointer->neighbors.size() << std::endl;
+                std::cout<< "numberOfNeighbors_neighbor: " << numberOfNeighbors_neighbor << std::endl;
+                std::cout<< "index_neighbor: " << index_neighbor << std::endl;
 
                 std::vector< std::shared_ptr<VGNode> > new_neighbors;
 
@@ -725,6 +735,8 @@ void netfc::Network::removeRedundantTerminalVessels(){
                 std::vector< double > new_L_s;
 
                 for(int i=0;i<numberOfNeighbors_neighbor;i++){
+
+                    std::cout << "pointer->neighbors[ 0 ]->neighbors[ i ]->index: " <<  pointer->neighbors[ 0 ]->neighbors[ i ]->index << std::endl;
 
                     if( index != pointer->neighbors[ 0 ]->neighbors[ i ]->index ){
 
@@ -744,22 +756,95 @@ void netfc::Network::removeRedundantTerminalVessels(){
                 pointer->neighbors[ 0 ]->sprouting_edge = new_sprouting_edge;             
                 pointer->neighbors[ 0 ]->radii = new_radii;
                 pointer->neighbors[ 0 ]->L_p = new_L_p;
-                pointer->neighbors[ 0 ]->L_s = new_L_s; 
+                pointer->neighbors[ 0 ]->L_s = new_L_s;
+
+                if( numberOfNeighbors_neighbor == 2 ){
+
+                    pointer->neighbors[ 0 ]->typeOfVGNode = TypeOfNode::DirichletNode;
+                    pointer->neighbors[ 0 ]->p_boundary = 0.0;
+                    pointer->neighbors[ 0 ]->c_boundary = 1.0;
+
+                }
+                else{
+
+                    pointer->neighbors[ 0 ]->typeOfVGNode = TypeOfNode::InnerNode;
+                    pointer->neighbors[ 0 ]->p_boundary = 0.0;
+                    pointer->neighbors[ 0 ]->c_boundary = 0.0;
+
+                }
+
+                std::shared_ptr<VGNode> old_pointer = pointer;
+
+                if( pointer->global_predecessor ){
+ 
+                    pointer->global_predecessor->global_successor = pointer->global_successor;
+
+                }
+                else{
+
+                    pointer->global_successor->global_predecessor = NULL;
+
+                }
+
+                if( pointer->global_successor ){
+
+                    pointer->global_successor->global_predecessor = pointer->global_predecessor;   
+
+                }
+                else{
+
+                    pointer->global_predecessor->global_successor = NULL;
+
+                }
+
+                pointer = pointer->global_successor; 
+
+                old_pointer.reset();      
     
             }
+            else{
 
-            pointer = pointer->global_successor;
+                pointer = pointer->global_successor;
+
+            }
 
      }
 
-     //remove nodes without neighbors
-
+     VGM.determineNumberOfNodes();
      int numberOfNodes = VGM.getNumberOfNodes();
 
      std::cout << " " << std::endl;
      std::cout << "Number of nodes after removing redundant nodes: " << numberOfNodes << std::endl;
 
      //renumber nodes
+     std::cout << "Renumber nodes" << std::endl;
+
+     pointer = VGM.getHead();
+
+     int counter = 0;
+
+     while( pointer ){
+
+            pointer->index = counter;
+
+            counter = counter + 1;
+
+            pointer = pointer->global_successor;
+
+     }
+
+     //test indices
+     std::cout << " " << std::endl;
+     std::cout << "Test indices" << std::endl;
+
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            pointer->printInformationOfNode();
+            pointer = pointer->global_successor;
+
+     }
 
 }
 
