@@ -29,8 +29,7 @@ void netfc::Network::updateNetwork(){
 
      std::cout << " " << std::endl;
      std::cout << "Process apical growth" << std::endl;
-     int numberOfNewNodes = 0;
-     numberOfNewNodes = processApicalGrowth();
+     processApicalGrowth();
 
      numberOfNodes = VGM.getNumberOfNodes();
 
@@ -39,9 +38,11 @@ void netfc::Network::updateNetwork(){
 
      std::cout << " " << std::endl;
      std::cout << "Mark edges for sprouting " << std::endl;
+     markSproutingGrowth();
 
      std::cout << " " << std::endl;
      std::cout << "Process sprouting growth" << std::endl;
+     processSproutingGrowth();
 
      numberOfNodes = VGM.getNumberOfNodes();
 
@@ -263,7 +264,7 @@ void netfc::Network::markApicalGrowth(){
                     if( taf_node > input.d_network_update_taf_threshold ){
 
                         std::cout << "index: " << pointer->index << std::endl;
-                          
+                         
                         pointer->apicalGrowth = true;
                      
                     }
@@ -278,13 +279,13 @@ void netfc::Network::markApicalGrowth(){
 
 }
 
-int netfc::Network::processApicalGrowth(){
+void netfc::Network::processApicalGrowth(){
 
-    const auto &input = d_model_p->get_input_deck();
+     const auto &input = d_model_p->get_input_deck();
 
-    double L_x = input.d_domain_params[1];
+     double L_x = input.d_domain_params[1];
 
-    std::cout << "L_x: " << L_x << "\n";
+     std::cout << "L_x: " << L_x << "\n";
 
     // Initialize random objects
     std::lognormal_distribution<> log_normal_distribution( input.d_log_normal_mean, input.d_log_normal_std_dev );
@@ -569,7 +570,7 @@ int netfc::Network::processApicalGrowth(){
 
                 int numberOfNeighbors = pointer->neighbors.size();
 
-                pointer->apicalGrowth = false;
+                //pointer->apicalGrowth = false;
 
                 for( int i=0; i<numberOfNeighbors; i++){
 
@@ -581,14 +582,6 @@ int netfc::Network::processApicalGrowth(){
                 pointer = pointer->global_successor;
  
          }
-
-         int numberOfNodes_new = VGM.getNumberOfNodes();
-
-         std::cout << "number of nodes after growth: " << numberOfNodes_new << "\n";
-
-         int numberOfNodes_added = numberOfNodes_new - numberOfNodes_old;
-
-         return numberOfNodes_added;
 
 }
 
@@ -688,7 +681,7 @@ void netfc::Network::removeRedundantTerminalVessels(){
 
      while( pointer ){
 
-            if( pointer->typeOfVGNode == TypeOfNode::DirichletNode ){
+            if( pointer->apicalGrowth ){
 
                 const auto &coord = pointer->coord;
 
@@ -698,6 +691,8 @@ void netfc::Network::removeRedundantTerminalVessels(){
                     int updateNumber = pointer->notUpdated;
 
                     pointer->notUpdated = updateNumber+1;
+
+                    std::cout << "pointer->notUpdated: " << pointer->notUpdated << std::endl;
 
                 }
 
@@ -711,7 +706,7 @@ void netfc::Network::removeRedundantTerminalVessels(){
 
      while( pointer ){
 
-            if( pointer->typeOfVGNode == TypeOfNode::DirichletNode && pointer->notUpdated>0 ){
+            if( pointer->apicalGrowth && pointer->notUpdated>3 ){
 
                 int index = pointer->index;
 
@@ -757,6 +752,7 @@ void netfc::Network::removeRedundantTerminalVessels(){
                 pointer->neighbors[ 0 ]->radii = new_radii;
                 pointer->neighbors[ 0 ]->L_p = new_L_p;
                 pointer->neighbors[ 0 ]->L_s = new_L_s;
+                pointer->neighbors[ 0 ]->notUpdated = 0;
 
                 if( numberOfNeighbors_neighbor == 2 ){
 
@@ -832,7 +828,7 @@ void netfc::Network::removeRedundantTerminalVessels(){
             pointer = pointer->global_successor;
 
      }
-
+/*
      //test indices
      std::cout << " " << std::endl;
      std::cout << "Test indices" << std::endl;
@@ -845,6 +841,149 @@ void netfc::Network::removeRedundantTerminalVessels(){
             pointer = pointer->global_successor;
 
      }
+*/
+}
+
+
+void netfc::Network::markSproutingGrowth(){
+
+     const auto &input = d_model_p->get_input_deck();
+
+     std::shared_ptr<VGNode> pointer = VGM.getHead();
+
+     double dt = d_model_p->d_dt;
+
+     while( pointer ){
+
+            int numberOfEdges = pointer->neighbors.size();
+
+            std::vector<double> coord = pointer->coord;
+
+            for(int i=0;i<numberOfEdges;i++){
+
+                if( pointer->edge_touched[ i ] == false ){
+
+                    std::vector<double> coord_neighbor = pointer->neighbors[ i ]->coord;
+
+                    int local_index   = pointer->neighbors[ i ]->getLocalIndexOfNeighbor( pointer );
+
+                    double sproutingProbability = 0.0;
+
+                    double k_p = 50.0;
+
+                    std::vector<double> diff = std::vector<double>(3,0.0);
+                    std::vector<double> mid_point = std::vector<double>(3,0.0);
+
+                    for(int j=0;j<3;j++){
+
+                        diff[ j ] = coord_neighbor[ j ] - coord[ j ];
+                        mid_point[ j ] = 0.5*( coord_neighbor[ j ] + coord[ j ] );
+
+                    }
+
+                    int element_index = getElementIndex( mid_point, h_3D, N_3D );
+
+                    double TAF = phi_TAF[ element_index ];
+
+                    double TAF_th = input.d_network_update_taf_threshold;
+
+                    double length = gmm::vect_norm2( diff );
+
+                    std::cout << "TAF-TAF_th: " << TAF-TAF_th << std::endl;
+                    std::cout << "length: " << length << std::endl;
+                    std::cout << "sproutingProbability: " << sproutingProbability << std::endl;
+
+                    if( sproutingProbability>0.6 ){
+
+                        pointer->neighbors[ i ]->sprouting_edge[ local_index ] = true;
+                        pointer->sprouting_edge[ i ] = true;
+
+                    }
+
+                    pointer->neighbors[ i ]->edge_touched[ local_index ]   = true;
+                    pointer->edge_touched[ i ] = true;
+
+                }
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfEdges = pointer->neighbors.size();
+
+            for(int i=0;i<numberOfEdges;i++){
+
+                std::vector<double> coord_neighbor = pointer->neighbors[ i ]->coord;
+
+                pointer->edge_touched[ i ] = false;
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
 
 }
 
+
+void netfc::Network::processSproutingGrowth(){
+
+     const auto &input = d_model_p->get_input_deck();
+
+     std::shared_ptr<VGNode> pointer = VGM.getHead();
+
+     double dt = d_model_p->d_dt;
+
+     while( pointer ){
+
+            int numberOfEdges = pointer->neighbors.size();
+
+            std::vector<double> coord = pointer->coord;
+
+            for(int i=0;i<numberOfEdges;i++){
+
+                if( pointer->sprouting_edge[ i ] == true ){
+
+                    std::vector<double> coord_neighbor = pointer->neighbors[ i ]->coord;
+
+                    std::vector<double> mid_point = std::vector<double>(3,0.0);
+
+                    for(int j=0;j<3;j++){
+
+                        mid_point[ j ] = 0.5*( coord_neighbor[ j ] + coord[ j ] );
+
+                    }
+
+                }
+
+                pointer->edge_touched[ i ] = true;
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfEdges = pointer->neighbors.size();
+
+            for(int i=0;i<numberOfEdges;i++){
+
+                pointer->edge_touched[ i ] = false;
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+}
