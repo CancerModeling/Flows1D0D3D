@@ -118,7 +118,7 @@ public:
 
   void markApicalGrowth();
 
-  int processApicalGrowth();
+  void processApicalGrowth();
 
   double sourceTermTAFTwoVessels( std::vector<double> coord );
 
@@ -129,6 +129,10 @@ public:
   bool testCollision( std::vector<double> point );
 
   void removeRedundantTerminalVessels();
+
+  void markSproutingGrowth();
+
+  void processSproutingGrowth();
 
   /** @}*/
 
