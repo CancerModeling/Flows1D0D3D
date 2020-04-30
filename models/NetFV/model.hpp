@@ -83,6 +83,9 @@ private:
   /*! @brief Solves tumor system */
   void solve_system() override ;
 
+  /*! @brief Compute quantity of interest */
+  void compute_qoi() override ;
+
   /*! @brief Solves 1D-3D pressure system
    * At given time step, it solves for 1D and 3D pressure in a nonlinear loop
    * iteratively.

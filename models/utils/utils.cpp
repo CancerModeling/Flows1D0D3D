@@ -115,6 +115,8 @@ bool util::addToList(unsigned int i, std::vector<unsigned int> *data) {
 void util::computeMass(EquationSystems &es, const std::string &system_name,
                        const std::string &var_name, double &value_mass) {
 
+  value_mass = 0.;
+
   TransientLinearImplicitSystem &sys =
       es.get_system<TransientLinearImplicitSystem>(system_name);
 
