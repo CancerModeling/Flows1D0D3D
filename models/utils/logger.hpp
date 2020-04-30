@@ -278,11 +278,62 @@ public:
     }
   }
 
+  void log_qoi_header(const double &time, const std::vector<double> &qoi,
+      const std::vector<std::string> &qoi_names) {
+
+    std::ostringstream ossh;
+    std::ostringstream oss;
+    ossh << "time, ";
+    oss << time << ", ";
+    for (unsigned int i =0; i< qoi.size(); i++) {
+      ossh << qoi_names[i];
+      oss << qoi[i];
+      if (i < qoi.size() - 1) {
+        ossh << ", ";
+        oss << ", ";
+      }
+      else {
+        ossh << "\n";
+        oss << "\n";
+      }
+    }
+
+    // log to file
+    d_qoi_file << ossh.str();
+    d_qoi_file << oss.str();
+
+    // log to screen
+    std::string str = "\n  QoI log\n  " + ossh.str() + " \n  " + oss.str() +
+        " \n";
+    log(str);
+  }
+
+  void log_qoi(const double &time, const std::vector<double> &qoi) {
+
+    std::ostringstream oss;
+    oss << time << ", ";
+    for (unsigned int i =0; i< qoi.size(); i++) {
+      oss << qoi[i];
+      if (i < qoi.size() - 1)
+        oss << ", ";
+      else
+        oss << "\n";
+    }
+
+    // log to file
+    d_qoi_file << oss.str();
+
+    // log to screen
+    std::string str = "\n  QoI log\n  " + oss.str() + " \n";
+    log(str);
+  }
+
 private:
   Parallel::Communicator *d_comm_p;
   bool d_screen_out;
   std::ofstream d_dbg_file;
   std::ofstream d_ts_file;
+  std::ofstream d_qoi_file;
 };
 
 } // namespace util

@@ -11,6 +11,7 @@
 // Libmesh
 #include "utils.hpp"
 #include "logger.hpp"
+#include "qoi.hpp"
 
 // input deck
 #include "uinp/inp.hpp"
@@ -129,6 +130,9 @@ protected:
   /*! @brief Solves tumor system */
   virtual void solve_system() = 0;
 
+  /*! @brief Compute quantity of interest */
+  virtual void compute_qoi() = 0;
+
   /*! @brief To store input parameters */
   InpDeck &d_input;
 
@@ -140,6 +144,9 @@ protected:
 
   /*! @brief Store the 2d/3d tumor system */
   EquationSystems &d_tum_sys;
+
+  /*! @brief Compute and store QoI */
+  QoIVec d_qoi;
 };
 
 } // namespace util

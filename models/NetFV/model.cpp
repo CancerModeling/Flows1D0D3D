@@ -348,6 +348,10 @@ netfv::Model::Model(
   log_msg(d_delayed_msg, d_log);
   d_log(" \n", "init");
 
+  // initialize qoi data
+  d_qoi = util::QoIVec({"tumor_mass", "hypoxic_mass", "necrotic_mass",
+                        "tumor_l2"});
+
   // save setup end time
   clock_end = steady_clock::now();
   d_log.d_setup_time = util::TimePair(clock_begin, clock_end);
@@ -459,6 +463,9 @@ void netfv::Model::run() {
     // solve tumor-network system
     solve_system();
 
+    // compute qoi
+    compute_qoi();
+
     // update network
     if (d_is_growth_step) {
       d_log("  Updating Network\n", "net update");
@@ -471,10 +478,16 @@ void netfv::Model::run() {
 
       // write tumor solution
       write_system((d_step - d_input.d_init_step) /
-                       d_input.d_dt_output_interval);
+                   d_input.d_dt_output_interval);
       d_network.writeDataToVTKTimeStep_VGM((d_step - d_input.d_init_step) /
                                            d_input.d_dt_output_interval);
     }
+
+    // output qoi
+    if (d_step == 1)
+      d_log.log_qoi_header(d_time, d_qoi.get_last(), d_qoi.get_names());
+    else
+      d_log.log_qoi(d_time, d_qoi.get_last());
 
     // add to log
     d_log.add_solve_time(util::TimePair(solve_clock, steady_clock::now()));
@@ -490,23 +503,10 @@ void netfv::Model::write_system(const unsigned int &t_step) {
   ExodusII_IO exodus(d_mesh);
 
   // scale pressure for visualization
-  std::vector<Number> p_save;
-  std::vector<unsigned int> p_dofs;
-  util::scale_pres(d_mesh, d_pres_assembly, d_input.d_mmhgFactor, p_save,
-                   p_dofs);
-
-  // compute total integral of order parameter u
-  double value_mass, total_mass;
-  util::computeMass(d_tum_sys, "Tumor", "tumor", value_mass);
-
-  // gather from other processors
-  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
-                MPI_COMM_WORLD);
-
-  // print to screen
-  oss << "  Tumor Mass: " << total_mass << "\n\n";
-  d_log(oss, "result");
-  d_log(" \n", "result");
+  //  std::vector<Number> p_save;
+  //  std::vector<unsigned int> p_dofs;
+  //  util::scale_pres(d_mesh, d_pres_assembly, d_input.d_mmhgFactor, p_save,
+  //                   p_dofs);
 
   // write mesh and simulation results
   std::string filename = d_input.d_outfilename + ".e";
@@ -537,8 +537,50 @@ void netfv::Model::write_system(const unsigned int &t_step) {
   }
 
   // store pressure to original value
-  util::store_pres(d_mesh, d_pres_assembly, d_input.d_mmhgFactor, p_save,
-                   p_dofs);
+  //  util::store_pres(d_mesh, d_pres_assembly, d_input.d_mmhgFactor, p_save,
+  //                   p_dofs);
+}
+
+void netfv::Model::compute_qoi() {
+
+  // integral of total tumor
+  double value_mass = 0.;
+  double total_mass = 0.;
+  util::computeMass(d_tum_sys, "Tumor", "tumor", value_mass);
+  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  // add to qoi data
+  double tumor_mass = total_mass;
+
+  // integral of hypoxic
+  value_mass = 0.; total_mass = 0.;
+  util::computeMass(d_tum_sys, "Hypoxic", "hypoxic", value_mass);
+  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  // add to qoi data
+  double hypoxic_mass = total_mass;
+
+  // integral of necrotic
+  value_mass = 0.; total_mass = 0.;
+  util::computeMass(d_tum_sys, "Necrotic", "necrotic", value_mass);
+  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  // add to qoi data
+  double necrotic_mass = total_mass;
+
+  // L2 norm of total tumor
+  value_mass = 0.; total_mass = 0.;
+  value_mass = d_tum_assembly.d_sys.solution->l2_norm();
+  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD);
+
+  // add to qoi data
+  double tumor_L2_norm = total_mass;
+
+  d_qoi.add({tumor_mass, hypoxic_mass, necrotic_mass, tumor_L2_norm});
 }
 
 void netfv::Model::solve_system() {
