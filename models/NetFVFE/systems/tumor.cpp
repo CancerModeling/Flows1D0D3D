@@ -45,20 +45,10 @@ Number netfvfe::initial_condition_tum(const Point &p, const Parameters &es,
       } else if (type == "tumor_elliptical" or
                  type == "tumor_hypoxic_elliptical") {
 
-        // transform ellipse into ball of radius
-        double small_ball_r = 0.;
-        for (unsigned int i = 0; i < dim; i++)
-          small_ball_r = data.d_tum_ic_radius[i] * data.d_tum_ic_radius[i];
-        small_ball_r = std::sqrt(small_ball_r);
+        if (util::is_inside_ellipse(p, xc, data.d_tum_ic_radius, deck->d_dim))
+          return 1.;
 
-        Point p_small_ball = util::ellipse_to_ball(p, xc, data.d_tum_ic_radius,
-                                                   dim, small_ball_r);
-
-        if (p_small_ball.norm() < small_ball_r - 1.0E-12) {
-
-          return util::exp_decay_function(p_small_ball.norm() / small_ball_r,
-                                          4.);
-        }
+        
       }
     }
 
