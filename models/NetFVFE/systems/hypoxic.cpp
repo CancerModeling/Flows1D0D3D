@@ -37,7 +37,7 @@ Number netfvfe::initial_condition_hyp_kernel(const Point &p,
     // transform ellipse into ball of radius
     double small_ball_r = 0.;
     for (unsigned int i = 0; i < dim; i++)
-      small_ball_r =  tum_ic_radius[i] *  tum_ic_radius[i];
+      small_ball_r +=  tum_ic_radius[i] *  tum_ic_radius[i];
     small_ball_r = std::sqrt(small_ball_r);
 
     Point p_small_ball =
@@ -46,7 +46,7 @@ Number netfvfe::initial_condition_hyp_kernel(const Point &p,
     // transform ellipse into ball of radius
     double large_ball_r = 0.;
     for (unsigned int i = 0; i < dim; i++)
-      large_ball_r =  hyp_ic_radius[i] *  hyp_ic_radius[i];
+      large_ball_r +=  hyp_ic_radius[i] *  hyp_ic_radius[i];
     large_ball_r = std::sqrt(large_ball_r);
 
     Point p_large_ball =
