@@ -92,10 +92,10 @@ public:
    */
   VGNode(): index(0), p_v(0.0), c_v(0.0), p_boundary(0.0), 
             c_boundary(0.0), edge_touched(false), sprouting_edge(false), apicalGrowth(false),
-            coord(0.0), radii(0.0), L_p(0.0)           
+            coord(0.0), radii(0.0), L_p(0.0), notUpdated(0)           
   {}
 
-  int index;
+  int index, notUpdated;
 
   bool apicalGrowth;
 
@@ -111,7 +111,7 @@ public:
 
   TypeOfNode typeOfVGNode;
 
-  std::shared_ptr<VGNode> global_successor;
+  std::shared_ptr<VGNode> global_successor, global_predecessor;
 
   std::vector<ElemWeights> J_b_points;
 
@@ -223,6 +223,36 @@ public:
 
        apicalGrowth = true;
 
+  }
+
+  void printInformationOfNode(){
+
+       std::cout << " " << std::endl;
+       std::cout << "Data of Node: " << index << std::endl;
+       std::cout << "notUpdated: " << notUpdated << std::endl; 
+       std::cout << "apicalGrowth: " << apicalGrowth << std::endl; 
+       std::cout << "p_v: " << p_v << std::endl; 
+       std::cout << "c_v: " << c_v << std::endl; 
+       std::cout << "p_boundary: " << p_boundary << std::endl; 
+       std::cout << "c_boundary: " << c_boundary << std::endl; 
+       std::cout << "coord: " << coord << std::endl; 
+       std::cout << "radii: " << radii << std::endl; 
+       std::cout << "L_p: " << L_p << std::endl; 
+       std::cout << "L_s: " << L_s << std::endl; 
+       std::cout << "edge_touched: " << edge_touched<< std::endl; 
+       std::cout << "sprouting_edge: " << sprouting_edge << std::endl; 
+       std::cout << "typeOfVGNode: " << typeOfVGNode << std::endl;
+
+       int numberOfNeighbors = neighbors.size(); 
+       std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
+
+       for(int i=0;i<numberOfNeighbors;i++){
+
+           std::cout << "index_neighbor: " << neighbors[ i ]->index << std::endl;
+           std::cout << "coord_neighbor: " << neighbors[ i ]->coord << std::endl;
+
+       }
+ 
   }
 
 };

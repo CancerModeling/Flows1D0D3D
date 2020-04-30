@@ -77,7 +77,9 @@ void netfc::Network::create_initial_network() {
      double L_x = input.d_domain_params[1];
      h_3D = L_x/(double) N_3D;
 
+     A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D+numberOfNodes, N_tot_3D+numberOfNodes);
      b_flow_3D1D = std::vector<double>(N_tot_3D+numberOfNodes, 0.0);
+
      P_3D1D = std::vector<double>(N_tot_3D+numberOfNodes, 0.0);
      P_3D = std::vector<double>(N_tot_3D, 0.0);
 
@@ -326,9 +328,7 @@ void netfc::Network::assemble3D1DSystemForPressure(){
 
      int numberOfNodes = VGM.getNumberOfNodes();
 
-     std::cout << "numberOfNodes: " << N_tot_3D+numberOfNodes << std::endl;
-
-     A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D+numberOfNodes, N_tot_3D+numberOfNodes);
+     std::cout << "numberOfUnknowns: " << N_tot_3D+numberOfNodes << std::endl;
 
      for(int i = 0; i < A_flow_3D1D.nrows(); i++){
  
@@ -377,6 +377,8 @@ void netfc::Network::assemble3D1DSystemForPressure(){
 
                          A_flow_3D1D( index, index_neighbor ) = -K_3D*h_3D*h_3D/h_3D;
 
+                         // std::cout << "A_flow_3D1D( index, index_neighbor ): " << A_flow_3D1D( index, index_neighbor ) << std::endl;
+
                      }
                      else{
 
@@ -393,6 +395,8 @@ void netfc::Network::assemble3D1DSystemForPressure(){
                          }
 
                      }
+
+                     //std::cout << "A_flow_3D1D( index, index ): " << A_flow_3D1D( index, index ) << std::endl;
 
                  }
 
@@ -412,15 +416,25 @@ void netfc::Network::assemble3D1DSystemForPressure(){
 
             int indexOfNode = pointer->index;
 
+            //std::cout << "indexOfNode: " << indexOfNode << std::endl;
+
             int numberOfNeighbors = pointer->neighbors.size();
 
+            //std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
+
             std::vector<double> coord = pointer->coord;
+
+            //std::cout << "coord: " << coord << std::endl;
 
             if( numberOfNeighbors == 1 ){
 
                 A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = 1.0;
 
                 b_flow_3D1D[ N_tot_3D+indexOfNode ] = pointer->p_boundary;
+                
+                int indexNeighbor = pointer->neighbors[ 0 ]->index;
+
+                //std::cout << "indexNeighbor: " << indexNeighbor << std::endl;
 
             }
             else{
@@ -431,7 +445,11 @@ void netfc::Network::assemble3D1DSystemForPressure(){
 
                      double radius = pointer->radii[ i ];
 
+                     //std::cout << "radius: " << radius << std::endl;
+
                      int indexNeighbor = pointer->neighbors[ i ]->index;
+
+                     //std::cout << "indexNeighbor: " << indexNeighbor << std::endl;
 
                      std::vector<double> coord_neighbor = pointer->neighbors[ i ]->coord;
 
@@ -1068,7 +1086,7 @@ void netfc::Network::solve3D1DNutrientProblem( int timeStep, double time ) {
             }
 
             pointer->c_v = phi_sigma[  N_tot_3D + indexOfNode ];  
-            std::cout << "index: " << pointer->index << " c_v: " << pointer->c_v << " p_v: " << pointer->p_v << " coord: " << pointer->coord << std::endl;         
+           // std::cout << "index: " << pointer->index << " c_v: " << pointer->c_v << " p_v: " << pointer->p_v << " coord: " << pointer->coord << std::endl;         
             pointer = pointer->global_successor;
 
      }
