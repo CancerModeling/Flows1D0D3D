@@ -1015,6 +1015,8 @@ void util::FlowDeck::read_parameters(const std::string &filename) {
   d_pressure_bc_south = input("bc_tissue_pressure_south", false);
   d_pressure_bc_east = input("bc_tissue_pressure_east", false);
   d_pressure_bc_west = input("bc_tissue_pressure_west", false);
+
+  d_mmhgFactor = input("mmhg_factor", 1.);
 }
 
 void util::FlowDeck::print(unsigned int level) {

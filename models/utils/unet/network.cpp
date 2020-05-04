@@ -157,6 +157,7 @@ void util::Network::readData(
     std::vector<std::vector<unsigned int>> &elements) {
 
   const auto &input = d_model_p->get_input_deck();
+  auto mmhg_factor = input.d_mmhgFactor;
 
   std::string dgf_filename = input.d_network_init_file;
 
@@ -195,8 +196,7 @@ void util::Network::readData(
       }
 
       vertices.push_back(vertex);
-      pressures.push_back(vertexInfo[3] *
-                          133.322); // - 100000.0 ); //*133.322 );
+      pressures.push_back(vertexInfo[3] * mmhg_factor);
 
       //      std::cout << vertexInfo[0] << " " << vertexInfo[1] << " " <<
       //      vertexInfo[2]
@@ -513,19 +513,19 @@ void util::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
   filevtk << " " << std::endl;
   filevtk << "POINT_DATA " << VGM.getNumberOfNodes() << std::endl;
-  filevtk << "SCALARS pressure_[mmHg] float 1" << std::endl;
+  filevtk << "SCALARS pressure_1d float 1" << std::endl;
   filevtk << "LOOKUP_TABLE default" << std::endl;
 
   pointer = VGM.getHead();
 
   while (pointer) {
 
-    filevtk << pointer->p_v / 133.322 << std::endl;
+    filevtk << pointer->p_v << std::endl;
 
     pointer = pointer->global_successor;
   }
 
-  filevtk << "SCALARS concentration float 1" << std::endl;
+  filevtk << "SCALARS nutrient_1d float 1" << std::endl;
   filevtk << "LOOKUP_TABLE default" << std::endl;
 
   pointer = VGM.getHead();
@@ -826,7 +826,7 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
         // inlet
 
         // if artery
-        if (p_v_k >= 133.322 * input.d_identify_vein_pres) {
+        if (p_v_k >= input.d_mmhgFactor * input.d_identify_vein_pres) {
 
           // Dirichlet on inlet
           Ac_VGM(indexOfNode, indexOfNode) += factor_c * 1.0;

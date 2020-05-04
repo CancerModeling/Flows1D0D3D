@@ -285,11 +285,21 @@ void avafv::Model::run() {
     // solve tumor-network system
     solve_system();
 
+    // compute qoi
+    compute_qoi();
+
     // Post-processing
     if (d_is_output_step)
       // write tumor solution
       write_system((d_step - d_input.d_init_step) /
                        d_input.d_dt_output_interval);
+
+
+    // output qoi
+    if (d_step == 1)
+      d_log.log_qoi_header(d_time, d_qoi.get_last(), d_qoi.get_names());
+    else
+      d_log.log_qoi(d_time, d_qoi.get_last());
 
   } while (d_step < d_input.d_steps);
 }
@@ -297,18 +307,6 @@ void avafv::Model::run() {
 void avafv::Model::write_system(const unsigned int &t_step) {
 
   ExodusII_IO exodus(d_mesh);
-
-  // compute total integral of order parameter u
-  double value_mass, total_mass;
-  util::computeMass(d_tum_sys, "Tumor", "tumor", value_mass);
-
-  // gather from other processors
-  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
-                MPI_COMM_WORLD);
-
-  // print to screen
-  oss << "\n\n  Total tumor Mass: " << total_mass << "\n";
-  d_log(oss);
 
   // write mesh and simulation results
   std::string filename = d_input.d_outfilename + ".e";
@@ -337,6 +335,48 @@ void avafv::Model::write_system(const unsigned int &t_step) {
                                  std::to_string(d_step) + ".e";
     d_tum_sys.write(solutions_file, WRITE);
   }
+}
+
+void avafv::Model::compute_qoi() {
+
+  // integral of total tumor
+  double value_mass = 0.;
+  double total_mass = 0.;
+  util::computeMass(d_tum_sys, "Tumor", "tumor", value_mass);
+  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  // add to qoi data
+  double tumor_mass = total_mass;
+
+  // integral of hypoxic
+  value_mass = 0.; total_mass = 0.;
+  util::computeMass(d_tum_sys, "Hypoxic", "hypoxic", value_mass);
+  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  // add to qoi data
+  double hypoxic_mass = total_mass;
+
+  // integral of necrotic
+  value_mass = 0.; total_mass = 0.;
+  util::computeMass(d_tum_sys, "Necrotic", "necrotic", value_mass);
+  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  // add to qoi data
+  double necrotic_mass = total_mass;
+
+  // L2 norm of total tumor
+  value_mass = 0.; total_mass = 0.;
+  value_mass = d_tum_assembly.d_sys.solution->l2_norm();
+  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD);
+
+  // add to qoi data
+  double tumor_L2_norm = total_mass;
+
+  d_qoi.add({tumor_mass, hypoxic_mass, necrotic_mass, tumor_L2_norm});
 }
 
 void avafv::Model::solve_system() {

@@ -64,6 +64,9 @@ private:
   /*! @brief Solves tumor system */
   void solve_system() override ;
 
+  /*! @brief Compute quantity of interest */
+  void compute_qoi() override ;
+
   /*! @brief Solving sub-systems
    *
    * Description of subsystems
