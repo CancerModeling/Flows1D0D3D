@@ -122,6 +122,10 @@ util::Logger::Logger(const std::string &log_file, Parallel::Communicator *comm,
   if (d_ts_file.is_open())
     d_ts_file.close();
   d_ts_file = std::ofstream(log_file + "_ts.txt", std::ios_base::out);
+
+  if (d_qoi_file.is_open())
+    d_qoi_file.close();
+  d_qoi_file = std::ofstream(log_file + "_qoi.txt", std::ios_base::out);
 }
 
 util::Logger::~Logger() {
