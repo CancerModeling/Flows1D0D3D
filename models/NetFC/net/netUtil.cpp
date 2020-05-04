@@ -507,14 +507,26 @@ std::vector<int> netfc::getNeighboringElementIndices( int index, int N_3D, doubl
 
                  std::vector<int> directions;
 
+                 directions.push_back( -2 );
+                 directions.push_back(  2 );
+
                  directions.push_back( -1 );
                  directions.push_back(  1 );
 
                  directions.push_back( -N_3D );
                  directions.push_back(  N_3D );
 
+                 directions.push_back( -2*N_3D );
+                 directions.push_back(  2*N_3D );
+
                  directions.push_back(  N_3D-1 );
                  directions.push_back(  N_3D+1 );
+
+                 directions.push_back(  2*N_3D-1 );
+                 directions.push_back(  2*N_3D+1 );
+
+                 directions.push_back( -2*N_3D-1 );
+                 directions.push_back(  2*N_3D+1 );
 
                  directions.push_back( -N_3D-1 );
                  directions.push_back( -N_3D+1 );
@@ -522,17 +534,32 @@ std::vector<int> netfc::getNeighboringElementIndices( int index, int N_3D, doubl
                  directions.push_back( -1+( N_3D*N_3D ) );
                  directions.push_back(  1+( N_3D*N_3D ) );
 
+                 directions.push_back( -1+( 2*N_3D*N_3D ) );
+                 directions.push_back(  1+( 2*N_3D*N_3D ) );
+
                  directions.push_back( -N_3D+( N_3D*N_3D ) );
                  directions.push_back(  N_3D+( N_3D*N_3D ) );
+
+                 directions.push_back( -N_3D+( 2*N_3D*N_3D ) );
+                 directions.push_back(  N_3D+( 2*N_3D*N_3D ) );
 
                  directions.push_back(  N_3D-1+( N_3D*N_3D ) );
                  directions.push_back(  N_3D+1+( N_3D*N_3D ) );
 
+                 directions.push_back(  N_3D-1+2*( N_3D*N_3D ) );
+                 directions.push_back(  N_3D+1+2*( N_3D*N_3D ) );
+
                  directions.push_back( -N_3D-1+( N_3D*N_3D ) );
                  directions.push_back( -N_3D+1+( N_3D*N_3D ) );
 
+                 directions.push_back( -N_3D-1+( 2*N_3D*N_3D ) );
+                 directions.push_back( -N_3D+1+( 2*N_3D*N_3D ) );
+
                  directions.push_back( -1-( N_3D*N_3D ) );
                  directions.push_back(  1-( N_3D*N_3D ) );
+
+                 directions.push_back( -1-( 2*N_3D*N_3D ) );
+                 directions.push_back(  1-( 2*N_3D*N_3D ) );
 
                  directions.push_back( -N_3D-( N_3D*N_3D ) );
                  directions.push_back(  N_3D-( N_3D*N_3D ) );

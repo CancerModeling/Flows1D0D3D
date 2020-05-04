@@ -48,6 +48,8 @@ void netfc::Network::assemble3DSystemForTAF(){
      double dt = d_model_p->d_dt;
      std::cout << "dt: " << dt << std::endl;
 
+     double K_G = 1.0e-3;
+
      for(int i=0;i<N_3D;i++){ // x-loop
 
          for(int j=0;j<N_3D;j++){ // y-loop
@@ -89,7 +91,7 @@ void netfc::Network::assemble3DSystemForTAF(){
 
                          }
 
-                         A_TAF_3D( index, index ) += dt * D_TAF * area_face/h_3D;
+                         A_TAF_3D( index, index ) += dt * D_TAF * area_face/h_3D + vol_elem * dt * K_G;
 
                          A_TAF_3D( index, index_neighbor ) = - dt * D_TAF * area_face/h_3D;
 
@@ -170,9 +172,47 @@ double netfc::Network::sourceTermTAFTwoVessels( std::vector<double> coord ){
 
        double dist_2 = gmm::vect_norm2(dist_vec_2);
 
-       if( dist_1<0.12 || dist_2<0.12 ){
+       int element_index = getElementIndex( coord, h_3D, N_3D );
 
-           source_TAF = 0.75;
+       double nutrients = phi_sigma[ element_index ];
+
+       if( dist_1<0.2 ){
+
+           if( nutrients<0.00005 ){
+               
+               source_TAF = 0.75;
+
+           }
+           else if( nutrients>0.00005 && nutrients<0.01 ){
+
+               source_TAF = 0.75/8.0*( 1.0+7.0*std::pow( (0.01-nutrients)/(0.01-0.00005),3.0) );
+
+           }
+           else{
+
+               source_TAF = 0.75/8.0;
+
+           }
+
+       }
+
+       if( dist_2<0.2 ){
+
+           if( nutrients<0.00005 ){
+               
+               source_TAF = 0.75;
+
+           }
+           else if( nutrients>0.00005 && nutrients<0.01 ){
+
+               source_TAF = 0.75/8.0*( 1.0+7.0*std::pow( (0.01-nutrients)/(0.01-0.00005),3.0) );
+
+           }
+           else{
+
+               source_TAF = 0.75/8.0;
+
+           }
 
        }
 
