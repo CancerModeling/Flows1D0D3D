@@ -350,7 +350,7 @@ void netfvfe::Model::run() {
 
   if (!d_input.d_test_name.empty()) {
     oss << "Solving sub-system: " << d_input.d_test_name << "\n";
-    d_log(oss, "general", "debug");
+    d_log(oss);
     d_log(" \n", "init");
   }
 
@@ -832,7 +832,8 @@ void netfvfe::Model::solve_pressure() {
 
   // solve for velocity
   reset_clock();
-  d_log("      Solving |velocity| \n", "solve sys");
+  d_log("      Solving |velocity| \n", "solve pres");
+  d_log(" \n", "solve pres");
   vel.solve();
   if (d_log.d_cur_step >= 0)
     d_log.add_sys_solve_time(clock_begin, d_vel_id);
