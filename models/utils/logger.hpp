@@ -261,14 +261,15 @@ public:
 
     const auto i = d_cur_step;
 
-    // first call without any format
+    // print to file without any format
     if (d_comm_p->rank() == 0)
       d_ts_file << log_ts_base(i, 0);
 
-    // second call with space format
-    std::string str = "\n  Time step log\n" + log_ts_base(i,2) + " \n";
-    if (i > 0)
-      log(str);
+    // print to screen with format
+    if (i > 0) {
+      log(log_ts_base(i, 2), "TS log");
+      log(" \n");
+    }
   }
 
   void log_ts_all() {
@@ -281,31 +282,24 @@ public:
   void log_qoi_header(const double &time, const std::vector<double> &qoi,
       const std::vector<std::string> &qoi_names) {
 
-    std::ostringstream ossh;
     std::ostringstream oss;
-    ossh << "time, ";
-    oss << time << ", ";
+    oss << "time, ";
     for (unsigned int i =0; i< qoi.size(); i++) {
-      ossh << qoi_names[i];
-      oss << qoi[i];
-      if (i < qoi.size() - 1) {
-        ossh << ", ";
+      oss << qoi_names[i];
+      if (i < qoi.size() - 1)
         oss << ", ";
-      }
-      else {
-        ossh << "\n";
+      else
         oss << "\n";
-      }
     }
 
     // log to file
-    d_qoi_file << ossh.str();
     d_qoi_file << oss.str();
 
     // log to screen
-    std::string str = "\n  QoI log\n  " + ossh.str() + " \n  " + oss.str() +
-        " \n";
-    log(str);
+    std::string str = "\n  QoI log header\n  " + oss.str();
+    log(str, "debug");
+
+    log_qoi(time, qoi);
   }
 
   void log_qoi(const double &time, const std::vector<double> &qoi) {
@@ -324,8 +318,9 @@ public:
     d_qoi_file << oss.str();
 
     // log to screen
-    std::string str = "\n  QoI log\n  " + oss.str() + " \n";
-    log(str);
+    std::string str = "  " + oss.str();
+    log(str, "QoI");
+    log(" \n");
   }
 
 private:
