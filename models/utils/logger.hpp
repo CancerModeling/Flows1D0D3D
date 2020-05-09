@@ -283,11 +283,11 @@ public:
       const std::vector<std::string> &qoi_names) {
 
     std::ostringstream oss;
-    oss << "time, ";
+    oss << "time ";
     for (unsigned int i =0; i< qoi.size(); i++) {
       oss << qoi_names[i];
       if (i < qoi.size() - 1)
-        oss << ", ";
+        oss << " ";
       else
         oss << "\n";
     }
@@ -305,11 +305,11 @@ public:
   void log_qoi(const double &time, const std::vector<double> &qoi) {
 
     std::ostringstream oss;
-    oss << time << ", ";
+    oss << time << " ";
     for (unsigned int i =0; i< qoi.size(); i++) {
       oss << qoi[i];
       if (i < qoi.size() - 1)
-        oss << ", ";
+        oss << " ";
       else
         oss << "\n";
     }
