@@ -157,7 +157,6 @@ void util::Network::readData(
     std::vector<std::vector<unsigned int>> &elements) {
 
   const auto &input = d_model_p->get_input_deck();
-  auto mmhg_factor = input.d_mmhgFactor;
 
   std::string dgf_filename = input.d_network_init_file;
 
@@ -196,7 +195,7 @@ void util::Network::readData(
       }
 
       vertices.push_back(vertex);
-      pressures.push_back(vertexInfo[3] * mmhg_factor);
+      pressures.push_back(vertexInfo[3]);
 
       //      std::cout << vertexInfo[0] << " " << vertexInfo[1] << " " <<
       //      vertexInfo[2]
@@ -826,7 +825,7 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
         // inlet
 
         // if artery
-        if (p_v_k >= input.d_mmhgFactor * input.d_identify_vein_pres) {
+        if (p_v_k >= input.d_identify_vein_pres) {
 
           // Dirichlet on inlet
           Ac_VGM(indexOfNode, indexOfNode) += factor_c * 1.0;
@@ -959,7 +958,6 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
             b_c[indexOfNode] -= factor_c * source;
 
             //            if (pointer->p_v <
-            //                    input.d_mmhgFactor *
             //                    input.d_identify_vein_pres &&
             //                i == 0 && e < 2)
             //              out << "index: " << indexOfNode << ", neighbor: " <<

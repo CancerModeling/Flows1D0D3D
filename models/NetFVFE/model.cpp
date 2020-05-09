@@ -455,12 +455,6 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
 
   ExodusII_IO exodus(d_mesh);
 
-  // scale pressure for visualization
-  //  std::vector<Number> p_save;
-  //  std::vector<unsigned int> p_dofs;
-  //  util::scale_pres(d_mesh, d_pres_assembly, d_input.d_mmhgFactor, p_save,
-  //                   p_dofs);
-
   // write mesh and simulation results
   std::string filename = d_input.d_outfilename + ".e";
 
@@ -488,10 +482,6 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
                                  std::to_string(d_step) + ".e";
     d_tum_sys.write(solutions_file, WRITE);
   }
-
-  // store pressure to original value
-  //  util::store_pres(d_mesh, d_pres_assembly, d_input.d_mmhgFactor, p_save,
-  //                   p_dofs);
 }
 
 void netfvfe::Model::compute_qoi() {
