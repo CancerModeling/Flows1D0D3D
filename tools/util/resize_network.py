@@ -147,7 +147,7 @@ def scale_network(in_file, out_file, scale, scale_radius):
     write_vtk("test_scaled.vtk", nodes, nodes_data, segments, segments_data)
 
 
-scale_network("test.dgf", "test_scaled_1.dgf", 2., 1.)
+scale_network("test.dgf", "test_scaled_2.dgf", 2., 2.)
 
 # run as follows
 # python3 -B resize_network.py
