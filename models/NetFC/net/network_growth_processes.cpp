@@ -436,7 +436,7 @@ void netfc::Network::processApicalGrowth(){
 
                    for(int j_r=1;j_r<N_r;j_r++){
 
-                       double r = ((double) j_r)/((double) N_r) * length * std::tan(80.0/180.0*M_PI);
+                       double r = ((double) j_r)/((double) N_r) * length * std::tan(55.0/180.0*M_PI);
 
                        std::vector<double> cylinder_node = computeNodesOnCylinders( normal_plane,  rotator, midpoint,  r, theta );
 
@@ -483,7 +483,7 @@ void netfc::Network::processApicalGrowth(){
 
                std::vector<double> direction(3,0.0);
 
-               if( TAF_point<TAF_max ){ 
+               if( TAF_point<TAF_max-1.0e-8 ){ 
 
                    for(int i=0;i<3;i++){
 
@@ -497,7 +497,7 @@ void netfc::Network::processApicalGrowth(){
 
                    for(int i=0;i<3;i++){
 
-                       direction[ i ] = ( 0.5*( min_vec[ i ] + max_vec_2[ i ] ) - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );
+                       direction[ i ] = ( 0.25*min_vec[ i ] + 0.75*max_vec_2[ i ] - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );
                        //( 0.5*( max_vec[ i ] + max_vec_2[ i ] ) - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );                       
 
                    }
@@ -606,7 +606,7 @@ void netfc::Network::processApicalGrowth(){
 
                        std::cout << "branch_angle: " << branch_angle*180.0/M_PI << "\n";
 
-                       if( branch_angle*180.0/M_PI<120.0 && branch_angle*180.0/M_PI>20.0 ){
+                       if( branch_angle*180.0/M_PI<160.0 && branch_angle*180.0/M_PI>20.0 ){
 
                            std::vector<double> rotation_axis = util::cross_prod( direction, dir_term_vessel );
                            std::vector<double> diff_2  = util::rotate( direction, branch_angle, rotation_axis );
@@ -1025,7 +1025,7 @@ void netfc::Network::markSproutingGrowth(){
 
                     double global_max_TAF = gmm::vect_norminf(phi_TAF);
 
-                    if( sproutingProbability>0.92 && TAF>TAF_th && length>0.025 ){
+                    if( sproutingProbability>0.91 && TAF>TAF_th && length>0.02 ){
 
                         pointer->neighbors[ i ]->sprouting_edge[ local_index ] = true;
                         pointer->sprouting_edge[ i ] = true;
@@ -1224,7 +1224,7 @@ void netfc::Network::processSproutingGrowth(){
 
                     bool isColliding = testCollision( new_point );
 
-                    if( angle*180.0/M_PI>25.0 && angle*180.0/M_PI<90.0 && norm_dir_new_vessel>0.0 && norm_dir_vessel>0.025 && !isColliding ){
+                    if( angle*180.0/M_PI>25.0 && angle*180.0/M_PI<95.0 && norm_dir_new_vessel>0.0 && norm_dir_vessel>0.02 && !isColliding ){
 
                         std::cout<< "Create new node_1" << std::endl;
                         VGNode new_node_1;
