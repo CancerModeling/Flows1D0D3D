@@ -351,7 +351,7 @@ std::vector<double> netfc::determineRotator(std::vector<double> dir) {
 
   std::vector<double> rotator;
 
-  if (std::abs(dir[0]) < 1.0e-13 && std::abs(dir[0]) < 1.0e-13) {
+  if (std::abs(dir[0]) < 1.0e-13 && std::abs(dir[1]) < 1.0e-13) {
 
     rotator.push_back(1.0);
 
@@ -368,7 +368,16 @@ std::vector<double> netfc::determineRotator(std::vector<double> dir) {
     rotator.push_back(0.0);
   }
 
+  double length_rotator = normVector( rotator );   
+
+  for(int j=0;j<3;j++){ 
+                     
+      rotator[ j ] = rotator[ j ]/length_rotator;
+
+  }
+
   return rotator;
+
 }
 
 std::vector<double> netfc::computeNodesOnCylinders(std::vector<double> dir,
