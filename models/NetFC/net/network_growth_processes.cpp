@@ -141,6 +141,10 @@ void netfc::Network::linkTerminalVessels(){
                    
                 }
 
+                double p_v = pointer->p_v;
+
+                int numberOfNeighbors = pointer->neighbors.size();
+
                 while( pointer_1 ) {
 
                        std::vector<double> coord_1 = pointer_1->coord;
@@ -167,37 +171,76 @@ void netfc::Network::linkTerminalVessels(){
 
                        double pv_1 = pointer_1->p_v;
 
-                       if( dist_plane>0.005 && index != index_1 && dist < 1.5*h_3D ){
+                       int numberOfNeighbors_1 = pointer_1->neighbors.size();
 
-                           std::cout << " " << std::endl;
-                           std::cout << "dist: " << dist << "\n";
-                           std::cout << "index: " << index << "\n";
-                           std::cout << "index_1: " << index_1 << "\n";
-                           std::cout << "Update pointer" << "\n";
+                       if( dist_plane>0.05 && index != index_1 && dist < h_3D ){
 
-                           pointer->p_boundary = 0.0;
-                           pointer->c_boundary = 0.0;
-                           pointer->typeOfVGNode = TypeOfNode::InnerNode;
-                           pointer->apicalGrowth = false;
-                           pointer->radii.push_back( radius );
-                           pointer->L_p.push_back(input.d_tissue_flow_L_p);
-                           pointer->L_s.push_back(input.d_tissue_nut_L_s);
-                           pointer->edge_touched.push_back( true );
-                           pointer->sprouting_edge.push_back( false );
-                           pointer->neighbors.push_back( pointer_1 );
+                           if( numberOfNeighbors_1 == 1 && pv_1<0.95*p_v ){
 
-                           std::cout << "Update pointer 1" << "\n";
+                               std::cout << " " << std::endl;
+                               std::cout << "dist: " << dist << "\n";
+                               std::cout << "index: " << index << "\n";
+                               std::cout << "index_1: " << index_1 << "\n";
+                               std::cout << "Update pointer" << "\n";
 
-                           pointer_1->p_boundary = 0.0;
-                           pointer_1->c_boundary = 0.0;
-                           pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
-                           pointer_1->apicalGrowth = false;
-                           pointer_1->radii.push_back( radius );
-                           pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
-                           pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
-                           pointer_1->edge_touched.push_back( true );
-                           pointer_1->sprouting_edge.push_back( false );
-                           pointer_1->neighbors.push_back( pointer ); 
+                               pointer->p_boundary = 0.0;
+                               pointer->c_boundary = 0.0;
+                               pointer->typeOfVGNode = TypeOfNode::InnerNode;
+                               pointer->apicalGrowth = false;
+                               pointer->radii.push_back( radius );
+                               pointer->L_p.push_back(input.d_tissue_flow_L_p);
+                               pointer->L_s.push_back(input.d_tissue_nut_L_s);
+                               pointer->edge_touched.push_back( true );
+                               pointer->sprouting_edge.push_back( false );
+                               pointer->neighbors.push_back( pointer_1 );
+
+                               std::cout << "Update pointer 1" << "\n";
+
+                               pointer_1->p_boundary = 0.0;
+                               pointer_1->c_boundary = 0.0;
+                               pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
+                               pointer_1->apicalGrowth = false;
+                               pointer_1->radii.push_back( radius );
+                               pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
+                               pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
+                               pointer_1->edge_touched.push_back( true );
+                               pointer_1->sprouting_edge.push_back( false );
+                               pointer_1->neighbors.push_back( pointer ); 
+
+                           }
+                           else if( numberOfNeighbors_1 > 1 ){
+
+                               std::cout << " " << std::endl;
+                               std::cout << "dist: " << dist << "\n";
+                               std::cout << "index: " << index << "\n";
+                               std::cout << "index_1: " << index_1 << "\n";
+                               std::cout << "Update pointer" << "\n";
+
+                               pointer->p_boundary = 0.0;
+                               pointer->c_boundary = 0.0;
+                               pointer->typeOfVGNode = TypeOfNode::InnerNode;
+                               pointer->apicalGrowth = false;
+                               pointer->radii.push_back( radius );
+                               pointer->L_p.push_back(input.d_tissue_flow_L_p);
+                               pointer->L_s.push_back(input.d_tissue_nut_L_s);
+                               pointer->edge_touched.push_back( true );
+                               pointer->sprouting_edge.push_back( false );
+                               pointer->neighbors.push_back( pointer_1 );
+
+                               std::cout << "Update pointer 1" << "\n";
+
+                               pointer_1->p_boundary = 0.0;
+                               pointer_1->c_boundary = 0.0;
+                               pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
+                               pointer_1->apicalGrowth = false;
+                               pointer_1->radii.push_back( radius );
+                               pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
+                               pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
+                               pointer_1->edge_touched.push_back( true );
+                               pointer_1->sprouting_edge.push_back( false );
+                               pointer_1->neighbors.push_back( pointer ); 
+
+                           }
 
                            break;
 
@@ -318,83 +361,33 @@ void netfc::Network::processApicalGrowth(){
 
                double TAF_point = phi_TAF[ element_index ]; 
 
-               for(int i=0;i<indicesNeighbors.size();i++){
+               double TAF_max = 0.0;
 
-                   TAF_neighbors.push_back( phi_TAF[ indicesNeighbors[ i ] ] );
+               double TAF_max_2 = 0.0;
 
-               }
-
-               int max_index, max_index_2 = 0;
-
-               double TAF_max, TAF_max_2 = 0.0;
-
-               for(int i=0;i<indicesNeighbors.size();i++){
-
-                   double TAF = TAF_neighbors[ i ];
-
-                   if( TAF > TAF_max-1.0e-8 ){
-
-                       max_index = indicesNeighbors[ i ];
-
-                       TAF_max = TAF;
-
-                   }
-                   else if( TAF_max-1.0e-8 > TAF && TAF > TAF_max_2-1.0e-8 ){
-
-                       max_index_2 = indicesNeighbors[ i ];
-
-                       TAF_max_2 = TAF;
-
-                   }
-
-               }
-               
+               double TAF_min = 0.0;
+             
                std::vector<double> new_point_1  = std::vector<double>(3,0.0);
-               std::vector<double> max_center   = getCenterFromIndex( max_index, N_3D, h_3D );
-               std::vector<double> max_center_2 = getCenterFromIndex( max_index_2, N_3D, h_3D );
                std::vector<double> diff         = std::vector<double>(3,0.0);
-               std::vector<double> direction    = std::vector<double>(3,0.0);
                std::vector<double> dir_term_vessel = std::vector<double>(3,0.0);
                std::vector<double> normal_plane    = std::vector<double>(3,0.0);
 
                for(int i=0;i<3;i++){
 
-                   diff[ i ] = 0.5*( max_center[ i ] + max_center_2[ i ] ) - coord[ i ];
                    dir_term_vessel[ i ] = coord[ i ] - pointer->neighbors[ 0 ]->coord[ i ];
           
                } 
 
-               double length_diff = gmm::vect_norm2( diff );
                double length_dir  = gmm::vect_norm2( dir_term_vessel );
-
-               if( length_diff < 1.0e-6 ){
-
-                   for(int i=0;i<3;i++){
-
-                       diff[ i ] = h_3D*diff[ i ];
-
-                   }
-
-               }
 
                double prod_coord, dist_new_point = 0.0;
 
                for(int i=0;i<3;i++){
 
                    normal_plane[ i ] = dir_term_vessel[ i ]/length_dir;
-                   direction[ i ] = diff[ i ] + 0.6*dir_term_vessel[ i ];
 
                }
-
-               double norm_direction = gmm::vect_norm2( direction );
-
-               for(int i=0;i<3;i++){
-
-                   normal_plane[ i ] = dir_term_vessel[ i ]/length_dir;
-                   direction[ i ] = direction[ i ]/norm_direction;
-
-               }              
-
+        
                // lognormal distribution
                double log_dist = log_normal_distribution(generator);
                double radius_p = pointer->radii[ 0 ];
@@ -402,58 +395,161 @@ void netfc::Network::processApicalGrowth(){
                // get length
                double length = log_dist * radius_p;
 
+               if( radius_p<6.0e-3 ){
+
+                   radius_p = 6.0e-3;
+
+               }
+
                if( length>3.0*h_3D ){
 
                    length = 3.0*h_3D;
+                   std::cout << "Length is shortened !!!" << std::endl;
 
                }
+
+               std::vector<double> rotator = determineRotator( normal_plane );
+
+               double length_rotator = normVector( rotator );   
+
+               std::vector<double> midpoint(3,0.0);
+               std::vector<double> max_vec(3,0.0);
+               std::vector<double> max_vec_2(3,0.0);
+               std::vector<double> min_vec(3,0.0);
+
+               double theta = 0.0;
+
+               for(int j=0;j<3;j++){
+
+                   midpoint[ j ] = coord[ j ] + ( length * normal_plane[ j ]);                     
+                   rotator[ j ] = rotator[ j ]/length_rotator;
+
+               }
+
+               int N_theta = 40;
+
+               int N_r = 40;
+
+               for(int i_theta=0;i_theta<N_theta;i_theta++){
+
+                   theta = ((double) i_theta)/((double) N_theta)*2.0*M_PI;
+
+                   for(int j_r=1;j_r<N_r;j_r++){
+
+                       double r = ((double) j_r)/((double) N_r) * length * std::tan(55.0/180.0*M_PI);
+
+                       std::vector<double> cylinder_node = computeNodesOnCylinders( normal_plane,  rotator, midpoint,  r, theta );
+
+                       if( isCenterInDomain( cylinder_node, L_x) && length_rotator>0.0 ){
+
+                           int index_cone = getElementIndex( cylinder_node, h_3D, N_3D );
+
+                           double TAF = phi_TAF[ index_cone ]; 
+
+                           if( TAF > TAF_max-1.0e-8 ){
+
+                               TAF_max = TAF;
+
+                               max_vec = cylinder_node;
+
+                           }
+                           else if( TAF_max-1.0e-8 > TAF && TAF > TAF_max_2-1.0e-8 ){
+
+                               TAF_max_2 = TAF;
+
+                               max_vec_2 = cylinder_node;
+
+                           }
+
+                           if( TAF_min-1.0e-8 > TAF ){
+
+                               TAF_min = TAF;
+
+                               min_vec = cylinder_node;
+
+                           }
+
+                       }
+                       else{
+
+                           std::cout << "Node not considered!" << std::endl;
+
+                       }
+
+                   }
+
+               } 
+
+
+               std::vector<double> direction(3,0.0);
+
+               if( TAF_point<TAF_max-1.0e-8 ){ 
+
+                   for(int i=0;i<3;i++){
+
+                       direction[ i ] = ( 0.5*( max_vec[ i ] + max_vec_2[ i ] ) - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );
+                       //( 0.5*( max_vec[ i ] + max_vec_2[ i ] ) - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );                       
+
+                   }
+
+               }
+               else{
+
+                   for(int i=0;i<3;i++){
+
+                       direction[ i ] = ( 0.25*min_vec[ i ] + 0.75*max_vec_2[ i ] - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );
+                       //( 0.5*( max_vec[ i ] + max_vec_2[ i ] ) - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );                       
+
+                   }
+
+               }
+
+               double length_d = gmm::vect_norm2( direction ); 
 
                for(int i=0;i<3;i++){
 
-                   new_point_1[ i ] = coord[ i ] +  length*direction[ i ];
-                   
+                   direction[ i ]  =  direction[ i ]/length_d;                       
+
+               } 
+
+               for(int i=0;i<3;i++){
+
+                   new_point_1[ i ] = coord[ i ] + length*direction[ i ];
+                                     
                }
      
+               std::cout << "coord: " << coord << "\n";
+               std::cout << "rotator: " << rotator << "\n";
+               std::cout << "max_vec: " << max_vec << "\n";
                std::cout << "normal_plane: " << normal_plane << "\n";
                std::cout << "length: " << length << "\n";
                std::cout << "dir_term_vessel: " << dir_term_vessel << "\n";
-               std::cout << "diff: " << diff << "\n";
-               std::cout << "length_diff: " << length_diff << "\n";
                std::cout << "new_point: " << new_point_1 << "\n";
-               std::cout << "norm_direction: " << norm_direction << "\n";
+               std::cout << "TAF_point: " << TAF_point << "\n";
+
+               double global_max_TAF = gmm::vect_norminf(phi_TAF);
+               std::cout << "global_max_TAF: " << global_max_TAF << "\n";
+               std::cout << "TAF_max: " << TAF_max << "\n";
+               std::cout << "TAF_min: " << TAF_min << "\n";
 
                // check if we bifurcate at this node
                bool bifurcate = false;
 
                double prob =  0.5 + 0.5 * std::erf((std::log(log_dist) - input.d_log_normal_mean) / std::sqrt(2.0 * input.d_log_normal_std_dev * input.d_log_normal_std_dev));
+               std::cout << "prob: " << prob << "\n";
 
-               if( prob > 0.925 ){
+               if( prob > 0.94 ){
 
                    bifurcate = true;
 
                }
-               
-               double global_max_TAF = gmm::vect_norminf(phi_TAF);
-               std::cout << "global_max_TAF: " << global_max_TAF << "\n";
-               std::cout << "TAF_point: " << TAF_point << "\n";
-               std::cout << "0.75*TAF_max: " << 0.75*global_max_TAF << "\n";
-
-               bool isColliding_1 = false; //testCollision( new_point_1 );
 
                if( !bifurcate ){
 
-                   if( !isColliding_1 && TAF_point<TAF_max ){ //TAF_point<0.85*global_max_TAF ){
-
-                       createASingleNode( new_point_1, radius_p, pointer );
-
-                   }
-                   
-                   if( isColliding_1 ){
-
-                   }                   
+                   createASingleNode( new_point_1, radius_p, pointer );
 
                }
-            /*   else{
+               else{
 
 		   std::cout << "Create bifuraction" << "\n";
 
@@ -472,15 +568,15 @@ void netfc::Network::processApicalGrowth(){
                    double radius_b1 = normal_distribution(generator);
                    double radius_b2 = normal_distribution(generator);
 
-                   if( radius_b1 < 5.0e-3 ){
+                   if( radius_b1 < 6.0e-3 ){
 
-                       radius_b1 = 5.0e-3;
+                       radius_b1 = 6.0e-3;
 
                    }
 
-                   if( radius_b2 < 5.0e-3 ){
+                   if( radius_b2 < 6.0e-3 ){
 
-                       radius_b2 = 5.0e-3;
+                       radius_b2 = 6.0e-3;
 
                    }
 
@@ -510,7 +606,7 @@ void netfc::Network::processApicalGrowth(){
 
                        std::cout << "branch_angle: " << branch_angle*180.0/M_PI << "\n";
 
-                       if( branch_angle*180.0/M_PI<100.0 && branch_angle*180.0/M_PI>20.0 ){
+                       if( branch_angle*180.0/M_PI<160.0 && branch_angle*180.0/M_PI>20.0 ){
 
                            std::vector<double> rotation_axis = util::cross_prod( direction, dir_term_vessel );
                            std::vector<double> diff_2  = util::rotate( direction, branch_angle, rotation_axis );
@@ -574,7 +670,7 @@ void netfc::Network::processApicalGrowth(){
 
                    }
 
-               }*/
+               }
 
            }
 
@@ -614,8 +710,8 @@ void netfc::Network::createASingleNode( std::vector<double> new_point, double ra
 
      new_node.index = VGM.getNumberOfNodes();
      new_node.coord = new_point;
-     new_node.p_boundary = 0.5*pointer->p_v;
-     new_node.p_v = 0.5*pointer->p_v;
+     new_node.p_boundary = 0.95*pointer->p_v;
+     new_node.p_v = 0.95*pointer->p_v;
      new_node.c_boundary = input.d_in_nutrient;
      new_node.c_v = 0.0;
      new_node.typeOfVGNode = TypeOfNode::DirichletNode;
@@ -626,6 +722,7 @@ void netfc::Network::createASingleNode( std::vector<double> new_point, double ra
      new_node.edge_touched.push_back( true );
      new_node.sprouting_edge.push_back( false );
      new_node.neighbors.push_back( pointer );
+     new_node.notUpdated = 0;
 
      auto sp_newNode = std::make_shared<VGNode>( new_node );
      std::cout << "New index: " << new_node.index << "\n";
@@ -643,6 +740,7 @@ void netfc::Network::createASingleNode( std::vector<double> new_point, double ra
      pointer->edge_touched.push_back( true );
      pointer->sprouting_edge.push_back( false );
      pointer->neighbors.push_back( sp_newNode );
+     pointer->notUpdated = 0;
      std::cout << "Attach new node as pointer" << "\n";
 
      VGM.attachPointerToNode( sp_newNode );
@@ -674,7 +772,7 @@ bool netfc::Network::testCollision( std::vector<double> point ){
 
             if( dist<h_3D ){
 
-                std::cout << "Node not inserted, dist: " << dist << "\n";
+                //std::cout << "Node not inserted, dist: " << dist << "\n";
 
                 isColliding = true;
 
@@ -927,7 +1025,7 @@ void netfc::Network::markSproutingGrowth(){
 
                     double global_max_TAF = gmm::vect_norminf(phi_TAF);
 
-                    if( sproutingProbability>0.91 && TAF>TAF_th && length>0.085 ){
+                    if( sproutingProbability>0.91 && TAF>TAF_th && length>0.02 ){
 
                         pointer->neighbors[ i ]->sprouting_edge[ local_index ] = true;
                         pointer->sprouting_edge[ i ] = true;
@@ -1016,8 +1114,8 @@ void netfc::Network::processSproutingGrowth(){
 
                     }
 
-                    std::cout<< "radius_prime: " << radius_prime << std::endl;
-                    std::cout<< "radius_new: " << radius_new << std::endl;
+                    //std::cout<< "radius_prime: " << radius_prime << std::endl;
+                    //std::cout<< "radius_new: " << radius_new << std::endl;
 
                     for(int j=0;j<3;j++){
 
@@ -1028,7 +1126,6 @@ void netfc::Network::processSproutingGrowth(){
                     std::cout<< "Compute direction of growth" << std::endl;
 
                     int element_index = getElementIndex( mid_point, h_3D, N_3D );
-                    std::cout << "element_index: " << element_index << "\n";
 
                     std::vector<int> indicesNeighbors = getNeighboringElementIndices( element_index, N_3D, h_3D, L_x );
                     std::vector<double> TAF_neighbors;
@@ -1098,7 +1195,7 @@ void netfc::Network::processSproutingGrowth(){
 
                     double angle = std::acos( prod_angle );
 
-                    std::cout<< "angle: " << angle*180.0/M_PI << std::endl;
+                    //std::cout<< "angle: " << angle*180.0/M_PI << std::endl;
             
                     // lognormal distribution
                     double log_dist = log_normal_distribution(generator_log);
@@ -1127,7 +1224,7 @@ void netfc::Network::processSproutingGrowth(){
 
                     bool isColliding = testCollision( new_point );
 
-                    if( angle*180.0/M_PI>20.0 && angle*180.0/M_PI<90.0 && norm_dir_new_vessel>0.0 && norm_dir_vessel>0.09 && !isColliding ){
+                    if( angle*180.0/M_PI>25.0 && angle*180.0/M_PI<95.0 && norm_dir_new_vessel>0.0 && norm_dir_vessel>0.02 && !isColliding ){
 
                         std::cout<< "Create new node_1" << std::endl;
                         VGNode new_node_1;
@@ -1163,6 +1260,7 @@ void netfc::Network::processSproutingGrowth(){
 
                         new_node_1.neighbors.push_back( pointer );
                         new_node_1.neighbors.push_back( pointer->neighbors[ i ] );
+                        new_node_1.notUpdated = 0;
 
                         auto sp_newNode_1 = std::make_shared<VGNode>( new_node_1 );
 
@@ -1171,8 +1269,8 @@ void netfc::Network::processSproutingGrowth(){
 
                         new_node_2.index = VGM.getNumberOfNodes()+1;
                         new_node_2.coord = new_point;
-                        new_node_2.p_boundary = 0.0;
-                        new_node_2.p_v = pointer->p_v;
+                        new_node_2.p_boundary = 0.95*pointer->p_v;
+                        new_node_2.p_v = 0.95*pointer->p_v;
                         new_node_2.c_boundary = input.d_in_nutrient;
                         new_node_2.c_v = pointer->c_v;
                         new_node_2.typeOfVGNode = TypeOfNode::DirichletNode;
