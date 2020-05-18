@@ -306,6 +306,33 @@ Point util::rotate(const Point &p, const double &theta, const Point &axis) {
   return (1. - ct) * p_dot_n * axis + ct * p + st * n_cross_p;
 }
 
+std::vector<double> util::rotate(std::vector<double> &p, double theta, std::vector<double> &axis){
+
+                    std::vector<double> rotated_point = std::vector<double>(3,0.0);
+
+                    auto ct = std::cos(theta);
+                    auto st = std::sin(theta);
+
+                    double p_dot_n = 0.0; 
+
+                    for(int i=0;i<3;i++){
+
+                        p_dot_n = p_dot_n + p[ i ]*axis[ i ];
+
+                    }
+
+                    std::vector<double> n_cross_p = cross_prod( axis, p );
+
+                    for(int i=0;i<3;i++){
+
+                        rotated_point[ i ] = (1. - ct) * p_dot_n * axis[ i ] + ct * p[ i ] + st * n_cross_p[ i ];
+
+                    }
+
+                    return rotated_point;
+
+}
+
 Point util::cross_product(const Point &p1, const Point &p2) {
 
   //  auto p = Point(p1(1)*p2(2)-p1(2)*p2(1),
@@ -318,6 +345,39 @@ Point util::cross_product(const Point &p1, const Point &p2) {
     return p / p.norm();
   else
     return Point();
+}
+
+std::vector<double> util::cross_prod( std::vector<double> &p1, std::vector<double> &p2 ){
+
+                    std::vector<double> c_product = std::vector<double>(3,0.0);
+
+                    c_product[ 0 ] = p1[ 1 ]*p2[ 2 ]-p1[ 2 ]*p2[ 1 ];
+                    c_product[ 1 ] = p1[ 2 ]*p2[ 0 ]-p1[ 0 ]*p2[ 2 ];
+                    c_product[ 2 ] = p1[ 0 ]*p2[ 1 ]-p1[ 1 ]*p2[ 0 ];
+
+                    double norm_c_product = gmm::vect_norm2( c_product );
+
+                    if( norm_c_product>0.0 ){
+
+                        for(int i=0;i<3;i++){
+
+                            c_product[ i ] = c_product[ i ]/norm_c_product;
+                   
+                        }
+
+                    }
+                    else{
+
+                        for(int i=0;i<3;i++){
+
+                            c_product[ i ] = 0.0;
+                   
+                        }
+
+                    }
+
+                    return c_product;
+
 }
 
 double util::angle(Point a, Point b) {

@@ -11,6 +11,8 @@
 #include "utilLibs.hpp"
 #include "utilIO.hpp"
 
+#include "../../external/gmm/gmm.h"
+
 #define X_POSITIVE_BOUNDARY 0
 #define X_NEGATIVE_BOUNDARY 1
 #define Y_POSITIVE_BOUNDARY 2
@@ -377,6 +379,7 @@ std::string get_vec_major_axis(Point vec);
  * @param p2
  * @return distance
  */
+
 double dist_between_points(const std::vector<double> &p1, const
 std::vector<double> &p2);
 
@@ -388,6 +391,10 @@ unsigned int get_elem_id(const Point &p, const double &mesh_size,
                          const unsigned int &num_elems, const unsigned int &dim);
 
 Point to_point(const std::vector<double> &p);
+
+std::vector<double> cross_prod( std::vector<double> &p1, std::vector<double> &p2 );
+
+std::vector<double> rotate(std::vector<double> &p, double theta, std::vector<double> &axis);
 
 Point determineRotator( const Point & dir );
 std::vector<double> determineRotator( const std::vector<double> &dir );
