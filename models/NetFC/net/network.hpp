@@ -134,6 +134,8 @@ public:
 
   void processSproutingGrowth();
 
+  std::vector<double> findNearNetworkNode( std::vector<double> coord );
+
   /** @}*/
 
   /*! @brief Did we change network from last step */
