@@ -39,6 +39,12 @@ if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
 endif ()
 
 if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
+        STREQUAL "Build_Prashant" OR "${LIBTG_BUILD_FLAG}" STREQUAL
+        "Build_NetFCFVFE")
+    add_subdirectory(NetFCFVFE)
+endif ()
+
+if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
         STREQUAL "Build_Tobias" OR "${LIBTG_BUILD_FLAG}" STREQUAL
         "Build_NetFC")
     add_subdirectory(NetFC)
