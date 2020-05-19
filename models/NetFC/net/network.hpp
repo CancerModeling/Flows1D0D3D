@@ -124,13 +124,11 @@ public:
 
   void createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer );
 
-  void createALinkingNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer );
-
   void linkTerminalVessels();
 
   bool testCollision( std::vector<double> point );
 
-  bool testIntersection( std::vector<double> point_1, std::vector<double> point_2, std::vector<double>& new_point_link, double radius );
+  bool testIntersection( std::vector<double> point_1, std::vector<double> point_2, double radius, std::shared_ptr<VGNode>& pointer );
 
   void removeRedundantTerminalVessels();
 

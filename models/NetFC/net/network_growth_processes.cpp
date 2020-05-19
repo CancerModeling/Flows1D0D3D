@@ -343,7 +343,7 @@ void netfc::Network::processApicalGrowth(){
 
      std::cout << "Number of nodes before: " << VGM.getNumberOfNodes() << "\n";
 
-    while( pointer ){
+     while( pointer ){
 
            if( pointer->apicalGrowth ){
 
@@ -536,7 +536,7 @@ void netfc::Network::processApicalGrowth(){
 
                std::vector<double> new_point_link  = std::vector<double>(3,0.0);
 
-               bool isIntersecting = testIntersection( coord, new_point_1, new_point_link, radius_p );
+               bool isIntersecting = testIntersection( coord, new_point_1, radius_p, pointer );
      
                std::cout << "coord: " << coord << "\n";
                std::cout << "rotator: " << rotator << "\n";
@@ -572,14 +572,9 @@ void netfc::Network::processApicalGrowth(){
                        createASingleNode( new_point_1, radius_p, pointer );
 
                    }
-                   else{
-
-                       createALinkingNode( new_point_1, radius_p, pointer );
-
-                   }
 
                }
-               else if( bifurcate && length_d>0.0 ){
+               else if( bifurcate && length_d>0.0 && !isIntersecting ){
 
 		   std::cout << "Create bifuraction" << "\n";
 
@@ -730,60 +725,6 @@ void netfc::Network::processApicalGrowth(){
 
 }
 
-void netfc::Network::createALinkingNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer ){
-
-     const auto &input = d_model_p->get_input_deck();
-
-     double L_x = input.d_domain_params[1];
-
-     bool isInside = isCenterInDomain( new_point, L_x );
-
-     std::cout << "Create new linking node" << "\n";
-
-     if( isInside ){
-
-         VGNode new_node;
-
-	 new_node.index = VGM.getNumberOfNodes();
-	 new_node.coord = new_point;
-	 new_node.p_boundary = 0.95*pointer->p_v;
-	 new_node.p_v = 0.95*pointer->p_v;
-	 new_node.c_boundary = input.d_in_nutrient;
-	 new_node.c_v = 0.0;
-	 new_node.typeOfVGNode = TypeOfNode::DirichletNode;
-	 new_node.apicalGrowth = false;
-	 new_node.radii.push_back( radius );
-	 new_node.L_p.push_back( input.d_tissue_flow_L_p );
-	 new_node.L_s.push_back( input.d_tissue_nut_L_s );
-	 new_node.edge_touched.push_back( true );
-	 new_node.sprouting_edge.push_back( false );
-	 new_node.neighbors.push_back( pointer );
-	 new_node.notUpdated = 0;
-
-	 auto sp_newNode = std::make_shared<VGNode>( new_node );
-	 std::cout << "New index: " << new_node.index << "\n";
-	 std::cout << "Neighbor index: " << pointer->index << "\n";
-
-	 std::cout << "Update old node" << "\n";
-
-	 pointer->p_boundary = 0.0;
-	 pointer->c_boundary = 0.0;
-	 pointer->typeOfVGNode = TypeOfNode::InnerNode;
-	 pointer->apicalGrowth = false;
-	 pointer->radii.push_back( radius );
-	 pointer->L_p.push_back(input.d_tissue_flow_L_p);
-	 pointer->L_s.push_back(input.d_tissue_nut_L_s);
-	 pointer->edge_touched.push_back( true );
-	 pointer->sprouting_edge.push_back( false );
-	 pointer->neighbors.push_back( sp_newNode );
-	 pointer->notUpdated = 0;
-	 std::cout << "Attach new node as pointer" << "\n";
-
-	 VGM.attachPointerToNode( sp_newNode );
-     
-     }
-
-}
 
 void netfc::Network::createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer ){
 
@@ -1510,7 +1451,9 @@ std::vector<double> netfc::Network::findNearNetworkNode( std::vector<double> coo
 
 }
 
-bool netfc::Network::testIntersection( std::vector<double> point_1, std::vector<double> point_2, std::vector<double>& new_point_link, double radius ){
+bool netfc::Network::testIntersection( std::vector<double> point_1, std::vector<double> point_2, double radius, std::shared_ptr<VGNode>& pointer_test ){
+
+     const auto &input = d_model_p->get_input_deck();
 
      bool isIntersecting = false;
 
@@ -1540,9 +1483,6 @@ bool netfc::Network::testIntersection( std::vector<double> point_1, std::vector<
                     }
                     else{
 
-                        std::vector< std::vector<double> > points_p;
-                        std::vector< std::vector<double> > points_test_edge;
-
                         double length_p = util::dist_between_points( point_p1, point_p2 );
                         double length_test = util::dist_between_points( point_1, point_2 );
 
@@ -1570,7 +1510,70 @@ bool netfc::Network::testIntersection( std::vector<double> point_1, std::vector<
 
                             if( util::dist_between_points( new_point_p, new_point_test )<radius+radius_p ){
 
-                                new_point_link = new_point_p;
+                                std::cout<< "Create new node " << std::endl;
+                       
+                                VGNode new_node;
+
+                                new_node.index = VGM.getNumberOfNodes();
+                                new_node.coord = new_point_p;
+                                new_node.p_boundary = 0.0;
+                                new_node.p_v = pointer->p_v;
+                                new_node.c_boundary = input.d_in_nutrient;
+                                new_node.c_v = pointer->c_v;
+                                new_node.typeOfVGNode = TypeOfNode::InnerNode;
+                                new_node.apicalGrowth = false;
+
+                                new_node.radii.push_back( radius );
+                                new_node.radii.push_back( radius_p );
+                                new_node.radii.push_back( radius_p );
+
+                                new_node.L_p.push_back( input.d_tissue_flow_L_p ); 
+                                new_node.L_p.push_back( input.d_tissue_flow_L_p ); 
+                                new_node.L_p.push_back( input.d_tissue_flow_L_p ); 
+
+                                new_node.L_s.push_back( input.d_tissue_nut_L_s );
+                                new_node.L_s.push_back( input.d_tissue_nut_L_s );
+                                new_node.L_s.push_back( input.d_tissue_nut_L_s );
+
+                                new_node.edge_touched.push_back( true );
+                                new_node.edge_touched.push_back( true );
+                                new_node.edge_touched.push_back( true );
+                   
+                                new_node.sprouting_edge.push_back( false );
+                                new_node.sprouting_edge.push_back( false );
+                                new_node.sprouting_edge.push_back( false );
+
+                                new_node.neighbors.push_back( pointer_test );
+                                new_node.neighbors.push_back( pointer );
+                                new_node.neighbors.push_back( pointer->neighbors[ i ] );
+
+                                new_node.notUpdated = 0;
+
+                                auto sp_newNode = std::make_shared<VGNode>( new_node );
+
+                                std::cout << "Update connectivity" << "\n";
+
+                                pointer_test->neighbors.push_back( sp_newNode );
+                                pointer_test->radii.push_back( radius );
+                                pointer_test->L_p.push_back( input.d_tissue_flow_L_p ); 
+                                pointer_test->L_s.push_back( input.d_tissue_nut_L_s );
+                                pointer_test->edge_touched.push_back( true );
+                                pointer_test->sprouting_edge.push_back( false );
+                                pointer_test->typeOfVGNode = TypeOfNode::InnerNode;
+
+                                pointer->replacePointerWithIndex( i, sp_newNode );
+
+                                int index_to_be_replaced = pointer->neighbors[ i ]->getLocalIndexOfNeighbor( pointer );
+
+                                pointer->neighbors[ i ]->replacePointerWithIndex( index_to_be_replaced, sp_newNode );
+                                pointer->markEdgeLocalIndex( i );
+                                pointer->sprouting_edge[ i ] = false;
+
+                                pointer->neighbors[ i ]->markEdgeLocalIndex( index_to_be_replaced );
+                                pointer->neighbors[ i ]->sprouting_edge[ index_to_be_replaced ] = false;
+ 
+                                std::cout << "Attach new node as pointer" << "\n";
+                                VGM.attachPointerToNode( sp_newNode );
 
                                 isIntersecting = true;
 
