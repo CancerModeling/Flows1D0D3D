@@ -12,6 +12,8 @@
 
 - FC : Pressure and nutrient in 3d and 1d are solved simultaneously using block matrix
 
+- FCFVFE: : Mixed discretization where the 1D-3D nutrient and 1D-3D pressure are solved by considering full coupling
+
 ## Models implemented
 
 ### NetFVFE
@@ -27,6 +29,14 @@ Network-tumor coupled model. All equations are discretized using finite volume m
 ### NetFC
 
 Network-tumor coupled model. Mixed FV-FE discretization. 1D-3D coupled field are solved simultaneously using block matrix.
+
+### NetFCFVFE
+
+Network-Tumor coupled modeled solved using mixed finite volume (FV) and finite element (FE)
+
+Network-tumor coupled model. In this we solve nutrient and pressure in both 1d and 3d using finite volume method. Rest of the species are solved using bi-linear elements.
+
+Further 1D-3D coupled equations are solved using fully coupled block-matrix.
 
 ### AvaFV
 
