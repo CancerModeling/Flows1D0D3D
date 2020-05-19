@@ -451,12 +451,6 @@ void netfc::Network::processApicalGrowth(){
                                TAF_max = TAF;
                          
                            }
-/*
-                           std::cout << " " << "\n";
-                           std::cout << "TAF_point: " << TAF_point << "\n";
-                           std::cout << "TAF: " << TAF << "\n";
-                           std::cout << "TAF_max: " << TAF_max << "\n";
-*/
 
                            if( TAF > TAF_max-1.0e-8 ){
 
@@ -484,7 +478,7 @@ void netfc::Network::processApicalGrowth(){
                        }
                        else{
 
-                           std::cout << "Node not considered!" << std::endl;
+                           //std::cout << "Node not considered!" << std::endl;
 
                        }
 
@@ -499,35 +493,29 @@ void netfc::Network::processApicalGrowth(){
 
                    for(int i=0;i<3;i++){
 
-                       direction[ i ] = ( 0.5*( max_vec[ i ] + max_vec_2[ i ] ) - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );
-                       //( 0.5*( max_vec[ i ] + max_vec_2[ i ] ) - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );                       
+                       direction[ i ] = ( 0.5*( max_vec[ i ] + max_vec_2[ i ] ) - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );       
 
                    }
 
                }
                else{
+
+                   std::cout << "Find nearest node!" << std::endl;
 
                    std::vector<double> near_node(3,0.0);
 
+                   near_node = findNearNetworkNode( coord, normal_plane );
+
+                   std::cout << "near_node: " << near_node << std::endl;
+
                    for(int i=0;i<3;i++){
 
-                       direction[ i ] = 0.5*normal_plane[ i ];    
+                       direction[ i ] = ( 0.75* near_node[ i ] + 0.25*max_vec[ i ] - coord[ i ] ) + ( 0.5*normal_plane[ i ] );    
 
                    }
 
                }
-  /*
-               else{
-
-                   for(int i=0;i<3;i++){
-
-                       direction[ i ] = ( 0.45*min_vec[ i ] + 0.55*max_vec_2[ i ] - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );
-                       //( 0.5*( max_vec[ i ] + max_vec_2[ i ] ) - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );                       
-
-                   }
-
-               }*/
-
+ 
                double length_d = gmm::vect_norm2( direction ); 
 
                if( length_d>0.0 ){
@@ -545,6 +533,10 @@ void netfc::Network::processApicalGrowth(){
                    }
 
                }
+
+               std::vector<double> new_point_link  = std::vector<double>(3,0.0);
+
+               bool isIntersecting = testIntersection( coord, new_point_1, new_point_link, radius_p );
      
                std::cout << "coord: " << coord << "\n";
                std::cout << "rotator: " << rotator << "\n";
@@ -575,7 +567,16 @@ void netfc::Network::processApicalGrowth(){
 
                if( !bifurcate && length_d>0.0 ){
 
-                   createASingleNode( new_point_1, radius_p, pointer );
+                   if( !isIntersecting ){
+
+                       createASingleNode( new_point_1, radius_p, pointer );
+
+                   }
+                   else{
+
+                       createALinkingNode( new_point_1, radius_p, pointer );
+
+                   }
 
                }
                else if( bifurcate && length_d>0.0 ){
@@ -726,6 +727,61 @@ void netfc::Network::processApicalGrowth(){
                 pointer = pointer->global_successor;
  
          }
+
+}
+
+void netfc::Network::createALinkingNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer ){
+
+     const auto &input = d_model_p->get_input_deck();
+
+     double L_x = input.d_domain_params[1];
+
+     bool isInside = isCenterInDomain( new_point, L_x );
+
+     std::cout << "Create new linking node" << "\n";
+
+     if( isInside ){
+
+         VGNode new_node;
+
+	 new_node.index = VGM.getNumberOfNodes();
+	 new_node.coord = new_point;
+	 new_node.p_boundary = 0.95*pointer->p_v;
+	 new_node.p_v = 0.95*pointer->p_v;
+	 new_node.c_boundary = input.d_in_nutrient;
+	 new_node.c_v = 0.0;
+	 new_node.typeOfVGNode = TypeOfNode::DirichletNode;
+	 new_node.apicalGrowth = false;
+	 new_node.radii.push_back( radius );
+	 new_node.L_p.push_back( input.d_tissue_flow_L_p );
+	 new_node.L_s.push_back( input.d_tissue_nut_L_s );
+	 new_node.edge_touched.push_back( true );
+	 new_node.sprouting_edge.push_back( false );
+	 new_node.neighbors.push_back( pointer );
+	 new_node.notUpdated = 0;
+
+	 auto sp_newNode = std::make_shared<VGNode>( new_node );
+	 std::cout << "New index: " << new_node.index << "\n";
+	 std::cout << "Neighbor index: " << pointer->index << "\n";
+
+	 std::cout << "Update old node" << "\n";
+
+	 pointer->p_boundary = 0.0;
+	 pointer->c_boundary = 0.0;
+	 pointer->typeOfVGNode = TypeOfNode::InnerNode;
+	 pointer->apicalGrowth = false;
+	 pointer->radii.push_back( radius );
+	 pointer->L_p.push_back(input.d_tissue_flow_L_p);
+	 pointer->L_s.push_back(input.d_tissue_nut_L_s);
+	 pointer->edge_touched.push_back( true );
+	 pointer->sprouting_edge.push_back( false );
+	 pointer->neighbors.push_back( sp_newNode );
+	 pointer->notUpdated = 0;
+	 std::cout << "Attach new node as pointer" << "\n";
+
+	 VGM.attachPointerToNode( sp_newNode );
+     
+     }
 
 }
 
@@ -1388,20 +1444,173 @@ void netfc::Network::processSproutingGrowth(){
 
 }
 
-std::vector<double> netfc::Network::findNearNetworkNode( std::vector<double> coord ){
+std::vector<double> netfc::Network::findNearNetworkNode( std::vector<double> coord, std::vector<double> normal_plane ){
 
                     std::vector<double> coord_near_node(3,0.0);
 
+                    std::vector<double> coord_min_node(3,0.0);
+
                     std::shared_ptr<VGNode> pointer = VGM.getHead();
+
+                    double dist_min = 0.0;
+
+                    int numberOfNodes = 0;
 
                     while( pointer ){
 
                            coord_near_node = pointer->coord;
 
+                           double dist = util::dist_between_points( coord, coord_near_node );
+
+                           std::vector<double> diff = std::vector<double>(3,0.0);
+
+                           for(int i=0;i<3;i++){
+
+                               diff[ i ] = coord_near_node[ i ] - coord[ i ];
+          
+                           } 
+
+                           double dist_plane  = 0.0;
+
+                           for(int i=0;i<3;i++){
+
+                               dist_plane += normal_plane[ i ]*diff[ i ];
+
+                           }
+
+                           if( dist_plane>0.0 ){
+
+                               dist_min = dist_plane;
+
+                               numberOfNodes = numberOfNodes + 1;
+
+                               for(int i=0;i<3;i++){
+
+                                   coord_min_node[ i ] = coord_min_node[ i ] + coord_near_node[ i ];
+
+                               }
+
+                           }
+
                            pointer = pointer->global_successor;
 
                     }
 
-                    return coord_near_node;
+                    if( numberOfNodes>0 ){
+
+                        for(int i=0;i<3;i++){
+
+                            coord_min_node[ i ] = coord_min_node[ i ]/( (double) numberOfNodes );
+
+                        }
+
+                    }
+
+                    return coord_min_node;
+
+}
+
+bool netfc::Network::testIntersection( std::vector<double> point_1, std::vector<double> point_2, std::vector<double>& new_point_link, double radius ){
+
+     bool isIntersecting = false;
+
+     std::shared_ptr<VGNode> pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfNeighbors = pointer->neighbors.size();
+
+            int index = pointer->index;
+
+            for(int i=0;i<numberOfNeighbors;i++){
+
+                if( pointer->edge_touched[ i ] == false && !isIntersecting ){
+
+                    std::vector<double> point_p1 = pointer->coord;
+                   
+                    std::vector<double> point_p2 = pointer->neighbors[ i ]->coord;
+
+                    double radius_p = pointer->radii[ i ];
+
+                    if( util::dist_between_points( point_1, point_p1 )<1.0e-11 || util::dist_between_points( point_2, point_p1 )<1.0e-11 ||
+                        util::dist_between_points( point_1, point_p2 )<1.0e-11 || util::dist_between_points( point_2, point_p2 )<1.0e-11 ){
+
+                        isIntersecting = false;
+
+                    }
+                    else{
+
+                        std::vector< std::vector<double> > points_p;
+                        std::vector< std::vector<double> > points_test_edge;
+
+                        double length_p = util::dist_between_points( point_p1, point_p2 );
+                        double length_test = util::dist_between_points( point_1, point_2 );
+
+                        std::vector<double> dir_p(3,0.0);
+                        std::vector<double> dir_test(3,0.0);
+
+                        for(int j=0;j<3;j++){
+
+                            dir_p[ j ]    = point_p2[ j ] - point_p1[ j ];
+                            dir_test[ j ] = point_2[ j ] - point_1[ j ];
+
+                        }
+
+                        for(int j=1;j<10;j++){
+
+                            std::vector<double> new_point_p(3,0.0);
+                            std::vector<double> new_point_test(3,0.0); 
+
+                            for(int k=0;k<3;k++){
+
+                                new_point_p[ k ] = point_p1[ k ] + ( length_p * (double) j/10.0 * dir_p[ k ] );
+                                new_point_test[ k ] = point_1[ k ] + ( length_test * (double) j/10.0 * dir_test[ k ] );
+
+                            } 
+
+                            if( util::dist_between_points( new_point_p, new_point_test )<radius+radius_p ){
+
+                                new_point_link = new_point_p;
+
+                                isIntersecting = true;
+
+                                break;
+
+                            }                       
+
+                        } 
+
+                    }
+
+                }
+
+                pointer->edge_touched[ i ] = true;
+                pointer->neighbors[ i ]->markEdge( index );
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfEdges = pointer->neighbors.size();
+
+            for(int i=0;i<numberOfEdges;i++){
+
+                pointer->edge_touched[ i ] = false;
+                pointer->sprouting_edge[ i ] = false;
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     return isIntersecting;
 
 }
