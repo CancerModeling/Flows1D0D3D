@@ -149,6 +149,10 @@ void util::Network::create_initial_network() {
   D_v = input.d_D_sigma_v;
 
   osmotic_sigma = input.d_osmotic_sigma;
+
+  // Debug
+  auto locate_point = Point(1.0683156654888104, 1.0478309232480534, 1.1339173967459324);
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
 }
 
 void util::Network::readData(
@@ -980,6 +984,17 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
         } // coupling
       }
     }
+
+//    if (indexOfNode == 14 or indexOfNode == 15 or indexOfNode == 21) {
+//      out << "\ni: " << indexOfNode << ", bi: " << b_c[indexOfNode]
+//          << ", Aii: " << Ac_VGM(indexOfNode, indexOfNode);
+//      for (int i = 0; i < numberOfNeighbors; i++) {
+//        int indexNeighbor = pointer->neighbors[i]->index;
+//        out << ", Ai" << indexNeighbor << ": " << Ac_VGM(indexOfNode,
+//                                                         indexNeighbor) ;
+//      }
+//      out << "\n\n";
+//    }
 
     pointer = pointer->global_successor;
   }
