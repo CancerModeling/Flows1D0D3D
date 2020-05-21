@@ -297,7 +297,7 @@ void netfc::Network::markApicalGrowth(){
                 const auto &coord = pointer->coord;
 
                 // if node is near the boundary, we do not process Omega = (0,L)^3 
-                if( 0.01<coord[0] && coord[0]<L_x-0.01 && 0.01<coord[1] && coord[1]<L_x-0.01 && 0.01<coord[2] && coord[2]<L_x-0.01 ){
+                if( 0.0001<coord[0] && coord[0]<L_x-0.0001 && 0.0001<coord[1] && coord[1]<L_x-0.0001 && 0.0001<coord[2] && coord[2]<L_x-0.0001 ){
 
                     int index = getElementIndex( coord, h_3D, N_3D );
 
@@ -426,9 +426,9 @@ void netfc::Network::processApicalGrowth(){
 
                }
 
-               int N_theta = 40;
+               int N_theta = 35;
 
-               int N_r = 40;
+               int N_r = 35;
 
                for(int i_theta=0;i_theta<N_theta;i_theta++){
 
@@ -493,7 +493,8 @@ void netfc::Network::processApicalGrowth(){
 
                    for(int i=0;i<3;i++){
 
-                       direction[ i ] = ( 0.5*( max_vec[ i ] + max_vec_2[ i ] ) - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );       
+                       direction[ i ] = (  max_vec[ i ] - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );
+                       // ( 0.5*( max_vec[ i ] + max_vec_2[ i ] ) - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );       
 
                    }
 
@@ -510,7 +511,7 @@ void netfc::Network::processApicalGrowth(){
 
                    for(int i=0;i<3;i++){
 
-                       direction[ i ] = ( 0.75* near_node[ i ] + 0.25*max_vec[ i ] - coord[ i ] ) + ( 0.5*normal_plane[ i ] );    
+                       direction[ i ] = ( 0.75*near_node[ i ] + 0.25*max_vec[ i ] - coord[ i ] ) + ( 0.5*normal_plane[ i ] );    
 
                    }
 
@@ -542,7 +543,7 @@ void netfc::Network::processApicalGrowth(){
                std::cout << "rotator: " << rotator << "\n";
                std::cout << "max_vec: " << max_vec << "\n";
                std::cout << "normal_plane: " << normal_plane << "\n";
-               std::cout << "length: " << length << "\n";
+               std::cout << "length_d: " << length_d << "\n";
                std::cout << "dir_term_vessel: " << dir_term_vessel << "\n";
                std::cout << "direction: " << direction << "\n";
                std::cout << "new_point: " << new_point_1 << "\n";
@@ -559,7 +560,7 @@ void netfc::Network::processApicalGrowth(){
                double prob =  0.5 + 0.5 * std::erf((std::log(log_dist) - input.d_log_normal_mean) / std::sqrt(2.0 * input.d_log_normal_std_dev * input.d_log_normal_std_dev));
                std::cout << "prob: " << prob << "\n";
 
-               if( prob > 0.94 ){
+               if( prob > 0.905 ){
 
                    bifurcate = true;
 
@@ -574,7 +575,7 @@ void netfc::Network::processApicalGrowth(){
                    }
 
                }
-               else if( bifurcate && length_d>0.0 && !isIntersecting ){
+               else if( bifurcate ){
 
 		   std::cout << "Create bifuraction" << "\n";
 
@@ -631,12 +632,13 @@ void netfc::Network::processApicalGrowth(){
 
                        std::cout << "branch_angle: " << branch_angle*180.0/M_PI << "\n";
 
-                       if( branch_angle*180.0/M_PI<160.0 && branch_angle*180.0/M_PI>20.0 ){
+                       if( branch_angle*180.0/M_PI<160.0 && branch_angle*180.0/M_PI>30.0 ){
 
                            std::vector<double> rotation_axis = util::cross_prod( direction, dir_term_vessel );
-                           std::vector<double> diff_2 =  util::rotate( direction, branch_angle, rotation_axis );
+                           std::vector<double> diff_2 =  util::rotate( normal_plane, branch_angle_2, rotation_axis );
+                           std::vector<double> diff_1 =  util::rotate( normal_plane, -branch_angle_1, rotation_axis );
 
-                           double length_diff_1 = gmm::vect_norm2( diff   );
+                           double length_diff_1 = gmm::vect_norm2( diff_1 );
                            double length_diff_2 = gmm::vect_norm2( diff_2 );
 
                            // lognormal distribution
@@ -658,11 +660,15 @@ void netfc::Network::processApicalGrowth(){
 
                            }
 
-                           for(int i=0;i<3;i++){
+                           if( length_diff_2>0.0 && length_diff_1>0.0 ){
 
-                               new_point_1[ i ] = coord[ i ] + ( length_1*direction[ i ] );
-                               new_point_2[ i ] = coord[ i ] + ( length_2*diff_2[ i ]/length_diff_2 );
+                               for(int i=0;i<3;i++){
+
+                                   new_point_1[ i ] = coord[ i ] + ( length_1*diff_1[ i ]/length_diff_1 );
+                                   new_point_2[ i ] = coord[ i ] + ( length_2*diff_2[ i ]/length_diff_2 );
           
+                               }
+
                            }
 
                            std::cout << "rotation_axis: " << rotation_axis << "\n";
@@ -672,19 +678,19 @@ void netfc::Network::processApicalGrowth(){
                            std::cout << "new_point_1: " << new_point_1 << "\n";
                            std::cout << "new_point_2: " << new_point_2 << "\n";
 
-                           bool isColliding_1 = false; //testCollision( new_point_1 );
-                           bool isColliding_2 = false; //testCollision( new_point_2 );
+                           if( gmm::vect_norm2( direction )>0.0 && length_diff_2>0.0 && length_diff_1>0.0 ){
 
-                           if( gmm::vect_norm2( rotation_axis )>0.0 ){
+                               bool isIntersecting_1 = testIntersection( coord, new_point_1, radius_p, pointer );
+                               bool isIntersecting_2 = testIntersection( coord, new_point_2, radius_p, pointer );
 
-                               if( !isColliding_1 ){
+                               if( !isIntersecting_1 ){
 
-                                   createASingleNode( new_point_1, radius_b1, pointer );
+                                    createASingleNode( new_point_1, radius_b1, pointer );
 
                                }
 
-                               if( !isColliding_2 ){
- 
+                               if( !isIntersecting_2 ){
+
                                    createASingleNode( new_point_2, radius_b2, pointer );
 
                                }
@@ -839,7 +845,7 @@ void netfc::Network::removeRedundantTerminalVessels(){
                 const auto &coord = pointer->coord;
 
                 // if node is near the boundary, we do not process Omega = (0,L)^3 
-                if( 0.02<coord[0] && coord[0]<L_x-0.02 && 0.02<coord[1] && coord[1]<L_x-0.02 && 0.02<coord[2] && coord[2]<L_x-0.02 ){
+                if( 0.0001<coord[0] && coord[0]<L_x-0.0001 && 0.0001<coord[1] && coord[1]<L_x-0.0001 && 0.0001<coord[2] && coord[2]<L_x-0.0001 ){
 
                     int updateNumber = pointer->notUpdated;
 
@@ -1314,6 +1320,8 @@ void netfc::Network::processSproutingGrowth(){
                         new_node_2.edge_touched.push_back( true );
                         new_node_2.sprouting_edge.push_back( false );
 
+                        new_node_2.notUpdated = 0;
+
                         new_node_2.neighbors.push_back( sp_newNode_1 );
 
                         auto sp_newNode_2 = std::make_shared<VGNode>( new_node_2 );
@@ -1419,7 +1427,7 @@ std::vector<double> netfc::Network::findNearNetworkNode( std::vector<double> coo
 
                            }
 
-                           if( dist_plane>0.0 ){
+                           if( dist_plane>0.0 && dist_plane<0.25 ){
 
                                dist_min = dist_plane;
 
@@ -1437,6 +1445,8 @@ std::vector<double> netfc::Network::findNearNetworkNode( std::vector<double> coo
 
                     }
 
+                    std::cout << "numberOfNodes: " << numberOfNodes << std::endl;
+
                     if( numberOfNodes>0 ){
 
                         for(int i=0;i<3;i++){
@@ -1444,6 +1454,11 @@ std::vector<double> netfc::Network::findNearNetworkNode( std::vector<double> coo
                             coord_min_node[ i ] = coord_min_node[ i ]/( (double) numberOfNodes );
 
                         }
+
+                    }
+                    else{
+
+                        coord_min_node = normal_plane;
 
                     }
 
@@ -1458,6 +1473,8 @@ bool netfc::Network::testIntersection( std::vector<double> point_1, std::vector<
      bool isIntersecting = false;
 
      std::shared_ptr<VGNode> pointer = VGM.getHead();
+
+     std::cout<< "Test intersection " << std::endl;
 
      while( pointer ){
 
@@ -1509,7 +1526,7 @@ bool netfc::Network::testIntersection( std::vector<double> point_1, std::vector<
                             } 
 
                             if( util::dist_between_points( new_point_p, new_point_test )<radius+radius_p ){
-
+/*
                                 std::cout<< "Create new node " << std::endl;
                        
                                 VGNode new_node;
@@ -1574,8 +1591,10 @@ bool netfc::Network::testIntersection( std::vector<double> point_1, std::vector<
  
                                 std::cout << "Attach new node as pointer" << "\n";
                                 VGM.attachPointerToNode( sp_newNode );
-
+*/
                                 isIntersecting = true;
+
+                                std::cout << "Vessel is intersecting" << std::endl;
 
                                 break;
 
