@@ -133,6 +133,21 @@ inline void store_pres(const ReplicatedMesh &mesh, util::BaseAssembly &pres,
   pres.d_sys.update();
 }
 
+inline void set_elem_sol(util::BaseAssembly &sys,
+                        const std::vector<Number> &sol, double scale =
+                         1. ) {
+
+  // Looping through elements
+  for (const auto &elem : sys.d_mesh.active_local_element_ptr_range()) {
+
+    sys.init_dof(elem);
+    sys.d_sys.solution->set(sys.get_global_dof_id(0), scale * sol[elem->id()]);
+  }
+
+  sys.d_sys.solution->close();
+  sys.d_sys.update();
+}
+
 } // namespace util
 
 #endif // UTIL_MODELUTIL_H

@@ -86,7 +86,7 @@ void angle_correction_bifurcation(const Point &parent_d, Point &child_d,
 }
 } // namespace
 
-void util::Network::create_initial_network() {
+void util::unet::Network::create_initial_network() {
 
   const auto &input = d_model_p->get_input_deck();
   d_is_network_changed = true;
@@ -155,7 +155,7 @@ void util::Network::create_initial_network() {
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 }
 
-void util::Network::readData(
+void util::unet::Network::readData(
     std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
     std::vector<double> &radii,
     std::vector<std::vector<unsigned int>> &elements) {
@@ -241,7 +241,7 @@ void util::Network::readData(
   }
 }
 
-void util::Network::transferDataToVGM(
+void util::unet::Network::transferDataToVGM(
     std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
     std::vector<double> &radii,
     std::vector<std::vector<unsigned int>> &elements) {
@@ -251,7 +251,7 @@ void util::Network::transferDataToVGM(
 
   for (int i = 0; i < numberOfVertices; i++) {
 
-    util::VGNode new_node;
+    VGNode new_node;
 
     new_node.index = i;
 
@@ -327,7 +327,7 @@ void util::Network::transferDataToVGM(
   }
 }
 
-void util::Network::printDataVGM() {
+void util::unet::Network::printDataVGM() {
 
   oss << " " << std::endl;
   oss << "PrintData of network: " << std::endl;
@@ -366,7 +366,7 @@ void util::Network::printDataVGM() {
   }
 }
 
-void util::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
+void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
   const auto &input = d_model_p->get_input_deck();
 
@@ -541,7 +541,7 @@ void util::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
   }
 }
 
-void util::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
+void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
 
   const auto &mesh = d_model_p->get_mesh();
 
@@ -588,7 +588,7 @@ void util::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
     P_v[i] = 0.;
   }
 
-  std::vector<util::ElemWeights> J_b_points;
+  std::vector<ElemWeights> J_b_points;
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -683,7 +683,7 @@ void util::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
   // std::cout << "A_VGM: " << A_VGM << std::endl;
 }
 
-void util::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
+void util::unet::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
 
   if (pres_sys.d_sys_name != "Pressure")
     libmesh_error_msg("Must pass Pressure system to solve 1D pressure");
@@ -723,7 +723,7 @@ void util::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
   //  writeDataToVTK_VGM();
 }
 
-void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys) {
+void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys) {
 
   const auto &mesh = d_model_p->get_mesh();
   const auto &input = d_model_p->get_input_deck();
@@ -772,7 +772,7 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
   //    C_v[i] = 0.;
   //  }
 
-  std::vector<util::ElemWeights> J_b_points;
+  std::vector<ElemWeights> J_b_points;
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -1000,7 +1000,7 @@ void util::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAss
   }
 }
 
-void util::Network::solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys) {
+void util::unet::Network::solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys) {
 
   if (pres_sys.d_sys_name != "Pressure" or nut_sys.d_sys_name != "Nutrient")
     libmesh_error_msg("Must pass Pressure and Nutrient system to solve 1D "
@@ -1056,7 +1056,7 @@ void util::Network::solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nu
   // C_v_old = C_v;
 }
 
-void util::Network::refine1DMesh() {
+void util::unet::Network::refine1DMesh() {
 
   const auto &input = d_model_p->get_input_deck();
 
@@ -1076,7 +1076,7 @@ void util::Network::refine1DMesh() {
 
       if (!pointer->edge_touched[i]) {
 
-        util::VGNode new_node;
+        VGNode new_node;
 
         new_node.index = numberOfNodes + counter;
 
@@ -1180,7 +1180,7 @@ void util::Network::refine1DMesh() {
   }
 }
 
-void util::Network::update_network(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys) {
+void util::unet::Network::update_network(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys) {
 
   if (taf_sys.d_sys_name != "TAF" or grad_taf_sys.d_sys_name != "TAF_Gradient")
     libmesh_error_msg("Must pass TAF and TAF_Gradient system to update "
@@ -1206,7 +1206,7 @@ void util::Network::update_network(BaseAssembly &taf_sys, BaseAssembly &grad_taf
     d_update_number++;
 }
 
-void util::Network::compute_elem_weights() {
+void util::unet::Network::compute_elem_weights() {
 
   oss << "  Computing element-weight data for network\n";
   d_model_p->d_log(oss);
@@ -1317,21 +1317,22 @@ void util::Network::compute_elem_weights() {
   }
 }
 
-std::vector<util::ElemWeights> util::Network::compute_elem_weights_at_node(
-    std::shared_ptr<VGNode> &pointer) const {
+std::vector<util::unet::ElemWeights>
+    util::unet::Network::compute_elem_weights_at_node(
+    std::shared_ptr<util::unet::VGNode> &pointer) const {
 
   const auto &mesh = d_model_p->get_mesh();
   const auto &input = d_model_p->get_input_deck();
 
   int numberOfNeighbors = pointer->neighbors.size();
 
-  std::vector<util::ElemWeights> J_b_points(numberOfNeighbors);
+  std::vector<ElemWeights> J_b_points(numberOfNeighbors);
 
   const Point i_coords = util::to_point(pointer->coord);
 
   for (int j = 0; j < numberOfNeighbors; j++) {
 
-    util::ElemWeights J_b_ij;
+    ElemWeights J_b_ij;
 
     // const auto &j_coords = pointer->neighbors[j]->coord;
     const Point j_coords = util::to_point(pointer->neighbors[j]->coord);
@@ -1406,7 +1407,7 @@ std::vector<util::ElemWeights> util::Network::compute_elem_weights_at_node(
   return J_b_points;
 }
 
-unsigned int util::Network::markApicalGrowth(std::string growth_type, BaseAssembly &taf_sys) {
+unsigned int util::unet::Network::markApicalGrowth(std::string growth_type, BaseAssembly &taf_sys) {
 
   const auto &tum_sys = d_model_p->get_system();
   const auto &mesh = d_model_p->get_mesh();
@@ -1483,7 +1484,7 @@ unsigned int util::Network::markApicalGrowth(std::string growth_type, BaseAssemb
   return num_nodes_marked;
 }
 
-unsigned int util::Network::processApicalGrowthTAF(BaseAssembly &taf_sys,
+unsigned int util::unet::Network::processApicalGrowthTAF(BaseAssembly &taf_sys,
                                                    BaseAssembly &grad_taf_sys) {
 
   const auto &mesh = d_model_p->get_mesh();
@@ -1768,7 +1769,7 @@ unsigned int util::Network::processApicalGrowthTAF(BaseAssembly &taf_sys,
   return VGM.getNumberOfNodes() - num_nodes_old;
 }
 
-std::shared_ptr<util::VGNode> util::Network::check_new_node(
+std::shared_ptr<util::unet::VGNode> util::unet::Network::check_new_node(
     const int &parent_index, const std::vector<double> &parent_coord,
     const std::vector<double> &child_coord, const double &dist_tol,
     const double &domain_size, unsigned int &check_code) {
@@ -1831,13 +1832,13 @@ std::shared_ptr<util::VGNode> util::Network::check_new_node(
   return nullptr;
 }
 
-void util::Network::add_new_node(std::shared_ptr<VGNode> &pointer,
+void util::unet::Network::add_new_node(std::shared_ptr<util::unet::VGNode> &pointer,
                                    const double &child_r,
                                    const std::vector<double> &child_end_point) {
 
   const auto &input = d_model_p->get_input_deck();
 
-  util::VGNode new_node;
+  VGNode new_node;
 
   new_node.index = VGM.getNumberOfNodes();
 
@@ -1884,8 +1885,8 @@ void util::Network::add_new_node(std::shared_ptr<VGNode> &pointer,
   VGM.attachPointerToNode(pointer_new_node);
 }
 
-void util::Network::add_new_node_at_existing_node(
-    std::shared_ptr<VGNode> &pointer, std::shared_ptr<VGNode> &near_node) {
+void util::unet::Network::add_new_node_at_existing_node(
+    std::shared_ptr<util::unet::VGNode> &pointer, std::shared_ptr<util::unet::VGNode> &near_node) {
 
   const auto &input = d_model_p->get_input_deck();
 
@@ -1931,7 +1932,7 @@ void util::Network::add_new_node_at_existing_node(
   near_node->edge_touched.push_back(true);
 }
 
-void util::Network::get_taf_and_gradient(BaseAssembly &taf_sys,
+void util::unet::Network::get_taf_and_gradient(BaseAssembly &taf_sys,
                                          BaseAssembly &grad_taf_sys,
                                          double &taf_val, Point &grad_taf_val,
                                          const std::vector<double> &coord) const {

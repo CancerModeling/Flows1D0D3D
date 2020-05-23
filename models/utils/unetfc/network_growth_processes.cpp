@@ -7,13 +7,9 @@
 
 #include "network.hpp"
 #include "netUtil.hpp"
-#include "../model.hpp"
-#include "nodes.hpp"
-#include "utilIO.hpp"
-#include "utils.hpp"
 #include <random>
 
-void netfcfvfe::Network::updateNetwork(){
+void util::unetfc::Network::updateNetwork(){
 
      std::cout << " " << std::endl;
      std::cout << "Update the network" << std::endl;
@@ -103,7 +99,7 @@ void netfcfvfe::Network::updateNetwork(){
 
 }
 
-void netfcfvfe::Network::linkTerminalVessels(){
+void util::unetfc::Network::linkTerminalVessels(){
 
      const auto &input = d_model_p->get_input_deck();
 
@@ -278,7 +274,7 @@ void netfcfvfe::Network::linkTerminalVessels(){
 
 }
 
-void netfcfvfe::Network::markApicalGrowth(){
+void util::unetfc::Network::markApicalGrowth(){
 
      const auto &input = d_model_p->get_input_deck();
 
@@ -323,7 +319,7 @@ void netfcfvfe::Network::markApicalGrowth(){
 
 }
 
-void netfcfvfe::Network::processApicalGrowth(){
+void util::unetfc::Network::processApicalGrowth(){
 
      const auto &input = d_model_p->get_input_deck();
 
@@ -730,7 +726,7 @@ void netfcfvfe::Network::processApicalGrowth(){
 
 }
 
-void netfcfvfe::Network::createALinkingNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer ){
+void util::unetfc::Network::createALinkingNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer ){
 
      const auto &input = d_model_p->get_input_deck();
 
@@ -785,7 +781,7 @@ void netfcfvfe::Network::createALinkingNode( std::vector<double> new_point, doub
 
 }
 
-void netfcfvfe::Network::createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer ){
+void util::unetfc::Network::createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer ){
 
      const auto &input = d_model_p->get_input_deck();
 
@@ -841,7 +837,7 @@ void netfcfvfe::Network::createASingleNode( std::vector<double> new_point, doubl
 }
 
 
-bool netfcfvfe::Network::testCollision( std::vector<double> point ){
+bool util::unetfc::Network::testCollision( std::vector<double> point ){
 
      bool isColliding = false;
 
@@ -881,7 +877,7 @@ bool netfcfvfe::Network::testCollision( std::vector<double> point ){
 
 }
 
-void netfcfvfe::Network::removeRedundantTerminalVessels(){
+void util::unetfc::Network::removeRedundantTerminalVessels(){
 
      const auto &input = d_model_p->get_input_deck();
 
@@ -1061,7 +1057,7 @@ void netfcfvfe::Network::removeRedundantTerminalVessels(){
 }
 
 
-void netfcfvfe::Network::markSproutingGrowth(){
+void util::unetfc::Network::markSproutingGrowth(){
 
      const auto &input = d_model_p->get_input_deck();
 
@@ -1156,7 +1152,7 @@ void netfcfvfe::Network::markSproutingGrowth(){
 }
 
 
-void netfcfvfe::Network::processSproutingGrowth(){
+void util::unetfc::Network::processSproutingGrowth(){
 
      const auto &input = d_model_p->get_input_deck();
 
@@ -1444,7 +1440,7 @@ void netfcfvfe::Network::processSproutingGrowth(){
 
 }
 
-std::vector<double> netfcfvfe::Network::findNearNetworkNode( std::vector<double> coord, std::vector<double> normal_plane ){
+std::vector<double> util::unetfc::Network::findNearNetworkNode( std::vector<double> coord, std::vector<double> normal_plane ){
 
                     std::vector<double> coord_near_node(3,0.0);
 
@@ -1510,7 +1506,7 @@ std::vector<double> netfcfvfe::Network::findNearNetworkNode( std::vector<double>
 
 }
 
-bool netfcfvfe::Network::testIntersection( std::vector<double> point_1, std::vector<double> point_2, std::vector<double>& new_point_link, double radius ){
+bool util::unetfc::Network::testIntersection( std::vector<double> point_1, std::vector<double> point_2, std::vector<double>& new_point_link, double radius ){
 
      bool isIntersecting = false;
 

@@ -7,11 +7,9 @@
 
 #include "netUtil.hpp"
 #include "network.hpp"
-#include "utilIO.hpp"
-#include "utils.hpp"
 #include <random>
 
-void netfcfvfe::angle_correction(const Point &parent_d, Point &child_d,
+void util::unetfc::angle_correction(const Point &parent_d, Point &child_d,
                       const double &max_angle) {
 
   auto child_angle = util::angle(child_d, parent_d);
@@ -27,7 +25,7 @@ void netfcfvfe::angle_correction(const Point &parent_d, Point &child_d,
 
 }
 
-void netfcfvfe::compute_bifurcate_child_direction(const Point &parent_d,
+void util::unetfc::compute_bifurcate_child_direction(const Point &parent_d,
                                        const Point &child_d, Point &child_d_2,
                                        const double &branch_angle) {
 
@@ -46,7 +44,7 @@ void netfcfvfe::compute_bifurcate_child_direction(const Point &parent_d,
       << ", child_d_2: " << child_d_2 << "\n";
 }
 
-void netfcfvfe::angle_correction_bifurcation(const Point &parent_d, Point &child_d,
+void util::unetfc::angle_correction_bifurcation(const Point &parent_d, Point &child_d,
                                   Point &child_d_2, const double &max_angle,
                                   const double &branch_angle) {
 
@@ -73,7 +71,7 @@ void netfcfvfe::angle_correction_bifurcation(const Point &parent_d, Point &child
   }
 }
 
-std::vector<double> netfcfvfe::getElementCenter(int i, int j, int k, double h_3D) {
+std::vector<double> util::unetfc::getElementCenter(int i, int j, int k, double h_3D) {
 
   std::vector<double> center;
 
@@ -86,7 +84,7 @@ std::vector<double> netfcfvfe::getElementCenter(int i, int j, int k, double h_3D
   return center;
 }
 
-std::vector<double> netfcfvfe::getCenterNeighbor(std::vector<double> center,
+std::vector<double> util::unetfc::getCenterNeighbor(std::vector<double> center,
                                       std::vector<double> direction,
                                       double h_3D) {
 
@@ -100,7 +98,7 @@ std::vector<double> netfcfvfe::getCenterNeighbor(std::vector<double> center,
   return center_neighbor;
 }
 
-std::vector<std::vector<double>> netfcfvfe::defineDirections(){
+std::vector<std::vector<double>> util::unetfc::defineDirections(){
 
                                  std::vector<std::vector<double>> directions;
 
@@ -135,7 +133,7 @@ std::vector<std::vector<double>> netfcfvfe::defineDirections(){
 }
 
 
-std::vector<std::vector<double>> netfcfvfe::defineDirectionsNeighboring(){
+std::vector<std::vector<double>> util::unetfc::defineDirectionsNeighboring(){
 
                                  std::vector<std::vector<double>> directions;
 
@@ -252,7 +250,7 @@ std::vector<std::vector<double>> netfcfvfe::defineDirectionsNeighboring(){
 
 }
 
-bool netfcfvfe::isCenterInDomain(std::vector<double> center, double L_x) {
+bool util::unetfc::isCenterInDomain(std::vector<double> center, double L_x) {
 
   bool isInDomain = true;
 
@@ -269,7 +267,7 @@ bool netfcfvfe::isCenterInDomain(std::vector<double> center, double L_x) {
   return isInDomain;
 }
 
-int netfcfvfe::getElementIndex(std::vector<double> center, double h_3D, int N_3D){
+int util::unetfc::getElementIndex(std::vector<double> center, double h_3D, int N_3D){
 
   int index = 0;
 
@@ -282,7 +280,7 @@ int netfcfvfe::getElementIndex(std::vector<double> center, double h_3D, int N_3D
   return index;
 }
 
-std::vector<double> netfcfvfe::getCenterFace(std::vector<double> center, std::vector<double> direction, double h_3D) {
+std::vector<double> util::unetfc::getCenterFace(std::vector<double> center, std::vector<double> direction, double h_3D) {
 
   std::vector<double> center_face;
 
@@ -294,7 +292,7 @@ std::vector<double> netfcfvfe::getCenterFace(std::vector<double> center, std::ve
   return center_face;
 }
 
-double netfcfvfe::getDirichletValue(std::vector<double> center_face, double L_p, double radius) {
+double util::unetfc::getDirichletValue(std::vector<double> center_face, double L_p, double radius) {
 
   double dirichlet_value = 0.0;
 
@@ -316,7 +314,7 @@ double netfcfvfe::getDirichletValue(std::vector<double> center_face, double L_p,
   return dirichlet_value;
 }
 
-int netfcfvfe::getIndex(double value, double h_3D) {
+int util::unetfc::getIndex(double value, double h_3D) {
 
   int index = 0;
 
@@ -328,7 +326,7 @@ int netfcfvfe::getIndex(double value, double h_3D) {
   return index;
 }
 
-double netfcfvfe::normVector(std::vector<double> &vec) {
+double util::unetfc::normVector(std::vector<double> &vec) {
 
   double norm_vec = 0.0;
 
@@ -347,7 +345,7 @@ double netfcfvfe::normVector(std::vector<double> &vec) {
   return norm_vec;
 }
 
-std::vector<double> netfcfvfe::determineRotator(std::vector<double> dir) {
+std::vector<double> util::unetfc::determineRotator(std::vector<double> dir) {
 
   std::vector<double> rotator;
 
@@ -380,7 +378,7 @@ std::vector<double> netfcfvfe::determineRotator(std::vector<double> dir) {
 
 }
 
-std::vector<double> netfcfvfe::computeNodesOnCylinders(std::vector<double> dir,
+std::vector<double> util::unetfc::computeNodesOnCylinders(std::vector<double> dir,
                                             std::vector<double> rotator,
                                             std::vector<double> midpoint,
                                             double radius, double theta) {
@@ -412,7 +410,7 @@ std::vector<double> netfcfvfe::computeNodesOnCylinders(std::vector<double> dir,
   return cylinder_node;
 }
 
-void netfcfvfe::updateWeightsAndIds(int N_s, int N_theta, int elementIndex,
+void util::unetfc::updateWeightsAndIds(int N_s, int N_theta, int elementIndex,
                                  std::vector<double> &weights,
                                  std::vector<int> &id_3D_elements) {
 
@@ -444,7 +442,7 @@ void netfcfvfe::updateWeightsAndIds(int N_s, int N_theta, int elementIndex,
   }
 }
 
-void netfcfvfe::determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<double> coord, std::vector<double> coord_neighbor,
+void util::unetfc::determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<double> coord, std::vector<double> coord_neighbor,
                                     double radius, double h_3D, double& length_edge, std::vector<double> &weights, std::vector<int> &id_3D_elements){
 
      std::vector<double> direction, rotator;
@@ -490,7 +488,7 @@ void netfcfvfe::determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vect
 
 }
 
-std::vector<double> netfcfvfe::getCenterFromIndex( int index, int N_3D, double h_3D ){
+std::vector<double> util::unetfc::getCenterFromIndex( int index, int N_3D, double h_3D ){
 
                     std::vector<double> center = std::vector<double>(3,0.0);
 
@@ -510,7 +508,7 @@ std::vector<double> netfcfvfe::getCenterFromIndex( int index, int N_3D, double h
 
 }
 
-std::vector<int> netfcfvfe::getNeighboringElementIndices( int index, int N_3D, double h_3D, double L_x ){
+std::vector<int> util::unetfc::getNeighboringElementIndices( int index, int N_3D, double h_3D, double L_x ){
 
                  std::vector<int> indicesNeighbors;
 

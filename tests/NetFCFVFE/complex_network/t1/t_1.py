@@ -17,66 +17,28 @@ def gen_tumor_ic_file(L, filename):
     # type = 3 -- spherical tumor core and then spherical hypoxic core
     # type = 5 -- spherical tumor core (sharp)
     tum_ic_type = 1
-    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(tum_ic_type, 0.5*L, 0.5*L, 0.5*L, 0.15*L, 0.15*L, 0.15*L, 0.15*L, 0.15*L, 0.15*L))
+    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(tum_ic_type, 1.3, 0.9, 0.7, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25))
 
     inpf.close()
-
-
-def get_pressure_in_vessel():
-
-    P_1 = 100000.
-    P_2 = 50000.
-    P_3 = 10000.
-    P_4 = 20000.
-
-    return np.array([P_1, P_2, P_3, P_4])
 
 
 def gen_init_network_file(L, filename):
 
-    # write to file
-    inpf = open(filename,'w')
-    inpf.write("DGF\n")
+    # we use extracted network
 
-    R = 0.05 * L
-    
-    pressures = get_pressure_in_vessel()
-
-    # vertex
-    inpf.write("Vertex\n")
-    inpf.write("parameters {}\n".format(1))
-    inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, 0.0, pressures[0]))
-    inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, L, pressures[1]))
-    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, 0.0, pressures[2]))
-    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, L, pressures[3]))
-
-    # segments
-    inpf.write("#\n")
-    inpf.write("SIMPLEX\n")
-    inpf.write("parameters {}\n".format(2))
-    inpf.write("{} {} {} {}\n".format(0, 1, R, 0.0075))
-    inpf.write("{} {} {} {}\n".format(2, 3, R, 0.0075))
-    # 
-    inpf.write("#\n")
-    inpf.write("BOUNDARYDOMAIN\n")
-    inpf.write("default {}\n".format(1))
-
-    # 
-    inpf.write("#")
-    inpf.close()
-
-    return pressures[1]
+    # return the pressure to identify the vein in network (by inspecting the input network file)
+    return 50000.0
 
 
 def network_input(L, param_index, param_val):
 
     add(param_index, param_val, 'is_network_active', 'true')
-    
-    # network file
-    init_file = 'two_vessels.dgf'
-    add(param_index, param_val, 'network_init_file', init_file)
-    add(param_index, param_val, 'network_init_refinement', 4)
 
+    # network file
+    init_file = 'ratbrain_network.dgf'
+    add(param_index, param_val, 'network_init_file', init_file)
+    add(param_index, param_val, 'network_init_refinement', 1)
+    
     # control parameters for growth algorithm
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
     add(param_index, param_val, 'vessel_R_factor', 1.)
@@ -92,9 +54,9 @@ def network_input(L, param_index, param_val):
     add(param_index, param_val, 'network_nonlocal_search_length_factor', 5.)
     add(param_index, param_val, 'network_local_search', 'false')
     add(param_index, param_val, 'network_no_new_node_search_factor', 0.25)
-    
+
     # generate network file
-    P_2 = 0.9999 * gen_init_network_file(L, init_file)
+    P_2 = 0.99 * gen_init_network_file(L, init_file)
 
     # to identify veins so that we can apply correct bc
     add(param_index, param_val, 'identify_vein_pressure', P_2)
@@ -116,12 +78,13 @@ def input():
     L = 2.
     break_points.append(len(param_val))
     break_msg.append('# model')
-    
+
     # specify model such as NetFVFE, NetFVFE, NetFC, AvaFV
-    add(param_index, param_val, 'model_name', 'NetFVFE')
+    add(param_index, param_val, 'model_name', 'NetFCFVFE')
 
     # specify test (if any) which solves sub-system
     # disable line below if running full system or specify empty string ''
+    # add(param_index, param_val, 'test_name', 'test_nut')
     add(param_index, param_val, 'test_name', 'test_net_tum_2')
 
     # domain
@@ -142,7 +105,7 @@ def input():
 
     # simplification of computation
     add(param_index, param_val, 'advection_active', 'true')
-    add(param_index, param_val, 'network_decouple_nutrients', 'true')
+    add(param_index, param_val, 'network_decouple_nutrients', 'false')
 
     # control parameters for 1d-3d coupling
     add(param_index, param_val, 'network_discret_cyl_length', 20)
@@ -153,7 +116,7 @@ def input():
     # set below to reasonable value such as 1, 4, 10 if want to grow network
     add(param_index, param_val, 'network_update_interval', 100000)
     
-    ## restart info
+	## restart info
     break_points.append(len(param_val))
     break_msg.append('\n# restart')
     add(param_index, param_val, 'restart', 'false')
@@ -169,7 +132,7 @@ def input():
     ## time
     break_points.append(len(param_val))
     break_msg.append('\n# time')
-    final_t = 5.0
+    final_t = 2.0
     init_t = 0.
     delta_t = 0.05
     add(param_index, param_val, 'time_step', delta_t)
@@ -180,7 +143,7 @@ def input():
     ## output
     break_points.append(len(param_val))
     break_msg.append('\n# output')
-    total_outputs = 20
+    total_outputs = 10
     dt_output = int(np.floor(final_t / delta_t) / total_outputs)
     if dt_output < 1:
         dt_output = 1
@@ -268,15 +231,15 @@ def input():
     break_points.append(len(param_val))
     break_msg.append('\n# flow 21/3DD')
     add(param_index, param_val, 'tissue_flow_viscosity', 1.)
-    add(param_index, param_val, 'tissue_flow_K', 1.e-7)
+    add(param_index, param_val, 'tissue_flow_K', 1.e-8)
     add(param_index, param_val, 'tissue_flow_density', 1.)
-    
+
     # coupling strength between 1d-3d pressure
-    L_p = 1.0e-5
+    L_p = 1.0e-6
     add(param_index, param_val, 'tissue_flow_L_p', L_p)
 
     # coupling strength between 1d-3d nutrients
-    L_s = 1.
+    L_s = 0.5
     add(param_index, param_val, 'tissue_nut_L_s', L_s)
 
     # below is the factor for pressure and nutrient equation. This factor is 
@@ -291,8 +254,8 @@ def input():
     add(param_index, param_val, 'bc_tissue_pressure_west', 'false')
 
     # pressure ic (set it equal to lower pressure in artery)
-    pressures = get_pressure_in_vessel()
-    add(param_index, param_val, 'tissue_pressure_ic_val', pressures[1])
+    P_2 = gen_init_network_file()
+    add(param_index, param_val, 'tissue_pressure_ic_val', P_2)
 
     ## nutrient ic
     break_points.append(len(param_val))
