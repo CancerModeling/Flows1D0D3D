@@ -17,7 +17,7 @@ def gen_tumor_ic_file(L, filename):
     # type = 3 -- spherical tumor core and then spherical hypoxic core
     # type = 5 -- spherical tumor core (sharp)
     tum_ic_type = 1
-    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(tum_ic_type, 1., 0.9, 0.8, 0.3, 0.0, 0.0, 0.3, 0.0, 0.0, 0.0))
+    inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(tum_ic_type, 1.3, 0.9, 0.7, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25))
 
     inpf.close()
 
@@ -27,7 +27,7 @@ def gen_init_network_file(L, filename):
     # we use extracted network
 
     # return the pressure to identify the vein in network (by inspecting the input network file)
-    return 20.
+    return 50000.0
 
 
 def network_input(L, param_index, param_val):
@@ -35,9 +35,9 @@ def network_input(L, param_index, param_val):
     add(param_index, param_val, 'is_network_active', 'true')
 
     # network file
-    init_file = 'ratbrain_secomb_scale_factor_1.dgf'
+    init_file = 'ratbrain_network.dgf'
     add(param_index, param_val, 'network_init_file', init_file)
-    add(param_index, param_val, 'network_init_refinement', 3)
+    add(param_index, param_val, 'network_init_refinement', 1)
     
     # control parameters for growth algorithm
     add(param_index, param_val, 'vessel_lambda_g', 0.5)
@@ -56,7 +56,7 @@ def network_input(L, param_index, param_val):
     add(param_index, param_val, 'network_no_new_node_search_factor', 0.25)
 
     # generate network file
-    P_2 = gen_init_network_file(L, init_file)
+    P_2 = 0.99 * gen_init_network_file(L, init_file)
 
     # to identify veins so that we can apply correct bc
     add(param_index, param_val, 'identify_vein_pressure', P_2)
@@ -84,6 +84,7 @@ def input():
 
     # specify test (if any) which solves sub-system
     # disable line below if running full system or specify empty string ''
+    # add(param_index, param_val, 'test_name', 'test_nut')
     add(param_index, param_val, 'test_name', 'test_net_tum_2')
 
     # domain
@@ -104,7 +105,7 @@ def input():
 
     # simplification of computation
     add(param_index, param_val, 'advection_active', 'true')
-    add(param_index, param_val, 'network_decouple_nutrients', 'true')
+    add(param_index, param_val, 'network_decouple_nutrients', 'false')
 
     # control parameters for 1d-3d coupling
     add(param_index, param_val, 'network_discret_cyl_length', 20)
@@ -125,13 +126,13 @@ def input():
     ## mesh
     break_points.append(len(param_val))
     break_msg.append('\n# mesh')
-    num_elems = 60
+    num_elems = 20
     add(param_index, param_val, 'mesh_n_elements', num_elems)
 
     ## time
     break_points.append(len(param_val))
     break_msg.append('\n# time')
-    final_t = 30.0
+    final_t = 2.0
     init_t = 0.
     delta_t = 0.05
     add(param_index, param_val, 'time_step', delta_t)
@@ -142,7 +143,7 @@ def input():
     ## output
     break_points.append(len(param_val))
     break_msg.append('\n# output')
-    total_outputs = 100
+    total_outputs = 10
     dt_output = int(np.floor(final_t / delta_t) / total_outputs)
     if dt_output < 1:
         dt_output = 1
@@ -163,23 +164,23 @@ def input():
     break_points.append(len(param_val))
     break_msg.append('\n# nutrient')
     add(param_index, param_val, 'lambda_P', 5.)
-    add(param_index, param_val, 'lambda_A', 0.)
+    add(param_index, param_val, 'lambda_A', 0.005)
     add(param_index, param_val, 'lambda_Ph', 0.5)
-    add(param_index, param_val, 'D_sigma', 2.)
+    add(param_index, param_val, 'D_sigma', 1.)
     add(param_index, param_val, 'delta_sigma', 1.)
-    add(param_index, param_val, 'chi_c', 0.01)
+    add(param_index, param_val, 'chi_c', 0.)
 
     ## tumor
     break_points.append(len(param_val))
     break_msg.append('\n# tumor')
-    add(param_index, param_val, 'bar_M_P', 20.)
+    add(param_index, param_val, 'bar_M_P', 50.)
     add(param_index, param_val, 'bar_E_phi_T', 0.045)
     add(param_index, param_val, 'epsilon_T', 5.0e-3)
 
     ## hypoxic
     break_points.append(len(param_val))
     break_msg.append('\n# hypoxic')
-    add(param_index, param_val, 'bar_M_H', 10.)
+    add(param_index, param_val, 'bar_M_H', 25.)
     add(param_index, param_val, 'lambda_PH', 1.)
     add(param_index, param_val, 'lambda_HP', 1.)
     add(param_index, param_val, 'lambda_HN', 1.)
@@ -229,8 +230,8 @@ def input():
     ## flow 2D/3D 
     break_points.append(len(param_val))
     break_msg.append('\n# flow 21/3DD')
-    add(param_index, param_val, 'tissue_flow_viscosity', 1.0e-3)
-    add(param_index, param_val, 'tissue_flow_K', 0.075e-6)
+    add(param_index, param_val, 'tissue_flow_viscosity', 1.)
+    add(param_index, param_val, 'tissue_flow_K', 1.e-8)
     add(param_index, param_val, 'tissue_flow_density', 1.)
 
     # coupling strength between 1d-3d pressure
@@ -238,7 +239,7 @@ def input():
     add(param_index, param_val, 'tissue_flow_L_p', L_p)
 
     # coupling strength between 1d-3d nutrients
-    L_s = 1.0e-2
+    L_s = 0.5
     add(param_index, param_val, 'tissue_nut_L_s', L_s)
 
     # below is the factor for pressure and nutrient equation. This factor is 

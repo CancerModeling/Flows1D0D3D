@@ -11,10 +11,10 @@
 #include "umodel/model.hpp"
 #include "modelUtil.hpp"
 #include "systems/systems.hpp"
-#include "net/network.hpp"
+#include "unetfc/network.hpp"
 
 // typedef network
-typedef netfcfvfe::Network Net;
+typedef util::unetfc::Network Net;
 
 /*!
  * @brief Namespace for coupled 3d tumor growth model and 1d blood flow
@@ -86,11 +86,11 @@ private:
   /*! @brief Compute quantity of interest */
   void compute_qoi() override ;
 
-  /*! @brief Solves 1D-3D pressure system
-   * At given time step, it solves for 1D and 3D pressure in a nonlinear loop
-   * iteratively.
-   */
+  /*! @brief Solves 1D-3D pressure system using fully coupled solver */
   void solve_pressure();
+
+  /*! @brief Solves 1D-3D nutrient system using fully coupled solver */
+  void solve_nutrient();
 
   /*! @brief Solving sub-systems
    *
@@ -166,6 +166,15 @@ private:
    * - Good to test the couling of 1D-3D nutrient coupling and coupling of
    * network and nutrient with tumor species
    *
+   * ## test_fc_solver
+   *
+   * - To test the fully 1D-3D pressure and 1D-3D nutrient fully coupled solver
+   *
+   * - Solves for pressure, nutrient, and 3D systems such as total tumor,
+   * hypoxic, necrotic, taf, and grad taf. 1D-3D pressure are solved together
+   * . Then 1D-3D nutrients are solved together however they are part of the
+   * nonlinear iterations.
+   *
    */
   void test_nut();
   void test_nut_2();
@@ -175,6 +184,7 @@ private:
   void test_tum_2();
   void test_net_tum();
   void test_net_tum_2();
+  void test_fc_solver();
 
   /*! @brief Network class */
   Net d_network;

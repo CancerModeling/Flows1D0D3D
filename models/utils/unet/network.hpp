@@ -5,8 +5,8 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef UTIL_NETWORK_H
-#define UTIL_NETWORK_H
+#ifndef UTIL_UNET_NETWORK_H
+#define UTIL_UNET_NETWORK_H
 
 // Libmesh
 #include "utils.hpp"
@@ -24,12 +24,12 @@
 // assembly class
 #include "usystem/abstraction.hpp"
 
-/*!
- * @brief Namespace for coupled 3d tumor growth model and 1d blood flow
- * network model. See
- * docs/NetTum/network_and_tumor_model.pdf for more details.
- */
 namespace util {
+
+/*!
+ * @brief Namespace for 1D network
+ */
+namespace unet {
 
 /*!
  * @brief Coupled 3D-1D tumor growth model driver
@@ -41,9 +41,10 @@ public:
   Network(util::BaseModel *model)
       : d_is_network_changed(false), d_model_p(model), d_update_number(0) {}
 
-  const util::ListStructure<util::VGNode> &get_mesh() const { return VGM; }
+  const util::unet::ListStructure<util::unet::VGNode> &get_mesh() const { return
+  VGM; }
 
-  util::ListStructure<util::VGNode> &get_mesh() { return VGM; }
+  util::unet::ListStructure<util::unet::VGNode> &get_mesh() { return VGM; }
 
   /**
    * @name Input-output
@@ -84,8 +85,8 @@ public:
 
   void update_old_concentration() { C_v_old = C_v; };
 
-  std::vector<util::ElemWeights>
-  compute_elem_weights_at_node(std::shared_ptr<VGNode> &pointer) const;
+  std::vector<util::unet::ElemWeights>
+  compute_elem_weights_at_node(std::shared_ptr<util::unet::VGNode> &pointer) const;
 
   /** @}*/
 
@@ -105,16 +106,16 @@ public:
   unsigned int markApicalGrowth(std::string growth_type, BaseAssembly &taf_sys);
   unsigned int processApicalGrowthTAF(BaseAssembly &taf_sys,
                                       BaseAssembly &grad_taf_sys);
-  std::shared_ptr<VGNode>
+  std::shared_ptr<util::unet::VGNode>
   check_new_node(const int &parent_index,
                  const std::vector<double> &parent_coord,
                  const std::vector<double> &child_coord, const double &dist_tol,
                  const double &domain_size, unsigned int &check_code);
 
-  void add_new_node(std::shared_ptr<VGNode> &pointer, const double &child_r,
+  void add_new_node(std::shared_ptr<util::unet::VGNode> &pointer, const double &child_r,
                     const std::vector<double> &child_end_point);
-  void add_new_node_at_existing_node(std::shared_ptr<VGNode> &pointer,
-                                     std::shared_ptr<VGNode> &near_node);
+  void add_new_node_at_existing_node(std::shared_ptr<util::unet::VGNode> &pointer,
+                                     std::shared_ptr<util::unet::VGNode> &near_node);
 
   void get_taf_and_gradient(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys,
                             double &taf_val, Point &grad_taf_val,
@@ -129,7 +130,7 @@ public:
   util::BaseModel *d_model_p;
 
   /*! @brief 1-D mesh */
-  util::ListStructure<util::VGNode> VGM;
+  util::unet::ListStructure<util::unet::VGNode> VGM;
 
   /*! @brief System matrix for vessel pressure */
   gmm::row_matrix<gmm::wsvector<double>> A_VGM;
@@ -159,6 +160,8 @@ public:
   unsigned int d_update_number;
 };
 
+} // namespace unet
+
 } // namespace util
 
-#endif // UTIL_NETWORK_H
+#endif // UTIL_UNET_NETWORK_H

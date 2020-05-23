@@ -2,7 +2,7 @@
 MYPWD=$(pwd)
 
 # locate executible
-execsrc="../../../../bin/NetFVFE"
+execsrc="../../../../bin/NetFCFVFE"
 
 # libmesh options
 libmesh_opts=" -ksp_type gmres -pc_type bjacobi -sub_pc_type ilu -sub_pc_factor_levels 10"

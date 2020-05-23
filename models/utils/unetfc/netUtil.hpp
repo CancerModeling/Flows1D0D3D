@@ -5,13 +5,14 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TUMORMODELS_NETUTIL_H
-#define TUMORMODELS_NETUTIL_H
+#ifndef UTIL_UNETFC_NETUTIL_H
+#define UTIL_UNETFC_NETUTIL_H
 
-#include "utilLibs.hpp"
 #include "utils.hpp"
 
-namespace netfcfvfe {
+namespace util {
+
+namespace unetfc {
 
 void angle_correction(const Point &parent_d, Point &child_d,
                       const double &max_angle);
@@ -66,7 +67,9 @@ void determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<double> 
 
 std::vector<int> getNeighboringElementIndices( int index, int N_3D, double h_3D, double L_x );
 
-}
+} // namespace unetfc
 
-#endif // TUMORMODELS_NETUTIL_H
+} // namespace util
+
+#endif // UTIL_UNETFC_NETUTIL_H
 

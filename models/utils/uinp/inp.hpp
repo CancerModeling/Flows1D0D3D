@@ -508,6 +508,8 @@ struct Flow1DDeck {
 
   double d_osmotic_sigma;
 
+  std::string d_scenario;
+
   explicit Flow1DDeck(const std::string &filename = "")
       : d_init_vessel_mu(0.), d_in_pressure(0.), d_in_nutrient(0.),
           d_blood_density(1.),

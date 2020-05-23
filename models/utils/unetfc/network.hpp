@@ -5,27 +5,31 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef NETFCFVFE_NETWORK_H
-#define NETFCFVFE_NETWORK_H
+#ifndef UTIL_UNETFC_NETWORK_H
+#define UTIL_UNETFC_NETWORK_H
 
-#include "utilLibs.hpp"
-#include "../inp/inp.hpp"
-#include "../systems/systems.hpp"
+// Libmesh
 #include "utils.hpp"
+
+// gmm dependencies
+#include "gmm.h"
+
+// custom data structures
 #include "list_structure.hpp"
 #include "nodes.hpp"
-#include <string>
-#include <vector>
+
+// model class
+#include "umodel/model.hpp"
+
+// assembly class
+#include "usystem/abstraction.hpp"
+
+namespace util {
 
 /*!
- * @brief Namespace for coupled 3d tumor growth model and 1d blood flow
- * network model. See
- * docs/NetTum/network_and_tumor_model.pdf for more details.
+ * @brief Namespace for 1D network
  */
-namespace netfcfvfe {
-
-// forward declare Model class
-class Model;
+namespace unetfc {
 
 /*!
  * @brief Coupled 3D-1D tumor growth model driver
@@ -34,12 +38,13 @@ class Network {
 
 public:
   /*! @brief Constructor */
-  Network(netfcfvfe::Model *model)
-      : d_is_network_changed(false), d_model_p(model) {}
+  Network(util::BaseModel *model)
+      : d_is_network_changed(false), d_model_p(model), d_update_number(0) {}
 
-  const netfcfvfe::ListStructure<netfcfvfe::VGNode> &get_mesh() const { return VGM; }
+  const util::unetfc::ListStructure<util::unetfc::VGNode> &get_mesh() const { return
+  VGM; }
 
-  netfcfvfe::ListStructure<netfcfvfe::VGNode> &get_mesh() { return VGM; }
+  util::unetfc::ListStructure<util::unetfc::VGNode> &get_mesh() { return VGM; }
 
   /**
    * @name Input-output
@@ -64,6 +69,10 @@ public:
 
   void writeDataToVTK_3D( std::vector<double> P_3D, int N_3D, double h_3D );
 
+  void writeDataToVTK3D_Pressure(std::vector<double> P_3D, std::vector< std::vector<double> > V_3D, int N_3D, double h_3D, int timeStep);
+
+  void writeDataToVTK3D_Nutrients(std::vector<double> C_3D, int N_3D, double h_3D, int timeStep);
+
   /** @}*/
 
   /**
@@ -71,24 +80,24 @@ public:
    */
   /**@{*/
 
-  /*! @brief Solve 3D1D-system */
-  void assembleVGMSystemForNutrients();
+  void assemble3D1DSystemForPressure(BaseAssembly
+                                     &pres_sys, BaseAssembly &tum_sys);
 
-  void assemble3D1DSystemForPressure();
+  void assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
 
-  void assemble3D1DSystemForNutrients();
+   void solve3D1DFlowProblem(BaseAssembly
+   &pres_sys, BaseAssembly &tum_sys);
 
-  void assemble3DSystemForTAF();
+  void solve3D1DNutrientProblem(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
 
-  void solveVGMforNutrient(  int timeStep, double time );
+  /*! @brief Solve 1-d system */
+  void assembleVGMSystemForPressure(BaseAssembly &pres_sys);
 
-  void solve3DTAFProblem(  int timeStep, double time );
+  void solveVGMforPressure(BaseAssembly &pres_sys);
 
-  void solve3D1DFlowProblem( int timeStep, double time );
+  void assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys);
 
-  void solve3D1DNutrientProblem( int timeStep, double time );
-
-  void solve3DProlificCellProblem( int timeStep, double time );
+  void solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys);
 
   /** @}*/
 
@@ -97,30 +106,14 @@ public:
    */
   /**@{*/
 
-  void refine1DMesh();
-
-  /*! @brief Compute intersecting element and weight in tumor domain */
-  void compute_elem_weights();
-
-  double getDirichletValue( std::vector< double > center_face, double L_p, double radius );
-
-  double getK1D( double s, double L_p, double radius );
-
-  void writeDataToVTK3D_Pressure(std::vector<double> P_3D, std::vector< std::vector<double> > V_3D, int N_3D, double h_3D, int timeStep);
-
-  void writeDataToVTK3D_Nutrients(std::vector<double> C_3D, int N_3D, double h_3D, int timeStep);
-
-  void writeDataToVTK3D_TAF(std::vector<double> phi_TAF_3D, int N_3D, double h_3D, int timeStep);
-
-  void rescaleSecombData( std::vector< std::vector<double> >& vertices, std::vector<double>& pressures, std::vector<double>& radii, double epsilon );
+  /*! @brief Update network */
+  void update_network(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys) {}
 
   void updateNetwork();
 
   void markApicalGrowth();
 
   void processApicalGrowth();
-
-  double sourceTermTAFTwoVessels( std::vector<double> coord );
 
   void createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer );
 
@@ -142,14 +135,45 @@ public:
 
   /** @}*/
 
+  /**
+   * @name Utility functions
+   */
+  /**@{*/
+
+  void update_old_concentration() { C_v_old = C_v; };
+
+  void update_old_concentration_3D1D() { phi_sigma_old = phi_sigma; };
+
+  void refine1DMesh();
+
+  double getDirichletValue( std::vector< double > center_face, double L_p, double radius );
+
+  double getK1D( double s, double L_p, double radius );
+
+  void rescaleSecombData( std::vector< std::vector<double> >& vertices, std::vector<double>& pressures, std::vector<double>& radii, double epsilon );
+
+  double sourceTermTAFTwoVessels( std::vector<double> coord );
+
+  std::vector<util::unetfc::ElemWeights>
+  compute_elem_weights_at_node(std::shared_ptr<util::unetfc::VGNode> &pointer)
+  const;
+
+  /*! @brief Compute intersecting element and weight in tumor domain */
+  void compute_elem_weights();
+
+  /** @}*/
+
   /*! @brief Did we change network from last step */
   bool d_is_network_changed;
 
   /*! @brief Reference to model class */
-  netfcfvfe::Model *d_model_p;
+  util::BaseModel *d_model_p;
 
   /*! @brief 1-D mesh */
-  netfcfvfe::ListStructure<netfcfvfe::VGNode> VGM;
+  util::unetfc::ListStructure<util::unetfc::VGNode> VGM;
+
+  /*! @brief System matrix for vessel pressure */
+  gmm::row_matrix<gmm::wsvector<double>> A_VGM;
 
   /*! @brief System matrix for vessel nutrient */
   gmm::row_matrix<gmm::wsvector<double>> Ac_VGM;
@@ -160,8 +184,8 @@ public:
   /*! @brief System matrix for 3D1D nutrient model*/
   gmm::row_matrix<gmm::wsvector<double>> A_nut_3D1D;
 
-  /*! @brief System matrix for 3D1D nutrient model*/
-  gmm::row_matrix<gmm::wsvector<double>> A_TAF_3D;
+  /*! @brief System force for vessel pressure */
+  std::vector<double> b;
 
   /*! @brief System force for vessel nutrient */
   std::vector<double> b_c;
@@ -171,9 +195,6 @@ public:
 
   /*! @brief Right hand side nutrients 3D1D */
   std::vector<double> b_nut_3D1D;
-
-  /*! @brief Right hand side nutrients 3D1D */
-  std::vector<double> b_TAF_3D;
 
   /*! @brief Current vessel pressure */
   std::vector<double> P_v;
@@ -199,18 +220,6 @@ public:
   /*! @brief Current 3D nutrient concentration */
   std::vector<double> phi_sigma_3D;
 
-  /*! @brief Current prolific cell concentration */
-  std::vector<double> phi_P;
-
-  /*! @brief Old prolific cell concentration */
-  std::vector<double> phi_P_old;
-
-  /*! @Current solution vector prolific cell concentration */
-  std::vector<double> sol_Vec_Phi_P;
-
-  /*! @Old solution vector prolific cell concentration */
-  std::vector<double> sol_Vec_Phi_P_old;
-
   /*! @brief Current TAF concentration */
   std::vector<double> phi_TAF;
 
@@ -220,6 +229,8 @@ public:
   double mu;
 
   double D_v;
+
+  double D_v_3D;
 
   double D_TAF;
 
@@ -233,8 +244,11 @@ public:
 
   int N_tot_3D;
 
+  unsigned int d_update_number;
 };
 
-} // namespace netfcfvfe
+} // namespace unetfc
 
-#endif // NETFCFVFE_NETWORK_H
+} // namespace util
+
+#endif // UTIL_UNETFC_NETWORK_H

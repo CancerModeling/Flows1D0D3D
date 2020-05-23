@@ -5,12 +5,14 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 /////////////////////////////////////////////////////////////////////////////
 
-#ifndef UTIL_LISTSTRUCTURE_H
-#define UTIL_LISTSTRUCTURE_H
+#ifndef UTIL_UNET_LISTSTRUCTURE_H
+#define UTIL_UNET_LISTSTRUCTURE_H
 
 #include <boost/shared_ptr.hpp>
 
 namespace util {
+
+namespace unet {
 
 template<class Node>
 class ListStructure{
@@ -179,6 +181,8 @@ std::shared_ptr<Node> findNode(int indexOfNode){
 
 };
 
-}
+} // namespace unet
 
-#endif // UTIL_LISTSTRUCTURE_H
+} // namespace util
+
+#endif // UTIL_UNET_LISTSTRUCTURE_H

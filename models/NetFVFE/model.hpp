@@ -14,7 +14,7 @@
 #include "unet/network.hpp"
 
 // typedef network
-typedef util::Network Net;
+typedef util::unet::Network Net;
 
 /*!
  * @brief Namespace for coupled 3d tumor growth model and 1d blood flow
