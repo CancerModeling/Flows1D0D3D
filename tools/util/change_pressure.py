@@ -25,11 +25,11 @@ def change_pressure(in_file, out_file, low_pres_old, high_pres_old, low_pres, hi
     # write to new dgf file
     write_dgf(out_file, nodes, nodes_data, segments, segments_data)
 
-low_pres_old = 20.
-high_pres_old = 25
-low_pres = 20000.
-high_pres = 50000.
-change_pressure("test_scaled_2.dgf", "diff_pres.dgf", low_pres_old, high_pres_old, low_pres, high_pres)
+# low_pres_old = 20.
+# high_pres_old = 25
+# low_pres = 20000.
+# high_pres = 50000.
+# change_pressure("test_scaled_2.dgf", "diff_pres.dgf", low_pres_old, high_pres_old, low_pres, high_pres)
 
 # run as follows
 # python3 -B change_pressure.py

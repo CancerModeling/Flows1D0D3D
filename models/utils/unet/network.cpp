@@ -642,8 +642,8 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
         double t_seg =
             factor_p * M_PI * std::pow(radius, 4) / (8.0 * length * mu);
 
-        A_VGM(indexOfNode, indexOfNode) -= t_seg;
-        A_VGM(indexOfNode, indexNeighbor) += t_seg;
+        A_VGM(indexOfNode, indexOfNode) += t_seg;
+        A_VGM(indexOfNode, indexNeighbor) -= t_seg;
 
         // implicit for p_v in source
         A_VGM(indexOfNode, indexOfNode) +=
