@@ -122,7 +122,7 @@ void util::unetfc::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
   std::cout << " " << std::endl;
   std::cout << "Solve linear system of equations (pressure)" << std::endl;
 
-  gmm::iteration iter(10E-16);
+  gmm::iteration iter(10E-11, 2);
 
   gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> Pr(A_flow_3D1D, 50,
                                                                1e-5);
@@ -417,6 +417,9 @@ void util::unetfc::Network::assemble3D1DSystemForPressure(
 
   std::cout << "numberOfUnknowns: " << N_tot_3D + numberOfNodes << std::endl;
 
+  if (A_flow_3D1D.nrows() != N_tot_3D + numberOfNodes)
+    libmesh_error_msg("A_flow_3D1D error.");
+
   for (int i = 0; i < A_flow_3D1D.nrows(); i++) {
 
     A_flow_3D1D[i].clear();
@@ -504,6 +507,7 @@ void util::unetfc::Network::assemble3D1DSystemForPressure(
 
     int indexOfNode = pointer->index;
 
+    // std::cout << "\n----------------------------------------------\n";
     // std::cout << "indexOfNode: " << indexOfNode << std::endl;
 
     int numberOfNeighbors = pointer->neighbors.size();
@@ -535,8 +539,6 @@ void util::unetfc::Network::assemble3D1DSystemForPressure(
         // std::cout << "radius: " << radius << std::endl;
 
         int indexNeighbor = pointer->neighbors[i]->index;
-
-        // std::cout << "indexNeighbor: " << indexNeighbor << std::endl;
 
         std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
 
@@ -588,7 +590,17 @@ void util::unetfc::Network::assemble3D1DSystemForPressure(
         // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
         int numberOfElements = id_3D_elements.size();
 
+        // std::cout << "indexNeighbor: " << indexNeighbor << std::endl;
+
         for (int j = 0; j < numberOfElements; j++) {
+        //for (int j = 0; j < 0; j++) {
+
+          // std::cout << "elem id: " << id_3D_elements[j] << "\n";
+
+          if (id_3D_elements[j] >= N_tot_3D)
+            libmesh_error_msg("Error id_3D_elements exceeds bound.");
+          if (id_3D_elements[j] < 0)
+            libmesh_error_msg("Error id_3D_elements is negative.");
 
           // A_3D1D
           A_flow_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) =
@@ -612,6 +624,9 @@ void util::unetfc::Network::assemble3D1DSystemForPressure(
 
     pointer = pointer->global_successor;
   }
+
+  // std::cout << "assembly done\n";
+  // exit(0);
 }
 
 void util::unetfc::Network::assemble3D1DSystemForNutrients(

@@ -2,6 +2,7 @@ import numpy as np
 
 from read_write_dgf import *
 from read_write_vtk import write_vtk
+from change_pressure import change_pressure
 
 def get_min_max_radius(segments_data, rad_loc):
     vec = []
@@ -67,7 +68,7 @@ def scale_network(in_file, out_file, scale, scale_radius):
     # we need to create a padding so that cylinders do not touch the boundary
     # padding size is dictated by maximum radius of cylinder
     max_rad, min_rad = get_min_max_radius(segments_data, 0)
-    padding = 1.1 * max_rad
+    padding = 1.1 * scale_radius * max_rad
     print('\nPadding: {}'.format(padding))
 
     # now translate the cordinates of all nodes so that the minimum cord is
@@ -147,7 +148,13 @@ def scale_network(in_file, out_file, scale, scale_radius):
     write_vtk("test_scaled.vtk", nodes, nodes_data, segments, segments_data)
 
 
+low_pres_old = 20.
+high_pres_old = 25
+low_pres = 20000.
+high_pres = 50000.
+
 scale_network("test.dgf", "test_scaled_2.dgf", 2., 2.)
+change_pressure("test_scaled_2.dgf", "diff_pres.dgf", low_pres_old, high_pres_old, low_pres, high_pres)
 
 # run as follows
 # python3 -B resize_network.py

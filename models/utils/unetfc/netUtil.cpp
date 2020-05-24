@@ -277,6 +277,16 @@ int util::unetfc::getElementIndex(std::vector<double> center, double h_3D, int N
 
   index = index + std::floor(center[2] / h_3D) * N_3D * N_3D;
 
+  // checking this error is costly so later we may want to remove this check
+  if (index < 0) {
+    std::ostringstream oss;
+    oss << "index: " << index << ", loc: (" << util::io::printStr(center) <<
+    ")";
+    libmesh_error_msg("Index should not be negative. Check center location as"
+                      " it may be outside the domain boundary.\n"
+                      + oss.str());
+  }
+
   return index;
 }
 
