@@ -348,45 +348,44 @@ def input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advecti
     inpf.close()
 
 
-def run(dp):
+## run sim
+L = 2.
+pp_tag = 't1'
+model_name = 'NetFVFE'
+test_name = 'test_nut'
+# test_name = 'test_net_tum_2'
+output_debug_info = True
+advection_active = True
+decouple_nutrients = False 
+num_elems = 20
+final_time = 5.
+delta_t = 0.05
+dt_output = 10
+chi_c = 0.
+D_sigma = 1.
+nutrient_ic_val = 0.
+if test_name != 'test_nut':
+    nutrient_ic_val = 0.6
+tissue_flow_coef = 1.e-7
+vessel_D_sigma = 5.e-3
+L_p = 1.e-5
+L_s = 1.
+vessel_pressures = [100000., 50000., 10000., 20000.]
+vessel_radius = 0.05 * L
+tumor_ic_type = 1
+tumor_ic_center = [0.5 * L, 0.5 * L, 0.5 * L]
+tumor_ic_radius = [0.15 * L, 0.15 * L, 0.15 * L]
+vessel_num_refinement = 4
+lambda_P = 5.
+mobility_P = 50.
 
-    L = 2.
-    pp_tag = 't1'
-    model_name = 'NetFVFE'
-    test_name = 'test_nut'
-    # test_name = 'test_net_tum_2'
-    output_debug_info = True
-    advection_active = True
-    decouple_nutrients = False 
-    num_elems = 20
-    final_time = 5.
-    delta_t = 0.05
-    dt_output = 10
-    chi_c = 0.
-    D_sigma = 1.
-    nutrient_ic_val = 0.
-    if test_name != 'test_nut':
-        nutrient_ic_val = 0.6
-    tissue_flow_coef = 1.e-7
-    vessel_D_sigma = 5.e-3
-    L_p = 1.e-5
-    L_s = 1.
-    vessel_pressures = [100000., 50000., 10000., 20000.]
-    vessel_radius = 0.05 * L
-    tumor_ic_type = 1
-    tumor_ic_center = [0.5 * L, 0.5 * L, 0.5 * L]
-    tumor_ic_radius = [0.15 * L, 0.15 * L, 0.15 * L]
-    vessel_num_refinement = 4
-    lambda_P = 5.
-    mobility_P = 50.
-
-    # file path to run sim
-    file_dir = pp_tag
-    os.system("./run.sh " + model_name + ' ' + pp_tag + ' 0')
+# file path to run sim
+file_dir = pp_tag + '/'
+os.system("./run.sh " + model_name + ' ' + pp_tag + ' 0')
 
 
-    # create input file
-    input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advection_active, decouple_nutrients, num_elems, final_time, delta_t, dt_output, chi_c, D_sigma, nutrient_ic_val, tissue_flow_coef, vessel_D_sigma, L_p, L_s, vessel_pressures, vessel_radius, tumor_ic_type, tumor_ic_center, tumor_ic_radius, vessel_num_refinement, lambda_P, mobility_P)
-    
-    # run
-    os.system("./run.sh " + model_name + ' ' + pp_tag + ' 1')
+# create input file
+input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advection_active, decouple_nutrients, num_elems, final_time, delta_t, dt_output, chi_c, D_sigma, nutrient_ic_val, tissue_flow_coef, vessel_D_sigma, L_p, L_s, vessel_pressures, vessel_radius, tumor_ic_type, tumor_ic_center, tumor_ic_radius, vessel_num_refinement, lambda_P, mobility_P)
+
+# run
+os.system("./run.sh " + model_name + ' ' + pp_tag + ' 1')
