@@ -77,8 +77,10 @@ void netfvfe::model_setup_run(int argc, char **argv,
   auto input = InpDeck(filename);
 
   // create logger
-  util::Logger log(input.d_log_path + "info_" + input.d_outfile_tag,
-                   comm, !input.d_quiet);
+  std::string logger_file = "info";
+  if (!input.d_outfile_tag.empty())
+    logger_file += "_" + input.d_outfile_tag;
+  util::Logger log(logger_file, comm, !input.d_quiet);
 
   // disable reference counter information
   if (input.d_quiet)
