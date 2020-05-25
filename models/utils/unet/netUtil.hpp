@@ -5,14 +5,14 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef UTIL_UNETFC_NETUTIL_H
-#define UTIL_UNETFC_NETUTIL_H
+#ifndef UTIL_UNET_NETUTIL_H
+#define UTIL_UNET_NETUTIL_H
 
 #include "utils.hpp"
 
 namespace util {
 
-namespace unetfc {
+namespace unet {
 
 void angle_correction(const Point &parent_d, Point &child_d,
                       const double &max_angle);
@@ -67,9 +67,9 @@ void determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<double> 
 
 std::vector<int> getNeighboringElementIndices( int index, int N_3D, double h_3D, double L_x );
 
-} // namespace unetfc
+} // namespace unet
 
 } // namespace util
 
-#endif // UTIL_UNETFC_NETUTIL_H
+#endif // UTIL_UNET_NETUTIL_H
 

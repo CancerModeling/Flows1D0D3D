@@ -11,10 +11,10 @@
 #include "umodel/model.hpp"
 #include "modelUtil.hpp"
 #include "systems/systems.hpp"
-#include "unetfc/network.hpp"
+#include "unet/network.hpp"
 
 // typedef network
-typedef util::unetfc::Network Net;
+typedef util::unet::Network Net;
 
 /*!
  * @brief Namespace for coupled 3d tumor growth model and 1d blood flow

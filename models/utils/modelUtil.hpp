@@ -134,7 +134,7 @@ inline void store_pres(const ReplicatedMesh &mesh, util::BaseAssembly &pres,
 }
 
 inline void set_elem_sol(util::BaseAssembly &sys,
-                        const std::vector<Number> &sol, double scale =
+                        const std::vector<double> &sol, double scale =
                          1. ) {
 
   // Looping through elements
@@ -147,6 +147,21 @@ inline void set_elem_sol(util::BaseAssembly &sys,
   sys.d_sys.solution->close();
   sys.d_sys.update();
 }
+
+inline void get_elem_sol(util::BaseAssembly &sys,
+    std::vector<double> &sol, double scale = 1. ) {
+
+  if (sol.size() < sys.d_mesh.n_elem())
+    sol = std::vector<double>(sys.d_mesh.n_elem(), 0.);
+
+  // Looping through elements
+  for (const auto &elem : sys.d_mesh.active_local_element_ptr_range()) {
+
+    sys.init_dof(elem);
+    sol[elem->id()] = scale * sys.get_current_sol(0);
+  }
+}
+
 
 } // namespace util
 

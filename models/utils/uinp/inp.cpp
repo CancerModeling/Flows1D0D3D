@@ -976,6 +976,8 @@ void util::Flow1DDeck::read_parameters(const std::string &filename) {
   d_D_sigma_v = input("vessel_D_sigma", 1.);
 
   d_osmotic_sigma = input("osmotic_reflection_coeff", 0.1);
+
+  d_scenario = input("scenario", "scenario not available");
 }
 
 void util::Flow1DDeck::print(unsigned int level) {
@@ -1017,6 +1019,9 @@ void util::FlowDeck::read_parameters(const std::string &filename) {
   d_pressure_bc_west = input("bc_tissue_pressure_west", false);
 
   d_mmhgFactor = input("mmhg_factor", 1.);
+
+  d_N_newton = input("N_newton",0);
+  d_omega = input("omega",0.0);
 }
 
 void util::FlowDeck::print(unsigned int level) {

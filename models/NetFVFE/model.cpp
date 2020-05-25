@@ -422,7 +422,7 @@ void netfvfe::Model::run() {
     // update network
     if (d_is_growth_step) {
       d_log("  Updating Network\n", "net update");
-      d_network.update_network(d_taf_assembly, d_grad_taf_assembly);
+      d_network.updateNetwork(d_taf_assembly, d_grad_taf_assembly);
       d_log(" \n", "net update");
     }
 

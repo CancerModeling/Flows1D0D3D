@@ -14,7 +14,7 @@ std::ostringstream oss;
 
 } // namespace
 
-void util::unetfc::Network::readData(
+void util::unet::Network::readData(
     std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
     std::vector<double> &radii,
     std::vector<std::vector<unsigned int>> &elements) {
@@ -100,7 +100,7 @@ void util::unetfc::Network::readData(
   }
 }
 
-void util::unetfc::Network::transferDataToVGM(
+void util::unet::Network::transferDataToVGM(
     std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
     std::vector<double> &radii,
     std::vector<std::vector<unsigned int>> &elements) {
@@ -173,7 +173,7 @@ void util::unetfc::Network::transferDataToVGM(
   }
 }
 
-void util::unetfc::Network::printDataVGM() {
+void util::unet::Network::printDataVGM() {
 
   std::cout << " " << std::endl;
   std::cout << "PrintData of network: " << std::endl;
@@ -210,7 +210,7 @@ void util::unetfc::Network::printDataVGM() {
   }
 }
 
-void util::unetfc::Network::rescaleSecombData(
+void util::unet::Network::rescaleSecombData(
     std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
     std::vector<double> &radii, double epsilon) {
 
@@ -289,7 +289,7 @@ void util::unetfc::Network::rescaleSecombData(
   }
 }
 
-void util::unetfc::Network::refine1DMesh() {
+void util::unet::Network::refine1DMesh() {
 
   const auto &input = d_model_p->get_input_deck();
 
@@ -409,7 +409,7 @@ void util::unetfc::Network::refine1DMesh() {
   }
 }
 
-void util::unetfc::Network::writeDataToVTK_3D(std::vector<double> P_3D,
+void util::unet::Network::writeDataToVTK_3D(std::vector<double> P_3D,
                                               int N_3D, double h_3D) {
 
   int numberOfCells = P_3D.size();
@@ -526,7 +526,7 @@ void util::unetfc::Network::writeDataToVTK_3D(std::vector<double> P_3D,
   }
 }
 
-void util::unetfc::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
+void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
   const auto &input = d_model_p->get_input_deck();
 
@@ -701,7 +701,7 @@ void util::unetfc::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
   }
 }
 
-void util::unetfc::Network::writeDataToVTK3D_Pressure(
+void util::unet::Network::writeDataToVTK3D_Pressure(
     std::vector<double> P_3D, std::vector<std::vector<double>> V_3D, int N_3D,
     double h_3D, int timeStep) {
 
@@ -840,7 +840,7 @@ void util::unetfc::Network::writeDataToVTK3D_Pressure(
   }
 }
 
-void util::unetfc::Network::writeDataToVTK3D_Nutrients(
+void util::unet::Network::writeDataToVTK3D_Nutrients(
     std::vector<double> phi_sigma_3D, int N_3D, double h_3D, int timeStep) {
 
   int numberOfCells = phi_sigma_3D.size();
@@ -963,7 +963,7 @@ void util::unetfc::Network::writeDataToVTK3D_Nutrients(
 }
 
 
-void util::unetfc::Network::compute_elem_weights() {
+void util::unet::Network::compute_elem_weights() {
 
   oss << "  Computing element-weight data for network\n";
   d_model_p->d_log(oss);
@@ -1074,9 +1074,9 @@ void util::unetfc::Network::compute_elem_weights() {
   }
 }
 
-std::vector<util::unetfc::ElemWeights>
-util::unetfc::Network::compute_elem_weights_at_node(
-    std::shared_ptr<util::unetfc::VGNode> &pointer) const {
+std::vector<util::unet::ElemWeights>
+util::unet::Network::compute_elem_weights_at_node(
+    std::shared_ptr<util::unet::VGNode> &pointer) const {
 
   const auto &mesh = d_model_p->get_mesh();
   const auto &input = d_model_p->get_input_deck();

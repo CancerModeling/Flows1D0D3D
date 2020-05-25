@@ -87,12 +87,12 @@ public:
   /*!
    * @brief Constructor
    */
-  VGNode(): index(0), p_v(0.0), c_v(0.0), p_boundary(0.0), 
+  VGNode(): index(0), p_v(0.0), c_v(0.0), p_boundary(0.0),
             c_boundary(0.0), edge_touched(false), sprouting_edge(false), apicalGrowth(false),
-            coord(0.0), radii(0.0), L_p(0.0)           
+            coord(0.0), radii(0.0), L_p(0.0), notUpdated(0)
   {}
 
-  int index;
+  int index, notUpdated;
 
   bool apicalGrowth;
 
@@ -108,117 +108,147 @@ public:
 
   TypeOfNode typeOfVGNode;
 
-  std::shared_ptr<VGNode> global_successor;
+  std::shared_ptr<VGNode> global_successor, global_predecessor;
 
   std::vector<ElemWeights> J_b_points;
 
   void markEdge( int index ){
 
-       int numberOfNeighbors = neighbors.size();
+    int numberOfNeighbors = neighbors.size();
 
-       for(int i=0;i<numberOfNeighbors;i++){
+    for(int i=0;i<numberOfNeighbors;i++){
 
-           if( index == neighbors[i]->index ){
+      if( index == neighbors[i]->index ){
 
-               edge_touched[ i ] = true;
+        edge_touched[ i ] = true;
 
-           }
+      }
 
-       }
+    }
 
   }
 
   void markEdgeLocalIndex( int localIndex ){
 
-       edge_touched[ localIndex ] = true;
+    edge_touched[ localIndex ] = true;
 
   }
 
   int getLocalIndexOfNeighbor( std::shared_ptr<VGNode> neighbor ){
 
-      int local_index_neighbor = 0;
+    int local_index_neighbor = 0;
 
-      int numberOfNeighbors = neighbors.size();
+    int numberOfNeighbors = neighbors.size();
 
-      for(int i=0;i<numberOfNeighbors;i++){
-      
-          if( neighbor->index == neighbors[i]->index ){
+    for(int i=0;i<numberOfNeighbors;i++){
 
-              local_index_neighbor = i;
+      if( neighbor->index == neighbors[i]->index ){
 
-              return local_index_neighbor;
+        local_index_neighbor = i;
 
-          }
+        return local_index_neighbor;
 
       }
 
-      return local_index_neighbor;
+    }
+
+    return local_index_neighbor;
 
   }
 
   void replacePointerWithIndex( int index_new, std::shared_ptr<VGNode> new_pointer ){
 
-       int numberOfNeighbors = neighbors.size();
+    int numberOfNeighbors = neighbors.size();
 
-       for(int i=0;i<numberOfNeighbors;i++){
+    for(int i=0;i<numberOfNeighbors;i++){
 
-           if( index_new == neighbors[i]->index ){
+      if( index_new == neighbors[i]->index ){
 
-               neighbors[ i ] = new_pointer;
+        neighbors[ i ] = new_pointer;
 
-               edge_touched[ i ] = true;
+        edge_touched[ i ] = true;
 
-           }
+      }
 
-       }
+    }
 
   }
 
 
   void attachNeighbor( std::shared_ptr<VGNode> new_pointer ){
 
-       neighbors.push_back( new_pointer );
+    neighbors.push_back( new_pointer );
 
-       typeOfVGNode = InnerNode;       
+    typeOfVGNode = InnerNode;
 
   }
 
   double getTotalVolume(){
 
-         double totalVolume = 0.0;
+    double totalVolume = 0.0;
 
-         int numberOfNeighbors = neighbors.size();
+    int numberOfNeighbors = neighbors.size();
 
-         for(int i=0;i<numberOfNeighbors;i++){
+    for(int i=0;i<numberOfNeighbors;i++){
 
-             std::vector<double> coord_neighbor = neighbors[ i ]->coord;
+      std::vector<double> coord_neighbor = neighbors[ i ]->coord;
 
-             double length = 0.0;
+      double length = 0.0;
 
-             for(int j=0;j<3;j++){
+      for(int j=0;j<3;j++){
 
-                 length += (coord[j]-coord_neighbor[j])*(coord[j]-coord_neighbor[j]);             
-                  
-             }
+        length += (coord[j]-coord_neighbor[j])*(coord[j]-coord_neighbor[j]);
 
-             length = std::sqrt(length);
+      }
 
-             totalVolume = totalVolume + (M_PI*radii[ i ]*radii[ i ]*length/2.0);
+      length = std::sqrt(length);
 
-         }
+      totalVolume = totalVolume + (M_PI*radii[ i ]*radii[ i ]*length/2.0);
 
-         return totalVolume;
+    }
+
+    return totalVolume;
   }
 
   void markEdgeForSprouting(int edgeNumber){
 
-       sprouting_edge[ edgeNumber ] = true; 
+    sprouting_edge[ edgeNumber ] = true;
 
   }
 
   void markNodeForApicalGrowth(){
 
-       apicalGrowth = true;
+    apicalGrowth = true;
+
+  }
+
+  void printInformationOfNode(){
+
+    std::cout << " " << std::endl;
+    std::cout << "Data of Node: " << index << std::endl;
+    std::cout << "notUpdated: " << notUpdated << std::endl;
+    std::cout << "apicalGrowth: " << apicalGrowth << std::endl;
+    std::cout << "p_v: " << p_v << std::endl;
+    std::cout << "c_v: " << c_v << std::endl;
+    std::cout << "p_boundary: " << p_boundary << std::endl;
+    std::cout << "c_boundary: " << c_boundary << std::endl;
+    std::cout << "coord: " << coord << std::endl;
+    std::cout << "radii: " << radii << std::endl;
+    std::cout << "L_p: " << L_p << std::endl;
+    std::cout << "L_s: " << L_s << std::endl;
+    std::cout << "edge_touched: " << edge_touched<< std::endl;
+    std::cout << "sprouting_edge: " << sprouting_edge << std::endl;
+    std::cout << "typeOfVGNode: " << typeOfVGNode << std::endl;
+
+    int numberOfNeighbors = neighbors.size();
+    std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
+
+    for(int i=0;i<numberOfNeighbors;i++){
+
+      std::cout << "index_neighbor: " << neighbors[ i ]->index << std::endl;
+      std::cout << "coord_neighbor: " << neighbors[ i ]->coord << std::endl;
+
+    }
 
   }
 
