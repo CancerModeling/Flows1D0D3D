@@ -416,7 +416,8 @@ void netfc::Network::assemble3D1DSystemForPressure(){
 
             int indexOfNode = pointer->index;
 
-            //std::cout << "indexOfNode: " << indexOfNode << std::endl;
+            std::cout << " " << std::endl;
+            std::cout << "indexOfNode: " << indexOfNode << std::endl;
 
             int numberOfNeighbors = pointer->neighbors.size();
 
@@ -485,6 +486,9 @@ void netfc::Network::assemble3D1DSystemForPressure(){
 
                      determineWeightsAndIds( N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge, weights, id_3D_elements);
 
+                     std::cout << "weights: " << weights << std::endl;
+                     std::cout << "id_3D_elements: " << id_3D_elements << std::endl;
+
                      // Surface area of cylinder
                      double surface_area = 2.0*M_PI*0.5*length_edge*radius;
 
@@ -496,14 +500,18 @@ void netfc::Network::assemble3D1DSystemForPressure(){
 
                      for(int j=0;j<numberOfElements;j++){
 
-                         // A_3D1D
-                         A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - L_p*surface_area*weights[ j ];
+                         if( id_3D_elements[ j ]>-1 ){
 
-                         // A_3D3D
-                         A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  = A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  + L_p*surface_area*weights[ j ];
+                             // A_3D1D
+                             A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - L_p*surface_area*weights[ j ];
 
-                         // A_1D3D
-                         A_flow_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) = A_flow_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) - L_p*surface_area*weights[ j ];
+                             // A_3D3D
+                             A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  = A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  + L_p*surface_area*weights[ j ];
+
+                             // A_1D3D
+                             A_flow_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) = A_flow_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) - L_p*surface_area*weights[ j ];
+
+                         }
 
                      }
         
