@@ -17,61 +17,71 @@ namespace unet {
 template<class Node>
 class ListStructure{
 
-std::shared_ptr<Node> head, tail;
+  std::shared_ptr<Node> head, tail;
 
-int numberOfNodes;
+  int numberOfNodes;
 
 public:
 
-ListStructure(): numberOfNodes(0){
+  ListStructure(): numberOfNodes(0){
 
-   head = tail = NULL;
+    head = tail = NULL;
 
-}
+  }
 
-~ListStructure(){}
+  ~ListStructure(){}
 
-bool isEmpty(){
+  bool isEmpty(){
 
     return (head == NULL) ? true : false;
 
-}
+  }
 
-void attachNode(Node newNode){
+  void attachNode(Node newNode){
 
     auto sp_newNode = std::make_shared<Node>( newNode );
 
     if( isEmpty() ){
-        tail = head = sp_newNode;
+
+      tail = head = sp_newNode;
+
     }
     else{
-        tail->global_successor = sp_newNode;
-        tail = sp_newNode;
+
+      tail->global_successor = sp_newNode;
+      sp_newNode->global_predecessor = tail;
+      tail = sp_newNode;
+
     }
 
     numberOfNodes = numberOfNodes+1;
 
-}
+  }
 
-void attachPointerToNode( std::shared_ptr<Node> pointer ){
+  void attachPointerToNode( std::shared_ptr<Node> pointer ){
 
     if( isEmpty() ){
-        tail = head = pointer;
+
+      tail = head = pointer;
+
     }
     else{
-        tail->global_successor = pointer;
-        tail = pointer;
+
+      tail->global_successor = pointer;
+      pointer->global_predecessor = tail;
+      tail = pointer;
+
     }
 
     numberOfNodes = numberOfNodes+1;
 
-}
+  }
 
-std::shared_ptr<Node> getHead(){
+  std::shared_ptr<Node> getHead(){
 
     return head;
 
-}
+  }
 
   const std::shared_ptr<Node> getHead() const{
 
@@ -80,25 +90,25 @@ std::shared_ptr<Node> getHead(){
   }
 
 
-std::shared_ptr<Node> getTail(){
+  std::shared_ptr<Node> getTail(){
 
     return tail;
 
-}
+  }
 
-int getNumberOfNodes(){
+  int getNumberOfNodes(){
 
     return numberOfNodes;
 
-}
+  }
 
-void resetNumberOfNodes(){
+  void resetNumberOfNodes(){
 
     numberOfNodes = 0;
 
-}
+  }
 
-void determineNumberOfNodes(){
+  void determineNumberOfNodes(){
 
     std::shared_ptr<Node> pointer = head;
 
@@ -106,15 +116,15 @@ void determineNumberOfNodes(){
 
     while( pointer ){
 
-           numberOfNodes = numberOfNodes+1;
+      numberOfNodes = numberOfNodes+1;
 
-           pointer = pointer->global_successor;
+      pointer = pointer->global_successor;
 
     }
 
-}
+  }
 
-void findVertex(int numberOfVertex, std::vector<double>& coord, bool& allVerticesFound){
+  void findVertex(int numberOfVertex, std::vector<double>& coord, bool& allVerticesFound){
 
     std::shared_ptr<Node> pointer = head;
 
@@ -122,61 +132,61 @@ void findVertex(int numberOfVertex, std::vector<double>& coord, bool& allVertice
 
     while( pointer ){
 
-           int index_1 = pointer->index_1;
-           int index_2 = pointer->index_2;
+      int index_1 = pointer->index_1;
+      int index_2 = pointer->index_2;
 
-           if( index_1 == numberOfVertex ){
+      if( index_1 == numberOfVertex ){
 
-               coord = pointer->coord_1;
-               vertexFound = true;
-               break;
+        coord = pointer->coord_1;
+        vertexFound = true;
+        break;
 
-           }
-           else if( index_2 == numberOfVertex ){
+      }
+      else if( index_2 == numberOfVertex ){
 
-               coord = pointer->coord_2;
-               vertexFound = true;
-               break;
+        coord = pointer->coord_2;
+        vertexFound = true;
+        break;
 
-           }
+      }
 
-           if( vertexFound == true ){
+      if( vertexFound == true ){
 
-               break;
+        break;
 
-           }
+      }
 
-           pointer = pointer->global_successor;
+      pointer = pointer->global_successor;
 
     }
 
     if( vertexFound == false ){
 
-        allVerticesFound = true;
+      allVerticesFound = true;
 
     }
-    
-}
 
-std::shared_ptr<Node> findNode(int indexOfNode){
+  }
+
+  std::shared_ptr<Node> findNode(int indexOfNode){
 
     std::shared_ptr<Node> pointer = head;
 
     while( pointer ){
 
-           int index = pointer->index;
+      int index = pointer->index;
 
-           if( index == indexOfNode ){
+      if( index == indexOfNode ){
 
-               return pointer;
+        return pointer;
 
-           }
+      }
 
-           pointer = pointer->global_successor;
+      pointer = pointer->global_successor;
 
     }
 
-}
+  }
 
 
 };

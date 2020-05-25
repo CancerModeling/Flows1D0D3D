@@ -546,6 +546,10 @@ struct FlowDeck {
 
   double d_mmhgFactor;
 
+  double d_omega;
+
+  int d_N_newton;
+
   explicit FlowDeck(const std::string &filename = "")
       : d_tissue_flow_mu(0.), d_tissue_flow_K(0.), d_tissue_flow_coeff(0.),
       d_tissue_flow_rho(1.),
@@ -553,7 +557,7 @@ struct FlowDeck {
       d_pressure_bc_north(false),
         d_pressure_bc_south(false), d_pressure_bc_east(false),
         d_pressure_bc_west(false), d_pressure_bc_val(0.),
-        d_pressure_ic_val(0.), d_mmhgFactor(133.322) {
+        d_pressure_ic_val(0.), d_mmhgFactor(133.322), d_omega(0.0), d_N_newton(0) {
 
     if (!filename.empty())
       read_parameters(filename);

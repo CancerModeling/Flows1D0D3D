@@ -54,18 +54,24 @@ public:
   /*! @brief Create mesh for 1d network */
   void create_initial_network();
 
-  void readData(std::vector<std::vector<double>> &vertices,
-                std::vector<double> &pressures, std::vector<double> &radii,
-                std::vector<std::vector<unsigned int>> &elements);
+  void readData( std::vector<std::vector<double>> &vertices,
+                 std::vector<double> &pressures, std::vector<double> &radii,
+                 std::vector<std::vector<unsigned int>> &elements );
 
-  void transferDataToVGM(std::vector<std::vector<double>> &vertices,
-                         std::vector<double> &pressures,
-                         std::vector<double> &radii,
-                         std::vector<std::vector<unsigned int>> &elements);
+  void transferDataToVGM( std::vector<std::vector<double>> &vertices,
+                          std::vector<double> &pressures,
+                          std::vector<double> &radii,
+                          std::vector<std::vector<unsigned int>> &elements );
 
   void printDataVGM();
 
-  void writeDataToVTKTimeStep_VGM(int timeStep);
+  void writeDataToVTKTimeStep_VGM( int timeStep );
+
+  void writeDataToVTK_3D( std::vector<double> P_3D, int N_3D, double h_3D );
+
+  void writeDataToVTK3D_Pressure(std::vector<double> P_3D, std::vector< std::vector<double> > V_3D, int N_3D, double h_3D, int timeStep);
+
+  void writeDataToVTK3D_Nutrients(std::vector<double> C_3D, int N_3D, double h_3D, int timeStep);
 
   /** @}*/
 
@@ -73,6 +79,16 @@ public:
    * @name Solve
    */
   /**@{*/
+
+  void assemble3D1DSystemForPressure(BaseAssembly
+                                     &pres_sys, BaseAssembly &tum_sys);
+
+  void assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
+
+   void solve3D1DFlowProblem(BaseAssembly
+   &pres_sys, BaseAssembly &tum_sys);
+
+  void solve3D1DNutrientProblem(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
 
   /*! @brief Solve 1-d system */
   void assembleVGMSystemForPressure(BaseAssembly &pres_sys);
@@ -83,11 +99,6 @@ public:
 
   void solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys);
 
-  void update_old_concentration() { C_v_old = C_v; };
-
-  std::vector<util::unet::ElemWeights>
-  compute_elem_weights_at_node(std::shared_ptr<util::unet::VGNode> &pointer) const;
-
   /** @}*/
 
   /**
@@ -95,31 +106,58 @@ public:
    */
   /**@{*/
 
+  /*! @brief Update network */
+  void updateNetwork(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys);
+
+  void markApicalGrowth();
+
+  void processApicalGrowth();
+
+  void createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer );
+
+  void createALinkingNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer );
+
+  void linkTerminalVessels();
+
+  bool testCollision( std::vector<double> point );
+
+  bool testIntersection( std::vector<double> point_1, std::vector<double> point_2, std::vector<double>& new_point_link, double radius );
+
+  void removeRedundantTerminalVessels();
+
+  void markSproutingGrowth();
+
+  void processSproutingGrowth();
+
+  std::vector<double> findNearNetworkNode( std::vector<double> coord, std::vector<double> normal_plane );
+
+  /** @}*/
+
+  /**
+   * @name Utility functions
+   */
+  /**@{*/
+
+  void update_old_concentration() { C_v_old = C_v; };
+
+  void update_old_concentration_3D1D() { phi_sigma_old = phi_sigma; };
+
   void refine1DMesh();
 
-  /*! @brief Update network */
-  void update_network(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys);
+  double getDirichletValue( std::vector< double > center_face, double L_p, double radius );
+
+  double getK1D( double s, double L_p, double radius );
+
+  void rescaleSecombData( std::vector< std::vector<double> >& vertices, std::vector<double>& pressures, std::vector<double>& radii, double epsilon );
+
+  double sourceTermTAFTwoVessels( std::vector<double> coord );
+
+  std::vector<util::unet::ElemWeights>
+  compute_elem_weights_at_node(std::shared_ptr<util::unet::VGNode> &pointer)
+  const;
 
   /*! @brief Compute intersecting element and weight in tumor domain */
   void compute_elem_weights();
-
-  unsigned int markApicalGrowth(std::string growth_type, BaseAssembly &taf_sys);
-  unsigned int processApicalGrowthTAF(BaseAssembly &taf_sys,
-                                      BaseAssembly &grad_taf_sys);
-  std::shared_ptr<util::unet::VGNode>
-  check_new_node(const int &parent_index,
-                 const std::vector<double> &parent_coord,
-                 const std::vector<double> &child_coord, const double &dist_tol,
-                 const double &domain_size, unsigned int &check_code);
-
-  void add_new_node(std::shared_ptr<util::unet::VGNode> &pointer, const double &child_r,
-                    const std::vector<double> &child_end_point);
-  void add_new_node_at_existing_node(std::shared_ptr<util::unet::VGNode> &pointer,
-                                     std::shared_ptr<util::unet::VGNode> &near_node);
-
-  void get_taf_and_gradient(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys,
-                            double &taf_val, Point &grad_taf_val,
-                            const std::vector<double> &coord) const;
 
   /** @}*/
 
@@ -138,24 +176,71 @@ public:
   /*! @brief System matrix for vessel nutrient */
   gmm::row_matrix<gmm::wsvector<double>> Ac_VGM;
 
+  /*! @brief System matrix for 3D1D pressure flow model*/
+  gmm::row_matrix<gmm::wsvector<double>> A_flow_3D1D;
+
+  /*! @brief System matrix for 3D1D nutrient model*/
+  gmm::row_matrix<gmm::wsvector<double>> A_nut_3D1D;
+
   /*! @brief System force for vessel pressure */
   std::vector<double> b;
 
   /*! @brief System force for vessel nutrient */
   std::vector<double> b_c;
 
+  /*! @brief Right hand side pressure 3D1D */
+  std::vector<double> b_flow_3D1D;
+
+  /*! @brief Right hand side nutrients 3D1D */
+  std::vector<double> b_nut_3D1D;
+
   /*! @brief Current vessel pressure */
   std::vector<double> P_v;
 
   /*! @brief Current vessel nutrient */
   std::vector<double> C_v;
+
+  /*! @brief Old vessel nutrient */
   std::vector<double> C_v_old;
+
+  /*! @brief Current 3D1D pressure */
+  std::vector<double> P_3D1D;
+
+  /*! @brief Current 3D pressure */
+  std::vector<double> P_3D;
+
+  /*! @brief Current 3D1D nutrient concentration */
+  std::vector<double> phi_sigma;
+
+  /*! @brief Old 3D1D nutrient concentration */
+  std::vector<double> phi_sigma_old;
+
+  /*! @brief Current 3D nutrient concentration */
+  std::vector<double> phi_sigma_3D;
+
+  /*! @brief Current TAF concentration */
+  std::vector<double> phi_TAF;
+
+  /*! @brief Old TAF concentration */
+  std::vector<double> phi_TAF_old;
 
   double mu;
 
   double D_v;
 
+  double D_v_3D;
+
+  double D_TAF;
+
   double osmotic_sigma;
+
+  std::string scenario;
+
+  double h_3D;
+
+  int N_3D;
+
+  int N_tot_3D;
 
   unsigned int d_update_number;
 };
