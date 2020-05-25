@@ -479,10 +479,14 @@ void netfc::determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<d
 
              std::vector<double> cylinder_node = computeNodesOnCylinders( direction,  rotator, midpoint,  radius, theta );
 
-             int elementIndex = getElementIndex( cylinder_node, h_3D, N_3D );
+             if( isCenterInDomain( cylinder_node, 2.0 ) ){
 
-             // Compute weights and element ids
-             updateWeightsAndIds( N_s-2, N_theta, elementIndex, weights, id_3D_elements );
+                 int elementIndex = getElementIndex( cylinder_node, h_3D, N_3D );
+
+                 // Compute weights and element ids
+                 updateWeightsAndIds( N_s-2, N_theta, elementIndex, weights, id_3D_elements );
+
+             }
 
          }
 
