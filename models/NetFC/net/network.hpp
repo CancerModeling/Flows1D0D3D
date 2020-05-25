@@ -136,6 +136,8 @@ public:
 
   void processSproutingGrowth();
 
+  void adaptRadius();
+
   std::vector<double> findNearNetworkNode( std::vector<double> coord, std::vector<double> normal_plane );
 
   /** @}*/
