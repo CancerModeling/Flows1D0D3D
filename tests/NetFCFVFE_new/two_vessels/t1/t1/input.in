@@ -1,0 +1,148 @@
+# model
+model_name                                 = NetFCFVFE
+test_name                                  = test_nut
+dimension                                  = 3
+domain_xmin                                = 0.0
+domain_xmax                                = 2.0
+domain_ymin                                = 0.0
+domain_ymax                                = 2.0
+domain_zmin                                = 0.0
+domain_zmax                                = 2.0
+assembly_method                            = 2
+advection_active                           = true
+network_decouple_nutrients                 = false
+network_discret_cyl_length                 = 20
+network_discret_cyl_angle                  = 20
+network_compute_elem_weights               = true
+network_coupling_method_theta              = 1.0
+
+# restart
+restart                                    = false
+
+# mesh
+mesh_n_elements                            = 20
+
+# time
+time_step                                  = 0.05
+initial_time                               = 0.0
+initial_step                               = 0
+final_time                                 = 5.0
+
+# output
+perform_output                             = true
+output_interval                            = 10
+restart_save                               = false
+restart_save_interval                      = 1
+output_tag                                 = t1
+output_debug_info                          = true
+
+# solver
+linear_solver_max_iter                     = 250
+linear_solver_tol                          = 1e-08
+nonlinear_solver_max_iter                  = 50
+nonlinear_solver_tol                       = 1e-07
+
+# nutrient
+lambda_P                                   = 5.0
+lambda_A                                   = 0.005
+lambda_Ph                                  = 0.5
+D_sigma                                    = 1.0
+delta_sigma                                = 1.0
+chi_c                                      = 0.0
+
+# tumor
+bar_M_P                                    = 50.0
+bar_E_phi_T                                = 0.045
+epsilon_T                                  = 0.005
+
+# hypoxic
+bar_M_H                                    = 25.0
+lambda_PH                                  = 1.0
+lambda_HP                                  = 1.0
+lambda_HN                                  = 1.0
+sigma_PH                                   = 0.55
+sigma_HP                                   = 0.65
+sigma_HN                                   = 0.44
+
+# necrotic
+bar_M_N                                    = 0.0
+
+# TAF
+D_TAF                                      = 0.01
+delta_TAF                                  = 1.0
+lambda_TAF                                 = 10.0
+
+# ECM
+lambda_ECM_D                               = 0.0
+lambda_ECM_P                               = 0.0
+bar_phi_ECM_P                              = 0.5
+chi_h                                      = 0.0
+
+# MDE
+D_MDE                                      = 10.0
+delta_MDE                                  = 0.1
+lambda_MDE_D                               = 0.3
+lambda_MDE_P                               = 0.4
+
+# flow 1D
+init_vessel_viscosity                      = 1.0
+vessel_in_pressure                         = 1.0
+vessel_in_nutrient                         = 1.0
+vessel_in_nutrient_vein                    = 0.0
+vessel_blood_density                       = 1.0
+vessel_D_sigma                             = 0.005
+osmotic_reflection_coeff                   = 1.0
+
+# flow 21/3DD
+tissue_flow_viscosity                      = 1.0
+tissue_flow_K                              = 1e-07
+tissue_flow_density                        = 1.0
+tissue_flow_L_p                            = 1e-05
+tissue_nut_L_s                             = 1.0
+assembly_factor_p_t                        = 99999.99999999999
+assembly_factor_c_t                        = 1.0
+tissue_pressure_bc_val                     = 0.0
+bc_tissue_pressure_north                   = false
+bc_tissue_pressure_south                   = false
+bc_tissue_pressure_east                    = false
+bc_tissue_pressure_west                    = false
+tissue_pressure_ic_val                     = 50000.0
+
+# nutrient ic
+ic_nutrient_value                          = 0.0
+
+# tumor ic
+ic_tumor_file                              = tum_ic_data_t1.csv
+
+# ECM ic
+ECM_ic_val                                 = 1.0
+
+# MDE ic
+MDE_ic_val                                 = 0.0
+
+# nutrient bc
+bc_nutrient_north                          = false
+bc_nutrient_south                          = false
+bc_nutrient_east                           = false
+bc_nutrient_west                           = false
+
+# network
+is_network_active                          = true
+network_init_file                          = two_vessels_t1.dgf
+network_init_refinement                    = 4
+network_update_interval                    = 100000
+vessel_lambda_g                            = 0.5
+vessel_R_factor                            = 1.0
+log_normal_mean                            = 0.01
+log_normal_std_dev                         = 0.1
+network_radius_exponent_gamma              = 2.0
+network_no_branch_dist                     = 10
+network_new_veesel_max_angle               = 0.4
+network_branch_angle                       = 0.5
+network_update_taf_threshold               = 0.1
+network_vessel_no_taf_dist                 = 0
+network_nonlocal_search_num_points         = 3
+network_nonlocal_search_length_factor      = 5.0
+network_local_search                       = false
+network_no_new_node_search_factor          = 0.25
+identify_vein_pressure                     = 49995.0
