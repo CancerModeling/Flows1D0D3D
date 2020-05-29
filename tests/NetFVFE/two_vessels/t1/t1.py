@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import sys
 
@@ -348,11 +349,10 @@ def input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advecti
     inpf.close()
 
 
-
-## run
+## run sim
 L = 2.
 pp_tag = 't1'
-model_name = 'NetFCFVFE'
+model_name = 'NetFVFE'
 test_name = 'test_nut'
 # test_name = 'test_net_tum_2'
 output_debug_info = True
