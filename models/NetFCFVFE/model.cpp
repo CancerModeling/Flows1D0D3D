@@ -388,8 +388,8 @@ void netfcfvfe::Model::run() {
     if (d_input.d_test_name != "test_taf" and
         d_input.d_test_name != "test_taf_2")
       d_grad_taf_assembly.d_sys.hide_output() = true;
-  }
 
+  }
   do {
 
     // Prepare time step
