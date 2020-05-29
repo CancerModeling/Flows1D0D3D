@@ -247,11 +247,11 @@ void util::unet::Network::rescaleSecombData(
 
     if (pressures[i] < 21.0 && pressures[i] > 0.0) {
 
-      pressures[i] = 0.1;
+      pressures[i] = 5.0;
 
     } else if (pressures[i] > 21.0) {
 
-      pressures[i] = 9.5;
+      pressures[i] = 1200.0;
     }
   }
 
@@ -269,8 +269,8 @@ void util::unet::Network::rescaleSecombData(
     for (int j = 0; j < 3; j++) {
 
       double new_value =
-          1.9 * (vertices[i][j] - vec_min[j]) / (vec_max[j] - vec_min[j]) +
-          0.025;
+          1.81 * (vertices[i][j] - vec_min[j]) / (vec_max[j] - vec_min[j]) +
+          0.066;
 
       std::cout << "Value: " << new_value << std::endl;
 
@@ -283,9 +283,9 @@ void util::unet::Network::rescaleSecombData(
   for (int i = 0; i < numberOfEdges; i++) {
 
     std::cout << "Radius old: " << radii[i]
-              << " radius new: " << radii[i] / 1.2e-4 << std::endl;
+              << " radius new: " << radii[i] * 0.28 << std::endl;
 
-    radii[i] = radii[i] / 1.2e-4;
+    radii[i] = radii[i] * 0.28;
   }
 }
 
