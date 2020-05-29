@@ -19,7 +19,7 @@ model_name="$1"
 pp_tag="$2"
 script_flag="$3"
 
-if [[ $model_name != "NetFV" ]] && [[ $model_name != "NetFVFE" ]]; && [[ $model_name != "NetFCFVFE" ]]; && [[ $model_name != "NetFC" ]]; then
+if [[ $model_name != "NetFV" ]] && [[ $model_name != "NetFVFE" ]] && [[ $model_name != "NetFCFVFE" ]] && [[ $model_name != "NetFC" ]]; then
 	echo "Check model name or modify the script to include it"
 	exit
 fi

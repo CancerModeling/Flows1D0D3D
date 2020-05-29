@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import sys
 
@@ -29,37 +30,7 @@ def gen_tumor_ic_file(filename, type, center, r):
     inpf.close()
 
 
-def gen_init_network_file(L, R, pressures, filename):
-
-    # write to file
-    inpf = open(filename,'w')
-    inpf.write("DGF\n")
-
-    # vertex
-    inpf.write("Vertex\n")
-    inpf.write("parameters {}\n".format(1))
-    inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, 0.0, pressures[0]))
-    inpf.write("{} {} {} {}\n".format(L - 2.*R, L - 2.*R, L, pressures[1]))
-    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, 0.0, pressures[2]))
-    inpf.write("{} {} {} {}\n".format(2.*R, 2.*R, L, pressures[3]))
-
-    # segments
-    inpf.write("#\n")
-    inpf.write("SIMPLEX\n")
-    inpf.write("parameters {}\n".format(2))
-    inpf.write("{} {} {} {}\n".format(0, 1, R, 0.0075))
-    inpf.write("{} {} {} {}\n".format(2, 3, R, 0.0075))
-    # 
-    inpf.write("#\n")
-    inpf.write("BOUNDARYDOMAIN\n")
-    inpf.write("default {}\n".format(1))
-
-    # 
-    inpf.write("#")
-    inpf.close()
-
-
-def network_input(L, pp_tag, vessel_radius, pressures, network_file, file_dir, num_refinement, param_index, param_val):
+def network_input(L, pp_tag, identify_vein_pressure, network_file, file_dir, num_refinement, param_index, param_val):
 
     add(param_index, param_val, 'is_network_active', 'true')
     
@@ -87,14 +58,11 @@ def network_input(L, pp_tag, vessel_radius, pressures, network_file, file_dir, n
     add(param_index, param_val, 'network_no_new_node_search_factor', 0.25)
 
     # to identify veins so that we can apply correct bc
-    ident_pres = 0.9999 * pressures[1]
+    ident_pres = 0.9999 * identify_vein_pressure
     add(param_index, param_val, 'identify_vein_pressure', ident_pres)
-    
-    # generate network file
-    gen_init_network_file(L, vessel_radius, pressures, file_dir + network_file)
 
 
-def input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advection_active, decouple_nutrients, num_elems, final_time, delta_t, dt_output, chi_c, D_sigma, nutrient_ic_val, tissue_flow_coef, vessel_D_sigma, L_p, L_s, vessel_pressures, vessel_radius, tumor_ic_type, tumor_ic_center, tumor_ic_radius, vessel_num_refinement, lambda_P, mobility_P):
+def input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advection_active, decouple_nutrients, num_elems, final_time, delta_t, dt_output, chi_c, D_sigma, nutrient_ic_val, tissue_flow_coef, vessel_D_sigma, L_p, L_s, tumor_ic_type, tumor_ic_center, tumor_ic_radius, vessel_num_refinement, lambda_P, mobility_P, vessel_filename, identify_vein_pressure):
 
     # Info:
     # Creates input.in for model
@@ -110,7 +78,7 @@ def input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advecti
     # input_file = 'input_' + str(pp_tag) + '.in'
     input_file = 'input.in'
     tumor_ic_file = 'tum_ic_data_' + str(pp_tag) + '.csv'
-    network_file = 'two_vessels_' + str(pp_tag) + '.dgf'
+    network_file = vessel_filename
     
     ## model
     break_points.append(len(param_val))
@@ -148,7 +116,6 @@ def input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advecti
     add(param_index, param_val, 'network_discret_cyl_angle', 20)
     add(param_index, param_val, 'network_compute_elem_weights', 'true')
     add(param_index, param_val, 'network_coupling_method_theta', 1.0)
-
     
     ## restart info
     break_points.append(len(param_val))
@@ -284,7 +251,7 @@ def input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advecti
     add(param_index, param_val, 'bc_tissue_pressure_west', 'false')
 
     # pressure ic (set it equal to lower pressure in artery)
-    add(param_index, param_val, 'tissue_pressure_ic_val', vessel_pressures[1])
+    add(param_index, param_val, 'tissue_pressure_ic_val', identify_vein_pressure)
 
     ## nutrient ic
     break_points.append(len(param_val))
@@ -318,7 +285,7 @@ def input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advecti
     ## network 
     break_points.append(len(param_val))
     break_msg.append('\n# network')
-    network_input(L, str(pp_tag), vessel_radius, vessel_pressures, network_file, file_dir, vessel_num_refinement, param_index, param_val)
+    network_input(L, str(pp_tag), identify_vein_pressure, network_file, file_dir, vessel_num_refinement, param_index, param_val)
 
 
     break_points_new = [-1 for x in range(len(param_val))]
@@ -348,45 +315,45 @@ def input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advecti
     inpf.close()
 
 
-def run(dp):
+## run sim
+L = 2.
+pp_tag = 't1'
+model_name = 'NetFCFVFE'
+test_name = 'test_nut'
+# test_name = 'test_net_tum_2'
+output_debug_info = True
+advection_active = True
+decouple_nutrients = False 
+num_elems = 20
+final_time = 5.
+delta_t = 0.05
+dt_output = 10
+chi_c = 0.
+D_sigma = 1.
+nutrient_ic_val = 0.
+if test_name != 'test_nut':
+    nutrient_ic_val = 0.6
+tissue_flow_coef = 1.e-8
+vessel_D_sigma = 5.e-3
+L_p = 1.e-6
+L_s = 0.5
+tumor_ic_type = 1
+tumor_ic_center = [1.3, 0.9, 0.7]
+tumor_ic_radius = [0.25, 0.25, 0.25]
+vessel_num_refinement = 2
+lambda_P = 5.
+mobility_P = 50.
+vessel_filename = 'ratbrain_network.dgf'
+identify_vein_pressure = 50000.
 
-    L = 2.
-    pp_tag = 't1'
-    model_name = 'NetFV'
-    test_name = 'test_nut'
-    # test_name = 'test_net_tum_2'
-    output_debug_info = True
-    advection_active = True
-    decouple_nutrients = False 
-    num_elems = 20
-    final_time = 5.
-    delta_t = 0.05
-    dt_output = 10
-    chi_c = 0.
-    D_sigma = 1.
-    nutrient_ic_val = 0.
-    if test_name != 'test_nut':
-        nutrient_ic_val = 0.6
-    tissue_flow_coef = 1.e-7
-    vessel_D_sigma = 5.e-3
-    L_p = 1.e-5
-    L_s = 1.
-    vessel_pressures = [100000., 50000., 10000., 20000.]
-    vessel_radius = 0.05 * L
-    tumor_ic_type = 1
-    tumor_ic_center = [0.5 * L, 0.5 * L, 0.5 * L]
-    tumor_ic_radius = [0.15 * L, 0.15 * L, 0.15 * L]
-    vessel_num_refinement = 4
-    lambda_P = 5.
-    mobility_P = 50.
-
-    # file path to run sim
-    file_dir = pp_tag
-    os.system("./run.sh " + model_name + ' ' + pp_tag + ' 0')
+# file path to run sim
+file_dir = pp_tag + '/'
+os.system("./run.sh " + model_name + ' ' + pp_tag + ' 0')
+os.system("cp " + vessel_filename + ' ' + file_dir)
 
 
-    # create input file
-    input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advection_active, decouple_nutrients, num_elems, final_time, delta_t, dt_output, chi_c, D_sigma, nutrient_ic_val, tissue_flow_coef, vessel_D_sigma, L_p, L_s, vessel_pressures, vessel_radius, tumor_ic_type, tumor_ic_center, tumor_ic_radius, vessel_num_refinement, lambda_P, mobility_P)
-    
-    # run
-    os.system("./run.sh " + model_name + ' ' + pp_tag + ' 1')
+# create input file
+input(L, file_dir, pp_tag, model_name, test_name, output_debug_info, advection_active, decouple_nutrients, num_elems, final_time, delta_t, dt_output, chi_c, D_sigma, nutrient_ic_val, tissue_flow_coef, vessel_D_sigma, L_p, L_s, tumor_ic_type, tumor_ic_center, tumor_ic_radius, vessel_num_refinement, lambda_P, mobility_P, vessel_filename, identify_vein_pressure)
+
+# run
+os.system("./run.sh " + model_name + ' ' + pp_tag + ' 1')
