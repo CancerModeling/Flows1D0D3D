@@ -37,7 +37,8 @@ message("PETSC_LIB = ${PETSC_LIB}")
 
 
 # VTK
-find_package(VTK COMPONENTS vtkCommonCore QUIET)
+find_package(VTK REQUIRED)
+#find_package(VTK COMPONENTS vtkCommonCore QUIET)
 
 if (VTK_VERSION VERSION_LESS "6")
     message(FATAL_ERROR "ERROR: Only VTK library 6+ supported")
