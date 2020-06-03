@@ -23,8 +23,8 @@ void util::unet::Network::create_initial_network() {
 
   scenario = input.d_scenario;
 
-  std::cout << " " << std::endl;
-  std::cout << "Scenario: " << scenario << std::endl;
+  //std::cout << " " << std::endl;
+  oss << "Scenario: " << scenario << std::endl;
 
   readData(vertices, pressures, radii, elements);
 
@@ -32,12 +32,12 @@ void util::unet::Network::create_initial_network() {
 
   int numberOfNodes = VGM.getNumberOfNodes();
 
-  std::cout << " " << std::endl;
-  std::cout << "Number of nodes: " << numberOfNodes << std::endl;
+  //std::cout << " " << std::endl;
+  //oss << "Number of nodes: " << numberOfNodes << std::endl;
 
   // refine mesh
-  std::cout << " " << std::endl;
-  std::cout << "Refine mesh" << std::endl;
+  //std::cout << " " << std::endl;
+  //oss << "Refine mesh" << std::endl;
 
   int refinementLevel = input.d_network_init_refinement;
 
@@ -48,16 +48,20 @@ void util::unet::Network::create_initial_network() {
 
   numberOfNodes = VGM.getNumberOfNodes();
 
-  std::cout << " " << std::endl;
-  std::cout << "Number of nodes: " << numberOfNodes << std::endl;
+  //std::cout << " " << std::endl;
+  oss << "Number of nodes: " << numberOfNodes << std::endl;
+  d_model_p->d_delayed_msg += "Network Info \n";
+  d_model_p->d_delayed_msg += oss.str() + " \n";
+  oss.str("");
+  oss.clear();
 
   // compute element and weights
-  if (input.d_compute_elem_weights)
+  if (input.d_compute_elem_weights and input.d_model_name != "NetFCFVFE")
     compute_elem_weights();
 
   // Print data
-  std::cout << " " << std::endl;
-  std::cout << "Print data" << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "Print data" << std::endl;
   // printDataVGM();
 
   // initialize matrix and vector
@@ -123,10 +127,11 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
   assemble3D1DSystemForPressure(pres_sys, tum_sys);
 
   // Solve linear system of equations
-  std::cout << " " << std::endl;
-  std::cout << "Solve linear system of equations (pressure)" << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "Solve linear system of equations (pressure)" << std::endl;
 
-  gmm::iteration iter(10E-11, 2);
+  //gmm::iteration iter(10E-11, 2);
+  gmm::iteration iter(10E-11);
 
   gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> Pr(A_flow_3D1D, 50,
                                                                1e-5);
@@ -146,8 +151,8 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
   }
 
   // Extract pressures
-  std::cout << " " << std::endl;
-  std::cout << "Extract pressures" << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "Extract pressures" << std::endl;
 
   for (int i = 0; i < N_tot_3D; i++) {
 
@@ -155,6 +160,7 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
   }
 
   // Compute velocity field
+  /*
   std::cout << "Compute velocity field" << std::endl;
   std::vector<std::vector<double>> V_3D;
 
@@ -208,6 +214,7 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
     std::cout << "Plot solutions" << std::endl;
     writeDataToVTK3D_Pressure(P_3D, V_3D, N_3D, h_3D, timeStep);
   }
+  */
 
   // copy the 3D pressure to libmesh pressure system
   util::set_elem_sol(pres_sys, P_3D);
@@ -226,8 +233,9 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
   // Solver
   gmm::iteration iter(4.0e-11);
 
-  std::cout << " " << std::endl;
-  std::cout << "Assemble 3D1D nutrient matrix and right hand side" << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "Assemble 3D1D nutrient matrix and right hand side" <<
+  // std::endl;
   assemble3D1DSystemForNutrients(nut_sys, tum_sys);
 
   // if this is first call inside nonlinear loop, we guess current
@@ -242,13 +250,13 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
   gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> P(A_nut_3D1D, 60,
                                                               1e-8);
 
-  std::cout << " " << std::endl;
-  std::cout << "Solve linear system of equations (nutrients)" << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "Solve linear system of equations (nutrients)" << std::endl;
   gmm::bicgstab(A_nut_3D1D, phi_sigma, b_nut_3D1D, P, iter);
 
   auto pointer = VGM.getHead();
 
-  std::cout << " " << std::endl;
+  //std::cout << " " << std::endl;
 
   while (pointer) {
 
@@ -274,14 +282,15 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
   // phi_sigma_old = phi_sigma;
 
   // Extract nutrient concentrations
-  std::cout << " " << std::endl;
-  std::cout << "Extract nutrient concentrations" << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "Extract nutrient concentrations" << std::endl;
 
   for (int i = 0; i < N_tot_3D; i++) {
 
     phi_sigma_3D[i] = phi_sigma[i];
   }
 
+  /*
   if (timeStep % 2 == 0) {
 
     std::cout << " " << std::endl;
@@ -289,6 +298,7 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
     writeDataToVTK3D_Nutrients(phi_sigma_3D, N_3D, h_3D, timeStep);
     // writeDataToVTKTimeStep_VGM(timeStep);
   }
+  */
 
   // copy the 3D nutrient to libmesh nutrient system
   util::set_elem_sol(nut_sys, phi_sigma_3D);
@@ -398,30 +408,31 @@ void util::unet::Network::assemble3D1DSystemForPressure(
   double L_x = input.d_domain_params[1];
 
   // 3D-1D coupled flow problem on a unit cube
-  std::cout << " " << std::endl;
-  std::cout << "3D-1D coupled flow problem on a cube \Omega = (0," << L_x
-            << ")^3" << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "3D-1D coupled flow problem on a cube \Omega = (0," << L_x
+  //          << ")^3" << std::endl;
 
   // Number of Elements (3D) in each space direction
-  std::cout << " " << std::endl;
-  std::cout << "Number of Elements (3D) in each space direction: " << N_3D
-            << std::endl;
-  std::cout << "Total number of Elements in 3D: " << N_tot_3D << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "Number of Elements (3D) in each space direction: " << N_3D
+  //          << std::endl;
+  //std::cout << "Total number of Elements in 3D: " << N_tot_3D << std::endl;
 
   // Mesh size
-  std::cout << " " << std::endl;
-  std::cout << "Mesh size h_3D: " << h_3D << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "Mesh size h_3D: " << h_3D << std::endl;
 
   // Assemble 3D Matrix and right hand side (pressure)
-  std::cout << " " << std::endl;
+  //std::cout << " " << std::endl;
   // It is K divided by mu
   double K_3D = input.d_tissue_flow_coeff;
-  std::cout << "Assemble 3D Matrix and right hand side (pressure)" << std::endl;
-  std::cout << "K_3D: " << K_3D << std::endl;
+  //std::cout << "Assemble 3D Matrix and right hand side (pressure)" <<
+  //std::endl;
+  //std::cout << "K_3D: " << K_3D << std::endl;
 
   int numberOfNodes = VGM.getNumberOfNodes();
 
-  std::cout << "numberOfUnknowns: " << N_tot_3D + numberOfNodes << std::endl;
+  //std::cout << "numberOfUnknowns: " << N_tot_3D + numberOfNodes << std::endl;
 
   if (A_flow_3D1D.nrows() != N_tot_3D + numberOfNodes)
     libmesh_error_msg("A_flow_3D1D error.");
@@ -503,9 +514,9 @@ void util::unet::Network::assemble3D1DSystemForPressure(
   }
 
   // Assemble 1D Matrix, 1D right hand side and coupling matrices (pressure)
-  std::cout << " " << std::endl;
-  std::cout << "Assemble 1D Matrix and Coupling matrices (pressure)"
-            << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "Assemble 1D Matrix and Coupling matrices (pressure)"
+  //          << std::endl;
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -642,37 +653,37 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
   double L_x = input.d_domain_params[1];
 
   // 3D-1D coupled flow problem on a cube
-  std::cout << " " << std::endl;
-  std::cout << "3D-1D coupled nutrient transport problem on a cube \Omega = (0,"
-            << L_x << ")^3" << std::endl;
+  //std::cout << " " << std::endl;
+  //  std::cout << "3D-1D coupled nutrient transport problem on a cube \Omega = (0,"
+  //            << L_x << ")^3" << std::endl;
 
   // Number of Elements (3D) in each space direction
-  std::cout << " " << std::endl;
-  std::cout << "Number of Elements (3D) in each space direction: " << N_3D
-            << std::endl;
-  std::cout << "Total number of Elements in 3D: " << N_tot_3D << std::endl;
+  //  std::cout << " " << std::endl;
+  //  std::cout << "Number of Elements (3D) in each space direction: " << N_3D
+  //            << std::endl;
+  //  std::cout << "Total number of Elements in 3D: " << N_tot_3D << std::endl;
 
   // Mesh size
-  std::cout << " " << std::endl;
-  std::cout << "Mesh size h_3D: " << h_3D << std::endl;
+  //  std::cout << " " << std::endl;
+  //  std::cout << "Mesh size h_3D: " << h_3D << std::endl;
 
   double vol_elem = h_3D * h_3D * h_3D;
-  std::cout << "vol_elem: " << vol_elem << std::endl;
+  //std::cout << "vol_elem: " << vol_elem << std::endl;
 
   double area_face = h_3D * h_3D;
-  std::cout << "area_face: " << area_face << std::endl;
+  //std::cout << "area_face: " << area_face << std::endl;
 
   // Assemble 3D Matrix and right hand side (pressure)
-  std::cout << " " << std::endl;
+  //std::cout << " " << std::endl;
   double K_3D = input.d_tissue_flow_coeff;
-  std::cout << "Assemble 3D Matrix and right hand side (nutrients)"
-            << std::endl;
-  std::cout << "K_3D: " << K_3D << std::endl;
-  std::cout << "D_v_3D: " << D_v_3D << std::endl;
+  //  std::cout << "Assemble 3D Matrix and right hand side (nutrients)"
+  //            << std::endl;
+  //  std::cout << "K_3D: " << K_3D << std::endl;
+  //  std::cout << "D_v_3D: " << D_v_3D << std::endl;
 
   int numberOfNodes = VGM.getNumberOfNodes();
 
-  std::cout << "numberOfNodes: " << N_tot_3D + numberOfNodes << std::endl;
+  //std::cout << "numberOfNodes: " << N_tot_3D + numberOfNodes << std::endl;
 
   A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D + numberOfNodes,
                                                       N_tot_3D + numberOfNodes);
@@ -692,7 +703,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
   directions = defineDirections();
 
   double dt = d_model_p->d_dt;
-  std::cout << "dt: " << dt << std::endl;
+  //std::cout << "dt: " << dt << std::endl;
 
   for (int i = 0; i < N_3D; i++) { // x-loop
 
@@ -742,9 +753,9 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
   }
 
   // Assemble 1D Matrix, 1D right hand side and coupling matrices (nutrients)
-  std::cout << " " << std::endl;
-  std::cout << "Assemble 1D Matrix and Coupling matrices (nutrients)"
-            << std::endl;
+  //  std::cout << " " << std::endl;
+  //  std::cout << "Assemble 1D Matrix and Coupling matrices (nutrients)"
+  //            << std::endl;
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 

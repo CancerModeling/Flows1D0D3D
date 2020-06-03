@@ -215,8 +215,8 @@ void util::unet::Network::rescaleSecombData(
     std::vector<double> &radii, double epsilon) {
 
   // Get min and max coordinates
-  std::cout << " " << std::endl;
-  std::cout << "Get min and max coordinates" << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "Get min and max coordinates" << std::endl;
 
   int numberOfVertices = vertices.size();
   int numberOfEdges = radii.size();
@@ -257,12 +257,12 @@ void util::unet::Network::rescaleSecombData(
 
   for (int j = 0; j < 3; j++) {
 
-    std::cout << "min: " << vec_min[j] << " max: " << vec_max[j] << std::endl;
+    oss << "min: " << vec_min[j] << " max: " << vec_max[j] << std::endl;
   }
 
   // Get min and max coordinates
-  std::cout << " " << std::endl;
-  std::cout << "Get min and max coordinates" << std::endl;
+  //std::cout << " " << std::endl;
+  //std::cout << "Get min and max coordinates" << std::endl;
 
   for (int i = 0; i < numberOfVertices; i++) {
 
@@ -272,18 +272,18 @@ void util::unet::Network::rescaleSecombData(
           1.81 * (vertices[i][j] - vec_min[j]) / (vec_max[j] - vec_min[j]) +
           0.066;
 
-      std::cout << "Value: " << new_value << std::endl;
+      //std::cout << "Value: " << new_value << std::endl;
 
       vertices[i][j] = new_value;
     }
   }
 
-  std::cout << " " << std::endl;
+  //std::cout << " " << std::endl;
 
   for (int i = 0; i < numberOfEdges; i++) {
 
-    std::cout << "Radius old: " << radii[i]
-              << " radius new: " << radii[i] * 0.28 << std::endl;
+    //    std::cout << "Radius old: " << radii[i]
+    //              << " radius new: " << radii[i] * 0.28 << std::endl;
 
     radii[i] = radii[i] * 0.28;
   }
@@ -965,8 +965,7 @@ void util::unet::Network::writeDataToVTK3D_Nutrients(
 
 void util::unet::Network::compute_elem_weights() {
 
-  oss << "  Computing element-weight data for network\n";
-  d_model_p->d_log(oss);
+  //oss << "  Computing element-weight data for network\n";
 
   auto pointer = VGM.getHead();
 
