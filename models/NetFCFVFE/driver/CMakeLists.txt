@@ -21,4 +21,4 @@ include_directories("${CMAKE_SOURCE_DIR}/models/${ProjectName}")
 # ****************************************************************************
 add_executable(${ProjectName} main.cpp)
 target_link_libraries(${ProjectName} ${ProjectLib} ${VTK_LIBRARIES}
-        ${LIBMESH_LIBRARIES} ${PETSC_LIB} ${MPI_CXX_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+        ${LIBMESH_LIBRARIES} ${MPI_CXX_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})

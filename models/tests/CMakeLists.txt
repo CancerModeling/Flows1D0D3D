@@ -27,5 +27,4 @@ AUX_SOURCE_DIRECTORY(./ SOURCES)
 # Create executible
 # ****************************************************************************
 add_executable(Test ${SOURCES})
-target_link_libraries(Test TestComm TestMesh TestGeom Utils ${LIBMESH_LIBRARIES}
-        ${PETSC_LIB} ${MPI_CXX_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(Test TestComm TestMesh TestGeom Utils ${LIBMESH_LIBRARIES} ${MPI_CXX_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})

@@ -14,4 +14,4 @@ add_library(Utils ${SOURCES})
 
 #target_link_libraries(Utils ${VTK_LIBRARIES})
 target_link_libraries(Utils ${VTK_LIBRARIES}
-        ${LIBMESH_LIBRARIES} ${PETSC_LIB} ${MPI_CXX_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+        ${LIBMESH_LIBRARIES} ${PETSC_LIBRARIES} ${MPI_CXX_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
