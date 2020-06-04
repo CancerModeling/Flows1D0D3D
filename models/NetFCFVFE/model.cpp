@@ -78,7 +78,7 @@ void netfcfvfe::model_setup_run(int argc, char **argv,
   auto input = InpDeck(filename);
 
   // create logger
-  std::string logger_file = "info";
+  std::string logger_file = input.d_output_path + "info";
   if (!input.d_outfile_tag.empty())
     logger_file += "_" + input.d_outfile_tag;
   util::Logger log(logger_file, comm, !input.d_quiet);
@@ -88,7 +88,7 @@ void netfcfvfe::model_setup_run(int argc, char **argv,
     ReferenceCounter::disable_print_counter_info();
 
   //
-  log("Model: NetFCFVFE\n", "init");
+  log("Model: NetFCFVFE \n", "init");
 
   // create mesh
   oss << "Setup [Mesh] -> ";
@@ -292,12 +292,6 @@ netfcfvfe::Model::Model(
     grad_taf.time = d_input.d_init_time;
     vel.time = d_input.d_init_time;
 
-    if (d_input.d_perform_output and !d_input.d_quiet) {
-      d_mesh.print_info();
-      d_tum_sys.print_info();
-      d_mesh.write("mesh_" + d_input.d_outfile_tag + ".e");
-    }
-
     // set Petsc matrix option to suppress the error
     {
       PetscMatrix<Number> *pet_mat =
@@ -309,14 +303,21 @@ netfcfvfe::Model::Model(
           dynamic_cast<PetscMatrix<Number> *>(nut.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
+
+    if (d_input.d_perform_output and !d_input.d_quiet) {
+      d_delayed_msg += "Libmesh Info \n";
+      d_delayed_msg += d_mesh.get_info();
+      d_delayed_msg += " \n";
+      d_delayed_msg +=d_tum_sys.get_info();
+      d_mesh.write("mesh_" + d_input.d_outfile_tag + ".e");
+    }
   }
 
   // 1-D network
-  oss << "[Network]\n";
+  oss << "[Network] \n";
   d_log(oss, "init");
   d_network.create_initial_network();
-  log_msg(d_delayed_msg, d_log);
-  d_log(" \n", "init");
+  d_log(d_delayed_msg, "debug");
 
   // initialize qoi data
   d_qoi = util::QoIVec({"tumor_mass", "hypoxic_mass", "necrotic_mass",
@@ -352,9 +353,8 @@ void netfcfvfe::Model::run() {
   //
 
   if (!d_input.d_test_name.empty()) {
-    oss << "Solving sub-system: " << d_input.d_test_name << "\n";
-    d_log(oss);
-    d_log(" \n", "init");
+    oss << " \n Solving sub-system: " << d_input.d_test_name << " \n";
+    d_log(oss, "debug");
   }
 
   // check for tumor-network test
