@@ -8,9 +8,10 @@
 #ifndef NETFC_NETWORK_H
 #define NETFC_NETWORK_H
 
+#include "gmm.h"
 #include "utilLibs.hpp"
-#include "../inp/inp.hpp"
-#include "../systems/systems.hpp"
+#include "inp.hpp"
+#include "systems.hpp"
 #include "utils.hpp"
 #include "list_structure.hpp"
 #include "nodes.hpp"

@@ -13,5 +13,6 @@ AUX_SOURCE_DIRECTORY(rw/ SOURCES)
 add_library(Utils ${SOURCES})
 
 #target_link_libraries(Utils ${VTK_LIBRARIES})
-target_link_libraries(Utils ${VTK_LIBRARIES}
-        ${LIBMESH_LIBRARIES} ${PETSC_LIBRARIES} ${MPI_CXX_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(Utils
+        ${LIBMESH_LIBRARIES} ${PETSC_LIBRARIES} ${VTK_LIBRARIES} ${MPI_CXX_LIBRARIES}
+        ${CMAKE_THREAD_LIBS_INIT})

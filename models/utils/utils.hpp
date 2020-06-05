@@ -11,7 +11,7 @@
 #include "utilLibs.hpp"
 #include "utilIO.hpp"
 
-#include "../../external/gmm/gmm.h"
+//#include "../../external/gmm/gmm.h"
 
 #define X_POSITIVE_BOUNDARY 0
 #define X_NEGATIVE_BOUNDARY 1
