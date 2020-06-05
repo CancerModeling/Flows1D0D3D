@@ -23,4 +23,7 @@ AUX_SOURCE_DIRECTORY(./ SOURCES)
 AUX_SOURCE_DIRECTORY(systems SOURCES)
 
 add_library(${ProjectLib} ${SOURCES})
-target_link_libraries(${ProjectLib} Utils ${VTK_LIBRARIES} ${LIBMESH_LIBRARIES} ${MPI_CXX_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${ProjectLib} Utils)
+#target_link_libraries(${ProjectLib} Utils ${PETSC_LIBRARIES}
+#${LIBMESH_LIBRARIES}
+#        ${MPI_CXX_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
