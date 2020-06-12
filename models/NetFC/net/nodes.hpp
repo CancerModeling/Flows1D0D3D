@@ -101,7 +101,7 @@ public:
 
   double p_v, c_v, p_boundary, c_boundary;
 
-  std::vector< double > coord, radii, L_p, L_s;
+  std::vector< double > coord, radii, L_p, L_s, radii_initial, tau_w_initial;
 
   std::vector< bool > edge_touched;
 
