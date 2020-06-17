@@ -275,8 +275,8 @@ netfvfe::Model::Model(
     vel.attach_assemble_object(d_vel_assembly);
 
     // add ghosting functors
-    pres.get_dof_map().add_coupling_functor(d_ghosting_fv);
-    nut.get_dof_map().add_coupling_functor(d_ghosting_fv);
+    //pres.get_dof_map().add_coupling_functor(d_ghosting_fv);
+    //nut.get_dof_map().add_coupling_functor(d_ghosting_fv);
 
     //
     // Initialize and print system
@@ -295,17 +295,17 @@ netfvfe::Model::Model(
     grad_taf.time = d_input.d_init_time;
     vel.time = d_input.d_init_time;
 
-    //    // set Petsc matrix option to suppress the error
-    //    {
-    //      PetscMatrix<Number> *pet_mat =
-    //          dynamic_cast<PetscMatrix<Number> *>(pres.matrix);
-    //      MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    //    }
-    //    {
-    //      PetscMatrix<Number> *pet_mat =
-    //          dynamic_cast<PetscMatrix<Number> *>(nut.matrix);
-    //      MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    //    }
+    // set Petsc matrix option to suppress the error
+    {
+      PetscMatrix<Number> *pet_mat =
+          dynamic_cast<PetscMatrix<Number> *>(pres.matrix);
+      MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+    }
+    {
+      PetscMatrix<Number> *pet_mat =
+          dynamic_cast<PetscMatrix<Number> *>(nut.matrix);
+      MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+    }
 
     if (d_input.d_perform_output and !d_input.d_quiet) {
       d_delayed_msg += "Libmesh Info \n";
