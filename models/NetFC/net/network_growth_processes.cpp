@@ -57,6 +57,10 @@ void netfc::Network::updateNetwork(){
      std::cout << "Link terminal vessels" << std::endl;
      linkTerminalVessels();
 
+     std::cout << " " << std::endl;
+     std::cout << "Adapt radius" << std::endl;
+     adaptRadius();
+
      numberOfNodes = VGM.getNumberOfNodes();
 
      std::cout << " " << std::endl;
@@ -188,11 +192,20 @@ void netfc::Network::linkTerminalVessels(){
                                pointer->typeOfVGNode = TypeOfNode::InnerNode;
                                pointer->apicalGrowth = false;
                                pointer->radii.push_back( radius );
+                               pointer->radii_initial.push_back( radius );
                                pointer->L_p.push_back(input.d_tissue_flow_L_p);
                                pointer->L_s.push_back(input.d_tissue_nut_L_s);
                                pointer->edge_touched.push_back( true );
                                pointer->sprouting_edge.push_back( false );
                                pointer->neighbors.push_back( pointer_1 );
+ 
+                               double length = util::dist_between_points( pointer->coord, pointer_1->coord ); 
+                               double p_node = pointer->p_v;              
+                               double p_neighbor = pointer_1->p_v; 
+                               double delta_p = p_neighbor-p_node;
+                               double tau_w_ini = ( radius * std::abs( delta_p ) )/( 2.0*length ); 
+
+                               pointer->tau_w_initial.push_back( tau_w_ini );
 
                                std::cout << "Update pointer 1" << "\n";
 
@@ -201,11 +214,13 @@ void netfc::Network::linkTerminalVessels(){
                                pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
                                pointer_1->apicalGrowth = false;
                                pointer_1->radii.push_back( radius );
+                               pointer_1->radii_initial.push_back( radius );
                                pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
                                pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
                                pointer_1->edge_touched.push_back( true );
                                pointer_1->sprouting_edge.push_back( false );
                                pointer_1->neighbors.push_back( pointer ); 
+                               pointer_1->tau_w_initial.push_back( tau_w_ini );
 
                            }
                            else if( numberOfNeighbors_1 > 1 ){
@@ -221,11 +236,20 @@ void netfc::Network::linkTerminalVessels(){
                                pointer->typeOfVGNode = TypeOfNode::InnerNode;
                                pointer->apicalGrowth = false;
                                pointer->radii.push_back( radius );
+                               pointer->radii_initial.push_back( radius );
                                pointer->L_p.push_back(input.d_tissue_flow_L_p);
                                pointer->L_s.push_back(input.d_tissue_nut_L_s);
                                pointer->edge_touched.push_back( true );
                                pointer->sprouting_edge.push_back( false );
                                pointer->neighbors.push_back( pointer_1 );
+ 
+                               double length = util::dist_between_points( pointer->coord, pointer_1->coord ); 
+                               double p_node = pointer->p_v;              
+                               double p_neighbor = pointer_1->p_v; 
+                               double delta_p = p_neighbor-p_node;
+                               double tau_w_ini = ( radius * std::abs( delta_p ) )/( 2.0*length ); 
+
+                               pointer->tau_w_initial.push_back( tau_w_ini );
 
                                std::cout << "Update pointer 1" << "\n";
 
@@ -234,11 +258,13 @@ void netfc::Network::linkTerminalVessels(){
                                pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
                                pointer_1->apicalGrowth = false;
                                pointer_1->radii.push_back( radius );
+                               pointer_1->radii_initial.push_back( radius );
                                pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
                                pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
                                pointer_1->edge_touched.push_back( true );
                                pointer_1->sprouting_edge.push_back( false );
                                pointer_1->neighbors.push_back( pointer ); 
+                               pointer_1->tau_w_initial.push_back( tau_w_ini );
 
                            }
 
@@ -776,12 +802,21 @@ void netfc::Network::createASingleNode( std::vector<double> new_point, double ra
 	 new_node.typeOfVGNode = TypeOfNode::DirichletNode;
 	 new_node.apicalGrowth = false;
 	 new_node.radii.push_back( radius );
+         new_node.radii_initial.push_back( radius );
 	 new_node.L_p.push_back( input.d_tissue_flow_L_p );
 	 new_node.L_s.push_back( input.d_tissue_nut_L_s );
 	 new_node.edge_touched.push_back( true );
 	 new_node.sprouting_edge.push_back( false );
 	 new_node.neighbors.push_back( pointer );
 	 new_node.notUpdated = 0;
+ 
+         double length = util::dist_between_points( pointer->coord, new_point ); 
+         double p_node = pointer->p_v;              
+         double p_neighbor = 0.95*pointer->p_v; 
+         double delta_p = p_neighbor-p_node;
+         double tau_w_ini = ( radius * std::abs( delta_p ) )/( 2.0*length ); 
+
+         new_node.tau_w_initial.push_back( tau_w_ini );
 
 	 auto sp_newNode = std::make_shared<VGNode>( new_node );
 	 std::cout << "New index: " << new_node.index << "\n";
@@ -794,12 +829,14 @@ void netfc::Network::createASingleNode( std::vector<double> new_point, double ra
 	 pointer->typeOfVGNode = TypeOfNode::InnerNode;
 	 pointer->apicalGrowth = false;
 	 pointer->radii.push_back( radius );
+         pointer->radii_initial.push_back( radius );
 	 pointer->L_p.push_back(input.d_tissue_flow_L_p);
 	 pointer->L_s.push_back(input.d_tissue_nut_L_s);
 	 pointer->edge_touched.push_back( true );
 	 pointer->sprouting_edge.push_back( false );
 	 pointer->neighbors.push_back( sp_newNode );
 	 pointer->notUpdated = 0;
+         pointer->tau_w_initial.push_back( tau_w_ini );
 	 std::cout << "Attach new node as pointer" << "\n";
 
 	 VGM.attachPointerToNode( sp_newNode );
@@ -912,6 +949,7 @@ void netfc::Network::removeRedundantTerminalVessels(){
                 std::vector< double > new_radii;
                 std::vector< double > new_L_p;
                 std::vector< double > new_L_s;
+                std::vector< double > new_tau_w_initial;
 
                 for(int i=0;i<numberOfNeighbors_neighbor;i++){
 
@@ -924,7 +962,8 @@ void netfc::Network::removeRedundantTerminalVessels(){
                         new_sprouting_edge.push_back( pointer->neighbors[ 0 ]->sprouting_edge[ i ] );
                         new_radii.push_back( pointer->neighbors[ 0 ]->radii[ i ] ); 
                         new_L_p.push_back( pointer->neighbors[ 0 ]->L_p[ i ] ); 
-                        new_L_s.push_back( pointer->neighbors[ 0 ]->L_s[ i ] );                       
+                        new_L_s.push_back( pointer->neighbors[ 0 ]->L_s[ i ] );  
+                        new_tau_w_initial.push_back( pointer->neighbors[ 0 ]->tau_w_initial[ i ] );    
 
                     }
 
@@ -934,6 +973,8 @@ void netfc::Network::removeRedundantTerminalVessels(){
                 pointer->neighbors[ 0 ]->edge_touched = new_edge_touched;  
                 pointer->neighbors[ 0 ]->sprouting_edge = new_sprouting_edge;             
                 pointer->neighbors[ 0 ]->radii = new_radii;
+                pointer->neighbors[ 0 ]->radii_initial = new_radii;
+                pointer->neighbors[ 0 ]->tau_w_initial = new_tau_w_initial;
                 pointer->neighbors[ 0 ]->L_p = new_L_p;
                 pointer->neighbors[ 0 ]->L_s = new_L_s;
                 pointer->neighbors[ 0 ]->notUpdated = 0;
@@ -1147,6 +1188,8 @@ void netfc::Network::processSproutingGrowth(){
 
                     double radius_min = 8.5e-3;
 
+                    double p_v_neighbor = pointer->neighbors[ i ]->p_v;
+
                     std::uniform_real_distribution<double> distribution_uniform(radius_min,radius_prime);
 
                     double radius_new = radius_min;
@@ -1284,6 +1327,10 @@ void netfc::Network::processSproutingGrowth(){
                         new_node_1.radii.push_back( radius );
                         new_node_1.radii.push_back( radius_new );
 
+                        new_node_1.radii_initial.push_back( radius );
+                        new_node_1.radii_initial.push_back( radius );
+                        new_node_1.radii_initial.push_back( radius_new );
+
                         new_node_1.L_p.push_back( input.d_tissue_flow_L_p ); 
                         new_node_1.L_p.push_back( input.d_tissue_flow_L_p ); 
                         new_node_1.L_p.push_back( input.d_tissue_flow_L_p ); 
@@ -1304,6 +1351,19 @@ void netfc::Network::processSproutingGrowth(){
                         new_node_1.neighbors.push_back( pointer->neighbors[ i ] );
                         new_node_1.notUpdated = 0;
 
+                        double length_old = util::dist_between_points( mid_point, coord_neighbor );
+                        double length_new = util::dist_between_points( mid_point, coord_neighbor );
+
+                        double delta_p_old = p_v_neighbor - pointer->p_v;
+                        double delta_p_new = 0.95*pointer->p_v-pointer->p_v;
+
+                        double tau_w_ini_old = ( radius * std::abs( delta_p_old  ) )/( 2.0*length_old  );
+                        double tau_w_ini_new = ( radius * std::abs( delta_p_new  ) )/( 2.0*length_new  );
+
+                        new_node_1.tau_w_initial.push_back( tau_w_ini_old );
+                        new_node_1.tau_w_initial.push_back( tau_w_ini_old );
+                        new_node_1.tau_w_initial.push_back( tau_w_ini_new );
+
                         auto sp_newNode_1 = std::make_shared<VGNode>( new_node_1 );
 
                         std::cout<< "Create new node_2" << std::endl;
@@ -1318,12 +1378,15 @@ void netfc::Network::processSproutingGrowth(){
                         new_node_2.typeOfVGNode = TypeOfNode::DirichletNode;
                         new_node_2.apicalGrowth = false;
                         new_node_2.radii.push_back( radius_new );
+                        new_node_2.radii_initial.push_back( radius_new );
                         new_node_2.L_p.push_back( input.d_tissue_flow_L_p );
                         new_node_2.L_s.push_back( input.d_tissue_nut_L_s );
                         new_node_2.edge_touched.push_back( true );
                         new_node_2.sprouting_edge.push_back( false );
 
                         new_node_2.notUpdated = 0;
+
+                        new_node_2.tau_w_initial.push_back( tau_w_ini_new );
 
                         new_node_2.neighbors.push_back( sp_newNode_1 );
 
@@ -1553,7 +1616,6 @@ bool netfc::Network::testIntersection( std::vector<double> point_1, std::vector<
 
      }
 
-
      pointer = VGM.getHead();
 
      while( pointer ){
@@ -1578,5 +1640,173 @@ bool netfc::Network::testIntersection( std::vector<double> point_1, std::vector<
 
 void netfc::Network::adaptRadius(){
 
+     const auto &input = d_model_p->get_input_deck();
+
+     double dt = d_model_p->d_dt;
+
+     std::shared_ptr<VGNode> pointer = VGM.getHead();
+
+     double tau_w_avg = 0.0;
+
+     while( pointer ){
+
+            int numberOfNeighbors = pointer->neighbors.size();
+
+            for(int i=0;i<numberOfNeighbors;i++){
+
+                if( pointer->edge_touched[ i ] == false ){
+
+                    int local_index   = pointer->neighbors[ i ]->getLocalIndexOfNeighbor( pointer );
+
+                    double radius = pointer->radii[ i ];
+
+                    std::vector<double> coord_node = pointer->coord;
+                    std::vector<double> coord_neighbor = pointer->neighbors[ i ]->coord;    
+
+                    double length = util::dist_between_points( coord_node, coord_neighbor );  
+
+                    double p_node = pointer->p_v;              
+                    double p_neighbor = pointer->neighbors[ i ]->p_v; 
+                    double delta_p = p_neighbor-p_node;
+
+                    double tau_w = ( radius * std::abs( delta_p ) )/( 2.0*length );
+
+                    if( tau_w>tau_w_avg ){
+
+                        tau_w_avg = tau_w;
+
+                    }
+
+                    pointer->neighbors[ i ]->edge_touched[ local_index ] = true;
+                    pointer->edge_touched[ i ] = true;
+
+                }
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     int numberOfNodes = VGM.getNumberOfNodes();
+
+     tau_w_avg = tau_w_avg/(double) numberOfNodes;
+
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfEdges = pointer->neighbors.size();
+
+            for(int i=0;i<numberOfEdges;i++){
+
+                pointer->edge_touched[ i ] = false;
+                pointer->sprouting_edge[ i ] = false;
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfNeighbors = pointer->neighbors.size();
+
+            for(int i=0;i<numberOfNeighbors;i++){
+
+                if( pointer->edge_touched[ i ] == false ){
+
+                    int local_index   = pointer->neighbors[ i ]->getLocalIndexOfNeighbor( pointer );
+
+                    double radius = pointer->radii[ i ];
+
+                    double radius_initial = pointer->radii_initial[ i ];
+
+                    std::vector<double> coord_node = pointer->coord;
+                    std::vector<double> coord_neighbor = pointer->neighbors[ i ]->coord;    
+
+                    double length = util::dist_between_points( coord_node, coord_neighbor );  
+
+                    double p_node = pointer->p_v;              
+                    double p_neighbor = pointer->neighbors[ i ]->p_v; 
+                    double delta_p = p_neighbor-p_node;
+
+                    double c_node = pointer->c_v;              
+                    double c_neighbor = pointer->neighbors[ i ]->c_v; 
+
+                    double tau_w_ini = pointer->tau_w_initial[ i ];
+
+                    double tau_w = ( radius * std::abs( delta_p ) )/( 2.0*length );
+
+                    double A_r = 60.0*( tau_w_ini - tau_w ) - 1.75*( 0.5*(c_node+c_neighbor) );
+
+                    double R_initial = ( 8.0 * length )/( M_PI * radius_initial * radius_initial * radius_initial * radius_initial );
+
+                    double R_U = 1.3 * R_initial;
+                    double R_L = 0.7 * R_initial;
+
+                    double C_initial = -std::log( ( R_initial - R_L )/( R_U - R_initial ) );
+
+                    double R_new = ( R_L + R_U * std::exp( A_r - C_initial ) )/( 1.0 + std::exp( A_r - C_initial ) );
+
+                    double radius_new = std::pow( ( 8.0*length )/( R_new * M_PI ),0.25 ); 
+
+                    if( radius_new<8.0e-3 ){
+
+                        radius_new = 8.0e-3;
+
+                    }
+
+                    if( 0.5*(c_node+c_neighbor)>1.0e-4 ){
+
+		        std::cout << " " << std::endl;
+		        std::cout << "tau_avg: " << tau_w_avg << std::endl;
+		        std::cout << "tau_ini: " << tau_w_ini << std::endl;
+		        std::cout << "tau_w: " << tau_w << std::endl;
+		        std::cout << "A_r: " << A_r << std::endl;
+		        std::cout << "R_initial: " << R_initial << std::endl;
+		        std::cout << "R_U: " << R_U << std::endl;
+		        std::cout << "R_L: " << R_L << std::endl;
+		        std::cout << "R_new: " << R_new << std::endl;
+		        std::cout << "radius_initial: " << radius_initial << std::endl;
+		        std::cout << "radius: " << radius << std::endl;
+		        std::cout << "radius_new: " << radius_new << std::endl;
+		        std::cout << "coord_node: " << coord_node << std::endl;
+
+                        pointer->neighbors[ i ]->radii[ local_index ] = radius_new;
+                        pointer->radii[ i ] = radius_new;
+
+                    }
+
+                    pointer->neighbors[ i ]->edge_touched[ local_index ] = true;
+                    pointer->edge_touched[ i ] = true;
+
+                }
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfEdges = pointer->neighbors.size();
+
+            for(int i=0;i<numberOfEdges;i++){
+
+                pointer->edge_touched[ i ] = false;
+                pointer->sprouting_edge[ i ] = false;
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
 
 }
