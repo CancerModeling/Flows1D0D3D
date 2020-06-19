@@ -117,7 +117,7 @@ void netfc::Network::linkTerminalVessels(){
 
      while( pointer ) {
 
-            if( pointer->typeOfVGNode == TypeOfNode::DirichletNode && pointer->neighbors.size() == 1 ){
+            if( pointer->neighbors.size() == 1 ){
 
                 std::vector<double> coord = pointer->coord;
 
@@ -318,7 +318,7 @@ void netfc::Network::markApicalGrowth(){
 
             int numberOfNeighbors = pointer->neighbors.size();
 
-            if( pointer->typeOfVGNode == TypeOfNode::DirichletNode && numberOfNeighbors == 1 ) {
+            if( numberOfNeighbors == 1 ) {
 
                 const auto &coord = pointer->coord;
 
@@ -538,8 +538,6 @@ void netfc::Network::processApicalGrowth(){
                    for(int i=0;i<3;i++){
 
                        direction[ i ] = ( 0.5*max_vec[ i ] + 0.5*max_vec_2[ i ] - coord[ i ] ) + ( 1.0 * normal_plane[ i ] );
-                                      //( 0.25*max_vec[ i ] + 0.5*max_vec_2[ i ] + 0.25*near_node[ i ] - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );
-                                      //( 0.5*near_node[ i ] + 0.5*max_vec[ i ] - coord[ i ] ) + ( 0.5 * normal_plane[ i ] );    
 
                    }
 
@@ -809,6 +807,7 @@ void netfc::Network::createASingleNode( std::vector<double> new_point, double ra
 	 new_node.sprouting_edge.push_back( false );
 	 new_node.neighbors.push_back( pointer );
 	 new_node.notUpdated = 0;
+         new_node.typeOfVGNode = TypeOfNode::NeumannNode;
  
          double length = util::dist_between_points( pointer->coord, new_point ); 
          double p_node = pointer->p_v;              
@@ -981,7 +980,7 @@ void netfc::Network::removeRedundantTerminalVessels(){
 
                 if( numberOfNeighbors_neighbor == 2 ){
 
-                    pointer->neighbors[ 0 ]->typeOfVGNode = TypeOfNode::DirichletNode;
+                    pointer->neighbors[ 0 ]->typeOfVGNode = TypeOfNode::NeumannNode;
                     pointer->neighbors[ 0 ]->p_boundary = 0.0;
                     pointer->neighbors[ 0 ]->c_boundary = 1.0;
 
@@ -1049,6 +1048,18 @@ void netfc::Network::removeRedundantTerminalVessels(){
             pointer->index = counter;
 
             counter = counter + 1;
+
+            const auto &coord = pointer->coord;
+
+            if( 0.0001<coord[0] && coord[0]<L_x-0.0001 && 0.0001<coord[1] && coord[1]<L_x-0.0001 && 0.0001<coord[2] && coord[2]<L_x-0.0001){
+
+                if( pointer->typeOfVGNode == TypeOfNode::InnerNode && pointer->neighbors.size() == 1 ){
+
+                    pointer->typeOfVGNode = TypeOfNode::NeumannNode;
+                 
+                }
+
+            }
 
             pointer = pointer->global_successor;
 
@@ -1220,11 +1231,9 @@ void netfc::Network::processSproutingGrowth(){
                     }
 
                     int max_index = 0;
-
                     int max_index_2 = 0;
 
                     double TAF_max = 0.0;
-
                     double TAF_max_2 = 0.0;
 
                     for(int j=0;j<indicesNeighbors.size();j++){
@@ -1383,11 +1392,9 @@ void netfc::Network::processSproutingGrowth(){
                         new_node_2.L_s.push_back( input.d_tissue_nut_L_s );
                         new_node_2.edge_touched.push_back( true );
                         new_node_2.sprouting_edge.push_back( false );
-
+                        new_node_2.typeOfVGNode = TypeOfNode::NeumannNode;
                         new_node_2.notUpdated = 0;
-
                         new_node_2.tau_w_initial.push_back( tau_w_ini_new );
-
                         new_node_2.neighbors.push_back( sp_newNode_1 );
 
                         auto sp_newNode_2 = std::make_shared<VGNode>( new_node_2 );
@@ -1715,6 +1722,9 @@ void netfc::Network::adaptRadius(){
 
             int numberOfNeighbors = pointer->neighbors.size();
 
+            std::vector< bool > remove_edge( false, numberOfNeighbors );
+            std::vector< int > edgesToBeRemoved;
+
             for(int i=0;i<numberOfNeighbors;i++){
 
                 if( pointer->edge_touched[ i ] == false ){
@@ -1741,7 +1751,7 @@ void netfc::Network::adaptRadius(){
 
                     double tau_w = ( radius * std::abs( delta_p ) )/( 2.0*length );
 
-                    double A_r = 60.0*( tau_w_ini - tau_w ) - 1.75*( 0.5*(c_node+c_neighbor) );
+                    double A_r = 2.0*( tau_w_ini - tau_w ) - 20.0*( 0.5*(c_node+c_neighbor) );
 
                     double R_initial = ( 8.0 * length )/( M_PI * radius_initial * radius_initial * radius_initial * radius_initial );
 
@@ -1754,27 +1764,36 @@ void netfc::Network::adaptRadius(){
 
                     double radius_new = std::pow( ( 8.0*length )/( R_new * M_PI ),0.25 ); 
 
-                    if( radius_new<8.0e-3 ){
+                    if( radius_new<8.5e-3 ){
 
-                        radius_new = 8.0e-3;
+                        radius_new = 8.5e-3;
+
+                        std::cout << "Remove vessel with index: " << i << std::endl;
+
+                        edgesToBeRemoved.push_back( i );
+
+                        remove_edge[ i ] = true;
+
+                        int numberOfNeighbors_Neighbor = pointer->neighbors.size();
 
                     }
 
-                    if( 0.5*(c_node+c_neighbor)>1.0e-4 ){
+                    if( radius<0.02 ){
 
-		        std::cout << " " << std::endl;
-		        std::cout << "tau_avg: " << tau_w_avg << std::endl;
-		        std::cout << "tau_ini: " << tau_w_ini << std::endl;
-		        std::cout << "tau_w: " << tau_w << std::endl;
-		        std::cout << "A_r: " << A_r << std::endl;
-		        std::cout << "R_initial: " << R_initial << std::endl;
-		        std::cout << "R_U: " << R_U << std::endl;
-		        std::cout << "R_L: " << R_L << std::endl;
-		        std::cout << "R_new: " << R_new << std::endl;
-		        std::cout << "radius_initial: " << radius_initial << std::endl;
-		        std::cout << "radius: " << radius << std::endl;
-		        std::cout << "radius_new: " << radius_new << std::endl;
-		        std::cout << "coord_node: " << coord_node << std::endl;
+	                std::cout << " " << std::endl;
+	                std::cout << "tau_avg: " << tau_w_avg << std::endl;
+	                std::cout << "tau_w: " << tau_w << std::endl;
+	                std::cout << "2.0*( tau_w_ini - tau_w ): " << 2.0*( tau_w_ini - tau_w ) << std::endl;
+	                std::cout << "-20.0*( 0.5*(c_node+c_neighbor) ): " << - 20.0*( 0.5*(c_node+c_neighbor) ) << std::endl;
+	                std::cout << "A_r: " << A_r << std::endl;
+	                std::cout << "R_initial: " << R_initial << std::endl;
+	                std::cout << "R_U: " << R_U << std::endl;
+	                std::cout << "R_L: " << R_L << std::endl;
+	                std::cout << "R_new: " << R_new << std::endl;
+	                std::cout << "radius_initial: " << radius_initial << std::endl;
+	                std::cout << "radius: " << radius << std::endl;
+	                std::cout << "radius_new: " << radius_new << std::endl;
+	                std::cout << "coord_node: " << coord_node << std::endl;
 
                         pointer->neighbors[ i ]->radii[ local_index ] = radius_new;
                         pointer->radii[ i ] = radius_new;
@@ -1788,10 +1807,42 @@ void netfc::Network::adaptRadius(){
 
             }
 
+            // Remove redundant vessels
+            for(int i=0;i<numberOfNeighbors;i++){
+
+                if( remove_edge[ i ] == true ){
+                    
+                    int index_neighbor = pointer->neighbors[ i ]->getLocalIndexOfNeighbor( pointer );
+
+                    pointer->neighbors[ i ]->removeComponent( index_neighbor );
+
+                }
+
+            }
+
+            pointer->removeComponents( edgesToBeRemoved );
+
             pointer = pointer->global_successor;
 
      }
 
+     // Remove nodes without neighbor
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfEdges = pointer->neighbors.size();
+
+            if( numberOfEdges == 0 ){
+
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     // Renumber nodes
      pointer = VGM.getHead();
 
      while( pointer ){
