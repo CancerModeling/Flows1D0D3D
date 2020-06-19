@@ -171,6 +171,7 @@ void netfc::Network::transferDataToVGM( std::vector<std::vector<double>> &vertic
          pointer_2 = VGM.findNode(index_2);
 
          pointer_1->radii.push_back(radius);
+         pointer_1->radii_initial.push_back(radius);
          pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
          pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
          pointer_1->neighbors.push_back(pointer_2);
@@ -178,6 +179,7 @@ void netfc::Network::transferDataToVGM( std::vector<std::vector<double>> &vertic
          pointer_1->sprouting_edge.push_back(false);
 
          pointer_2->radii.push_back(radius);
+         pointer_2->radii_initial.push_back(radius);
          pointer_2->L_p.push_back(input.d_tissue_flow_L_p);
          pointer_2->L_s.push_back(input.d_tissue_nut_L_s);
          pointer_2->neighbors.push_back(pointer_1);
@@ -352,6 +354,10 @@ void netfc::Network::refine1DMesh() {
                       new_node.radii.push_back(pointer->radii[i]);
 
                       new_node.radii.push_back(pointer->radii[i]);
+
+                      new_node.radii_initial.push_back(pointer->radii[i]);
+
+                      new_node.radii_initial.push_back(pointer->radii[i]);
 
                       new_node.typeOfVGNode = TypeOfNode::InnerNode;
 

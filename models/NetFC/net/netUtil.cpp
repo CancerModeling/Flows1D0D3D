@@ -445,7 +445,7 @@ void netfc::updateWeightsAndIds(int N_s, int N_theta, int elementIndex,
 }
 
 void netfc::determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<double> coord, std::vector<double> coord_neighbor,
-                                    double radius, double h_3D, double& length_edge, std::vector<double> &weights, std::vector<int> &id_3D_elements){
+                                    double radius, double h_3D, double length_edge, std::vector<double> &weights, std::vector<int> &id_3D_elements){
 
      std::vector<double> direction, rotator;
 
@@ -454,8 +454,6 @@ void netfc::determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<d
          direction.push_back( coord_neighbor[ j ] - coord[ j ] );
 
      }
-
-     length_edge = normVector( direction );
 
      rotator = determineRotator( direction );
 
@@ -469,7 +467,7 @@ void netfc::determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<d
 
          for(int j=0;j<3;j++){
 
-             midpoint[ j ] = coord[ j ] + ( ( (double) i_s/(double) N_s ) * (0.5*length_edge) ) * direction[ j ];
+             midpoint[ j ] = coord[ j ] + ( ( (double) i_s/(double) N_s ) * (length_edge) ) * direction[ j ];
 
          }
 
