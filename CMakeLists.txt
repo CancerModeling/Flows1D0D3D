@@ -106,6 +106,9 @@ if(${TEST_BUILD})
     add_subdirectory(models/tests)
 endif()
 
+message("Adding applications ")
+add_subdirectory(applications)
+
 
 INSTALL (
         DIRECTORY ${CMAKE_SOURCE_DIR}/models
