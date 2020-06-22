@@ -41,9 +41,10 @@ void util::unet::Network::create_initial_network() {
 
   int refinementLevel = input.d_network_init_refinement;
 
-  for (int i = 0; i < refinementLevel; i++) {
+  for(int i = 0; i < refinementLevel; i++) {
 
-    refine1DMesh();
+      refine1DMesh();
+
   }
 
   numberOfNodes = VGM.getNumberOfNodes();
@@ -98,6 +99,14 @@ void util::unet::Network::create_initial_network() {
   phi_sigma = std::vector<double>(N_tot_3D + numberOfNodes, 0.0);
   phi_sigma_old = std::vector<double>(N_tot_3D + numberOfNodes, 0.0);
   phi_sigma_3D = std::vector<double>(N_tot_3D, 0.0);
+
+  for(int i = 0; i < N_tot_3D; i++) {
+
+      phi_sigma_3D[i]  = 0.6;
+      phi_sigma_old[i] = 0.6;
+      phi_sigma[i] = 0.6;
+
+  }
 
   phi_TAF = std::vector<double>(N_tot_3D, 0.0);
   phi_TAF_old = std::vector<double>(N_tot_3D, 0.0);
@@ -290,8 +299,7 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
     phi_sigma_3D[i] = phi_sigma[i];
   }
 
-  /*
-  if (timeStep % 2 == 0) {
+  if (timeStep % 4 == 0) {
 
     std::cout << " " << std::endl;
     std::cout << "Plot solutions" << std::endl;
