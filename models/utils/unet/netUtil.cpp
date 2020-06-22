@@ -12,35 +12,38 @@
 void util::unet::angle_correction(const Point &parent_d, Point &child_d,
                                     const double &max_angle) {
 
-  auto child_angle = util::angle(child_d, parent_d);
-  if (std::abs(child_angle) > max_angle) {
+     auto child_angle = util::angle(child_d, parent_d);
 
-    // axis for rotation
-    Point axis = parent_d.cross(child_d);
-    axis = axis / axis.norm();
+     if(std::abs(child_angle) > max_angle) {
 
-    // rotate parent direction by allowed angle
-    child_d = util::rotate(parent_d, max_angle, axis);
-  }
+        // axis for rotation
+        Point axis = parent_d.cross(child_d);
+        axis = axis / axis.norm();
+
+        // rotate parent direction by allowed angle
+        child_d = util::rotate(parent_d, max_angle, axis);
+
+     }
+
 }
 
 void util::unet::compute_bifurcate_child_direction(
     const Point &parent_d, const Point &child_d, Point &child_d_2,
     const double &branch_angle) {
 
-  // get angle between child direction and parent direction and offset
-  // it by branching angle
-  double angle_1 = util::angle(parent_d, child_d) + branch_angle;
+    // get angle between child direction and parent direction and offset
+    // it by branching angle
+    double angle_1 = util::angle(parent_d, child_d) + branch_angle;
 
-  // axis for rotation
-  Point axis = parent_d.cross(child_d);
-  axis = axis / axis.norm();
+    // axis for rotation
+    Point axis = parent_d.cross(child_d);
+    axis = axis / axis.norm();
 
-  // rotate parent_direction by -ve angle
-  child_d_2 = util::rotate(parent_d, -angle_1, axis);
+    // rotate parent_direction by -ve angle
+    child_d_2 = util::rotate(parent_d, -angle_1, axis);
 
-  out << "\n angle_1: " << angle_1 << ", axis: " << axis
-      << ", child_d_2: " << child_d_2 << "\n";
+    out << "\n angle_1: " << angle_1 << ", axis: " << axis << ", child_d_2: " << child_d_2 << "\n";
+
 }
 
 void util::unet::angle_correction_bifurcation(const Point &parent_d,
@@ -49,225 +52,125 @@ void util::unet::angle_correction_bifurcation(const Point &parent_d,
                                                 const double &max_angle,
                                                 const double &branch_angle) {
 
-  // check if angle of direction from parent direction is within
-  // permissible range
-  auto child_angle = util::angle(child_d_2, parent_d);
-  if (std::abs(child_angle) > max_angle) {
+     // check if angle of direction from parent direction is within
+     // permissible range
+     auto child_angle = util::angle(child_d_2, parent_d);
 
-    // axis for rotation
-    Point axis = parent_d.cross(child_d_2);
-    axis = axis / axis.norm();
+     if( std::abs(child_angle) > max_angle ){
 
-    // rotate parent direction by allowed angle
-    child_d_2 = util::rotate(parent_d, max_angle, axis);
+         // axis for rotation
+         Point axis = parent_d.cross(child_d_2);
+         axis = axis / axis.norm();
 
-  } else if (std::abs(child_angle) < branch_angle) {
+         // rotate parent direction by allowed angle
+         child_d_2 = util::rotate(parent_d, max_angle, axis);
 
-    // axis for rotation
-    Point axis = parent_d.cross(child_d_2);
-    axis = axis / axis.norm();
+     } 
+     else if (std::abs(child_angle) < branch_angle){
 
-    // rotate parent direction by allowed angle
-    child_d_2 = util::rotate(parent_d, branch_angle, axis);
-  }
+         // axis for rotation
+         Point axis = parent_d.cross(child_d_2);
+         axis = axis / axis.norm();
+
+         // rotate parent direction by allowed angle
+         child_d_2 = util::rotate(parent_d, branch_angle, axis);
+
+     }
+
 }
 
-std::vector<double> util::unet::getElementCenter(int i, int j, int k,
-                                                   double h_3D) {
+std::vector<double> util::unet::getElementCenter(int i, int j, int k, double h_3D) {
 
-  std::vector<double> center;
+                    std::vector<double> center;
 
-  center.push_back((double)i * h_3D + 0.5 * h_3D);
+                    center.push_back((double)i * h_3D + 0.5 * h_3D);
+                    center.push_back((double)j * h_3D + 0.5 * h_3D);
+                    center.push_back((double)k * h_3D + 0.5 * h_3D);
 
-  center.push_back((double)j * h_3D + 0.5 * h_3D);
+                    return center;
 
-  center.push_back((double)k * h_3D + 0.5 * h_3D);
-
-  return center;
 }
 
-std::vector<double>
-util::unet::getCenterNeighbor(std::vector<double> center,
-                                std::vector<double> direction, double h_3D) {
+std::vector<double> util::unet::getCenterNeighbor(std::vector<double> center, std::vector<double> direction, double h_3D) {
 
-  std::vector<double> center_neighbor;
+                    std::vector<double> center_neighbor;
 
-  for (int i = 0; i < 3; i++) {
+                    for(int i = 0; i < 3; i++) {
 
-    center_neighbor.push_back(center[i] + h_3D * direction[i]);
-  }
+                        center_neighbor.push_back(center[i] + h_3D * direction[i]);
 
-  return center_neighbor;
+                    }
+
+                    return center_neighbor;
+
 }
 
 std::vector<std::vector<double>> util::unet::defineDirections() {
 
-  std::vector<std::vector<double>> directions;
+                                 std::vector<std::vector<double>> directions;
 
-  for (int i = 0; i < 3; i++) {
+				 for(int i = 0; i < 3; i++){
 
-    std::vector<double> direction_p;
-    std::vector<double> direction_m;
+				     std::vector<double> direction_p;
+				     std::vector<double> direction_m;
 
-    for (int j = 0; j < 3; j++) {
+				     for(int j = 0; j < 3; j++){
 
-      if (i == j) {
+				         if(i == j){
 
-        direction_p.push_back(1.0);
-        direction_m.push_back(-1.0);
+				            direction_p.push_back(1.0);
+				            direction_m.push_back(-1.0);
 
-      } else {
+				         } 
+                                         else{
 
-        direction_p.push_back(0.0);
-        direction_m.push_back(0.0);
-      }
-    }
+				            direction_p.push_back(0.0);
+				            direction_m.push_back(0.0);
+				         }
 
-    directions.push_back(direction_p);
-    directions.push_back(direction_m);
-  }
+				     }
 
-  return directions;
-}
+				     directions.push_back(direction_p);
+				     directions.push_back(direction_m);
 
-std::vector<std::vector<double>> util::unet::defineDirectionsNeighboring() {
+				}
 
-  std::vector<std::vector<double>> directions;
+				return directions;
 
-  for (int i = 0; i < 3; i++) {
-
-    std::vector<double> direction_p;
-    std::vector<double> direction_m;
-
-    for (int j = 0; j < 3; j++) {
-
-      if (i == j) {
-
-        direction_p.push_back(1.0);
-        direction_m.push_back(-1.0);
-
-      } else {
-
-        direction_p.push_back(0.0);
-        direction_m.push_back(0.0);
-      }
-    }
-
-    directions.push_back(direction_p);
-    directions.push_back(direction_m);
-  }
-
-  for (int i = 0; i < 3; i++) {
-
-    std::vector<double> direction_p;
-    std::vector<double> direction_m;
-
-    for (int j = 0; j < 3; j++) {
-
-      if (i != j) {
-
-        direction_p.push_back(1.0);
-        direction_m.push_back(-1.0);
-
-      } else {
-
-        direction_p.push_back(0.0);
-        direction_m.push_back(0.0);
-      }
-    }
-
-    directions.push_back(direction_p);
-    directions.push_back(direction_m);
-  }
-
-  for (int i = 0; i < 3; i++) {
-
-    std::vector<double> direction_p;
-    std::vector<double> direction_m;
-
-    for (int j = 0; j < 3; j++) {
-
-      if (i == j) {
-
-        direction_p.push_back(0.0);
-        direction_m.push_back(-1.0);
-
-      } else {
-
-        direction_p.push_back(1.0);
-        direction_m.push_back(1.0);
-      }
-    }
-
-    directions.push_back(direction_p);
-    directions.push_back(direction_m);
-  }
-
-  for (int i = 0; i < 3; i++) {
-
-    std::vector<double> direction_p;
-    std::vector<double> direction_m;
-
-    for (int j = 0; j < 3; j++) {
-
-      if (i != j) {
-
-        direction_p.push_back(0.0);
-        direction_m.push_back(-1.0);
-
-      } else {
-
-        direction_p.push_back(1.0);
-        direction_m.push_back(1.0);
-      }
-    }
-
-    directions.push_back(direction_p);
-    directions.push_back(direction_m);
-  }
-
-  return directions;
 }
 
 bool util::unet::isCenterInDomain(std::vector<double> center, double L_x) {
 
-  bool isInDomain = true;
+     bool isInDomain = true;
 
-  for (int i = 0; i < 3; i++) {
+     for(int i = 0; i < 3; i++) {
 
-    if (center[i] < 0.0 || center[i] > L_x) {
+         if (center[i] < 0.0 || center[i] > L_x) {
 
-      isInDomain = false;
+             isInDomain = false;
 
-      return isInDomain;
-    }
-  }
+             return isInDomain;
+         }
 
-  return isInDomain;
+     }
+
+     return isInDomain;
+
 }
 
 int util::unet::getElementIndex(std::vector<double> center, double h_3D,
                                   int N_3D) {
 
-  int index = 0;
+    int index = 0;
 
-  index = index + std::floor(center[0] / h_3D);
+    index = index + std::floor(center[0] / h_3D);
 
-  index = index + std::floor(center[1] / h_3D) * N_3D;
+    index = index + std::floor(center[1] / h_3D) * N_3D;
 
-  index = index + std::floor(center[2] / h_3D) * N_3D * N_3D;
+    index = index + std::floor(center[2] / h_3D) * N_3D * N_3D;
 
-  // checking this error is costly so later we may want to remove this check
-  if (index < 0) {
-    std::ostringstream oss;
-    oss << "index: " << index << ", loc: (" << util::io::printStr(center)
-        << ")";
-    libmesh_error_msg("Index should not be negative. Check center location as"
-                      " it may be outside the domain boundary.\n" +
-                      oss.str());
-  }
+    return index;
 
-  return index;
 }
 
 std::vector<double> util::unet::getCenterFace(std::vector<double> center,
