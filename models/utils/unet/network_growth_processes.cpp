@@ -936,62 +936,72 @@ void util::unet::Network::createALinkingNode(
   }
 }
 
-void util::unet::Network::createASingleNode(
-    std::vector<double> new_point, double radius,
-    std::shared_ptr<VGNode> &pointer) {
+void util::unet::Network::createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer) {
 
-  const auto &input = d_model_p->get_input_deck();
 
-  double L_x = input.d_domain_params[1];
+     const auto &input = d_model_p->get_input_deck();
 
-  bool isInside = isCenterInDomain(new_point, L_x);
+     double L_x = input.d_domain_params[1];
 
-  std::cout << "Create new node"
-            << "\n";
+     bool isInside = isCenterInDomain( new_point, L_x );
 
-  if (isInside) {
+     std::cout << "Create new node" << "\n";
 
-    VGNode new_node;
+     if( isInside ){
 
-    new_node.index = VGM.getNumberOfNodes();
-    new_node.coord = new_point;
-    new_node.p_boundary = 0.95 * pointer->p_v;
-    new_node.p_v = 0.95 * pointer->p_v;
-    new_node.c_boundary = input.d_in_nutrient;
-    new_node.c_v = 0.0;
-    new_node.typeOfVGNode = TypeOfNode::DirichletNode;
-    new_node.apicalGrowth = false;
-    new_node.radii.push_back(radius);
-    new_node.L_p.push_back(input.d_tissue_flow_L_p);
-    new_node.L_s.push_back(input.d_tissue_nut_L_s);
-    new_node.edge_touched.push_back(true);
-    new_node.sprouting_edge.push_back(false);
-    new_node.neighbors.push_back(pointer);
-    new_node.notUpdated = 0;
+         VGNode new_node;
 
-    auto sp_newNode = std::make_shared<VGNode>(new_node);
-    std::cout << "New index: " << new_node.index << "\n";
-    std::cout << "Neighbor index: " << pointer->index << "\n";
+	 new_node.index = VGM.getNumberOfNodes();
+	 new_node.coord = new_point;
+	 new_node.p_boundary = 0.95*pointer->p_v;
+	 new_node.p_v = 0.95*pointer->p_v;
+	 new_node.c_boundary = input.d_in_nutrient;
+	 new_node.c_v = 0.0;
+	 new_node.typeOfVGNode = TypeOfNode::DirichletNode;
+	 new_node.apicalGrowth = false;
+	 new_node.radii.push_back( radius );
+         new_node.radii_initial.push_back( radius );
+	 new_node.L_p.push_back( input.d_tissue_flow_L_p );
+	 new_node.L_s.push_back( input.d_tissue_nut_L_s );
+	 new_node.edge_touched.push_back( true );
+	 new_node.sprouting_edge.push_back( false );
+	 new_node.neighbors.push_back( pointer );
+	 new_node.notUpdated = 0;
+         new_node.typeOfVGNode = TypeOfNode::NeumannNode;
+ 
+         double length = util::dist_between_points( pointer->coord, new_point ); 
+         double p_node = pointer->p_v;              
+         double p_neighbor = 0.95*pointer->p_v; 
+         double delta_p = p_neighbor-p_node;
+         double tau_w_ini = ( radius * std::abs( delta_p ) )/( 2.0*length ); 
 
-    std::cout << "Update old node"
-              << "\n";
+         new_node.tau_w_initial.push_back( tau_w_ini );
 
-    pointer->p_boundary = 0.0;
-    pointer->c_boundary = 0.0;
-    pointer->typeOfVGNode = TypeOfNode::InnerNode;
-    pointer->apicalGrowth = false;
-    pointer->radii.push_back(radius);
-    pointer->L_p.push_back(input.d_tissue_flow_L_p);
-    pointer->L_s.push_back(input.d_tissue_nut_L_s);
-    pointer->edge_touched.push_back(true);
-    pointer->sprouting_edge.push_back(false);
-    pointer->neighbors.push_back(sp_newNode);
-    pointer->notUpdated = 0;
-    std::cout << "Attach new node as pointer"
-              << "\n";
+	 auto sp_newNode = std::make_shared<VGNode>( new_node );
+	 std::cout << "New index: " << new_node.index << "\n";
+	 std::cout << "Neighbor index: " << pointer->index << "\n";
 
-    VGM.attachPointerToNode(sp_newNode);
-  }
+	 std::cout << "Update old node" << "\n";
+
+	 pointer->p_boundary = 0.0;
+	 pointer->c_boundary = 0.0;
+	 pointer->typeOfVGNode = TypeOfNode::InnerNode;
+	 pointer->apicalGrowth = false;
+	 pointer->radii.push_back( radius );
+         pointer->radii_initial.push_back( radius );
+	 pointer->L_p.push_back(input.d_tissue_flow_L_p);
+	 pointer->L_s.push_back(input.d_tissue_nut_L_s);
+	 pointer->edge_touched.push_back( true );
+	 pointer->sprouting_edge.push_back( false );
+	 pointer->neighbors.push_back( sp_newNode );
+	 pointer->notUpdated = 0;
+         pointer->tau_w_initial.push_back( tau_w_ini );
+	 std::cout << "Attach new node as pointer" << "\n";
+
+	 VGM.attachPointerToNode( sp_newNode );
+     
+     }
+
 }
 
 bool util::unet::Network::testCollision(std::vector<double> point) {
@@ -1813,7 +1823,17 @@ void util::unet::Network::adaptRadius(){
 
                     int numberOfNeighbors_Neighbor = pointer->neighbors[i]->neighbors.size();
 
-                    if( ( radius_new<8.5e-3 && numberOfNeighbors<2 ) || ( numberOfNeighbors_Neighbor == 1 && numberOfNeighbors == 1 ) ){
+                    std::cout << " " << std::endl;
+	            std::cout << "tau_w: " << tau_w << std::endl;
+                    std::cout << "S_WSS: " << S_WSS << std::endl;
+                    std::cout << "S_tot: " << S_tot << std::endl;
+                    std::cout << "delta_r: " << delta_r << std::endl;
+	            std::cout << "radius_initial: " << radius_initial << std::endl;
+	            std::cout << "radius: " << radius << std::endl;
+	            std::cout << "radius_new: " << radius_new << std::endl;
+	            std::cout << "coord_node: " << coord_node << std::endl;
+
+                    if( ( radius_initial<8.5e-3 && numberOfNeighbors<2 ) || ( numberOfNeighbors_Neighbor == 1 && numberOfNeighbors == 1 ) ){
 
                         radius_new = 8.5e-3;
 
@@ -1826,16 +1846,6 @@ void util::unet::Network::adaptRadius(){
                     }
 
                     if( radius<0.025 ){
-
-	                std::cout << " " << std::endl;
-	                std::cout << "tau_w: " << tau_w << std::endl;
-                        std::cout << "S_WSS: " << S_WSS << std::endl;
-                        std::cout << "S_tot: " << S_tot << std::endl;
-                        std::cout << "delta_r: " << delta_r << std::endl;
-	                //std::cout << "radius_initial: " << radius_initial << std::endl;
-	                std::cout << "radius: " << radius << std::endl;
-	                std::cout << "radius_new: " << radius_new << std::endl;
-	                std::cout << "coord_node: " << coord_node << std::endl;
 
                         pointer->neighbors[ i ]->radii[ local_index ] = radius_new;
                         pointer->radii[ i ] = radius_new;
