@@ -334,6 +334,10 @@ void util::unet::Network::refine1DMesh() {
 
         new_node.radii.push_back(pointer->radii[i]);
 
+        new_node.radii_initial.push_back(pointer->radii[i]);
+
+        new_node.radii_initial.push_back(pointer->radii[i]);
+
         new_node.typeOfVGNode = TypeOfNode::InnerNode;
 
         std::shared_ptr<VGNode> pointer_new_node =

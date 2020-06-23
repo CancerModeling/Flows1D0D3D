@@ -1825,28 +1825,20 @@ void util::unet::Network::adaptRadius(){
 
                     }
 
-                    std::cout << "length: " << length << std::endl;
-
-                    std::cout << "local_index: " << local_index << std::endl;
-
-                    std::cout << "S_WSS: " << S_WSS << std::endl;
-
-                    std::cout << "radius_new: " << radius_new << std::endl;
-
-                    if( radius_initial<0.025 ){
+                    if( radius<0.025 ){
 
 	                std::cout << " " << std::endl;
-	               /* std::cout << "tau_w: " << tau_w << std::endl;
+	                std::cout << "tau_w: " << tau_w << std::endl;
                         std::cout << "S_WSS: " << S_WSS << std::endl;
                         std::cout << "S_tot: " << S_tot << std::endl;
                         std::cout << "delta_r: " << delta_r << std::endl;
-	                std::cout << "radius_initial: " << radius_initial << std::endl;
+	                //std::cout << "radius_initial: " << radius_initial << std::endl;
 	                std::cout << "radius: " << radius << std::endl;
 	                std::cout << "radius_new: " << radius_new << std::endl;
 	                std::cout << "coord_node: " << coord_node << std::endl;
 
                         pointer->neighbors[ i ]->radii[ local_index ] = radius_new;
-                        pointer->radii[ i ] = radius_new; */
+                        pointer->radii[ i ] = radius_new;
 
                     }
 
