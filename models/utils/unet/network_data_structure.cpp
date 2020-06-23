@@ -100,10 +100,8 @@ void util::unet::Network::readData(
   }
 }
 
-void util::unet::Network::transferDataToVGM(
-    std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
-    std::vector<double> &radii,
-    std::vector<std::vector<unsigned int>> &elements) {
+void util::unet::Network::transferDataToVGM( std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
+                                             std::vector<double> &radii, std::vector<std::vector<unsigned int>> &elements) {
 
   int numberOfVertices = vertices.size();
   const auto &input = d_model_p->get_input_deck();
@@ -151,13 +149,13 @@ void util::unet::Network::transferDataToVGM(
     std::vector<double> coord_1 = vertices[index_1];
     std::vector<double> coord_2 = vertices[index_2];
 
-    double length = 0.0;
     double radius = radii[i];
 
     pointer_1 = VGM.findNode(index_1);
     pointer_2 = VGM.findNode(index_2);
 
     pointer_1->radii.push_back(radius);
+    pointer_1->radii_initial.push_back(radius);
     pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
     pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
     pointer_1->neighbors.push_back(pointer_2);
@@ -165,12 +163,15 @@ void util::unet::Network::transferDataToVGM(
     pointer_1->sprouting_edge.push_back(false);
 
     pointer_2->radii.push_back(radius);
+    pointer_1->radii_initial.push_back(radius);
     pointer_2->L_p.push_back(input.d_tissue_flow_L_p);
     pointer_2->L_s.push_back(input.d_tissue_nut_L_s);
     pointer_2->neighbors.push_back(pointer_1);
     pointer_2->edge_touched.push_back(false);
     pointer_2->sprouting_edge.push_back(false);
+
   }
+
 }
 
 void util::unet::Network::printDataVGM() {
