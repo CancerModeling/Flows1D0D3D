@@ -429,45 +429,98 @@ void netfc::Network::assemble3D1DSystemForPressure(){
 
             if( numberOfNeighbors == 1 ){
 
-                A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = 1.0;
+                if( pointer->typeOfVGNode == TypeOfNode::DirichletNode ){
 
-                b_flow_3D1D[ N_tot_3D+indexOfNode ] = pointer->p_boundary;
+                    A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = 1.0;
+                    b_flow_3D1D[ N_tot_3D+indexOfNode ] = pointer->p_boundary;
 
-                double radius = pointer->radii[ 0 ];
+                    double radius = pointer->radii[ 0 ];
 
-                // Assemble coupling terms (nutrients)
-                std::vector<double> coord_neighbor = pointer->neighbors[ 0 ]->coord;
+                    // Assemble coupling terms (nutrients)
+                    std::vector<double> coord_neighbor = pointer->neighbors[ 0 ]->coord;
    
-                int N_s = input.d_num_points_length;
+                    int N_s = input.d_num_points_length;
+                    int N_theta = input.d_num_points_angle;
 
-                int N_theta = input.d_num_points_angle;
+                    std::vector<double> weights;
+                    std::vector<int> id_3D_elements;
 
-                std::vector<double> weights;
-
-                std::vector<int> id_3D_elements;
-
-                double length = util::dist_between_points( coord, coord_neighbor );
-
-                double length_edge = 0.5 * length;
+                    double length = util::dist_between_points( coord, coord_neighbor );
+                    double length_edge = 0.5 * length;
                   
-                // Surface area of cylinder
-                double surface_area = 2.0*M_PI*length_edge*radius;
+                    // Surface area of cylinder
+                    double surface_area = 2.0*M_PI*length_edge*radius;
 
-                determineWeightsAndIds( N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge, weights, id_3D_elements);
+                    determineWeightsAndIds( N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge, weights, id_3D_elements);
 
-                // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
-                int numberOfElements = id_3D_elements.size();
+                    // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
+                    int numberOfElements = id_3D_elements.size();
 
-                // Permeabilty vessel wall for nutrients
-                double L_p = pointer->L_p[ 0 ];
+                    // Permeabilty vessel wall for nutrients
+                    double L_p = pointer->L_p[ 0 ];
 
-                for(int j=0;j<numberOfElements;j++){
+                    for(int j=0;j<numberOfElements;j++){
 
-                    // A_3D1D
-                    A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - L_p*surface_area*weights[ j ];
+                        // A_3D1D
+                        A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - L_p*surface_area*weights[ j ];
 
-                    // A_3D3D
-                    A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ]) = A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ]) + L_p*surface_area*weights[ j ];
+                        // A_3D3D
+                        A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ]) = A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ]) + L_p*surface_area*weights[ j ];
+
+                    }
+
+                }
+                else if( pointer->typeOfVGNode == TypeOfNode::NeumannNode ){
+
+                    double radius = pointer->radii[ 0 ];
+
+                    // Assemble coupling terms (nutrients)
+                    std::vector<double> coord_neighbor = pointer->neighbors[ 0 ]->coord;
+   
+                    int N_s = input.d_num_points_length;
+                    int N_theta = input.d_num_points_angle;
+                    int indexNeighbor = pointer->neighbors[ 0 ]->index;
+
+                    std::vector<double> weights;
+                    std::vector<int> id_3D_elements;
+
+                    // Permeabilty vessel wall for nutrients
+                    double L_p = pointer->L_p[ 0 ];
+                    double length = util::dist_between_points( coord, coord_neighbor );
+                    double K_1D = getK1D( 0.5*( coord[2]+coord_neighbor[2] ), L_p, radius );
+
+                    A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) + K_1D/length;
+                    A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexNeighbor) = - K_1D/length;
+
+                    double length_edge = 0.5 * length;
+                  
+                    // Surface area of cylinder
+                    double surface_area = 2.0*M_PI*length_edge*radius;
+
+                    determineWeightsAndIds( N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge, weights, id_3D_elements);
+
+                    // Add coupling entry to 1D1D matrix
+                    A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) + L_p*surface_area;
+
+                    // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
+                    int numberOfElements = id_3D_elements.size();
+
+                    for(int j=0;j<numberOfElements;j++){
+
+                        if( id_3D_elements[ j ]>-1 ){
+
+                            // A_3D1D
+                            A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - L_p*surface_area*weights[ j ];
+
+                            // A_3D3D
+                            A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  = A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  + L_p*surface_area*weights[ j ];
+
+                            // A_1D3D
+                            A_flow_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) = A_flow_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) - L_p*surface_area*weights[ j ];
+
+                        }
+
+                    }
 
                 }
 
@@ -703,60 +756,59 @@ void netfc::Network::assemble3D1DSystemForNutrients(){
 
                 double volume = length / 2.0 * radius * radius * M_PI;
 
-                if(v_interface > 0.0){
+                if( v_interface > 0.0 && pointer->typeOfVGNode == TypeOfNode::DirichletNode ){
 
-                   A_nut_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = 1.0;
+                    A_nut_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = 1.0;
 
-                   double phi_sigma_boundary = 0.0;
+                    double phi_sigma_boundary = 0.0;
 
-                   if(p_v < input.d_identify_vein_pres){
+                    if(p_v < input.d_identify_vein_pres){
 
-                      phi_sigma_boundary = input.d_in_nutrient_vein;
+                       phi_sigma_boundary = input.d_in_nutrient_vein;
 
-                   }
-                   else{
+                    }
+                    else{
 
-                      phi_sigma_boundary = input.d_in_nutrient;
+                       phi_sigma_boundary = input.d_in_nutrient;
 
-                   }
+                    }
 
-                   b_nut_3D1D[N_tot_3D+indexOfNode] = phi_sigma_boundary;
+                    b_nut_3D1D[N_tot_3D+indexOfNode] = phi_sigma_boundary;
 
-                   // Assemble coupling terms (nutrients)
-                   std::vector<double> coord_neighbor = pointer->neighbors[0]->coord;
+                    // Assemble coupling terms (nutrients)
+                    std::vector<double> coord_neighbor = pointer->neighbors[0]->coord;
    
-                   int N_s = input.d_num_points_length;
+                    int N_s = input.d_num_points_length;
+                    int N_theta = input.d_num_points_angle;
 
-                   int N_theta = input.d_num_points_angle;
+                    std::vector<double> weights;
 
-                   std::vector<double> weights;
+                    std::vector<int> id_3D_elements;
 
-                   std::vector<int> id_3D_elements;
-
-                   double length_edge = 0.5 * length;
+                    double length_edge = 0.5 * length;
                   
-                   // Surface area of cylinder
-                   double surface_area = 2.0*M_PI*length_edge*radius;
+                    // Surface area of cylinder
+                    double surface_area = 2.0*M_PI*length_edge*radius;
 
-                   determineWeightsAndIds( N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge, weights, id_3D_elements);
+                    determineWeightsAndIds( N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge, weights, id_3D_elements);
 
-                   // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
-                   int numberOfElements = id_3D_elements.size();
+                    // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
+                    int numberOfElements = id_3D_elements.size();
 
-                   // Permeabilty vessel wall for nutrients
-                   double L_s = pointer->L_s[ 0 ];
+                    // Permeabilty vessel wall for nutrients
+                    double L_s = pointer->L_s[ 0 ];
 
-                   double p_t = 0.0;
+                    double p_t = 0.0;
 
-                   for(int j=0;j<numberOfElements;j++){
+                    for(int j=0;j<numberOfElements;j++){
 
-                       // A_3D1D
-                       A_nut_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_nut_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - dt*L_s*surface_area*weights[ j ];
+                        // A_3D1D
+                        A_nut_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_nut_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - dt*L_s*surface_area*weights[ j ];
 
-                       // A_3D3D
-                       A_nut_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  = A_nut_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  + dt*L_s*surface_area*weights[ j ];
+                        // A_3D3D
+                        A_nut_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  = A_nut_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  + dt*L_s*surface_area*weights[ j ];
 
-                   }
+                    }
 
                 } 
                 else{
@@ -771,8 +823,7 @@ void netfc::Network::assemble3D1DSystemForNutrients(){
 
                    // Assemble coupling terms (nutrients)
    
-                   int N_s = input.d_num_points_length;
-
+                   int N_s = input.d_num_points_length; 
                    int N_theta = input.d_num_points_angle;
 
                    std::vector<double> weights;
@@ -876,7 +927,6 @@ void netfc::Network::assemble3D1DSystemForNutrients(){
                     // Assemble coupling terms (nutrients)
    
                     int N_s = input.d_num_points_length;
-
                     int N_theta = input.d_num_points_angle;
 
                     std::vector<double> weights;
