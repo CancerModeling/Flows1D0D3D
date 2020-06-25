@@ -121,7 +121,7 @@ public:
 
   bool testCollision( std::vector<double> point );
 
-  bool testIntersection( std::vector<double> point_1, std::vector<double> point_2, std::vector<double>& new_point_link, double radius );
+  bool testIntersection( std::vector<double> point_1, std::vector<double> point_2, double radius, std::shared_ptr<VGNode>& pointer_test );
 
   void removeRedundantTerminalVessels();
 
@@ -130,6 +130,8 @@ public:
   void processSproutingGrowth();
 
   std::vector<double> findNearNetworkNode( std::vector<double> coord, std::vector<double> normal_plane );
+
+  void adaptRadius();
 
   /** @}*/
 

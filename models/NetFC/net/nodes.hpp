@@ -82,7 +82,7 @@ public:
 
 };
 
-enum TypeOfNode{DirichletNode,InnerNode};
+enum TypeOfNode{DirichletNode,InnerNode,NeumannNode};
 
 class VGNode{
 
@@ -92,7 +92,7 @@ public:
    */
   VGNode(): index(0), p_v(0.0), c_v(0.0), p_boundary(0.0), 
             c_boundary(0.0), edge_touched(false), sprouting_edge(false), apicalGrowth(false),
-            coord(0.0), radii(0.0), L_p(0.0), notUpdated(0)           
+            coord(0.0), radii(0.0), radii_initial(0.0), tau_w_initial(0.0), L_p(0.0), notUpdated(0)           
   {}
 
   int index, notUpdated;
@@ -101,7 +101,7 @@ public:
 
   double p_v, c_v, p_boundary, c_boundary;
 
-  std::vector< double > coord, radii, L_p, L_s;
+  std::vector< double > coord, radii, L_p, L_s, radii_initial, tau_w_initial;
 
   std::vector< bool > edge_touched;
 
@@ -242,6 +242,8 @@ public:
        std::cout << "edge_touched: " << edge_touched<< std::endl; 
        std::cout << "sprouting_edge: " << sprouting_edge << std::endl; 
        std::cout << "typeOfVGNode: " << typeOfVGNode << std::endl;
+       std::cout << "radii_initial: " << radii_initial << std::endl;
+       std::cout << "tau_w_initial: " << tau_w_initial << std::endl;
 
        int numberOfNeighbors = neighbors.size(); 
        std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
@@ -253,6 +255,97 @@ public:
 
        }
  
+  }
+
+  void removeComponent( int comp ){
+
+       int numberOfComponents = neighbors.size(); 
+
+       std::vector< double > radii_new, L_p_new, L_s_new, radii_initial_new, tau_w_initial_new;
+
+       std::vector< bool > edge_touched_new, sprouting_edge_new;
+
+       std::vector< std::shared_ptr<VGNode> > neighbors_new;
+
+       for(int i = 0;i<numberOfComponents;i++){
+
+           if( i != comp ){
+
+               radii_new.push_back( radii[ i ] );
+               L_p_new.push_back( L_p[ i ] );
+               L_s_new.push_back( L_s[ i ] );
+               radii_initial_new.push_back( radii_initial[ i ] );
+               tau_w_initial_new.push_back( tau_w_initial[ i ] );
+               edge_touched_new.push_back( edge_touched[ i ] );
+               sprouting_edge_new.push_back( sprouting_edge[ i ] );
+               neighbors_new.push_back( neighbors[ i ] );
+
+           }
+
+       }
+
+       radii = radii_new;
+       L_p = L_p_new;
+       L_s = L_s_new; 
+       radii_initial = radii_initial_new;
+       tau_w_initial = tau_w_initial_new;
+       edge_touched = edge_touched_new;
+       sprouting_edge = sprouting_edge_new;
+       neighbors = neighbors_new;
+
+  }
+
+  void removeComponents( std::vector< int > components ){
+
+       int numberOfComponents = neighbors.size(); 
+
+       int numberOfCompToRemove = components.size();
+
+       std::vector< double > radii_new, L_p_new, L_s_new, radii_initial_new, tau_w_initial_new;
+
+       std::vector< bool > edge_touched_new, sprouting_edge_new;
+
+       std::vector< std::shared_ptr<VGNode> > neighbors_new;
+
+       for(int i=0;i<numberOfComponents;i++){
+
+           bool removeComponent = false;
+
+           for(int j=0;j<numberOfCompToRemove;j++){
+
+               if( i == components[ j ] ){
+
+                   removeComponent = true;
+                   break;
+
+               }
+
+           } 
+
+           if( !removeComponent ){
+
+               radii_new.push_back( radii[ i ] );
+               L_p_new.push_back( L_p[ i ] );
+               L_s_new.push_back( L_s[ i ] );
+               radii_initial_new.push_back( radii_initial[ i ] );
+               tau_w_initial_new.push_back( tau_w_initial[ i ] );
+               edge_touched_new.push_back( edge_touched[ i ] );
+               sprouting_edge_new.push_back( sprouting_edge[ i ] );
+               neighbors_new.push_back( neighbors[ i ] );
+
+           }       
+
+       }
+
+       radii = radii_new;
+       L_p = L_p_new;
+       L_s = L_s_new; 
+       radii_initial = radii_initial_new;
+       tau_w_initial = tau_w_initial_new;
+       edge_touched = edge_touched_new;
+       sprouting_edge = sprouting_edge_new;
+       neighbors = neighbors_new;
+
   }
 
 };

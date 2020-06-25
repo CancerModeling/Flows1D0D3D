@@ -107,3 +107,17 @@ if(${TEST_BUILD})
     message("Gnerating build files for Test ")
     add_subdirectory(models/tests)
 endif()
+
+message("Adding applications ")
+add_subdirectory(applications)
+
+
+INSTALL (
+        DIRECTORY ${CMAKE_SOURCE_DIR}/models
+        DESTINATION include
+        FILES_MATCHING PATTERN "*.h*")
+
+INSTALL (
+        DIRECTORY ${CMAKE_SOURCE_DIR}/external
+        DESTINATION include
+        FILES_MATCHING PATTERN "*.h*")

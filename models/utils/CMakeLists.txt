@@ -16,3 +16,10 @@ add_library(Utils ${SOURCES})
 target_link_libraries(Utils
         ${LIBMESH_LIBRARIES} ${PETSC_LIBRARIES} ${VTK_LIBRARIES} ${MPI_CXX_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT})
+
+INSTALL(TARGETS Utils
+        EXPORT Utils
+        RUNTIME DESTINATION "bin"
+        LIBRARY DESTINATION "lib"
+        ARCHIVE DESTINATION "lib")
+INSTALL(EXPORT Utils DESTINATION "lib")

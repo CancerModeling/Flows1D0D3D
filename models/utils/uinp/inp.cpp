@@ -6,8 +6,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "inp.hpp"
-#include "libmesh/getpot.h"
 #include "csv.hpp"
+#include "libmesh/getpot.h"
 
 void util::ModelDeck::read_parameters(const std::string &filename) {
 
@@ -591,8 +591,9 @@ void util::ECMDeck::read_parameters(const std::string &filename) {
   // get the geometrical parameters
   unsigned int num_params = input("ECM_ic_num_params", 0);
 
-  for (unsigned int i=0; i<num_params; i++)
-    d_ecm_ic_data.d_geom_params.push_back(input("ECM_ic_params_" + std::to_string(i+1), 0.));
+  for (unsigned int i = 0; i < num_params; i++)
+    d_ecm_ic_data.d_geom_params.push_back(
+        input("ECM_ic_params_" + std::to_string(i + 1), 0.));
 }
 
 void util::ECMDeck::print(unsigned int level) {
@@ -725,13 +726,13 @@ void util::TumorICDeck::read_parameters(const std::string &filename) {
     // r3)
     io::CSVReader<10> in(csv_file);
 
-    in.read_header(io::ignore_extra_column, "type", "cx", "cy", "cz",
-        "tum_rx", "tum_ry", "tum_rz", "hyp_rx", "hyp_ry", "hyp_rz");
+    in.read_header(io::ignore_extra_column, "type", "cx", "cy", "cz", "tum_rx",
+                   "tum_ry", "tum_rz", "hyp_rx", "hyp_ry", "hyp_rz");
 
     int type;
     double cx, cy, cz, tum_rx, tum_ry, tum_rz, hyp_rx, hyp_ry, hyp_rz;
-    while (in.read_row(type, cx, cy, cz, tum_rx, tum_ry, tum_rz, hyp_rx,
-        hyp_ry, hyp_rz)) {
+    while (in.read_row(type, cx, cy, cz, tum_rx, tum_ry, tum_rz, hyp_rx, hyp_ry,
+                       hyp_rz)) {
 
       std::string ic_type;
       if (type == 1)
@@ -756,7 +757,7 @@ void util::TumorICDeck::read_parameters(const std::string &filename) {
     int num_ic = input("ic_tumor_number", 0);
     d_tum_ic_data.resize(num_ic);
 
-    for (unsigned int i=0; i<num_ic; i++) {
+    for (unsigned int i = 0; i < num_ic; i++) {
 
       std::string postfix = "_" + std::to_string(i);
       if (num_ic == 1)
@@ -764,49 +765,27 @@ void util::TumorICDeck::read_parameters(const std::string &filename) {
 
       auto data = TumorICData();
 
-      data.d_ic_type = input("ic_tumor_type" + postfix, "");
-      if (data.d_ic_type == "tumor_spherical" or
-          data.d_ic_type == "tumor_hypoxic_spherical") {
+      auto type = input("ic_tumor_type" + postfix, 0);
+      if (type == 1)
+        data.d_ic_type = "tumor_spherical";
+      else if (type == 2)
+        data.d_ic_type = "tumor_elliptical";
+      else if (type == 3)
+        data.d_ic_type = "tumor_hypoxic_spherical";
+      else if (type == 4)
+        data.d_ic_type = "tumor_hypoxic_elliptical";
+      else if (type == 5)
+        data.d_ic_type = "tumor_spherical_sharp";
 
-        data.d_tum_ic_radius[0] = input("ic_tumor_radius" + postfix, 0.);
-
-        if (data.d_ic_type == "tumor_hypoxic_spherical")
-          data.d_hyp_ic_radius[0] = input("ic_hypoxic_radius" + postfix, 0.);
-
-        if (data.d_hyp_ic_radius[0] < data.d_tum_ic_radius[0]) {
-          libmesh_error_msg(
-              "Error: Radius for hypoxic ic can not be smaller than"
-              " tumor ic.");
-          exit(1);
-        }
-      } else if (data.d_ic_type == "tumor_elliptical" or
-          data.d_ic_type == "tumor_hypoxic_elliptical") {
-
-        data.d_tum_ic_radius[0] = input("ic_tumor_radius_x" + postfix, 0.);
-        data.d_tum_ic_radius[1] = input("ic_tumor_radius_y" + postfix, 0.);
-        data.d_tum_ic_radius[2] = input("ic_tumor_radius_z" + postfix, 0.);
-
-        if (data.d_ic_type == "tumor_hypoxic_elliptical") {
-
-          data.d_hyp_ic_radius[0] = input("ic_hypoxic_radius_x" + postfix, 0.);
-          data.d_hyp_ic_radius[1] = input("ic_hypoxic_radius_y" + postfix, 0.);
-          data.d_hyp_ic_radius[2] = input("ic_hypoxic_radius_z" + postfix, 0.);
-        }
-
-        if (data.d_hyp_ic_radius[0] < data.d_tum_ic_radius[0] or
-                data.d_hyp_ic_radius[1] < data.d_tum_ic_radius[1] ||
-            data.d_hyp_ic_radius[2] < data.d_tum_ic_radius[2]) {
-          libmesh_error_msg(
-              "Error: Radius for hypoxic ic can not be smaller than"
-              " tumor ic.");
-          exit(1);
-        }
-      }
       data.d_ic_center[0] = input("ic_tumor_center_x" + postfix, 0.);
       data.d_ic_center[1] = input("ic_tumor_center_y" + postfix, 0.);
       data.d_ic_center[2] = input("ic_tumor_center_z" + postfix, 0.);
-      if (dim == 2)
-        data.d_ic_center[2] = 0.;
+      data.d_tum_ic_radius[0] = input("ic_tumor_radius_x" + postfix, 0.);
+      data.d_tum_ic_radius[1] = input("ic_tumor_radius_y" + postfix, 0.);
+      data.d_tum_ic_radius[2] = input("ic_tumor_radius_z" + postfix, 0.);
+      data.d_hyp_ic_radius[0] = input("ic_hypoxic_radius_x" + postfix, 0.);
+      data.d_hyp_ic_radius[1] = input("ic_hypoxic_radius_y" + postfix, 0.);
+      data.d_hyp_ic_radius[2] = input("ic_hypoxic_radius_z" + postfix, 0.);
 
       // add data
       d_tum_ic_data[i] = data;
@@ -824,41 +803,41 @@ void util::TumorICDeck::print(unsigned int level) {
   out << "# Default: 0\n";
   out << "# Description: Following types of core has been implemented\n";
   out << "# 0- Spherical/circular core\n";
-//  out << "ic_tumor_type = " << d_tum_ic_type << "\n\n";
+  //  out << "ic_tumor_type = " << d_tum_ic_type << "\n\n";
 
   out << "# Tumor core radius (if ic_tumor_type is 0)  \n";
   out << "# Default: 1\n";
-//  out << "ic_tumor_radius = " << d_tum_ic_radius[0] << "\n\n";
+  //  out << "ic_tumor_radius = " << d_tum_ic_radius[0] << "\n\n";
 
   out << "# Tumor core x-radius (if ic_tumor_type is 1)  \n";
   out << "# Default: 1\n";
   out << "# Description: If core is ellipsoidal then this is size of axis in "
          "x-direction \n";
-//  out << "ic_tumor_radius_x = " << d_tum_ic_radius[0] << "\n\n";
+  //  out << "ic_tumor_radius_x = " << d_tum_ic_radius[0] << "\n\n";
 
   out << "# Tumor core y-radius (if ic_tumor_type is 1)  \n";
   out << "# Default: 1\n";
   out << "# Description: If core is ellipsoidal then this is size of axis in "
          "y-direction \n";
-//  out << "ic_tumor_radius_y = " << d_tum_ic_radius[1] << "\n\n";
+  //  out << "ic_tumor_radius_y = " << d_tum_ic_radius[1] << "\n\n";
 
   out << "# Tumor core z-radius (if ic_tumor_type is 1)  \n";
   out << "# Default: 1\n";
   out << "# Description: If core is ellipsoidal then this is size of axis in "
          "z-direction \n";
-//  out << "ic_tumor_radius_z = " << d_tum_ic_radius[2] << "\n\n";
+  //  out << "ic_tumor_radius_z = " << d_tum_ic_radius[2] << "\n\n";
 
   out << "# x-coordinate of center of tumor core \n";
   out << "# Default: 0\n";
-//  out << "ic_tumor_center_x = " << d_tum_ic_center[0] << "\n\n";
+  //  out << "ic_tumor_center_x = " << d_tum_ic_center[0] << "\n\n";
 
   out << "# y-coordinate of center of tumor core \n";
   out << "# Default: 0\n";
-//  out << "ic_tumor_center_y = " << d_tum_ic_center[1] << "\n\n";
+  //  out << "ic_tumor_center_y = " << d_tum_ic_center[1] << "\n\n";
 
   out << "# z-coordinate of center of tumor core \n";
   out << "# Default: 0\n";
-//  out << "ic_tumor_center_z = " << d_tum_ic_center[2] << "\n\n";
+  //  out << "ic_tumor_center_z = " << d_tum_ic_center[2] << "\n\n";
 }
 
 void util::NutrientBCDeck::read_parameters(const std::string &filename) {
@@ -907,7 +886,6 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   GetPot input(filename);
 
   network_active = input("is_network_active", false);
-
   d_network_init_file = input("network_init_file", "");
   d_network_init_refinement = input("network_init_refinement", 1);
   d_num_points_length = input("network_discret_cyl_length", 2);
@@ -921,44 +899,35 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
     d_assembly_factor_p_t = input("coupling_factor_p_t", 1.);
 
   d_assembly_factor_c_t = input("assembly_factor_c_t", 1.);
-
   d_identify_vein_pres = input("identify_vein_pressure", 0.);
 
-  d_net_direction_lambda_g = input("vessel_lambda_g", 0.);
-  d_net_length_R_factor = input("vessel_R_factor", 0.);
-
+  // growth related params
   d_network_update_interval = input("network_update_interval", 1);
-
+  d_network_update_taf_threshold = input("network_update_taf_threshold", 0.);
   d_log_normal_mean = input("log_normal_mean", 0.);
   d_log_normal_std_dev = input("log_normal_std_dev", 0.);
-
   d_net_radius_exponent_gamma = input("network_radius_exponent_gamma", 1.);
+  d_network_bifurcate_prob = input("network_bifurcate_probability", 0.6);
+  d_min_radius = input("network_min_radius", 8.5e-3);
+  d_sprouting_prob = input("network_sprouting_prob", 0.9);
 
+  // parameters which are not used currently
   d_no_branch_dist = input("network_no_branch_dist", 1);
-
   d_new_vessel_max_angle = input("network_new_veesel_max_angle", M_PI / 4.);
-
   d_branch_angle = input("network_branch_angle", M_PI / 8.);
-
-  d_network_update_taf_threshold = input("network_update_taf_threshold", 0.);
-
   d_vessel_no_taf_effect_dist = input("network_vessel_no_taf_dist", 5);
-
-  d_nonlocal_direction_search_num_points = input
-      ("network_nonlocal_search_num_points", 2);
+  d_nonlocal_direction_search_num_points =
+      input("network_nonlocal_search_num_points", 2);
   d_nonlocal_direction_search_length =
       input("network_nonlocal_search_length_factor", 10.);
   d_network_local_search = input("network_local_search", true);
-
-  d_network_no_new_node_search_factor = input
-      ("network_no_new_node_search_factor", 0.5);
-
-  d_network_bifurcate_prob = input("network_bifurcate_probability", 0.6);
+  d_network_no_new_node_search_factor =
+      input("network_no_new_node_search_factor", 0.5);
+  d_net_direction_lambda_g = input("vessel_lambda_g", 0.);
+  d_net_length_R_factor = input("vessel_R_factor", 0.);
 }
 
-void util::NetworkDeck::print(unsigned int level) {
-
-}
+void util::NetworkDeck::print(unsigned int level) {}
 
 void util::Flow1DDeck::read_parameters(const std::string &filename) {
 
@@ -1020,8 +989,8 @@ void util::FlowDeck::read_parameters(const std::string &filename) {
 
   d_mmhgFactor = input("mmhg_factor", 1.);
 
-  d_N_newton = input("N_newton",0);
-  d_omega = input("omega",0.0);
+  d_N_newton = input("N_newton", 0);
+  d_omega = input("omega", 0.0);
 }
 
 void util::FlowDeck::print(unsigned int level) {
