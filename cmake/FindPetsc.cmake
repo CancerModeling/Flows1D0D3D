@@ -6,7 +6,7 @@ find_package(PkgConfig)
 
 find_library(PETSC_LIBRARIES
         NAMES libpetsc.so libpetsc.dylib
-        HINTS "${PETSC_DIR}/lib/")
+        HINTS "${PETSC_LIB}")
 #        HINTS /usr/lib64 /usr/local/lib64 /usr/lib/ /usr/local/lib
 #"${PETSC_DIR}/lib/")
 
