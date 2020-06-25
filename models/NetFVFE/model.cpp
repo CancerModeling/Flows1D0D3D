@@ -221,7 +221,7 @@ netfvfe::Model::Model(
       d_mde_assembly(this, "MDE", d_mesh, mde),
       d_pres_assembly(this, "Pressure", d_mesh, pres),
       d_grad_taf_assembly(this, "TAF_Gradient", d_mesh, grad_taf),
-      d_vel_assembly(this, "Velocity", d_mesh, vel) {
+      d_vel_assembly(this, "Velocity", d_mesh, vel), d_ghosting_fv(d_mesh) {
 
   d_nut_id = d_nut_assembly.d_sys.number();
   d_tum_id = d_tum_assembly.d_sys.number();
@@ -274,6 +274,10 @@ netfvfe::Model::Model(
     pres.attach_assemble_object(d_pres_assembly);
     grad_taf.attach_assemble_object(d_grad_taf_assembly);
     vel.attach_assemble_object(d_vel_assembly);
+
+    // add ghosting functors
+    //pres.get_dof_map().add_coupling_functor(d_ghosting_fv);
+    //nut.get_dof_map().add_coupling_functor(d_ghosting_fv);
 
     //
     // Initialize and print system
@@ -386,9 +390,12 @@ void netfvfe::Model::run() {
     d_mde_assembly.d_sys.hide_output() = true;
     d_ecm_assembly.d_sys.hide_output() = true;
 
-    if (d_input.d_test_name != "test_taf" and
-        d_input.d_test_name != "test_taf_2")
+    if (d_input.d_test_name == "test_nut" or
+        d_input.d_test_name == "test_nut_2" or
+        d_input.d_test_name == "test_pressure") {
+      d_taf_assembly.d_sys.hide_output() = true;
       d_grad_taf_assembly.d_sys.hide_output() = true;
+    }
   }
 
   do {
@@ -689,7 +696,7 @@ void netfvfe::Model::solve_system() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -788,7 +795,7 @@ void netfvfe::Model::solve_pressure() {
     double nonlinear_loc_error_pres = last_nonlinear_soln_pres->linfty_norm();
     double nonlinear_global_error_pres = 0.;
     MPI_Allreduce(&nonlinear_loc_error_pres, &nonlinear_global_error_pres, 1,
-                  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+                  MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -889,7 +896,7 @@ void netfvfe::Model::test_nut() {
     double nonlinear_loc_error_nut = last_nonlinear_soln_nut->linfty_norm();
     double nonlinear_global_error_nut = 0.;
     MPI_Allreduce(&nonlinear_loc_error_nut, &nonlinear_global_error_nut, 1,
-                  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+                  MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -1097,7 +1104,7 @@ void netfvfe::Model::test_tum() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -1200,7 +1207,7 @@ void netfvfe::Model::test_tum_2() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -1335,7 +1342,7 @@ void netfvfe::Model::test_net_tum() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -1487,7 +1494,7 @@ void netfvfe::Model::test_net_tum_2() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 

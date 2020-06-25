@@ -41,9 +41,10 @@ void util::unet::Network::create_initial_network() {
 
   int refinementLevel = input.d_network_init_refinement;
 
-  for (int i = 0; i < refinementLevel; i++) {
+  for(int i = 0; i < refinementLevel; i++) {
 
-    refine1DMesh();
+      refine1DMesh();
+
   }
 
   numberOfNodes = VGM.getNumberOfNodes();
@@ -99,6 +100,14 @@ void util::unet::Network::create_initial_network() {
   phi_sigma_old = std::vector<double>(N_tot_3D + numberOfNodes, 0.0);
   phi_sigma_3D = std::vector<double>(N_tot_3D, 0.0);
 
+  for(int i = 0; i < N_tot_3D; i++) {
+
+      phi_sigma_3D[i]  = input.d_nut_ic_value;
+      phi_sigma_old[i] = input.d_nut_ic_value;
+      phi_sigma[i] = input.d_nut_ic_value;
+
+  }
+
   phi_TAF = std::vector<double>(N_tot_3D, 0.0);
   phi_TAF_old = std::vector<double>(N_tot_3D, 0.0);
 
@@ -113,8 +122,7 @@ void util::unet::Network::create_initial_network() {
   osmotic_sigma = input.d_osmotic_sigma;
 }
 
-void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
-                                                 BaseAssembly &tum_sys) {
+void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys, BaseAssembly &tum_sys) {
 
   if (pres_sys.d_sys_name != "Pressure" or tum_sys.d_sys_name != "Tumor")
     libmesh_error_msg("Must pass Pressure and Tumor system to solve 3D-1D "
@@ -220,88 +228,67 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
   util::set_elem_sol(pres_sys, P_3D);
 }
 
-void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
-                                                     BaseAssembly &tum_sys) {
+void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys, BaseAssembly &tum_sys) {
 
-  if (nut_sys.d_sys_name != "Nutrient" or tum_sys.d_sys_name != "Tumor")
-    libmesh_error_msg("Must pass Nutrient and Tumor system to solve 3D-1D "
-                      "nutrient");
+     if (nut_sys.d_sys_name != "Nutrient" or tum_sys.d_sys_name != "Tumor")
+         libmesh_error_msg("Must pass Nutrient and Tumor system to solve 3D-1D " "nutrient");
 
-  const auto &input = d_model_p->get_input_deck();
-  const auto timeStep = d_model_p->d_step;
+     const auto &input = d_model_p->get_input_deck();
+     const auto timeStep = d_model_p->d_step;
 
-  // Solver
-  gmm::iteration iter(4.0e-11);
+     // Solver
+     gmm::iteration iter(4.0e-11);
 
-  //std::cout << " " << std::endl;
-  //std::cout << "Assemble 3D1D nutrient matrix and right hand side" <<
-  // std::endl;
-  assemble3D1DSystemForNutrients(nut_sys, tum_sys);
+     assemble3D1DSystemForNutrients(nut_sys, tum_sys);
 
-  // if this is first call inside nonlinear loop, we guess current
-  // concentration as old concentration
-  //
-  //
-  if (d_model_p->d_nonlinear_step == 0)
-    phi_sigma = phi_sigma_old;
-  if (d_model_p->d_step == 1)
-    phi_sigma = b_nut_3D1D;
+     // if this is first call inside nonlinear loop, we guess current
+     // concentration as old concentration
+ 
+     if (d_model_p->d_nonlinear_step == 0)
+         phi_sigma = phi_sigma_old;
+     if (d_model_p->d_step == 1)
+         phi_sigma = b_nut_3D1D;
 
-  gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> P(A_nut_3D1D, 60,
-                                                              1e-8);
+     gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> P(A_nut_3D1D, 60, 1e-8);
+     gmm::bicgstab(A_nut_3D1D, phi_sigma, b_nut_3D1D, P, iter);
 
-  //std::cout << " " << std::endl;
-  //std::cout << "Solve linear system of equations (nutrients)" << std::endl;
-  gmm::bicgstab(A_nut_3D1D, phi_sigma, b_nut_3D1D, P, iter);
+     auto pointer = VGM.getHead();
+   
+     while (pointer) {
 
-  auto pointer = VGM.getHead();
+            int indexOfNode = pointer->index;
 
-  //std::cout << " " << std::endl;
+		pointer->c_v = phi_sigma[N_tot_3D + indexOfNode];
+		// std::cout << "index: " << pointer->index << " c_v: " << pointer->c_v << "
+		// p_v: " << pointer->p_v << " coord: " << pointer->coord << std::endl;
+		pointer = pointer->global_successor;
+     }
 
-  while (pointer) {
+     // do not modify old with current concentration as this solver could be
+     // called inside nonlinear loop at given time step
+     // Rather update the old with new where this solver is called at the end of nonlinear loop
+     // phi_sigma_old = phi_sigma;
 
-    int indexOfNode = pointer->index;
+     // Extract nutrient concentrations
+     //std::cout << " " << std::endl;
+     //std::cout << "Extract nutrient concentrations" << std::endl;
 
-    // Debug
-    //  Disable below as it was not present in semi-coupled
-    //    if (phi_sigma[N_tot_3D + indexOfNode] > 1.0) {
-    //
-    //      phi_sigma[N_tot_3D + indexOfNode] = 1.0;
-    //    }
+     for (int i = 0; i < N_tot_3D; i++) {
 
-    pointer->c_v = phi_sigma[N_tot_3D + indexOfNode];
-    // std::cout << "index: " << pointer->index << " c_v: " << pointer->c_v << "
-    // p_v: " << pointer->p_v << " coord: " << pointer->coord << std::endl;
-    pointer = pointer->global_successor;
-  }
+          phi_sigma_3D[i] = phi_sigma[i];
+     }
 
-  // do not modify old with current concentration as this solver could be
-  // called inside nonlinear loop at given time step
-  // Rather update the old with new where this solver is called at the end of
-  // nonlinear loop
-  // phi_sigma_old = phi_sigma;
+     if (timeStep % 4 == 0) {
 
-  // Extract nutrient concentrations
-  //std::cout << " " << std::endl;
-  //std::cout << "Extract nutrient concentrations" << std::endl;
+         std::cout << " " << std::endl;
+         std::cout << "Plot solutions" << std::endl;
+         writeDataToVTK3D_Nutrients(phi_sigma_3D, N_3D, h_3D, timeStep);
+        // writeDataToVTKTimeStep_VGM(timeStep);
+     }
 
-  for (int i = 0; i < N_tot_3D; i++) {
+     // copy the 3D nutrient to libmesh nutrient system
+     util::set_elem_sol(nut_sys, phi_sigma_3D);
 
-    phi_sigma_3D[i] = phi_sigma[i];
-  }
-
-  /*
-  if (timeStep % 2 == 0) {
-
-    std::cout << " " << std::endl;
-    std::cout << "Plot solutions" << std::endl;
-    writeDataToVTK3D_Nutrients(phi_sigma_3D, N_3D, h_3D, timeStep);
-    // writeDataToVTKTimeStep_VGM(timeStep);
-  }
-  */
-
-  // copy the 3D nutrient to libmesh nutrient system
-  util::set_elem_sol(nut_sys, phi_sigma_3D);
 }
 
 void util::unet::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
@@ -401,8 +388,7 @@ void util::unet::Network::solveVGMforNutrient(BaseAssembly &pres_sys,
   // C_v_old = C_v;
 }
 
-void util::unet::Network::assemble3D1DSystemForPressure(
-    BaseAssembly &nut_sys, BaseAssembly &tum_sys) {
+void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys, BaseAssembly &tum_sys) {
 
   const auto &input = d_model_p->get_input_deck();
   double L_x = input.d_domain_params[1];
@@ -473,21 +459,14 @@ void util::unet::Network::assemble3D1DSystemForPressure(
 
           if (isInnerFace) {
 
-            //  std::cout << "index: " << index << std::endl;
-
             int index_neighbor = getElementIndex(center_neighbor, h_3D, N_3D);
 
-            A_flow_3D1D(index, index) =
-                A_flow_3D1D(index, index) + K_3D * h_3D * h_3D / h_3D;
-
-            //  std::cout << "index_neighbor: " << index_neighbor << std::endl;
+            A_flow_3D1D(index, index) = A_flow_3D1D(index, index) + K_3D * h_3D * h_3D / h_3D;
 
             A_flow_3D1D(index, index_neighbor) = -K_3D * h_3D * h_3D / h_3D;
 
-            // std::cout << "A_flow_3D1D( index, index_neighbor ): " <<
-            // A_flow_3D1D( index, index_neighbor ) << std::endl;
-
-          } else {
+          } 
+          else {
 
             if (scenario == "test_single_vessel") {
 
@@ -497,20 +476,20 @@ void util::unet::Network::assemble3D1DSystemForPressure(
               double dirichlet_value = getDirichletValue(
                   center_face, VGM.getHead()->L_p[0], VGM.getHead()->radii[0]);
 
-              A_flow_3D1D(index, index) =
-                  A_flow_3D1D(index, index) + 2.0 * K_3D * h_3D * h_3D / h_3D;
+              A_flow_3D1D(index, index) = A_flow_3D1D(index, index) + 2.0 * K_3D * h_3D * h_3D / h_3D;
 
-              b_flow_3D1D[index] =
-                  b_flow_3D1D[index] +
-                  (2.0 * K_3D * h_3D * h_3D * dirichlet_value) / h_3D;
+              b_flow_3D1D[index] = b_flow_3D1D[index] + (2.0 * K_3D * h_3D * h_3D * dirichlet_value) / h_3D;
+
             }
+
           }
 
-          // std::cout << "A_flow_3D1D( index, index ): " << A_flow_3D1D( index,
-          // index ) << std::endl;
         }
+
       }
+
     }
+
   }
 
   // Assemble 1D Matrix, 1D right hand side and coupling matrices (pressure)
@@ -529,125 +508,179 @@ void util::unet::Network::assemble3D1DSystemForPressure(
 
     int numberOfNeighbors = pointer->neighbors.size();
 
-    // std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
+    std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
 
     std::vector<double> coord = pointer->coord;
 
-    // std::cout << "coord: " << coord << std::endl;
+    std::cout << "coord: " << coord << std::endl;
 
     if (numberOfNeighbors == 1) {
 
-      A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) = 1.0;
+	if( pointer->typeOfVGNode == TypeOfNode::DirichletNode ){
 
-      b_flow_3D1D[N_tot_3D + indexOfNode] = pointer->p_boundary;
+	    A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = 1.0;
+	    b_flow_3D1D[ N_tot_3D+indexOfNode ] = pointer->p_boundary;
 
-      int indexNeighbor = pointer->neighbors[0]->index;
+	    double radius = pointer->radii[ 0 ];
 
-      // std::cout << "indexNeighbor: " << indexNeighbor << std::endl;
+	    // Assemble coupling terms (nutrients)
+	    std::vector<double> coord_neighbor = pointer->neighbors[ 0 ]->coord;
 
-    } else {
+	    int N_s = input.d_num_points_length;
+	    int N_theta = input.d_num_points_angle;
+
+	    std::vector<double> weights;
+	    std::vector<int> id_3D_elements;
+
+	    double length = util::dist_between_points( coord, coord_neighbor );
+	    double length_edge = 0.5 * length;
+	  
+	    // Surface area of cylinder
+	    double surface_area = 2.0*M_PI*length_edge*radius;
+
+	    determineWeightsAndIds( N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge, weights, id_3D_elements);
+
+	    // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
+	    int numberOfElements = id_3D_elements.size();
+
+	    // Permeabilty vessel wall for nutrients
+	    double L_p = pointer->L_p[ 0 ];
+
+	    for(int j=0;j<numberOfElements;j++){
+
+		// A_3D1D
+		A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - L_p*surface_area*weights[ j ];
+
+		// A_3D3D
+		A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ]) = A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ]) + L_p*surface_area*weights[ j ];
+
+	    }
+
+	}
+	else if( pointer->typeOfVGNode == TypeOfNode::NeumannNode ){
+
+	    double radius = pointer->radii[ 0 ];
+
+	    // Assemble coupling terms (nutrients)
+	    std::vector<double> coord_neighbor = pointer->neighbors[ 0 ]->coord;
+
+	    int N_s = input.d_num_points_length;
+	    int N_theta = input.d_num_points_angle;
+	    int indexNeighbor = pointer->neighbors[ 0 ]->index;
+
+	    std::vector<double> weights;
+	    std::vector<int> id_3D_elements;
+
+	    // Permeabilty vessel wall for nutrients
+	    double L_p = pointer->L_p[ 0 ];
+	    double length = util::dist_between_points( coord, coord_neighbor );
+	    double K_1D = getK1D( 0.5*( coord[2]+coord_neighbor[2] ), L_p, radius );
+
+	    A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) + K_1D/length;
+	    A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexNeighbor) = - K_1D/length;
+
+	    double length_edge = 0.5 * length;
+	  
+	    // Surface area of cylinder
+	    double surface_area = 2.0*M_PI*length_edge*radius;
+
+	    determineWeightsAndIds( N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge, weights, id_3D_elements);
+
+	    // Add coupling entry to 1D1D matrix
+	    A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) + L_p*surface_area;
+
+	    // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
+	    int numberOfElements = id_3D_elements.size();
+
+	    for(int j=0;j<numberOfElements;j++){
+
+		if( id_3D_elements[ j ]>-1 ){
+
+		    // A_3D1D
+		    A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - L_p*surface_area*weights[ j ];
+
+		    // A_3D3D
+		    A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  = A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  + L_p*surface_area*weights[ j ];
+
+		    // A_1D3D
+		    A_flow_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) = A_flow_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) - L_p*surface_area*weights[ j ];
+
+		}
+
+	    }
+
+	}
+
+    } 
+    else {
 
       for (int i = 0; i < numberOfNeighbors; i++) {
 
-        // Discretisation of the differential operator
 
-        double radius = pointer->radii[i];
+	    // Discretisation of the differential operator
+	    double radius = pointer->radii[ i ];
 
-        // std::cout << "radius: " << radius << std::endl;
+	    int indexNeighbor = pointer->neighbors[ i ]->index;
 
-        int indexNeighbor = pointer->neighbors[i]->index;
+	    std::vector<double> coord_neighbor = pointer->neighbors[ i ]->coord;
 
-        std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
+	    double length = util::dist_between_points( coord, coord_neighbor );
+	    double L_p = pointer->L_p[ i ];
+	    double K_1D = getK1D( 0.5*( coord[2]+coord_neighbor[2] ), L_p, radius );
 
-        double length = 0.0;
+	    A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) + K_1D/length;
+	    A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexNeighbor) = - K_1D/length;
 
-        for (int j = 0; j < 3; j++) {
+	    // Coupling terms   
+	    int N_s = input.d_num_points_length;
+	    int N_theta = input.d_num_points_angle;
 
-          length +=
-              (coord[j] - coord_neighbor[j]) * (coord[j] - coord_neighbor[j]);
-        }
+	    std::vector<double> weights;
+	    std::vector<int> id_3D_elements;
 
-        length = std::sqrt(length);
+	    double length_edge = 0.5 * length;
 
-        double L_p = pointer->L_p[i];
+	    // Surface area of cylinder
+	    double surface_area = 2.0*M_PI*length_edge*radius;
 
-        double K_1D = getK1D(0.5 * (coord[2] + coord_neighbor[2]), L_p, radius);
+	    determineWeightsAndIds( N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge, weights, id_3D_elements);
 
-        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
-            A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +
-            K_1D / length;
+	    // Add coupling entry to 1D1D matrix
+	    A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = A_flow_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) + L_p*surface_area;
 
-        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) =
-            -K_1D / length;
+	    // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
+	    int numberOfElements = id_3D_elements.size();
 
-        // Coupling terms
+	    for(int j=0;j<numberOfElements;j++){
 
-        int N_s = input.d_num_points_length;
+		if( id_3D_elements[ j ]>-1 ){
 
-        int N_theta = input.d_num_points_angle;
+		     // A_3D1D
+		     A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_flow_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - L_p*surface_area*weights[ j ];
 
-        std::vector<double> weights;
+		     // A_3D3D
+		     A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  = A_flow_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  + L_p*surface_area*weights[ j ];
 
-        std::vector<int> id_3D_elements;
+		     // A_1D3D
+		     A_flow_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) = A_flow_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) - L_p*surface_area*weights[ j ];
 
-        double length_edge = 0.0;
+		}
 
-        determineWeightsAndIds(N_s, N_theta, N_3D, coord, coord_neighbor,
-                               radius, h_3D, length_edge, weights,
-                               id_3D_elements);
+	    }
 
-        // Surface area of cylinder
-        double surface_area = 2.0 * M_PI * 0.5 * length_edge * radius;
-
-        // Add coupling entry to 1D1D matrix
-        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
-            A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +
-            L_p * surface_area;
-
-        // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
-        int numberOfElements = id_3D_elements.size();
-
-        // std::cout << "indexNeighbor: " << indexNeighbor << std::endl;
-
-        for (int j = 0; j < numberOfElements; j++) {
-        //for (int j = 0; j < 0; j++) {
-
-          // std::cout << "elem id: " << id_3D_elements[j] << "\n";
-
-          if (id_3D_elements[j] >= N_tot_3D)
-            libmesh_error_msg("Error id_3D_elements exceeds bound.");
-          if (id_3D_elements[j] < 0)
-            libmesh_error_msg("Error id_3D_elements is negative.");
-
-          // A_3D1D
-          A_flow_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) =
-              A_flow_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) -
-              L_p * surface_area * weights[j];
-
-          // A_3D3D
-          A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) =
-              A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) +
-              L_p * surface_area * weights[j];
-
-          // A_1D3D
-          A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) =
-              A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) -
-              L_p * surface_area * weights[j];
-        }
       }
+              
+      b_flow_3D1D[ N_tot_3D+indexOfNode ] = 0.0;
 
-      b_flow_3D1D[N_tot_3D + indexOfNode] = 0.0;
     }
 
     pointer = pointer->global_successor;
+
   }
 
-  // std::cout << "assembly done\n";
-  // exit(0);
 }
 
-void util::unet::Network::assemble3D1DSystemForNutrients(
-    BaseAssembly &nut_sys, BaseAssembly &tum_sys) {
+void util::unet::Network::assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, BaseAssembly &tum_sys) {
 
   const auto &input = d_model_p->get_input_deck();
   double L_x = input.d_domain_params[1];
@@ -723,8 +756,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
         // Iterate over the interfaces
         for (int face = 0; face < 6; face++) {
 
-          std::vector<double> center_neighbor =
-              getCenterNeighbor(center, directions[face], h_3D);
+          std::vector<double> center_neighbor = getCenterNeighbor(center, directions[face], h_3D);
 
           bool isInnerFace = isCenterInDomain(center_neighbor, L_x);
 
@@ -746,10 +778,15 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
             A_nut_3D1D(index, index) += dt * D_v_3D * area_face / h_3D;
 
             A_nut_3D1D(index, index_neighbor) = -dt * D_v_3D * area_face / h_3D;
+
           }
+
         }
+
       }
+
     }
+
   }
 
   // Assemble 1D Matrix, 1D right hand side and coupling matrices (nutrients)
@@ -773,89 +810,151 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
     if (numberOfNeighbors == 1) {
 
-      double radius = pointer->radii[0];
+	double radius = pointer->radii[0];
 
-      int indexNeighbor = pointer->neighbors[0]->index;
+	int indexNeighbor = pointer->neighbors[0]->index;
 
-      std::vector<double> coord_neighbor = pointer->neighbors[0]->coord;
+	std::vector<double> coord_neighbor = pointer->neighbors[0]->coord;
 
-      double length = 0.0;
+	double length = 0.0;
 
-      for (int j = 0; j < 3; j++) {
+	for(int j = 0; j < 3; j++){
 
-        length +=
-            (coord[j] - coord_neighbor[j]) * (coord[j] - coord_neighbor[j]);
-      }
+	    length += (coord[j] - coord_neighbor[j]) * (coord[j] - coord_neighbor[j]);
+	}
 
-      length = std::sqrt(length);
+	length = std::sqrt(length);
 
-      double p_neighbor = pointer->neighbors[0]->p_v;
+	double p_neighbor = pointer->neighbors[0]->p_v;
 
-      double v_interface =
-          -(radius * radius * M_PI) / (8.0 * length * mu) * (p_neighbor - p_v);
+	double v_interface = -(radius * radius * M_PI) / (8.0 * length * mu) * (p_neighbor - p_v);
 
-      double volume = length / 2.0 * radius * radius * M_PI;
+	double volume = length / 2.0 * radius * radius * M_PI;
 
-      // init
-      A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) = 0.;
+	if( v_interface > 0.0 && pointer->typeOfVGNode == TypeOfNode::DirichletNode ){
 
-      if (v_interface > 0.0) {
+	    A_nut_3D1D(N_tot_3D+indexOfNode,N_tot_3D+indexOfNode) = 1.0;
 
-        // inlet
+	    double phi_sigma_boundary = 0.0;
 
-        // if artery
-        if (p_v >= input.d_identify_vein_pres) {
+	    if(p_v < input.d_identify_vein_pres){
 
-          // Dirichlet on inlet
-          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += 1.0;
-          b_nut_3D1D[N_tot_3D + indexOfNode] += input.d_in_nutrient;
+	       phi_sigma_boundary = input.d_in_nutrient_vein;
 
-        } else {
+	    }
+	    else{
 
-          // Dirchlet on inlet
-          bool dirichlet_on_vein = false;
-          if (dirichlet_on_vein) {
-            A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += 1.0;
-            b_nut_3D1D[N_tot_3D + indexOfNode] += input.d_in_nutrient_vein;
-          } else {
+	       phi_sigma_boundary = input.d_in_nutrient;
 
-            // mass matrix
-            A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
-                length;
+	    }
 
-            // diffusion
-            A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
-                dt * D_v / length;
-            A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
-                -dt * D_v / length;
+	    b_nut_3D1D[N_tot_3D+indexOfNode] = phi_sigma_boundary;
 
-            // advection
-            A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
-                dt * v_interface;
-            A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) -=
-                dt * v_interface;
+	    // Assemble coupling terms (nutrients)
+	    std::vector<double> coord_neighbor = pointer->neighbors[0]->coord;
 
-            // old time step
-            b_nut_3D1D[N_tot_3D + indexOfNode] +=
-                length * phi_sigma_old[N_tot_3D + indexOfNode];
-          }
-        }
-      } else {
+	    int N_s = input.d_num_points_length;
+	    int N_theta = input.d_num_points_angle;
 
-        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) = length;
+	    std::vector<double> weights;
 
-        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) =
-            dt * v_interface - dt * D_v / length;
+	    std::vector<int> id_3D_elements;
 
-        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
-            A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) -
-            dt * v_interface + dt * D_v / length;
+	    double length_edge = 0.5 * length;
+	  
+	    // Surface area of cylinder
+	    double surface_area = 2.0*M_PI*length_edge*radius;
 
-        b_nut_3D1D[N_tot_3D + indexOfNode] =
-            length * phi_sigma_old[N_tot_3D + indexOfNode];
-      }
+	    determineWeightsAndIds( N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge, weights, id_3D_elements);
 
-    } else {
+	    // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
+	    int numberOfElements = id_3D_elements.size();
+
+	    // Permeabilty vessel wall for nutrients
+	    double L_s = pointer->L_s[ 0 ];
+
+	    double p_t = 0.0;
+
+	    for(int j=0;j<numberOfElements;j++){
+
+		// A_3D1D
+		A_nut_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_nut_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - dt*L_s*surface_area*weights[ j ];
+
+		// A_3D3D
+		A_nut_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  = A_nut_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  + dt*L_s*surface_area*weights[ j ];
+
+	    }
+
+	} 
+	else{
+
+	   A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexOfNode) = length;
+
+	   A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexNeighbor) = dt * v_interface - dt * D_v / length;
+
+	   A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexOfNode) = A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexOfNode) - dt * v_interface + dt * D_v / length;
+
+	   b_nut_3D1D[N_tot_3D+indexOfNode] = length * phi_sigma_old[N_tot_3D+indexOfNode];
+
+	   // Assemble coupling terms (nutrients)
+
+	   int N_s = input.d_num_points_length; 
+	   int N_theta = input.d_num_points_angle;
+
+	   std::vector<double> weights;
+
+	   std::vector<int> id_3D_elements;
+
+	   double length_edge = 0.5 * length;
+	  
+	   // Surface area of cylinder
+	   double surface_area = 2.0*M_PI*length_edge*radius;
+
+	   determineWeightsAndIds( N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge, weights, id_3D_elements);
+
+	   // Permeabilty vessel wall for nutrients
+	   double L_s = pointer->L_s[ 0 ];
+
+	   // 1D part of the coupling
+	   A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexOfNode) = A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexOfNode) + dt * L_s * surface_area;
+
+	   // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
+	   int numberOfElements = id_3D_elements.size();
+
+	   double p_t = 0.0;
+
+	   for(int j=0;j<numberOfElements;j++){
+
+	       // A_3D1D
+	       A_nut_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) = A_nut_3D1D(id_3D_elements[ j ],N_tot_3D+indexOfNode) - dt*L_s*surface_area*weights[ j ];
+
+	       // A_3D3D
+	       A_nut_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  = A_nut_3D1D(id_3D_elements[ j ],id_3D_elements[ j ])  + dt*L_s*surface_area*weights[ j ];
+
+	       // A_1D3D
+	       A_nut_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) = A_nut_3D1D(N_tot_3D+indexOfNode,id_3D_elements[ j ]) - dt*L_s*surface_area*weights[ j ];
+
+	       p_t = P_3D1D[ id_3D_elements[ j ] ];
+
+	       if( p_v-p_t > 0.0 ){
+
+		   A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexOfNode) = A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexOfNode) + 
+					                                         dt * (1. - osmotic_sigma) * pointer->L_p[ 0 ] * surface_area * weights[ j ] * (p_v - p_t);
+
+	       }
+	       else{
+
+		   A_nut_3D1D(id_3D_elements[ j ],id_3D_elements[ j ]) = A_nut_3D1D(id_3D_elements[ j ],id_3D_elements[ j ]) - 
+					                                         dt * (1. - osmotic_sigma) * pointer->L_p[ 0 ] * surface_area * weights[ j ] * (p_v - p_t);    
+
+	       }
+
+	   }
+
+	}
+
+    } 
+    else {
 
       for (int i = 0; i < numberOfNeighbors; i++) {
 
@@ -969,12 +1068,17 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
                 dt * (1. - osmotic_sigma) * pointer->L_p[i] * surface_area *
                     weights[j] * (p_v - p_t);
           }
+
         }
+
       }
+
     }
 
     pointer = pointer->global_successor;
+
   }
+
 }
 
 void util::unet::Network::assembleVGMSystemForPressure(
