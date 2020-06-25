@@ -431,49 +431,38 @@ struct NutrientBCDeck {
 struct NetworkDeck {
 
   bool network_active;
-
   std::string d_network_init_file;
-
   int d_network_init_refinement;
 
   int d_num_points_length;
   int d_num_points_angle;
   double d_coupling_method_theta;
   bool d_compute_elem_weights;
-
   double d_assembly_factor_p_t;
   double d_assembly_factor_c_t;
-
   double d_identify_vein_pres;
 
-
-
+  // growth related params
   unsigned int d_network_update_interval;
-
   double d_network_update_taf_threshold;
+  double d_log_normal_mean;
+  double d_log_normal_std_dev;
+  double d_net_radius_exponent_gamma;
+  double d_network_bifurcate_prob;
+  double d_min_radius;
+  double d_sprouting_prob;
 
+  // parameters below are not used currently
   int d_no_branch_dist;
   double d_new_vessel_max_angle;
   double d_branch_angle;
   int d_vessel_no_taf_effect_dist;
   unsigned int d_nonlocal_direction_search_num_points;
   double d_nonlocal_direction_search_length;
-
-  double d_log_normal_mean;
-  double d_log_normal_std_dev;
   double d_net_length_R_factor;
-  double d_net_radius_exponent_gamma;
   double d_net_direction_lambda_g;
-
   bool d_network_local_search;
-
   double d_network_no_new_node_search_factor;
-
-  double d_network_bifurcate_prob;
-
-  double d_min_radius;
-
-  double d_sprouting_prob;
 
   explicit NetworkDeck(const std::string &filename = "")
       : network_active(false), d_net_direction_lambda_g(0.),

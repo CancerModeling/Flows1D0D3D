@@ -6,6 +6,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "model.hpp"
+#include "rw/vtk_io.hpp"
 
 namespace {
 
@@ -389,9 +390,12 @@ void netfvfe::Model::run() {
     d_mde_assembly.d_sys.hide_output() = true;
     d_ecm_assembly.d_sys.hide_output() = true;
 
-    if (d_input.d_test_name != "test_taf" and
-        d_input.d_test_name != "test_taf_2")
+    if (d_input.d_test_name == "test_nut" or
+        d_input.d_test_name == "test_nut_2" or
+        d_input.d_test_name == "test_pressure") {
+      d_taf_assembly.d_sys.hide_output() = true;
       d_grad_taf_assembly.d_sys.hide_output() = true;
+    }
   }
 
   do {
@@ -468,7 +472,7 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
   // exodus.write_timestep(filename, d_tum_sys, 1, d_time);
 
   //
-  VTKIO(d_mesh).write_equation_systems(
+  rw::VTKIO(d_mesh).write_equation_systems(
       d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
       d_tum_sys);
 
@@ -692,7 +696,7 @@ void netfvfe::Model::solve_system() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -791,7 +795,7 @@ void netfvfe::Model::solve_pressure() {
     double nonlinear_loc_error_pres = last_nonlinear_soln_pres->linfty_norm();
     double nonlinear_global_error_pres = 0.;
     MPI_Allreduce(&nonlinear_loc_error_pres, &nonlinear_global_error_pres, 1,
-                  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+                  MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -892,7 +896,7 @@ void netfvfe::Model::test_nut() {
     double nonlinear_loc_error_nut = last_nonlinear_soln_nut->linfty_norm();
     double nonlinear_global_error_nut = 0.;
     MPI_Allreduce(&nonlinear_loc_error_nut, &nonlinear_global_error_nut, 1,
-                  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+                  MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -1100,7 +1104,7 @@ void netfvfe::Model::test_tum() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -1203,7 +1207,7 @@ void netfvfe::Model::test_tum_2() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -1338,7 +1342,7 @@ void netfvfe::Model::test_net_tum() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -1490,7 +1494,7 @@ void netfvfe::Model::test_net_tum_2() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
