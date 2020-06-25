@@ -23,4 +23,4 @@ AUX_SOURCE_DIRECTORY(./ SOURCES)
 AUX_SOURCE_DIRECTORY(systems SOURCES)
 
 add_library(${ProjectLib} ${SOURCES})
-target_link_libraries(${ProjectLib} Utils ${VTK_LIBRARIES})
+target_link_libraries(${ProjectLib} Utils)
