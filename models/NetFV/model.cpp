@@ -6,6 +6,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "model.hpp"
+#include "rw/vtk_io.hpp"
 
 namespace {
 
@@ -517,7 +518,7 @@ void netfv::Model::write_system(const unsigned int &t_step) {
   // exodus.write_timestep(filename, d_tum_sys, 1, d_time);
 
   //
-  VTKIO(d_mesh).write_equation_systems(
+  rw::VTKIO(d_mesh).write_equation_systems(
       d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
       d_tum_sys);
 

@@ -36,6 +36,13 @@ struct ElemWeights {
     elem_id.push_back(elem);
     elem_weight.push_back(weight);
   }
+
+  void clear() {
+    id_seg = 0;
+    half_cyl_surf = 0.;
+    elem_id.clear();
+    elem_weight.clear();
+  }
 };
 
 enum TypeOfSegment { DirBoundary, Inner };

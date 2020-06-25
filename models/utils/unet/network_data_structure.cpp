@@ -993,6 +993,8 @@ void util::unet::Network::compute_elem_weights() {
 
       // get reference to J_b point data
       auto &J_b_ij = pointer->J_b_points[j];
+      J_b_ij.clear();
+      J_b_ij.id_seg = pointer->neighbors[j]->index;
 
       // const auto &j_coords = pointer->neighbors[j]->coord;
       const Point j_coords = util::to_point(pointer->neighbors[j]->coord);
