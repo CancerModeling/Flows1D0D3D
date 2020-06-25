@@ -9,6 +9,7 @@
 #include "systems.hpp"
 #include "utilIO.hpp"
 #include "utils.hpp"
+#include "rw/vtk_io.hpp"
 #include <random>
 
 namespace {
@@ -421,7 +422,7 @@ void netfc::Model::write_system(const unsigned int &t_step,
   // exodus.write_timestep(filename, d_tum_sys, 1, d_time);
 
   //
-  VTKIO(d_mesh).write_equation_systems("sim_" + std::to_string(t_step) +
+  rw::VTKIO(d_mesh).write_equation_systems("sim_" + std::to_string(t_step) +
                                        ".pvtu",  d_tum_sys);
 
   // save for restart
