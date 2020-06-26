@@ -108,6 +108,13 @@ void util::unet::Network::create_initial_network() {
 
   }
 
+  for(int i = 0; i < numberOfNodes; i++) {
+
+      phi_sigma_old[N_tot_3D+i] = 0.0;
+      phi_sigma[N_tot_3D+i] = 0.0;
+
+  }
+
   phi_TAF = std::vector<double>(N_tot_3D, 0.0);
   phi_TAF_old = std::vector<double>(N_tot_3D, 0.0);
 
@@ -278,7 +285,7 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys, BaseAs
           phi_sigma_3D[i] = phi_sigma[i];
      }
 
-     if (timeStep % 4 == 0) {
+     if (timeStep % input.d_dt_output_interval == 0) {
 
          std::cout << " " << std::endl;
          std::cout << "Plot solutions" << std::endl;
@@ -508,11 +515,11 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys, B
 
     int numberOfNeighbors = pointer->neighbors.size();
 
-    std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
+    //std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
 
     std::vector<double> coord = pointer->coord;
 
-    std::cout << "coord: " << coord << std::endl;
+    //std::cout << "coord: " << coord << std::endl;
 
     if (numberOfNeighbors == 1) {
 
