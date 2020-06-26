@@ -690,6 +690,7 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys, B
 void util::unet::Network::assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, BaseAssembly &tum_sys) {
 
   const auto &input = d_model_p->get_input_deck();
+  const auto &mesh = d_model_p->get_mesh();
   double L_x = input.d_domain_params[1];
 
   // 3D-1D coupled flow problem on a cube
@@ -789,6 +790,42 @@ void util::unet::Network::assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, 
           }
 
         }
+
+        // Libmesh element
+        auto elem = mesh.elem_ptr(i);
+
+        // loop over sides of the element
+        for (auto side : elem->side_index_range()) {
+
+          if (elem->neighbor_ptr(side) != nullptr) {
+
+            const Elem *neighbor = elem->neighbor_ptr(side);
+
+            // div(chem_tum * grad(tum)) term
+            // requires integration over face of an element
+            tum_sys.d_fe_face->reinit(elem, side);
+
+            // loop over quadrature points
+            for (unsigned int qp = 0; qp < tum_sys.d_qrule_face.n_points(); qp++) {
+
+              Real chem_tum_cur = 0.;
+              Gradient tum_grad = 0.;
+              for (unsigned int l = 0; l < tum_sys.d_phi_face.size(); l++) {
+
+                chem_tum_cur +=
+                    tum_sys.d_phi_face[l][qp] * tum_sys.get_current_sol_var(l, 1);
+
+                tum_grad.add_scaled(tum_sys.d_dphi_face[l][qp],
+                                    tum_sys.get_current_sol_var(l, 0));
+              }
+
+              // add to force
+              b_nut_3D1D[index] += -tum_sys.d_JxW_face[qp] * input.d_tissue_flow_coeff *
+                       chem_tum_cur * tum_grad * tum_sys.d_qface_normals[qp];
+            } // loop over quadrature points on face
+
+          } // elem neighbor is not null
+        }   // loop over faces
 
       }
 
