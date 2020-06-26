@@ -477,7 +477,7 @@ struct NetworkDeck {
         d_num_points_angle(2), d_coupling_method_theta(0.5),
         d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
         d_identify_vein_pres(0.), d_compute_elem_weights(false),
-        d_network_bifurcate_prob(0.6), d_min_radius(8.5e-3), d_sprouting_prob(0.9) {
+        d_network_bifurcate_prob(0.9), d_min_radius(8.5e-3), d_sprouting_prob(0.9) {
 
     if (!filename.empty())
       read_parameters(filename);
