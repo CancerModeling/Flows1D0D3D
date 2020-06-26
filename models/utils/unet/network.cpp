@@ -498,6 +498,8 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys, B
         // Libmesh element
         auto elem = mesh.elem_ptr(index);
 
+        tum_sys.init_dof(elem);
+
         // loop over sides of the element
         for (auto side : elem->side_index_range()) {
 
