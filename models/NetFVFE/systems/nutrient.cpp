@@ -328,7 +328,7 @@ void netfvfe::NutAssembly::assemble_1() {
 
     // init fe and element matrix and vector
     init_fe(elem);
-    hyp.init_dof(elem);
+    hyp.init_fe(elem);
 
     // get finite-volume quantities
     nut_old = get_old_sol(0);
@@ -350,11 +350,11 @@ void netfvfe::NutAssembly::assemble_1() {
       //for (unsigned int l = 0; l < d_phi.size(); l++) {
       for (unsigned int l = 0; l < hyp.d_phi.size(); l++) {
 
-        tum_cur += d_phi[l][qp] * tum.get_current_sol_var(l, 0);
-        hyp_cur += d_phi[l][qp] * hyp.get_current_sol(l);
-        nec_cur += d_phi[l][qp] * nec.get_current_sol(l);
-        ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
-        mde_cur += d_phi[l][qp] * mde.get_current_sol(l);
+        tum_cur += hyp.d_phi[l][qp] * tum.get_current_sol_var(l, 0);
+        hyp_cur += hyp.d_phi[l][qp] * hyp.get_current_sol(l);
+        nec_cur += hyp.d_phi[l][qp] * nec.get_current_sol(l);
+        ecm_cur += hyp.d_phi[l][qp] * ecm.get_current_sol(l);
+        mde_cur += hyp.d_phi[l][qp] * mde.get_current_sol(l);
       }
 
       if (deck.d_assembly_method == 1) {
