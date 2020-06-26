@@ -907,7 +907,7 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   d_log_normal_mean = input("log_normal_mean", 0.);
   d_log_normal_std_dev = input("log_normal_std_dev", 0.);
   d_net_radius_exponent_gamma = input("network_radius_exponent_gamma", 1.);
-  d_network_bifurcate_prob = input("network_bifurcate_probability", 0.6);
+  d_network_bifurcate_prob = input("network_bifurcate_probability", 0.9);
   d_min_radius = input("network_min_radius", 8.5e-3);
   d_sprouting_prob = input("network_sprouting_prob", 0.9);
 
