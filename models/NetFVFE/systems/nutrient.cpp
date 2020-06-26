@@ -328,6 +328,7 @@ void netfvfe::NutAssembly::assemble_1() {
 
     // init fe and element matrix and vector
     init_fe(elem);
+    hyp.init_dof(elem);
 
     // get finite-volume quantities
     nut_old = get_old_sol(0);
@@ -336,7 +337,8 @@ void netfvfe::NutAssembly::assemble_1() {
     d_Fe(0) += deck.d_elem_size * factor_nut * nut_old;
     d_Ke(0, 0) += deck.d_elem_size * factor_nut;
 
-    for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
+    //for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
+    for (unsigned int qp = 0; qp < hyp.d_qrule.n_points(); qp++) {
 
       // Computing solution
       tum_cur = 0.;
@@ -345,7 +347,8 @@ void netfvfe::NutAssembly::assemble_1() {
       ecm_cur = 0.;
       mde_cur = 0.;
 
-      for (unsigned int l = 0; l < d_phi.size(); l++) {
+      //for (unsigned int l = 0; l < d_phi.size(); l++) {
+      for (unsigned int l = 0; l < hyp.d_phi.size(); l++) {
 
         tum_cur += d_phi[l][qp] * tum.get_current_sol_var(l, 0);
         hyp_cur += d_phi[l][qp] * hyp.get_current_sol(l);
@@ -356,9 +359,9 @@ void netfvfe::NutAssembly::assemble_1() {
 
       if (deck.d_assembly_method == 1) {
 
-        compute_rhs = d_JxW[qp] * dt * deck.d_lambda_ECM_D * ecm_cur * mde_cur;
+        compute_rhs = hyp.d_JxW[qp] * dt * deck.d_lambda_ECM_D * ecm_cur * mde_cur;
 
-        compute_mat = d_JxW[qp] * dt *
+        compute_mat = hyp.d_JxW[qp] * dt *
                       (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
                        deck.d_lambda_Ph * hyp_cur +
                        deck.d_lambda_ECM_P * (1. - ecm_cur) *
@@ -373,9 +376,9 @@ void netfvfe::NutAssembly::assemble_1() {
         nec_proj = util::project_concentration(nec_cur);
 
         compute_rhs =
-            d_JxW[qp] * dt * deck.d_lambda_ECM_D * ecm_proj * mde_proj;
+            hyp.d_JxW[qp] * dt * deck.d_lambda_ECM_D * ecm_proj * mde_proj;
 
-        compute_mat = d_JxW[qp] * dt *
+        compute_mat = hyp.d_JxW[qp] * dt *
                       (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
                        deck.d_lambda_Ph * hyp_proj +
                        deck.d_lambda_ECM_P * (1. - ecm_proj) *
@@ -388,7 +391,7 @@ void netfvfe::NutAssembly::assemble_1() {
                          deck.d_nut_source_center, deck.d_nut_source_radius) -
           nut_old;
       if (artificial_source > 0.)
-        compute_rhs += d_JxW[qp] * dt * artificial_source;
+        compute_rhs += hyp.d_JxW[qp] * dt * artificial_source;
 
       // add rhs
       d_Fe(0) += factor_nut * compute_rhs;

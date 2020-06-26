@@ -16,6 +16,9 @@
 // input deck
 #include "uinp/inp.hpp"
 
+// Assembly class
+#include "usystem/abstraction.hpp"
+
 // typedef input deck so that change its namespace or name does not effect
 // the rest of the code
 typedef util::InputDeck InpDeck;
@@ -52,6 +55,11 @@ public:
 
   /*! @brief Run model */
   virtual void run() = 0;
+
+  /*! @brief Get various system classes */
+  virtual BaseAssembly &get_assembly(const std::string &system) {
+    libmesh_error_msg("Error: get_assembly should be defined in inheriting class");
+  };
 
 public:
   /*! @brief To store input parameters */
