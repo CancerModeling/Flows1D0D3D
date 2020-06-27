@@ -28,4 +28,4 @@ AUX_SOURCE_DIRECTORY(systems SOURCES)
 AUX_SOURCE_DIRECTORY(net SOURCES)
 
 add_library(${ProjectLib} ${SOURCES})
-target_link_libraries(${ProjectLib} Utils ${VTK_LIBRARIES})
+target_link_libraries(${ProjectLib} Utils)

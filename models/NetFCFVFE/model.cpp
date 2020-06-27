@@ -6,6 +6,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "model.hpp"
+#include "rw/vtk_io.hpp"
 
 namespace {
 
@@ -87,7 +88,7 @@ void netfcfvfe::model_setup_run(int argc, char **argv,
     ReferenceCounter::disable_print_counter_info();
 
   //
-  log("Model: NetFCFVFE \n", "init");
+  log("Model: NetFCFVFE\n", "init");
 
   // create mesh
   oss << "Setup [Mesh] -> ";
@@ -292,16 +293,16 @@ netfcfvfe::Model::Model(
     vel.time = d_input.d_init_time;
 
     // set Petsc matrix option to suppress the error
-    {
-      PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(pres.matrix);
-      MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    }
-    {
-      PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(nut.matrix);
-      MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
-    }
+    //    {
+    //      PetscMatrix<Number> *pet_mat =
+    //          dynamic_cast<PetscMatrix<Number> *>(pres.matrix);
+    //      MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+    //    }
+    //    {
+    //      PetscMatrix<Number> *pet_mat =
+    //          dynamic_cast<PetscMatrix<Number> *>(nut.matrix);
+    //      MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+    //    }
 
     if (d_input.d_perform_output and !d_input.d_quiet) {
       d_delayed_msg += "Libmesh Info \n";
@@ -385,11 +386,14 @@ void netfcfvfe::Model::run() {
     d_mde_assembly.d_sys.hide_output() = true;
     d_ecm_assembly.d_sys.hide_output() = true;
 
-    if (d_input.d_test_name != "test_taf" and
-        d_input.d_test_name != "test_taf_2")
+    if (d_input.d_test_name == "test_nut" or
+        d_input.d_test_name == "test_nut_2" or
+        d_input.d_test_name == "test_pressure") {
+      d_taf_assembly.d_sys.hide_output() = true;
       d_grad_taf_assembly.d_sys.hide_output() = true;
-
+    }
   }
+
   do {
 
     // Prepare time step
@@ -464,7 +468,7 @@ void netfcfvfe::Model::write_system(const unsigned int &t_step) {
   // exodus.write_timestep(filename, d_tum_sys, 1, d_time);
 
   //
-  VTKIO(d_mesh).write_equation_systems(
+  rw::VTKIO(d_mesh).write_equation_systems(
       d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
       d_tum_sys);
 
@@ -492,7 +496,7 @@ void netfcfvfe::Model::compute_qoi() {
   double value_mass = 0.;
   double total_mass = 0.;
   util::computeMass(d_tum_sys, "Tumor", "tumor", value_mass);
-  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_MAX,
                 MPI_COMM_WORLD);
 
   // add to qoi data
@@ -554,10 +558,157 @@ void netfcfvfe::Model::solve_system() {
                         " not recognized.");
 
     return;
-  } else {
-
-    libmesh_error_msg("Specify test name to run NetFCFVFE model.");
   }
+
+  // get systems
+  auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
+  auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
+  auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
+  auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
+  auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
+  auto &ecm = d_tum_sys.get_system<TransientLinearImplicitSystem>("ECM");
+  auto &mde = d_tum_sys.get_system<TransientLinearImplicitSystem>("MDE");
+  auto &pres = d_tum_sys.get_system<TransientLinearImplicitSystem>("Pressure");
+  auto &grad_taf =
+      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+
+  // update time
+  nut.time = d_time;
+  tum.time = d_time;
+  hyp.time = d_time;
+  nec.time = d_time;
+  taf.time = d_time;
+  ecm.time = d_time;
+  mde.time = d_time;
+  pres.time = d_time;
+  grad_taf.time = d_time;
+
+  d_tum_sys.parameters.set<Real>("time") = d_time;
+
+  // update old solution
+  *nut.old_local_solution = *nut.current_local_solution;
+  *tum.old_local_solution = *tum.current_local_solution;
+  *hyp.old_local_solution = *hyp.current_local_solution;
+  *nec.old_local_solution = *nec.current_local_solution;
+  *taf.old_local_solution = *taf.current_local_solution;
+  *ecm.old_local_solution = *ecm.current_local_solution;
+  *mde.old_local_solution = *mde.current_local_solution;
+  *pres.old_local_solution = *pres.current_local_solution;
+
+  // update old concentration in network
+  d_network.update_old_concentration_3D1D();
+
+  // solve for pressure
+  solve_pressure();
+
+  // to compute the nonlinear convergence
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
+      tum.solution->clone());
+
+  d_log("  Nonlinear loop\n", "solve sys");
+  d_log(" \n", "solve sys");
+
+  // Nonlinear iteration loop
+  d_tum_sys.parameters.set<Real>("linear solver tolerance") =
+      d_input.d_linear_tol;
+
+  // nonlinear loop
+  for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
+
+    d_nonlinear_step = l;
+    oss << "    Nonlinear step: " << l << " ";
+    d_log(oss, "solve sys");
+
+    // solver for 1D + 3D nutrient
+    reset_clock();
+    d_log("|1D nutrient + 3D nutrient| -> ", "solve sys");
+    d_network.solve3D1DNutrientProblem(d_nut_assembly, d_tum_assembly);
+    d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
+    d_log.add_sys_solve_time(clock_begin, d_nut_id);
+
+    // solve tumor
+    reset_clock();
+    last_nonlinear_soln_tum->zero();
+    last_nonlinear_soln_tum->add(*tum.solution);
+    d_log("|tumor| -> ", "solve sys");
+    tum.solve();
+    last_nonlinear_soln_tum->add(-1., *tum.solution);
+    last_nonlinear_soln_tum->close();
+    d_log.add_sys_solve_time(clock_begin, d_tum_id);
+
+    // solve hypoxic
+    reset_clock();
+    d_log("|hypoxic| -> ", "solve sys");
+    hyp.solve();
+    d_log.add_sys_solve_time(clock_begin, d_hyp_id);
+
+    // solve necrotic
+    reset_clock();
+    d_log("|necrotic| -> ", "solve sys");
+    nec.solve();
+    d_log.add_sys_solve_time(clock_begin, d_nec_id);
+
+    // solve taf
+    reset_clock();
+    d_log("|taf| -> ", "solve sys");
+    taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_taf_id);
+
+    // solve mde
+    reset_clock();
+    d_log("|mde| -> ", "solve sys");
+    mde.solve();
+    d_log.add_sys_solve_time(clock_begin, d_mde_id);
+
+    // solve ecm
+    reset_clock();
+    d_log("|ecm|\n", "solve sys");
+    ecm.solve();
+    d_log.add_sys_solve_time(clock_begin, d_ecm_id);
+
+    // Nonlinear iteration error
+    double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
+    double nonlinear_global_error = 0.;
+    MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
+                  MPI_MAX, MPI_COMM_WORLD);
+
+    if (d_input.d_perform_output) {
+
+      const unsigned int n_linear_iterations = tum.n_linear_iterations();
+      const Real final_linear_residual = tum.final_linear_residual();
+
+      oss << "      LC step: " << n_linear_iterations
+          << ", res: " << final_linear_residual
+          << ", NC: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
+      d_log(oss, "debug");
+    }
+    if (nonlinear_global_error < d_input.d_nonlin_tol) {
+
+      d_log(" \n", "debug");
+      oss << "      NC step: " << l << std::endl
+          << std::endl;
+      d_log(oss, "converge sys");
+
+      break;
+    }
+  } // nonlinear solver loop
+
+  d_log(" \n", "solve sys");
+  d_log.add_nonlin_iter(d_nonlinear_step);
+
+  // compute below only when we are performing output as these do not play
+  // direct role in evolution of sub-system
+
+  if (d_is_output_step or d_is_growth_step) {
+
+    // solve for taf
+    reset_clock();
+    d_log("      Solving |grad taf| \n", "solve sys");
+    grad_taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
+  }
+  d_log(" \n", "solve sys");
 }
 
 void netfcfvfe::Model::solve_pressure() {
@@ -647,7 +798,139 @@ void netfcfvfe::Model::test_tum() {}
 
 void netfcfvfe::Model::test_tum_2() {}
 
-void netfcfvfe::Model::test_net_tum() {}
+void netfcfvfe::Model::test_net_tum() {
+
+  // get systems
+  auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
+  auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
+  auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
+  auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
+  auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
+  auto &grad_taf =
+      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+
+  // update time
+  nut.time = d_time;
+  tum.time = d_time;
+  hyp.time = d_time;
+  nec.time = d_time;
+  taf.time = d_time;
+  grad_taf.time = d_time;
+  d_tum_sys.parameters.set<Real>("time") = d_time;
+
+  // update old solution
+  *nut.old_local_solution = *nut.current_local_solution;
+  *tum.old_local_solution = *tum.current_local_solution;
+  *hyp.old_local_solution = *hyp.current_local_solution;
+  *nec.old_local_solution = *nec.current_local_solution;
+
+  // update old concentration in network
+  d_network.update_old_concentration_3D1D();
+
+  // solve for pressure
+  solve_pressure();
+
+  // reset nonlinear step
+  d_nonlinear_step = 0;
+
+  // to compute the nonlinear convergence
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
+      tum.solution->clone());
+
+  d_log("  Nonlinear loop\n", "solve sys");
+  d_log(" \n", "solve sys");
+
+  // Nonlinear iteration loop
+  d_tum_sys.parameters.set<Real>("linear solver tolerance") =
+      d_input.d_linear_tol;
+
+  // nonlinear loop
+  for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
+
+    d_nonlinear_step = l;
+    oss << "    Nonlinear step: " << l << " ";
+    d_log(oss, "solve sys");
+
+    // solver for 1D + 3D nutrient
+    reset_clock();
+    d_log("|1D nutrient + 3D nutrient| -> ", "solve sys");
+    d_network.solve3D1DNutrientProblem(d_nut_assembly, d_tum_assembly);
+    d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
+    d_log.add_sys_solve_time(clock_begin, d_nut_id);
+
+    // solve tumor
+    reset_clock();
+    last_nonlinear_soln_tum->zero();
+    last_nonlinear_soln_tum->add(*tum.solution);
+    d_log("|tumor| -> ", "solve sys");
+    tum.solve();
+    last_nonlinear_soln_tum->add(-1., *tum.solution);
+    last_nonlinear_soln_tum->close();
+    d_log.add_sys_solve_time(clock_begin, d_tum_id);
+
+    // solve hypoxic
+    reset_clock();
+    d_log("|hypoxic| -> ", "solve sys");
+    hyp.solve();
+    d_log.add_sys_solve_time(clock_begin, d_hyp_id);
+
+    // solve necrotic
+    reset_clock();
+    d_log("|necrotic|\n", "solve sys");
+    nec.solve();
+    d_log.add_sys_solve_time(clock_begin, d_nec_id);
+
+    // Nonlinear iteration error
+    double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
+    double nonlinear_global_error = 0.;
+    MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
+                  MPI_MAX, MPI_COMM_WORLD);
+
+    if (d_input.d_perform_output) {
+
+      const unsigned int n_linear_iterations = tum.n_linear_iterations();
+      const Real final_linear_residual = tum.final_linear_residual();
+
+      oss << "      LC step: " << n_linear_iterations
+          << ", res: " << final_linear_residual
+          << ", NC: ||u - u_old|| = "
+          << nonlinear_global_error << std::endl << std::endl;
+      d_log(oss, "debug");
+    }
+    if (nonlinear_global_error < d_input.d_nonlin_tol) {
+
+      d_log(" \n", "debug");
+      oss << "      NC step: " << l << std::endl
+          << std::endl;
+      d_log(oss, "converge sys");
+
+      break;
+    }
+  } // nonlinear solver loop
+
+  d_log(" \n", "solve sys");
+  d_log.add_nonlin_iter(d_nonlinear_step);
+
+  // compute below only when we are performing output as these do not play
+  // direct role in evolution of sub-system
+
+  if (d_is_output_step or d_is_growth_step) {
+
+    // solve for taf
+    reset_clock();
+    *taf.old_local_solution = *taf.current_local_solution;
+    d_log("      Solving |taf| -> ", "solve sys");
+    taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_taf_id);
+
+    // solve for gradient of taf
+    reset_clock();
+    d_log("|grad taf|\n", "solve sys");
+    grad_taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
+  }
+  d_log(" \n", "solve sys");
+}
 
 void netfcfvfe::Model::test_net_tum_2() {
 
@@ -732,7 +1015,7 @@ void netfcfvfe::Model::test_net_tum_2() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 
@@ -866,7 +1149,7 @@ void netfcfvfe::Model::test_fc_solver() {
     double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
     double nonlinear_global_error = 0.;
     MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_SUM, MPI_COMM_WORLD);
+                  MPI_MAX, MPI_COMM_WORLD);
 
     if (d_input.d_perform_output) {
 

@@ -33,11 +33,12 @@ message("LIBMESH_DEFINITIONS = ${PC_LIBMESH_CFLAGS_DEFS}")
 message("LIBMESH_FLAGS = ${PC_LIBMESH_CFLAGS_FLAGS}")
 message("LIBMESH_INCLUDE_DIRS = ${LIBMESH_INCLUDE_DIRS}")
 message("LIBMESH_LIBRARIES = ${LIBMESH_LIBRARIES}")
-message("PETSC_LIB = ${PETSC_LIB}")
+message("PETSC_LIBRARIES = ${PETSC_LIBRARIES}")
 
 
 # VTK
-find_package(VTK COMPONENTS vtkCommonCore QUIET)
+find_package(VTK REQUIRED)
+#find_package(VTK COMPONENTS vtkCommonCore QUIET)
 
 if (VTK_VERSION VERSION_LESS "6")
     message(FATAL_ERROR "ERROR: Only VTK library 6+ supported")
@@ -61,15 +62,17 @@ endif ()
 # enable_language(CXX)
 # set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
-#message("Build type: ${CMAKE_BUILD_TYPE}")
+message("Build type: ${CMAKE_BUILD_TYPE}")
+message("CMAKE_CXX_COMPILER_ID: ${CMAKE_CXX_COMPILER_ID}")
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -DNDEBUG")
-    elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -DNDEBUG")
-    endif()
-    # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread")
+    #if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -DNDEBUG")
+    #elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+    #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -DNDEBUG")
+    #endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -xHost -std=c++14")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -104,3 +107,17 @@ if(${TEST_BUILD})
     message("Gnerating build files for Test ")
     add_subdirectory(models/tests)
 endif()
+
+message("Adding applications ")
+add_subdirectory(applications)
+
+
+INSTALL (
+        DIRECTORY ${CMAKE_SOURCE_DIR}/models
+        DESTINATION include
+        FILES_MATCHING PATTERN "*.h*")
+
+INSTALL (
+        DIRECTORY ${CMAKE_SOURCE_DIR}/external
+        DESTINATION include
+        FILES_MATCHING PATTERN "*.h*")
