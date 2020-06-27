@@ -15,10 +15,10 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys, BaseAssembly &gra
      std::cout << " " << std::endl;
      std::cout << "Update the network" << std::endl;
 
-     int numberOfNodes = VGM.getNumberOfNodes();
+     int numberOfNodesOld = VGM.getNumberOfNodes();
 
      std::cout << " " << std::endl;
-     std::cout << "Number of nodes: " << numberOfNodes << std::endl;
+     std::cout << "Number of nodes: " << numberOfNodesOld << std::endl;
 
      // update TAF vector from libmesh taf system
      if (taf_sys.d_sys_name != "TAF")
@@ -34,7 +34,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys, BaseAssembly &gra
      std::cout << "Process apical growth" << std::endl;
      processApicalGrowth();
 
-     numberOfNodes = VGM.getNumberOfNodes();
+     auto numberOfNodes = VGM.getNumberOfNodes();
 
      std::cout << " " << std::endl;
      std::cout << "Number of nodes after growing the network: " << numberOfNodes << std::endl;
@@ -76,6 +76,13 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys, BaseAssembly &gra
      std::cout << " " << std::endl;
      std::cout << "Rescale the 1D matrices and vectors" << std::endl;
 
+    A_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
+    b = std::vector<double>(numberOfNodes, 0.);
+    P_v = std::vector<double>(numberOfNodes, 0.);
+
+    C_v = std::vector<double>(numberOfNodes, 0.0);
+    C_v_old = std::vector<double>(numberOfNodes, 0.0);
+
      Ac_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
      b_c = std::vector<double>(numberOfNodes, 0.0);
 
@@ -111,6 +118,13 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys, BaseAssembly &gra
             pointer = pointer->global_successor;
 
      }
+
+  // compute element and weights (iterative method may require this data)
+  const auto &input = d_model_p->get_input_deck();
+  if (input.d_compute_elem_weights and input.d_model_name != "NetFCFVFE")
+    compute_elem_weights();
+  if (numberOfNodes != numberOfNodesOld)
+    d_is_network_changed = true;
 }
 
 void util::unet::Network::linkTerminalVessels() {

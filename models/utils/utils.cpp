@@ -355,7 +355,9 @@ std::vector<double> util::cross_prod( std::vector<double> &p1, std::vector<doubl
                     c_product[ 1 ] = p1[ 2 ]*p2[ 0 ]-p1[ 0 ]*p2[ 2 ];
                     c_product[ 2 ] = p1[ 0 ]*p2[ 1 ]-p1[ 1 ]*p2[ 0 ];
 
-                    double norm_c_product = gmm::vect_norm2( c_product );
+                    double norm_c_product = std::sqrt(c_product[0] * c_product[0]
+                        + c_product[1] * c_product[1] + c_product[2] *
+                        c_product[2]);
 
                     if( norm_c_product>0.0 ){
 

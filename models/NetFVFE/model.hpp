@@ -9,6 +9,7 @@
 #define NETFVFE_MODEL_H
 
 #include "umodel/model.hpp"
+#include "usystem/ghosting_functor.hpp"
 #include "modelUtil.hpp"
 #include "systems/systems.hpp"
 #include "unet/network.hpp"
@@ -61,6 +62,28 @@ public:
   }
 
   /*! @brief Get various system classes */
+  util::BaseAssembly &get_assembly(const std::string &system) override {
+    if (system == "Pressure")
+      return d_pres_assembly;
+    else if (system == "Nutrient")
+      return d_nut_assembly;
+    else if (system == "Tumor")
+      return d_tum_assembly;
+    else if (system == "Hypoxic")
+      return d_hyp_assembly;
+    else if (system == "Necrotic")
+      return d_nec_assembly;
+    else if (system == "TAF")
+      return d_taf_assembly;
+    else if (system == "TAF_Gradient")
+      return d_grad_taf_assembly;
+    else if (system == "ECM")
+      return d_ecm_assembly;
+    else if (system == "MDE")
+      return d_mde_assembly;
+    else if (system == "Velocity")
+      return d_vel_assembly;
+  }
   PressureAssembly &get_pres_assembly() {return d_pres_assembly;}
   NutAssembly &get_nut_assembly() {return d_nut_assembly;}
   TumAssembly &get_tum_assembly() {return d_tum_assembly;}
@@ -204,6 +227,10 @@ private:
   int d_vel_id;
   int d_pres_1d_id;
   int d_nut_1d_id;
+
+  /*! Ghosting functor so that PetSc does not give error when coupling dofs
+   * of element with neighboring elements */
+  util::GhostingFunctorFV d_ghosting_fv;
 };
 
 } // namespace netfvfe

@@ -398,6 +398,7 @@ void util::unet::Network::solveVGMforNutrient(BaseAssembly &pres_sys,
 void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys, BaseAssembly &tum_sys) {
 
   const auto &input = d_model_p->get_input_deck();
+  const auto &mesh = d_model_p->get_mesh();
   double L_x = input.d_domain_params[1];
 
   // 3D-1D coupled flow problem on a unit cube
@@ -492,6 +493,45 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys, B
           }
 
         }
+
+
+        // Libmesh element
+        auto elem = mesh.elem_ptr(index);
+
+        tum_sys.init_dof(elem);
+
+        // loop over sides of the element
+        for (auto side : elem->side_index_range()) {
+
+          if (elem->neighbor_ptr(side) != nullptr) {
+
+            const Elem *neighbor = elem->neighbor_ptr(side);
+
+            // div(chem_tum * grad(tum)) term
+            // requires integration over face of an element
+            tum_sys.d_fe_face->reinit(elem, side);
+
+            // loop over quadrature points
+            for (unsigned int qp = 0; qp < tum_sys.d_qrule_face.n_points(); qp++) {
+
+              Real chem_tum_cur = 0.;
+              Gradient tum_grad = 0.;
+              for (unsigned int l = 0; l < tum_sys.d_phi_face.size(); l++) {
+
+                chem_tum_cur +=
+                    tum_sys.d_phi_face[l][qp] * tum_sys.get_current_sol_var(l, 1);
+
+                tum_grad.add_scaled(tum_sys.d_dphi_face[l][qp],
+                                    tum_sys.get_current_sol_var(l, 0));
+              }
+
+              // add to force
+              b_flow_3D1D[index] += -tum_sys.d_JxW_face[qp] * input.d_tissue_flow_coeff *
+                                   chem_tum_cur * tum_grad * tum_sys.d_qface_normals[qp];
+            } // loop over quadrature points on face
+
+          } // elem neighbor is not null
+        }   // loop over faces
 
       }
 
@@ -690,7 +730,31 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys, B
 void util::unet::Network::assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, BaseAssembly &tum_sys) {
 
   const auto &input = d_model_p->get_input_deck();
+  const auto &mesh = d_model_p->get_mesh();
   double L_x = input.d_domain_params[1];
+
+  // Get required system alias
+  auto &hyp_sys = d_model_p->get_assembly("Hypoxic");
+  auto &nec_sys = d_model_p->get_assembly("Necrotic");
+  auto &taf_sys = d_model_p->get_assembly("TAF");
+  auto &ecm_sys = d_model_p->get_assembly("ECM");
+  auto &mde_sys = d_model_p->get_assembly("MDE");
+
+  // Store current and old solution
+  Real tum_cur = 0.;
+  Real hyp_cur = 0.;
+  Real nec_cur = 0.;
+  Real ecm_cur = 0.;
+  Real mde_cur = 0.;
+
+  Real tum_proj = 0.;
+  Real hyp_proj = 0.;
+  Real nec_proj = 0.;
+  Real ecm_proj = 0.;
+  Real mde_proj = 0.;
+
+  Real compute_rhs = 0.;
+  Real compute_mat = 0.;
 
   // 3D-1D coupled flow problem on a cube
   //std::cout << " " << std::endl;
@@ -790,7 +854,120 @@ void util::unet::Network::assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, 
 
         }
 
-      }
+        // Libmesh element
+        auto elem = mesh.elem_ptr(index);
+
+        // loop over sides of the element
+        for (auto side : elem->side_index_range()) {
+
+          if (elem->neighbor_ptr(side) != nullptr) {
+
+            const Elem *neighbor = elem->neighbor_ptr(side);
+
+            // div(chem_tum * grad(tum)) term
+            // requires integration over face of an element
+            tum_sys.d_fe_face->reinit(elem, side);
+
+            // loop over quadrature points
+            for (unsigned int qp = 0; qp < tum_sys.d_qrule_face.n_points(); qp++) {
+
+              Real chem_tum_cur = 0.;
+              Gradient tum_grad = 0.;
+              for (unsigned int l = 0; l < tum_sys.d_phi_face.size(); l++) {
+
+                chem_tum_cur +=
+                    tum_sys.d_phi_face[l][qp] * tum_sys.get_current_sol_var(l, 1);
+
+                tum_grad.add_scaled(tum_sys.d_dphi_face[l][qp],
+                                    tum_sys.get_current_sol_var(l, 0));
+              }
+
+              // chemotactic term
+              b_nut_3D1D[index] += -tum_sys.d_JxW_face[qp] * dt * input.d_D_sigma *
+                       input.d_chi_c * tum_grad * tum_sys.d_qface_normals[qp];
+
+              // advection term
+              Real v_mu = tum_sys.d_JxW_face[qp] * dt *
+                          input.d_tissue_flow_coeff * chem_tum_cur *
+                          (tum_grad * tum_sys.d_qface_normals[qp]);
+
+              // goes to the dof of element (not the neighbor)
+              A_nut_3D1D(index, index) += v_mu;
+            } // loop over quadrature points on face
+
+          } // elem neighbor is not null
+        }   // loop over faces
+
+
+        //
+        // compute source terms
+        //
+        nut_sys.init_dof(elem);
+        tum_sys.init_dof(elem);
+        hyp_sys.init_dof(elem);
+        nec_sys.init_dof(elem);
+        taf_sys.init_dof(elem);
+        ecm_sys.init_dof(elem);
+        mde_sys.init_dof(elem);
+
+        // init fe and element matrix and vector
+        hyp_sys.init_fe(elem);
+
+        // loop over quadrature points
+        for (unsigned int qp = 0; qp < hyp_sys.d_qrule.n_points(); qp++) {
+          // Computing solution
+          tum_cur = 0.;
+          hyp_cur = 0.;
+          nec_cur = 0.;
+          ecm_cur = 0.;
+          mde_cur = 0.;
+
+          for (unsigned int l = 0; l < hyp_sys.d_phi.size(); l++) {
+
+            tum_cur += hyp_sys.d_phi[l][qp] * tum_sys.get_current_sol_var(l, 0);
+            hyp_cur += hyp_sys.d_phi[l][qp] * hyp_sys.get_current_sol(l);
+            nec_cur += hyp_sys.d_phi[l][qp] * nec_sys.get_current_sol(l);
+            ecm_cur += hyp_sys.d_phi[l][qp] * ecm_sys.get_current_sol(l);
+            mde_cur += hyp_sys.d_phi[l][qp] * mde_sys.get_current_sol(l);
+          }
+
+          if (input.d_assembly_method == 1) {
+
+            compute_rhs = hyp_sys.d_JxW[qp] * dt * input.d_lambda_ECM_D * ecm_cur * mde_cur;
+
+            compute_mat = hyp_sys.d_JxW[qp] * dt *
+                          (input.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
+                              input.d_lambda_Ph * hyp_cur +
+                              input.d_lambda_ECM_P * (1. - ecm_cur) *
+                           util::heaviside(ecm_cur - input.d_bar_phi_ECM_P));
+
+          } else {
+
+            mde_proj = util::project_concentration(mde_cur);
+            ecm_proj = util::project_concentration(ecm_cur);
+            tum_proj = util::project_concentration(tum_cur);
+            hyp_proj = util::project_concentration(hyp_cur);
+            nec_proj = util::project_concentration(nec_cur);
+
+            compute_rhs =
+                hyp_sys.d_JxW[qp] * dt * input.d_lambda_ECM_D * ecm_proj * mde_proj;
+
+            compute_mat = hyp_sys.d_JxW[qp] * dt *
+                          (input.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
+                              input.d_lambda_Ph * hyp_proj +
+                              input.d_lambda_ECM_P * (1. - ecm_proj) *
+                           util::heaviside(ecm_proj - input.d_bar_phi_ECM_P));
+          }
+
+          // add rhs
+          b_nut_3D1D[index] += compute_rhs;
+
+          // add matrix
+          A_nut_3D1D(index, index) += compute_mat;
+
+        } // loop over quad points
+
+      } // z - loop
 
     }
 
