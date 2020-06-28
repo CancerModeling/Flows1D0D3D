@@ -265,10 +265,19 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys, BaseAs
 
             int indexOfNode = pointer->index;
 
-		pointer->c_v = phi_sigma[N_tot_3D + indexOfNode];
-		// std::cout << "index: " << pointer->index << " c_v: " << pointer->c_v << "
-		// p_v: " << pointer->p_v << " coord: " << pointer->coord << std::endl;
-		pointer = pointer->global_successor;
+	    pointer->c_v = phi_sigma[N_tot_3D + indexOfNode];
+
+            if( phi_sigma[N_tot_3D + indexOfNode]>1.0 ){
+
+                    pointer->c_v = 1.0;
+                    phi_sigma[N_tot_3D + indexOfNode] = 1.0;
+
+            }
+
+	    std::cout << "index: " << pointer->index << " c_v: " << pointer->c_v << " p_v: " << pointer->p_v << " coord: " << pointer->coord << std::endl;
+
+	    pointer = pointer->global_successor;
+
      }
 
      // do not modify old with current concentration as this solver could be
