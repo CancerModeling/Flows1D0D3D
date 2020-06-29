@@ -1455,8 +1455,7 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
                                id_3D_elements);
 
         // Add coupling entry to 1D1D matrix
-        A_VGM(indexOfNode, indexOfNode) =
-            A_VGM(+indexOfNode, indexOfNode) + factor_p * L_p * surface_area;
+        A_VGM(indexOfNode, indexOfNode) += factor_p * L_p * surface_area;
 
         // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
         int numberOfElements = id_3D_elements.size();
@@ -1659,7 +1658,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
             -factor_c * dt * v_interface + dt * D_v / length;
 
         // old time step term
-        b_c[indexOfNode] = length * phi_sigma_old[N_tot_3D + indexOfNode];
+        b_c[indexOfNode] = factor_c * length * C_v_old[indexOfNode];
 
         // Assemble coupling terms (nutrients)
 
@@ -1684,7 +1683,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
         double L_p = pointer->L_p[0];
 
         // 1D part of the coupling
-        Ac_VGM(indexOfNode, indexOfNode) += dt * L_s * surface_area;
+        Ac_VGM(indexOfNode, indexOfNode) += factor_c * dt * L_s * surface_area;
 
         // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
         int numberOfElements = id_3D_elements.size();
