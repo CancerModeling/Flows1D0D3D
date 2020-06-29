@@ -93,7 +93,12 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
     DenseMatrix<Number> Ke(1, 1);
     DenseVector<Number> Fe(1);
 
+    double h_3D = network.h_3D;
+    int N_3D = network.N_3D;
+
     while (pointer) {
+
+      std::vector<double> coord = pointer->coord;
 
       int numberOfNeighbors = pointer->neighbors.size();
 
@@ -102,46 +107,78 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
 
       for (int i = 0; i < numberOfNeighbors; i++) {
 
-        const auto &J_b_data = pointer->J_b_points[i];
+        double radius = pointer->radii[i];
 
-        // loop over 3d elements
-        for (unsigned int e = 0; e < J_b_data.elem_id.size(); e++) {
+        int indexNeighbor = pointer->neighbors[i]->index;
 
-          auto e_id = J_b_data.elem_id[e];
-          auto e_w = J_b_data.elem_weight[e];
+        std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
 
-          // get 3d pressure
-          const auto *elem = d_mesh.elem_ptr(e_id);
-          pres.init_dof(elem);
-          auto p_t_k = pres.get_current_sol(0);
+        double length = util::dist_between_points(coord, coord_neighbor);
+        double L_s = pointer->L_s[i];
+        double L_p = pointer->L_p[i];
 
-          // get 3d nutrient
-          init_dof(elem);
-          auto c_t_k = get_current_sol(0);
+        // Coupling terms
+        int N_s = deck.d_num_points_length;
+        int N_theta = deck.d_num_points_angle;
 
-          // implicit for c_t in source
-          Ke(0, 0) = dt * factor_nut * deck.d_coupling_method_theta *
-                     pointer->L_s[i] * J_b_data.half_cyl_surf * e_w;
+        std::vector<double> weights;
+        std::vector<int> id_3D_elements;
 
-          // explicit for c_v in source
-          Fe(0) = dt * factor_nut * pointer->L_s[i] * J_b_data.half_cyl_surf *
-                  e_w * (c_v_k - (1. - deck.d_coupling_method_theta) * c_t_k);
+        double length_edge = 0.5 * length;
 
-          // term due to pressure difference
-          double c_transport = 0.;
-          if (p_v_k - p_t_k >= 0.)
-            c_transport = c_v_k;
-          else
-            c_transport = c_t_k;
-          Fe(0) += dt * factor_nut * (1. - deck.d_osmotic_sigma) *
-                   pointer->L_p[i] * J_b_data.half_cyl_surf * e_w *
-                   (p_v_k - p_t_k) * c_transport;
+        // Surface area of cylinder
+        double surface_area = 2.0 * M_PI * length_edge * radius;
 
-          // update matrix
-          d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
-          d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
-        }
-      } // loop over neighbor segments
+        util::unet::determineWeightsAndIds(
+            N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D,
+            length_edge, weights, id_3D_elements);
+
+        // Add coupling entry
+        int numberOfElements = id_3D_elements.size();
+
+        for (int j = 0; j < numberOfElements; j++) {
+
+          if (id_3D_elements[j] > -1) {
+
+            // get 3d pressure
+            const auto *elem = d_mesh.elem_ptr(id_3D_elements[j]);
+            pres.init_dof(elem);
+            auto p_t_k = pres.get_current_sol(0);
+
+            // get 3d nutrient
+            init_dof(elem);
+            auto c_t_k = get_current_sol(0);
+
+            // implicit for c_t in source
+            Ke(0, 0) = dt * factor_nut * L_s * surface_area * weights[j];
+
+            // explicit for c_v in source
+            Fe(0) = dt * factor_nut * L_s * surface_area * weights[j] * c_v_k;
+
+            // osmotic reflection term
+            if (p_v_k - p_t_k > 0.0) {
+
+              // 3D equation
+              // 2pi R (p_v - p_t) phi_v term in right hand side of 3D equation
+              Fe(0) += dt * factor_nut * (1. - deck.d_osmotic_sigma) *
+                       L_p * surface_area * weights[j] *
+                       (p_v_k - p_t_k) * c_v_k;
+
+            } else {
+
+              // 3D equation
+              // 2pi R (p_v - p_t) phi_sigma term in right hand side of 3D equation
+              Ke(0, 0) += -dt * factor_nut * (1. - deck.d_osmotic_sigma) *
+                        L_p * surface_area * weights[j] *
+                        (p_v_k - p_t_k);
+            }
+
+            // update matrix
+            d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
+            d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
+          }
+        } // loop over 3D elements
+      }   // loop over neighbor segments
 
       pointer = pointer->global_successor;
     } // loop over vertex in 1-d
@@ -337,7 +374,7 @@ void netfvfe::NutAssembly::assemble_1() {
     d_Fe(0) += deck.d_elem_size * factor_nut * nut_old;
     d_Ke(0, 0) += deck.d_elem_size * factor_nut;
 
-    //for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
+    // for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
     for (unsigned int qp = 0; qp < hyp.d_qrule.n_points(); qp++) {
 
       // Computing solution
@@ -347,7 +384,7 @@ void netfvfe::NutAssembly::assemble_1() {
       ecm_cur = 0.;
       mde_cur = 0.;
 
-      //for (unsigned int l = 0; l < d_phi.size(); l++) {
+      // for (unsigned int l = 0; l < d_phi.size(); l++) {
       for (unsigned int l = 0; l < hyp.d_phi.size(); l++) {
 
         tum_cur += hyp.d_phi[l][qp] * tum.get_current_sol_var(l, 0);
@@ -359,7 +396,8 @@ void netfvfe::NutAssembly::assemble_1() {
 
       if (deck.d_assembly_method == 1) {
 
-        compute_rhs = hyp.d_JxW[qp] * dt * deck.d_lambda_ECM_D * ecm_cur * mde_cur;
+        compute_rhs =
+            hyp.d_JxW[qp] * dt * deck.d_lambda_ECM_D * ecm_cur * mde_cur;
 
         compute_mat = hyp.d_JxW[qp] * dt *
                       (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
