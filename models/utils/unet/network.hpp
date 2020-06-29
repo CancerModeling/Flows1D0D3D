@@ -18,6 +18,9 @@
 #include "list_structure.hpp"
 #include "nodes.hpp"
 
+// network utility
+#include "netUtil.hpp"
+
 // model class
 #include "umodel/model.hpp"
 
