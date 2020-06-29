@@ -82,45 +82,67 @@ void netfvfe::PressureAssembly::assemble_1d_coupling() {
     DenseMatrix<Number> Ke(1,1);
     DenseVector<Number> Fe(1);
 
+    double h_3D = network.h_3D;
+    int N_3D = network.N_3D;
+
     while (pointer) {
 
-      int numberOfNeighbors = pointer->neighbors.size();
+      int indexOfNode = pointer->index;
+      std::vector<double> coord = pointer->coord;
 
       double p_v_k = pointer->p_v;
 
+      int numberOfNeighbors = pointer->neighbors.size();
+
       for (int i = 0; i < numberOfNeighbors; i++) {
 
-        const auto &J_b_data = pointer->J_b_points[i];
+        double radius = pointer->radii[i];
 
-        // loop over 3d elements
-        for (unsigned int e = 0; e < J_b_data.elem_id.size(); e++) {
+        int indexNeighbor = pointer->neighbors[i]->index;
 
-          auto e_id = J_b_data.elem_id[e];
-          auto e_w = J_b_data.elem_weight[e];
+        std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
 
-          // get 3d pressure
-          const auto *elem = d_mesh.elem_ptr(e_id);
-          init_dof(elem);
-          auto p_t_k = get_current_sol(0);
+        double length = util::dist_between_points(coord, coord_neighbor);
+        double L_p = pointer->L_p[i];
 
-          // implicit for p_t in source
-          Ke(0,0) = factor_p * deck.d_coupling_method_theta * pointer->L_p[i] *
-                     J_b_data.half_cyl_surf *
-                     e_w;
+        // Coupling terms
+        int N_s = deck.d_num_points_length;
+        int N_theta = deck.d_num_points_angle;
 
-          // explicit for p_v in source
-          Fe(0) = factor_p * pointer->L_p[i] * J_b_data.half_cyl_surf * e_w *
-                   (p_v_k - (1. - deck.d_coupling_method_theta) * p_t_k);
+        std::vector<double> weights;
+        std::vector<int> id_3D_elements;
 
-          //          if (pointer->index < 10 and i == 0 and e < 5)
-          //            out << "index: " << pointer->index << ", p_v: " << p_v_k
-          //                << ", p_t: " << p_t_k << ", Ke: " << Ke(0, 0)
-          //                << ", Fe: " << Fe(0) << "\n";
+        double length_edge = 0.5 * length;
 
-          // update matrix
-          d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
-          d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
-        }
+        // Surface area of cylinder
+        double surface_area = 2.0 * M_PI * length_edge * radius;
+
+        util::unet::determineWeightsAndIds(N_s, N_theta, N_3D, coord, coord_neighbor,
+                               radius, h_3D, length_edge, weights,
+                               id_3D_elements);
+
+        // Add coupling entry
+        int numberOfElements = id_3D_elements.size();
+
+        for (int j = 0; j < numberOfElements; j++) {
+
+          if (id_3D_elements[j] > -1) {
+
+            // get 3d pressure
+            const auto *elem = d_mesh.elem_ptr(id_3D_elements[j]);
+            init_dof(elem);
+
+            // implicit for p_t in source
+            Ke(0, 0) = factor_p * L_p * surface_area * weights[j];
+
+            // explicit for p_v in source
+            Fe(0) = factor_p * L_p * surface_area * weights[j] * p_v_k;
+
+            // update matrix
+            d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
+            d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
+          }
+        } // loop over 3D elements
       } // loop over neighbor segments
 
       pointer = pointer->global_successor;
