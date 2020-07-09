@@ -142,40 +142,41 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
 
             // get 3d pressure
             const auto *elem = d_mesh.elem_ptr(id_3D_elements[j]);
-            pres.init_dof(elem);
-            auto p_t_k = pres.get_current_sol(0);
+            if (elem->processor_id() == d_model_p->get_comm()->rank()) {
+              pres.init_dof(elem);
+              auto p_t_k = pres.get_current_sol(0);
 
-            // get 3d nutrient
-            init_dof(elem);
-            auto c_t_k = get_current_sol(0);
+              // get 3d nutrient
+              init_dof(elem);
+              auto c_t_k = get_current_sol(0);
 
-            // implicit for c_t in source
-            Ke(0, 0) = dt * factor_nut * L_s * surface_area * weights[j];
+              // implicit for c_t in source
+              Ke(0, 0) = dt * factor_nut * L_s * surface_area * weights[j];
 
-            // explicit for c_v in source
-            Fe(0) = dt * factor_nut * L_s * surface_area * weights[j] * c_v_k;
+              // explicit for c_v in source
+              Fe(0) = dt * factor_nut * L_s * surface_area * weights[j] * c_v_k;
 
-            // osmotic reflection term
-            if (p_v_k - p_t_k > 0.0) {
+              // osmotic reflection term
+              if (p_v_k - p_t_k > 0.0) {
 
-              // 3D equation
-              // 2pi R (p_v - p_t) phi_v term in right hand side of 3D equation
-              Fe(0) += dt * factor_nut * (1. - deck.d_osmotic_sigma) *
-                       L_p * surface_area * weights[j] *
-                       (p_v_k - p_t_k) * c_v_k;
+                // 3D equation
+                // 2pi R (p_v - p_t) phi_v term in right hand side of 3D equation
+                Fe(0) += dt * factor_nut * (1. - deck.d_osmotic_sigma) * L_p *
+                         surface_area * weights[j] * (p_v_k - p_t_k) * c_v_k;
 
-            } else {
+              } else {
 
-              // 3D equation
-              // 2pi R (p_v - p_t) phi_sigma term in right hand side of 3D equation
-              Ke(0, 0) += -dt * factor_nut * (1. - deck.d_osmotic_sigma) *
-                        L_p * surface_area * weights[j] *
-                        (p_v_k - p_t_k);
+                // 3D equation
+                // 2pi R (p_v - p_t) phi_sigma term in right hand side of 3D equation
+                Ke(0, 0) += -dt * factor_nut * (1. - deck.d_osmotic_sigma) *
+                            L_p * surface_area * weights[j] * (p_v_k - p_t_k);
+              }
+
+              // update matrix
+              d_sys.matrix->add_matrix(Ke, d_dof_indices_sys,
+                                       d_dof_indices_sys);
+              d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
             }
-
-            // update matrix
-            d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
-            d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
           }
         } // loop over 3D elements
       }   // loop over neighbor segments

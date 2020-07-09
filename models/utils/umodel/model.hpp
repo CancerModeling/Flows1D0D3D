@@ -53,6 +53,10 @@ public:
   const InpDeck &get_input_deck() const { return d_input; }
   InpDeck &get_input_deck() { return d_input; }
 
+  /*! @brief Get mpi communicator */
+  Parallel::Communicator *get_comm() const {return d_comm_p;}
+  Parallel::Communicator *get_comm() {return d_comm_p;}
+
   /*! @brief Run model */
   virtual void run() = 0;
 
