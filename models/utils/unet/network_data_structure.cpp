@@ -534,6 +534,9 @@ void util::unet::Network::writeDataToVTK_3D(std::vector<double> P_3D,
 
 void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
+  if (d_model_p->get_comm()->rank() > 0)
+    return;
+
   const auto &input = d_model_p->get_input_deck();
 
   std::string path = input.d_outfilename_net + "_";

@@ -381,6 +381,8 @@ void util::unet::Network::processApicalGrowth() {
      std::lognormal_distribution<> log_normal_distribution( input.d_log_normal_mean, input.d_log_normal_std_dev );
      std::random_device rd;
      std::mt19937 generator(rd());
+      if (input.d_seed >= 0)
+        generator.seed(input.d_seed);
 
      int numberOfNodes_old = VGM.getNumberOfNodes();
 
@@ -1270,6 +1272,8 @@ void util::unet::Network::markSproutingGrowth() {
      std::lognormal_distribution<> log_normal_distribution( input.d_log_normal_mean, input.d_log_normal_std_dev );
      std::random_device rd;
      std::mt19937 generator(rd());
+    if (input.d_seed >= 0)
+      generator.seed(input.d_seed);
 
      std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -1369,8 +1373,12 @@ void util::unet::Network::processSproutingGrowth() {
      std::lognormal_distribution<> log_normal_distribution( input.d_log_normal_mean, input.d_log_normal_std_dev );
      std::random_device rd;
      std::mt19937 generator_log(rd());
+      if (input.d_seed >= 0)
+        generator_log.seed(input.d_seed);
 
      std::default_random_engine generator;
+      if (input.d_seed >= 0)
+        generator.seed(input.d_seed);
 
      double L_x = input.d_domain_params[1];
 

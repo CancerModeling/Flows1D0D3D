@@ -58,6 +58,8 @@ void util::ModelDeck::read_parameters(const std::string &filename) {
   d_advection_active = input("advection_active", true);
 
   d_decouple_nutrients = input("network_decouple_nutrients", true);
+
+  d_seed = input("seed", -1);
 }
 
 void util::ModelDeck::print(unsigned int level) {
