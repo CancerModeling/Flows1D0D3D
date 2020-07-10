@@ -10,6 +10,12 @@
 #include "network_data_structure.cpp"
 #include "network_growth_processes.cpp"
 
+namespace {
+
+std::vector<double> get_pres;
+std::vector<double> get_nut;
+}
+
 void util::unet::Network::create_initial_network() {
 
   const auto &input = d_model_p->get_input_deck();
@@ -312,6 +318,21 @@ void util::unet::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
   if (pres_sys.d_sys_name != "Pressure")
     libmesh_error_msg("Must pass Pressure system to solve 1D pressure");
 
+  // gather pressure solution in all processors
+  const auto &mesh = d_model_p->get_mesh();
+  pres_sys.d_sys.current_local_solution->localize(get_pres);
+
+  if (P_3D.size()!= get_pres.size())
+    libmesh_error_msg("P_3D size should match get_pres size");
+
+  // elem_pres[elem_id] gives pressure in element id
+  // we need to map elements in test_loc
+  for (const auto &elem : mesh.active_element_ptr_range()) {
+
+    pres_sys.init_dof(elem);
+    P_3D[elem->id()] = get_pres[pres_sys.get_global_dof_id(0)];
+  }
+
   // std::cout << "Assemble pressure matrix and right hand side" << std::endl;
   assembleVGMSystemForPressure(pres_sys);
 
@@ -353,6 +374,21 @@ void util::unet::Network::solveVGMforNutrient(BaseAssembly &pres_sys,
   if (pres_sys.d_sys_name != "Pressure" or nut_sys.d_sys_name != "Nutrient")
     libmesh_error_msg("Must pass Pressure and Nutrient system to solve 1D "
                       "nutrient");
+
+  // gather nutrient solution in all processors
+  const auto &mesh = d_model_p->get_mesh();
+  nut_sys.d_sys.current_local_solution->localize(get_nut);
+
+  if (phi_sigma_3D.size()!= get_nut.size())
+    libmesh_error_msg("P_3D size should match get_pres size");
+
+  // elem_pres[elem_id] gives pressure in element id
+  // we need to map elements in test_loc
+  for (const auto &elem : mesh.active_element_ptr_range()) {
+
+    pres_sys.init_dof(elem);
+    phi_sigma_3D[elem->id()] = get_nut[pres_sys.get_global_dof_id(0)];
+  }
 
   // std::cout << " " << std::endl;
   // std::cout << "Assemble nutrient matrix and right hand side" << std::endl;
@@ -1464,9 +1500,10 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
 
           if (id_3D_elements[j] > -1) {
             // get 3d pressure
-            const auto *elem = mesh.elem_ptr(id_3D_elements[j]);
-            pres_sys.init_dof(elem);
-            auto p_t_k = pres_sys.get_current_sol(0);
+            //const auto *elem = mesh.elem_ptr(id_3D_elements[j]);
+            //pres_sys.init_dof(elem);
+            //auto p_t_k = pres_sys.get_current_sol(0);
+            auto p_t_k = P_3D[id_3D_elements[j]];
 
             b[indexOfNode] +=
                 factor_p * L_p * surface_area * weights[j] * p_t_k;
@@ -1518,9 +1555,10 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
 
           if (id_3D_elements[j] > -1) {
             // get 3d pressure
-            const auto *elem = mesh.elem_ptr(id_3D_elements[j]);
-            pres_sys.init_dof(elem);
-            auto p_t_k = pres_sys.get_current_sol(0);
+            //const auto *elem = mesh.elem_ptr(id_3D_elements[j]);
+            //pres_sys.init_dof(elem);
+            //auto p_t_k = pres_sys.get_current_sol(0);
+            auto p_t_k = P_3D[id_3D_elements[j]];
 
             // explicit for p_t in source
             b[indexOfNode] +=
@@ -1693,13 +1731,15 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
           if (id_3D_elements[j] > -1) {
 
             // get 3d pressure
-            const auto *elem = mesh.elem_ptr(id_3D_elements[j]);
-            pres_sys.init_dof(elem);
-            Real p_t_k = pres_sys.get_current_sol(0);
+            //const auto *elem = mesh.elem_ptr(id_3D_elements[j]);
+            //pres_sys.init_dof(elem);
+            //Real p_t_k = pres_sys.get_current_sol(0);
+            auto p_t_k = P_3D[id_3D_elements[j]];
 
             // get 3d nutrient
-            nut_sys.init_dof(elem);
-            Real c_t_k = nut_sys.get_current_sol(0);
+            //nut_sys.init_dof(elem);
+            //Real c_t_k = nut_sys.get_current_sol(0);
+            auto c_t_k = phi_sigma_3D[id_3D_elements[j]];
 
             b_c[indexOfNode] +=
                 factor_c * dt * L_s * surface_area * weights[j] * c_t_k;
@@ -1800,13 +1840,15 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
           if (id_3D_elements[j] > -1) {
 
             // get 3d pressure
-            const auto *elem = mesh.elem_ptr(id_3D_elements[j]);
-            pres_sys.init_dof(elem);
-            Real p_t_k = pres_sys.get_current_sol(0);
+            //const auto *elem = mesh.elem_ptr(id_3D_elements[j]);
+            //pres_sys.init_dof(elem);
+            //Real p_t_k = pres_sys.get_current_sol(0);
+            auto p_t_k = P_3D[id_3D_elements[j]];
 
             // get 3d nutrient
-            nut_sys.init_dof(elem);
-            Real c_t_k = nut_sys.get_current_sol(0);
+            //nut_sys.init_dof(elem);
+            //Real c_t_k = nut_sys.get_current_sol(0);
+            auto c_t_k = phi_sigma_3D[id_3D_elements[j]];
 
             b_c[indexOfNode] +=
                 factor_c * dt * L_s * surface_area * weights[j] * c_t_k;
