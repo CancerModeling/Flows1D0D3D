@@ -415,9 +415,13 @@ void netfcfvfe::Model::run() {
     if (d_step % d_input.d_network_update_interval == 0)
       d_is_growth_step = true;
 
+    d_network.d_update_number += 1;
+
     oss << "Time step: " << d_step << ", time: " << d_time << "\n";
     d_log(oss, "integrate");
     d_log(" \n", "integrate");
+
+    oss << "d_network.d_update_number: " << d_network.d_update_number << "\n";
 
     // solve tumor-network system
     solve_system();
@@ -426,11 +430,11 @@ void netfcfvfe::Model::run() {
     compute_qoi();
 
     // update network
-    if (d_is_growth_step) {
+    //if (d_is_growth_step) {
       d_log("  Updating Network\n", "net update");
       d_network.updateNetwork(d_taf_assembly, d_grad_taf_assembly);
       d_log(" \n", "net update");
-    }
+    //}
 
     // Post-processing
     if (d_is_output_step) {
@@ -957,6 +961,8 @@ void netfcfvfe::Model::test_net_tum_2() {
   *tum.old_local_solution = *tum.current_local_solution;
   *hyp.old_local_solution = *hyp.current_local_solution;
   *nec.old_local_solution = *nec.current_local_solution;
+
+  solve_pressure();
 
   // update old concentration in network
   d_network.update_old_concentration_3D1D();
