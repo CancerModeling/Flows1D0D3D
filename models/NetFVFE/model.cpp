@@ -87,7 +87,7 @@ void netfvfe::model_setup_run(int argc, char **argv,
   if (input.d_quiet)
     ReferenceCounter::disable_print_counter_info();
 
-  //
+
   log("Model: NetFVFE\n", "init");
 
   // create mesh
