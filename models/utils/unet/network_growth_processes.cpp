@@ -17,71 +17,79 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys, BaseAssembly &gra
 
      int numberOfNodesOld = VGM.getNumberOfNodes();
 
-     std::cout << " " << std::endl;
-     std::cout << "Number of nodes: " << numberOfNodesOld << std::endl;
+     if( d_update_number%2 == 0 ){
 
-     // update TAF vector from libmesh taf system
-     if (taf_sys.d_sys_name != "TAF")
-         libmesh_error_msg("Must pass TAF system to update network.");
+	std::cout << " " << std::endl;
+	std::cout << "Number of nodes: " << numberOfNodesOld << std::endl;
 
-     util::get_elem_sol(taf_sys, phi_TAF);
+	// update TAF vector from libmesh taf system
+	if (taf_sys.d_sys_name != "TAF")
+	 libmesh_error_msg("Must pass TAF system to update network.");
 
-     std::cout << " " << std::endl;
-     std::cout << "Mark nodes for apical growth " << std::endl;
-     markApicalGrowth();
+	util::get_elem_sol(taf_sys, phi_TAF);
 
-     std::cout << " " << std::endl;
-     std::cout << "Process apical growth" << std::endl;
-     processApicalGrowth();
+	std::cout << " " << std::endl;
+	std::cout << "Mark nodes for apical growth " << std::endl;
+	markApicalGrowth();
+
+	std::cout << " " << std::endl;
+	std::cout << "Process apical growth" << std::endl;
+	processApicalGrowth();
+
+	auto numberOfNodes = VGM.getNumberOfNodes();
+
+	std::cout << " " << std::endl;
+	std::cout << "Number of nodes after growing the network: " << numberOfNodes << std::endl;
+
+	std::cout << " " << std::endl;
+	std::cout << "Mark edges for sprouting " << std::endl;
+	markSproutingGrowth();
+
+	std::cout << " " << std::endl;
+	std::cout << "Process sprouting growth" << std::endl;
+	processSproutingGrowth();
+
+	numberOfNodes = VGM.getNumberOfNodes();
+
+	std::cout << " " << std::endl;
+	std::cout << "Number of nodes after growing the network: " << numberOfNodes << std::endl;
+
+	std::cout << " " << std::endl;
+	std::cout << "Remove terminal vessels" << std::endl;
+	removeRedundantTerminalVessels();
+
+	numberOfNodes = VGM.getNumberOfNodes();
+
+	std::cout << " " << std::endl;
+	std::cout << "Link terminal vessels" << std::endl;
+	linkTerminalVessels();
+
+	numberOfNodes = VGM.getNumberOfNodes();
+
+	std::cout << " " << std::endl;
+	std::cout << "Number of nodes after linking terminal vessels to the network: " << numberOfNodes << std::endl;
+
+     }
+
+     if( (d_update_number+1)%2 == 0 ){
+
+         std::cout << " " << std::endl;
+         std::cout << "Adapt radius" << std::endl;
+         adaptRadius();
+
+     }
 
      auto numberOfNodes = VGM.getNumberOfNodes();
 
      std::cout << " " << std::endl;
-     std::cout << "Number of nodes after growing the network: " << numberOfNodes << std::endl;
-
-     std::cout << " " << std::endl;
-     std::cout << "Mark edges for sprouting " << std::endl;
-     markSproutingGrowth();
-
-     std::cout << " " << std::endl;
-     std::cout << "Process sprouting growth" << std::endl;
-     processSproutingGrowth();
-
-     numberOfNodes = VGM.getNumberOfNodes();
-
-     std::cout << " " << std::endl;
-     std::cout << "Number of nodes after growing the network: " << numberOfNodes << std::endl;
-
-     std::cout << " " << std::endl;
-     std::cout << "Remove terminal vessels" << std::endl;
-     removeRedundantTerminalVessels();
-
-     numberOfNodes = VGM.getNumberOfNodes();
-
-     std::cout << " " << std::endl;
-     std::cout << "Adapt radius" << std::endl;
-     adaptRadius();
-
-     numberOfNodes = VGM.getNumberOfNodes();
-
-     std::cout << " " << std::endl;
-     std::cout << "Link terminal vessels" << std::endl;
-     linkTerminalVessels();
-
-     numberOfNodes = VGM.getNumberOfNodes();
-
-     std::cout << " " << std::endl;
-     std::cout << "Number of nodes after linking terminal vessels to the network: " << numberOfNodes << std::endl;
-
-     std::cout << " " << std::endl;
      std::cout << "Rescale the 1D matrices and vectors" << std::endl;
 
-    A_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
-    b = std::vector<double>(numberOfNodes, 0.);
-    P_v = std::vector<double>(numberOfNodes, 0.);
+     A_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
+     b = std::vector<double>(numberOfNodes, 0.);
+     P_v = std::vector<double>(numberOfNodes, 0.);
 
-    C_v = std::vector<double>(numberOfNodes, 0.0);
-    C_v_old = std::vector<double>(numberOfNodes, 0.0);
+     C_v = std::vector<double>(numberOfNodes, 0.0);
+     C_v_old = std::vector<double>(numberOfNodes, 0.0);
 
      Ac_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
      b_c = std::vector<double>(numberOfNodes, 0.0);
@@ -840,15 +848,15 @@ bool util::unet::Network::testIntersection( std::vector<double> point_1, std::ve
 
                         }
 
-                        for(int j=1;j<10;j++){
+                        for(int j=1;j<20;j++){
 
                             std::vector<double> new_point_p(3,0.0);
                             std::vector<double> new_point_test(3,0.0); 
 
                             for(int k=0;k<3;k++){
 
-                                new_point_p[ k ] = point_p1[ k ] + ( length_p * (double) j/10.0 * dir_p[ k ] );
-                                new_point_test[ k ] = point_1[ k ] + ( length_test * (double) j/10.0 * dir_test[ k ] );
+                                new_point_p[ k ] = point_p1[ k ] + ( length_p * (double) j/20.0 * dir_p[ k ] );
+                                new_point_test[ k ] = point_1[ k ] + ( length_test * (double) j/20.0 * dir_test[ k ] );
 
                             } 
 
@@ -856,7 +864,7 @@ bool util::unet::Network::testIntersection( std::vector<double> point_1, std::ve
 
                                 isIntersecting = true;
 
-                                //std::cout << "Vessel is intersecting" << std::endl;
+                                std::cout << "Vessel is intersecting" << std::endl;
 
                                 break;
 
@@ -919,7 +927,7 @@ void util::unet::Network::createALinkingNode(
     new_node.p_boundary = 0.95 * pointer->p_v;
     new_node.p_v = 0.95 * pointer->p_v;
     new_node.c_boundary = input.d_in_nutrient;
-    new_node.c_v = 0.0;
+    new_node.c_v = pointer->c_v;//0.0;
     new_node.typeOfVGNode = TypeOfNode::DirichletNode;
     new_node.apicalGrowth = false;
     new_node.radii.push_back(radius);
@@ -961,7 +969,6 @@ void util::unet::Network::createALinkingNode(
 
 void util::unet::Network::createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer) {
 
-
      const auto &input = d_model_p->get_input_deck();
 
      double L_x = input.d_domain_params[1];
@@ -976,10 +983,10 @@ void util::unet::Network::createASingleNode( std::vector<double> new_point, doub
 
 	 new_node.index = VGM.getNumberOfNodes();
 	 new_node.coord = new_point;
-	 new_node.p_boundary = pointer->p_v;
-	 new_node.p_v = pointer->p_v;
+	 new_node.p_boundary = 0.95*pointer->p_v;
+	 new_node.p_v = 0.95*pointer->p_v;
 	 new_node.c_boundary = input.d_in_nutrient;
-	 new_node.c_v = pointer->c_v;
+	 new_node.c_v = pointer->c_v;//0.0;
 	 new_node.apicalGrowth = false;
 	 new_node.radii.push_back( radius );
          new_node.radii_initial.push_back( radius );
@@ -990,6 +997,7 @@ void util::unet::Network::createASingleNode( std::vector<double> new_point, doub
 	 new_node.neighbors.push_back( pointer );
 	 new_node.notUpdated = 0;
          new_node.typeOfVGNode = TypeOfNode::NeumannNode;
+         //new_node.typeOfVGNode = TypeOfNode::DirichletNode;
  
          double length = util::dist_between_points( pointer->coord, new_point ); 
          double p_node = pointer->p_v;              
@@ -1008,6 +1016,7 @@ void util::unet::Network::createASingleNode( std::vector<double> new_point, doub
 */
 	 pointer->p_boundary = 0.0;
 	 pointer->c_boundary = 0.0;
+         //pointer->c_v = 0.0;
 	 pointer->typeOfVGNode = TypeOfNode::InnerNode;
 	 pointer->apicalGrowth = false;
 	 pointer->radii.push_back( radius );
@@ -1324,6 +1333,12 @@ void util::unet::Network::markSproutingGrowth() {
                     std::cout << "sproutingProbability: " << sproutingProbability << std::endl;
                     std::cout << "coord: " << coord << std::endl;
 */
+
+                    std::cout << " " << std::endl;
+	            std::cout << "radius_initial: " << pointer->radii_initial[ i ] << std::endl;
+	            std::cout << "radius: " << radius << std::endl;
+	            std::cout << "coord: " << coord << std::endl;
+
                     if( sproutingProbability>input.d_sprouting_prob && TAF>TAF_th ){
 
                         pointer->neighbors[ i ]->sprouting_edge[ local_index ] = true;
@@ -1400,7 +1415,7 @@ void util::unet::Network::processSproutingGrowth() {
 
                     double radius = pointer->radii[ i ];
 
-                    double PSI = 1.1;
+                    double PSI = 1.05;
 
                     double radius_prime = std::pow( ( std::pow( PSI,gamma )-1.0 ), 1.0/gamma ) * radius;
 
@@ -1408,11 +1423,11 @@ void util::unet::Network::processSproutingGrowth() {
 
                     double p_v_neighbor = pointer->neighbors[ i ]->p_v;
 
-                    std::uniform_real_distribution<double> distribution_uniform(radius_min,radius_prime);
+                    std::uniform_real_distribution<double> distribution_uniform(1.25*radius_min,radius_prime);
 
-                    double radius_new = radius_min;
+                    double radius_new = 1.25*radius_min;
 
-                    if( radius_prime>radius_min ){
+                    if( 1.25*radius_min<radius_prime ){
 
                         radius_new = distribution_uniform(generator);
 
@@ -1428,6 +1443,8 @@ void util::unet::Network::processSproutingGrowth() {
 
                     }
 
+                    std::cout<< "mid_point: " << mid_point << std::endl;
+
                     double length_vessel = normVector( dir_vessel );
 
                     std::vector<double> normed_dir_vessel = std::vector<double>(3,0.0);
@@ -1438,23 +1455,88 @@ void util::unet::Network::processSproutingGrowth() {
 
                     }
 
-                    //std::cout<< "Compute direction of growth" << std::endl;
-
                     std::vector<double> rotator = determineRotator( dir_vessel );
 
+                    double length_rotator = normVector( rotator ); 
+
+                    int N_s = 10;
                     int N_theta = 35;
+
+                    std::vector<double> vessel_point(3,0.0);
+                    std::vector<double> max_vessel_point(3,0.0);
 
                     double theta = 0.0;
 
-                    double TAF_max = 0.0;
+                    double TAF_vessel_surf = 0.0;
+                    double Max_TAF_vessel_surf = 0.0;
 
-                    double length_rotator = normVector( rotator );   
+                    double counter = 0.0;
+
+                    for(int i_s = 0;i_s<N_s+1;i_s++){
+
+                        for(int j=0;j<3;j++){
+
+                            vessel_point[ j ] =  (double) i_s/(double) N_s * (0.75-0.25) * length_vessel * normed_dir_vessel[ j ] + (0.25 * length_vessel * normed_dir_vessel[ j ] + coord[ j ]);
+
+                        }
+
+                        double TAF_vessel_surf = 0.0;
+
+                        for(int i_theta=0;i_theta<N_theta;i_theta++){
+
+                            theta = ((double) i_theta)/((double) N_theta)*2.0*M_PI;
+
+                            std::vector<double> cylinder_node = computeNodesOnCylinders( normed_dir_vessel,  rotator, vessel_point,  radius, theta );
+
+                            if( isCenterInDomain( cylinder_node, L_x) && length_rotator>0.0 ){
+
+                                int index = getElementIndex( cylinder_node, h_3D, N_3D );
+
+                                double TAF = phi_TAF[ index ];
+
+                                TAF_vessel_surf = TAF_vessel_surf + TAF;
+
+                                counter = counter + 1.0;
+
+                            }
+
+                        }
+
+                        if( counter> 0.0 ){
+
+                            TAF_vessel_surf = TAF_vessel_surf/counter;
+
+                        }
+
+                        if( TAF_vessel_surf>Max_TAF_vessel_surf ){
+
+                            Max_TAF_vessel_surf = TAF_vessel_surf;
+
+                            max_vessel_point = vessel_point;
+
+                        }
+
+                        if( Max_TAF_vessel_surf < 1.0e-16 ){
+
+                            Max_TAF_vessel_surf = TAF_vessel_surf;
+
+                            max_vessel_point = vessel_point;
+                         
+                        }
+
+                    }
+
+                    std::cout<< "max_vessel_point: " << max_vessel_point << std::endl;
+
+                    theta = 0.0;
+
+                    double TAF_max = 0.0;
 
                     for(int i_theta=0;i_theta<N_theta;i_theta++){
 
                         theta = ((double) i_theta)/((double) N_theta)*2.0*M_PI;
 
-                        std::vector<double> cylinder_node = computeNodesOnCylinders( normed_dir_vessel,  rotator, mid_point,  2.0*radius, theta );
+                        std::vector<double> cylinder_node = computeNodesOnCylinders( normed_dir_vessel,  rotator, max_vessel_point,  2.0*radius, theta );
 
                         if( isCenterInDomain( cylinder_node, L_x) && length_rotator>0.0 ){
 
@@ -1485,7 +1567,7 @@ void util::unet::Network::processSproutingGrowth() {
 
                     for(int j=0;j<3;j++){
 
-                        dir_new_vessel[ j ] =  max_vec[ j ] - mid_point[ j ];
+                        dir_new_vessel[ j ] =  max_vec[ j ] - max_vessel_point[ j ];
 
                     }
 
@@ -1515,15 +1597,15 @@ void util::unet::Network::processSproutingGrowth() {
                     // get length
                     double length_new = log_dist * radius_new;
 
-                    if( length_new>3.0*h_3D ){
-
-                        length_new = 3.0*h_3D;
-
-                    }
-
                     if( length_new<2.0*radius ){
 
                         length_new = 2.0*radius;
+
+                    }
+
+                    if( length_new>3.0*h_3D ){
+
+                        length_new = 3.0*h_3D;
 
                     }
 
@@ -1536,7 +1618,7 @@ void util::unet::Network::processSproutingGrowth() {
 
                     bool isColliding = testCollision( new_point );
 
-                    if( angle*180.0/M_PI>10.0 && angle*180.0/M_PI<120.0 && norm_dir_new_vessel>0.0 && !isColliding ){
+                    if( angle*180.0/M_PI>10.0 && angle*180.0/M_PI<170.0 && norm_dir_new_vessel>0.0 && !isColliding ){
 
                         std::cout<< "Create new node_1" << std::endl;
                         VGNode new_node_1;
@@ -1546,16 +1628,35 @@ void util::unet::Network::processSproutingGrowth() {
                         new_node_1.p_boundary = 0.0;
                         new_node_1.p_v = pointer->p_v;
                         new_node_1.c_boundary = input.d_in_nutrient;
-                        new_node_1.c_v = pointer->c_v;
+                        new_node_1.c_v = pointer->c_v;//0.0;
                         new_node_1.typeOfVGNode = TypeOfNode::InnerNode;
                         new_node_1.apicalGrowth = false;
+                        new_node_1.radii_initial.push_back( radius );
+                        new_node_1.radii_initial.push_back( radius );
+                        new_node_1.radii.push_back( radius );
+                        new_node_1.radii.push_back( radius );
+/*
+                        if( std::pow( ( std::pow( radius,gamma )-std::pow( radius_new,gamma ) ), 1.0/gamma )>radius ){
 
-                        new_node_1.radii.push_back( radius );
-                        new_node_1.radii.push_back( radius );
+                            new_node_1.radii.push_back( std::pow( ( std::pow( radius,gamma )-std::pow( radius_new,gamma ) ), 1.0/gamma ) );
+                            new_node_1.radii.push_back( radius );
+
+                            new_node_1.radii_initial.push_back( std::pow( ( std::pow( radius,gamma )-std::pow( radius_new,gamma ) ), 1.0/gamma ) );
+                            new_node_1.radii_initial.push_back( radius );
+
+                        }
+                        else{
+
+                            new_node_1.radii.push_back( radius );
+                            new_node_1.radii.push_back( std::pow( ( std::pow( radius,gamma )-std::pow( radius_new,gamma ) ), 1.0/gamma ) );
+
+                            new_node_1.radii_initial.push_back( radius );
+                            new_node_1.radii_initial.push_back( std::pow( ( std::pow( radius,gamma )-std::pow( radius_new,gamma ) ), 1.0/gamma ) );
+
+                        }
+*/
                         new_node_1.radii.push_back( radius_new );
 
-                        new_node_1.radii_initial.push_back( radius );
-                        new_node_1.radii_initial.push_back( radius );
                         new_node_1.radii_initial.push_back( radius_new );
 
                         new_node_1.L_p.push_back( input.d_tissue_flow_L_p ); 
@@ -1601,8 +1702,7 @@ void util::unet::Network::processSproutingGrowth() {
                         new_node_2.p_boundary = 0.95*pointer->p_v;
                         new_node_2.p_v = 0.95*pointer->p_v;
                         new_node_2.c_boundary = input.d_in_nutrient;
-                        new_node_2.c_v = pointer->c_v;
-                        new_node_2.typeOfVGNode = TypeOfNode::DirichletNode;
+                        new_node_2.c_v = pointer->c_v;//0.0;
                         new_node_2.apicalGrowth = false;
                         new_node_2.radii.push_back( radius_new );
                         new_node_2.radii_initial.push_back( radius_new );
@@ -1611,6 +1711,7 @@ void util::unet::Network::processSproutingGrowth() {
                         new_node_2.edge_touched.push_back( true );
                         new_node_2.sprouting_edge.push_back( false );
                         new_node_2.typeOfVGNode = TypeOfNode::NeumannNode;
+                        //new_node_2.typeOfVGNode = TypeOfNode::DirichletNode;
                         new_node_2.notUpdated = 0;
                         new_node_2.tau_w_initial.push_back( tau_w_ini_new );
                         new_node_2.neighbors.push_back( sp_newNode_1 );
@@ -1626,10 +1727,12 @@ void util::unet::Network::processSproutingGrowth() {
                         int index_to_be_replaced = pointer->neighbors[ i ]->getLocalIndexOfNeighbor( pointer );
 
                         pointer->neighbors[ i ]->replacePointerWithIndex( index_to_be_replaced, sp_newNode_1 );
-                        pointer->markEdgeLocalIndex( i );
+
                         pointer->sprouting_edge[ i ] = false;
-                        pointer->neighbors[ i ]->markEdgeLocalIndex( index_to_be_replaced );
+                        pointer->edge_touched[ i ] = true;
+
                         pointer->neighbors[ i ]->sprouting_edge[ index_to_be_replaced ] = false;
+                        pointer->neighbors[ i ]->edge_touched[ index_to_be_replaced ] = true;
 
                         std::cout << "Attach new node_1 as pointer" << "\n";
                         VGM.attachPointerToNode( sp_newNode_1 );
@@ -1803,13 +1906,13 @@ void util::unet::Network::adaptRadius(){
 
                     double tau_w = ( radius * std::abs( delta_p ) )/( 2.0*length );
 
-                    double k_WSS = 0.1;
+                    double k_WSS = 0.05;
 
                     double S_WSS = 0.0;
 
-                    if( 0.95 + tau_w > 0.0 ){
+                    if( 1.0 + tau_w > 0.0 ){
 
-                        S_WSS = std::log( 0.9 + tau_w );
+                        S_WSS = std::log( 1.0 + tau_w );
 
                     }
 
@@ -1832,7 +1935,7 @@ void util::unet::Network::adaptRadius(){
 
                     }
 
-                    if( radius_initial<0.025 ){
+                    if( radius_new < 1.2 * radius && radius_new > 0.9 * radius){
 
                         std::cout << " " << std::endl;
 	                std::cout << "tau_w: " << tau_w << std::endl;
@@ -1843,12 +1946,12 @@ void util::unet::Network::adaptRadius(){
 	                std::cout << "radius_new: " << radius_new << std::endl;
 	                std::cout << "coord_node: " << coord_node << std::endl;
 
-                        pointer->neighbors[ i ]->radii[ local_index ] = radius_new;
+                        //pointer->neighbors[ i ]->radii[ local_index ] = radius_new;
                         pointer->radii[ i ] = radius_new;
 
                     }
 
-                    pointer->neighbors[ i ]->edge_touched[ local_index ] = true;
+                    //pointer->neighbors[ i ]->edge_touched[ local_index ] = true;
                     pointer->edge_touched[ i ] = true;
 
                 }
@@ -1982,5 +2085,6 @@ void util::unet::Network::adaptRadius(){
             pointer = pointer->global_successor;
 
      }
+
 }
 
