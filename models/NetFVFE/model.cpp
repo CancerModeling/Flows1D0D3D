@@ -495,12 +495,20 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
 
   // debug
   // output 3D pressure and nutrient stored in network to txt file
+  // header
+  // pressure nutrient
   if (d_comm_p->rank() == 0) {
+
+    //    std::vector<double> get_tum(1);
+    //    std::vector<double> tum_3D(1);
+    //    util::localize_solution_with_elem_id_numbering_multi_vars(d_tum_assembly, get_tum, tum_3D, {0});
+
     std::ofstream of;
     of.open(d_input.d_outfilename + "_debug_" + std::to_string(t_step) +
             ".txt");
     for (unsigned int i = 0; i < d_network.N_tot_3D; i++)
       of << d_network.P_3D[i] << " " << d_network.phi_sigma_3D[i] << "\n";
+      //of << tum_3D[i] << " " << d_network.P_3D[i] << " " << d_network.phi_sigma_3D[i] << "\n";
     of.close();
   }
 }
