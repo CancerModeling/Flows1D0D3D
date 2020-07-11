@@ -183,6 +183,49 @@ inline void localize_solution_with_elem_id_numbering(util::BaseAssembly &sys,
   }
 }
 
+inline void localize_solution_with_elem_id_numbering_multi_vars(util::BaseAssembly &sys,
+                                                     std::vector<double> &collect_sol,
+                                                     std::vector<double> &localize_sol,
+                                                     std::vector<unsigned int> var_ids) {
+
+  // gather solution in all processors
+  sys.d_sys.current_local_solution->localize(collect_sol);
+
+  //  if (localize_sol.size()!= collect_sol.size()) {
+  //    if (resize_vec)
+  //      localize_sol.resize(collect_sol.size());
+  //    else
+  //      libmesh_error_msg("localize_sol size should match collect_sol size for system " + sys.d_sys_name);
+  //  }
+  auto num_vars = var_ids.size();
+  if (localize_sol.size() != sys.d_mesh.n_elem() * num_vars)
+    localize_sol.resize(sys.d_mesh.n_elem() * num_vars);
+
+  for (const auto &elem : sys.d_mesh.active_element_ptr_range()) {
+
+    sys.init_dof(elem);
+    int counter = 0;
+    for (auto var: var_ids) {
+
+      // compute value at center
+      auto val = 0.;
+      for (unsigned int l = 0; l < sys.d_phi.size(); l++)
+        val += collect_sol[sys.get_var_global_dof_id(l, var)];
+      val = val / (double(sys.d_phi.size()));
+
+      localize_sol[elem->id() * num_vars + counter] = val;
+
+      counter++;
+    }
+  }
+}
+
+inline void localize_solution(util::BaseAssembly &sys, std::vector<double> &localize_sol) {
+
+  // gather solution in all processors
+  sys.d_sys.current_local_solution->localize(localize_sol);
+}
+
 
 } // namespace util
 
