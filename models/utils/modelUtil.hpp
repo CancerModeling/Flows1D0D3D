@@ -183,7 +183,31 @@ inline void localize_solution_with_elem_id_numbering(util::BaseAssembly &sys,
   }
 }
 
-inline void localize_solution_with_elem_id_numbering_multi_vars(util::BaseAssembly &sys,
+inline void localize_solution_with_elem_id_numbering_non_constant(util::BaseAssembly &sys,
+                                                                             std::vector<double> &collect_sol,
+                                                                             std::vector<double> &localize_sol) {
+
+  // gather solution in all processors
+  sys.d_sys.current_local_solution->localize(collect_sol);
+
+  if (localize_sol.size() != sys.d_mesh.n_elem())
+    localize_sol.resize(sys.d_mesh.n_elem());
+
+  auto val = 0.;
+  for (const auto &elem : sys.d_mesh.active_element_ptr_range()) {
+
+    sys.init_dof(elem);
+
+    val = 0.;
+    for (unsigned int l = 0; l < sys.d_phi.size(); l++)
+      val += collect_sol[sys.get_global_dof_id(l)];
+    val = val / (double(sys.d_phi.size()));
+
+    localize_sol[elem->id()] = val;
+  }
+}
+
+inline void localize_solution_with_elem_id_numbering_multi_vars_non_constant(util::BaseAssembly &sys,
                                                      std::vector<double> &collect_sol,
                                                      std::vector<double> &localize_sol,
                                                      std::vector<unsigned int> var_ids) {
@@ -219,6 +243,7 @@ inline void localize_solution_with_elem_id_numbering_multi_vars(util::BaseAssemb
     }
   }
 }
+
 
 inline void localize_solution(util::BaseAssembly &sys, std::vector<double> &localize_sol) {
 

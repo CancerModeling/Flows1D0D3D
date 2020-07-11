@@ -24,6 +24,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys, BaseAssembly &gra
      if (taf_sys.d_sys_name != "TAF")
          libmesh_error_msg("Must pass TAF system to update network.");
 
+     // get TAF at element centroid
      util::get_elem_sol(taf_sys, phi_TAF);
 
      std::cout << " " << std::endl;
