@@ -162,6 +162,27 @@ inline void get_elem_sol(util::BaseAssembly &sys,
   }
 }
 
+inline void localize_solution_with_elem_id_numbering(util::BaseAssembly &sys,
+                         std::vector<double> &collect_sol, std::vector<double> &localize_sol,
+                         bool resize_vec = true) {
+
+  // gather solution in all processors
+  sys.d_sys.current_local_solution->localize(collect_sol);
+
+  if (localize_sol.size()!= collect_sol.size()) {
+    if (resize_vec)
+      localize_sol.resize(collect_sol.size());
+    else
+      libmesh_error_msg("localize_sol size should match collect_sol size for system " + sys.d_sys_name);
+  }
+
+  for (const auto &elem : sys.d_mesh.active_element_ptr_range()) {
+
+    sys.init_dof(elem);
+    localize_sol[elem->id()] = collect_sol[sys.get_global_dof_id(0)];
+  }
+}
+
 
 } // namespace util
 
