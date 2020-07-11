@@ -499,16 +499,29 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
   // pressure nutrient
   if (d_comm_p->rank() == 0) {
 
+
+    // Problem localizing tumro system which has two variables
     //    std::vector<double> get_tum(1);
     //    std::vector<double> tum_3D(1);
     //    util::localize_solution_with_elem_id_numbering_multi_vars(d_tum_assembly, get_tum, tum_3D, {0});
+
+    // localize TAF
+    //std::vector<double> get_taf(d_mesh.n_nodes(), 0.);
+    //std::vector<double> taf_3D(1);
+
+    //d_taf_assembly.d_sys.current_local_solution->localize(get_taf);
+    //exit(0);
+
+    //util::localize_solution_with_elem_id_numbering_non_constant(d_taf_assembly, get_taf, taf_3D);
 
     std::ofstream of;
     of.open(d_input.d_outfilename + "_debug_" + std::to_string(t_step) +
             ".txt");
     for (unsigned int i = 0; i < d_network.N_tot_3D; i++)
       of << d_network.P_3D[i] << " " << d_network.phi_sigma_3D[i] << "\n";
-      //of << tum_3D[i] << " " << d_network.P_3D[i] << " " << d_network.phi_sigma_3D[i] << "\n";
+    //of << d_network.P_3D[i] << " " << d_network.phi_sigma_3D[i] << " "
+    //   << taf_3D[i] << "\n";
+    //of << tum_3D[i] << " " << d_network.P_3D[i] << " " << d_network.phi_sigma_3D[i] << "\n";
     of.close();
   }
 }
