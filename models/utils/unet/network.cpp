@@ -319,19 +319,7 @@ void util::unet::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
     libmesh_error_msg("Must pass Pressure system to solve 1D pressure");
 
   // gather pressure solution in all processors
-  const auto &mesh = d_model_p->get_mesh();
-  pres_sys.d_sys.current_local_solution->localize(get_pres);
-
-  if (P_3D.size()!= get_pres.size())
-    libmesh_error_msg("P_3D size should match get_pres size");
-
-  // elem_pres[elem_id] gives pressure in element id
-  // we need to map elements in test_loc
-  for (const auto &elem : mesh.active_element_ptr_range()) {
-
-    pres_sys.init_dof(elem);
-    P_3D[elem->id()] = get_pres[pres_sys.get_global_dof_id(0)];
-  }
+  util::localize_solution_with_elem_id_numbering(pres_sys, get_pres, P_3D, false);
 
   // std::cout << "Assemble pressure matrix and right hand side" << std::endl;
   assembleVGMSystemForPressure(pres_sys);
@@ -375,20 +363,12 @@ void util::unet::Network::solveVGMforNutrient(BaseAssembly &pres_sys,
     libmesh_error_msg("Must pass Pressure and Nutrient system to solve 1D "
                       "nutrient");
 
+  // we do not update 3D pressure assuming that pressure system is solved
+  // before solving other systems and therefore 3D pressure in P_3D is
+  // already updated
+
   // gather nutrient solution in all processors
-  const auto &mesh = d_model_p->get_mesh();
-  nut_sys.d_sys.current_local_solution->localize(get_nut);
-
-  if (phi_sigma_3D.size()!= get_nut.size())
-    libmesh_error_msg("P_3D size should match get_pres size");
-
-  // elem_pres[elem_id] gives pressure in element id
-  // we need to map elements in test_loc
-  for (const auto &elem : mesh.active_element_ptr_range()) {
-
-    pres_sys.init_dof(elem);
-    phi_sigma_3D[elem->id()] = get_nut[pres_sys.get_global_dof_id(0)];
-  }
+  util::localize_solution_with_elem_id_numbering(nut_sys, get_nut, phi_sigma_3D, false);
 
   // std::cout << " " << std::endl;
   // std::cout << "Assemble nutrient matrix and right hand side" << std::endl;

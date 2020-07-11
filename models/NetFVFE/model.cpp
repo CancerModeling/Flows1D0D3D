@@ -463,13 +463,13 @@ void netfvfe::Model::run() {
 
 void netfvfe::Model::write_system(const unsigned int &t_step) {
 
-  ExodusII_IO exodus(d_mesh);
+  //ExodusII_IO exodus(d_mesh);
 
   // write mesh and simulation results
-  std::string filename = d_input.d_outfilename + ".e";
+  //std::string filename = d_input.d_outfilename + ".e";
 
   // write to exodus
-  // exodus.write_timestep(filename, d_tum_sys, 1, d_time);
+  //exodus.write_timestep(filename, d_tum_sys, 1, d_time);
 
   //
   rw::VTKIO(d_mesh).write_equation_systems(
@@ -491,6 +491,17 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
     std::string solutions_file = "solution_" + d_input.d_outfile_tag + "_" +
                                  std::to_string(d_step) + ".e";
     d_tum_sys.write(solutions_file, WRITE);
+  }
+
+  // debug
+  // output 3D pressure and nutrient stored in network to txt file
+  if (d_comm_p->rank() == 0) {
+    std::ofstream of;
+    of.open(d_input.d_outfilename + "_debug_" + std::to_string(t_step) +
+            ".txt");
+    for (unsigned int i = 0; i < d_network.N_tot_3D; i++)
+      of << d_network.P_3D[i] << " " << d_network.phi_sigma_3D[i] << "\n";
+    of.close();
   }
 }
 
