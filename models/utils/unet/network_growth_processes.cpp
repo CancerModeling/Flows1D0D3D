@@ -25,7 +25,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys, BaseAssembly &gra
          libmesh_error_msg("Must pass TAF system to update network.");
 
      // get TAF at element centroid
-     util::get_elem_sol(taf_sys, phi_TAF);
+     util::localize_solution_with_elem_id_numbering_non_const_elem(taf_sys, localized_taf_3D, phi_TAF, {0}, false);
 
      std::cout << " " << std::endl;
      std::cout << "Mark nodes for apical growth " << std::endl;

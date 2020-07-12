@@ -27,6 +27,7 @@ void log_msg(std::string &msg, util::Logger &log) {
     msg.clear();
   }
 }
+
 } // namespace
 
 namespace netfvfe {
@@ -496,32 +497,46 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
   // debug
   // output 3D pressure and nutrient stored in network to txt file
   // header
-  // pressure nutrient
-  if (d_comm_p->rank() == 0) {
+  // pressure nutrient taf
+  //if (d_comm_p->size() > 1)
+    util::localize_solution_with_elem_id_numbering_non_const_elem(
+      d_taf_assembly, d_network.localized_taf_3D, d_network.phi_TAF, {0},
+      false);
 
-
-    // Problem localizing tumro system which has two variables
-    //    std::vector<double> get_tum(1);
-    //    std::vector<double> tum_3D(1);
-    //    util::localize_solution_with_elem_id_numbering_multi_vars(d_tum_assembly, get_tum, tum_3D, {0});
-
-    // localize TAF
-    //std::vector<double> get_taf(d_mesh.n_nodes(), 0.);
-    //std::vector<double> taf_3D(1);
-
-    //d_taf_assembly.d_sys.current_local_solution->localize(get_taf);
-    //exit(0);
-
-    //util::localize_solution_with_elem_id_numbering_non_constant(d_taf_assembly, get_taf, taf_3D);
+  if (d_comm_p->rank() == 0 and d_step > 1) {
 
     std::ofstream of;
     of.open(d_input.d_outfilename + "_debug_" + std::to_string(t_step) +
             ".txt");
-    for (unsigned int i = 0; i < d_network.N_tot_3D; i++)
-      of << d_network.P_3D[i] << " " << d_network.phi_sigma_3D[i] << "\n";
-    //of << d_network.P_3D[i] << " " << d_network.phi_sigma_3D[i] << " "
-    //   << taf_3D[i] << "\n";
-    //of << tum_3D[i] << " " << d_network.P_3D[i] << " " << d_network.phi_sigma_3D[i] << "\n";
+    for (unsigned int i = 0; i < d_network.N_tot_3D; i++) {
+
+      double pres_val = 0.;
+      double nut_val = 0.;
+      double taf_val = 0.;
+
+      if (d_comm_p->size() == 1) {
+
+        const auto *elem = d_mesh.elem_ptr(i);
+        d_pres_assembly.init_dof(elem);
+        d_nut_assembly.init_dof(elem);
+        d_taf_assembly.init_dof(elem);
+
+        pres_val = d_pres_assembly.get_current_sol(0);
+        nut_val = d_nut_assembly.get_current_sol(0);
+        taf_val = 0.;
+        for (unsigned int j=0; j < d_taf_assembly.d_phi.size(); j++)
+          taf_val += d_taf_assembly.get_current_sol(j);
+        taf_val = taf_val / d_taf_assembly.d_phi.size();
+
+      } else {
+
+        pres_val = d_network.P_3D[i];
+        nut_val = d_network.phi_sigma_3D[i];
+        taf_val = d_network.phi_TAF[i];
+      }
+
+      of << pres_val << " " << nut_val << " " << taf_val << "\n";
+    }
     of.close();
   }
 }

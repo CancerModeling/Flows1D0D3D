@@ -162,68 +162,29 @@ inline void get_elem_sol(util::BaseAssembly &sys,
   }
 }
 
-inline void localize_solution_with_elem_id_numbering(util::BaseAssembly &sys,
-                         std::vector<double> &collect_sol, std::vector<double> &localize_sol,
+inline void localize_solution_with_elem_id_numbering_const_elem(util::BaseAssembly &sys,
+                         std::vector<double> &collect_sol,
+                         std::vector<double> &localize_sol,
+                         std::vector<unsigned int> var_ids = {0},
                          bool resize_vec = true) {
 
   // gather solution in all processors
-  sys.d_sys.current_local_solution->localize(collect_sol);
+  //sys.d_sys.current_local_solution->localize(collect_sol);
+  sys.d_sys.solution->localize(collect_sol);
 
-  if (localize_sol.size()!= collect_sol.size()) {
+  // check if we need to resize the vector
+  auto num_vars = var_ids.size();
+  if (localize_sol.size() != sys.d_mesh.n_elem() * num_vars) {
     if (resize_vec)
-      localize_sol.resize(collect_sol.size());
+      localize_sol.resize(sys.d_mesh.n_elem() * num_vars);
     else
       libmesh_error_msg("localize_sol size should match collect_sol size for system " + sys.d_sys_name);
   }
 
-  for (const auto &elem : sys.d_mesh.active_element_ptr_range()) {
-
-    sys.init_dof(elem);
-    localize_sol[elem->id()] = collect_sol[sys.get_global_dof_id(0)];
-  }
-}
-
-inline void localize_solution_with_elem_id_numbering_non_constant(util::BaseAssembly &sys,
-                                                                             std::vector<double> &collect_sol,
-                                                                             std::vector<double> &localize_sol) {
-
-  // gather solution in all processors
-  sys.d_sys.current_local_solution->localize(collect_sol);
-
-  if (localize_sol.size() != sys.d_mesh.n_elem())
-    localize_sol.resize(sys.d_mesh.n_elem());
-
-  auto val = 0.;
-  for (const auto &elem : sys.d_mesh.active_element_ptr_range()) {
-
-    sys.init_dof(elem);
-
-    val = 0.;
-    for (unsigned int l = 0; l < sys.d_phi.size(); l++)
-      val += collect_sol[sys.get_global_dof_id(l)];
-    val = val / (double(sys.d_phi.size()));
-
-    localize_sol[elem->id()] = val;
-  }
-}
-
-inline void localize_solution_with_elem_id_numbering_multi_vars_non_constant(util::BaseAssembly &sys,
-                                                     std::vector<double> &collect_sol,
-                                                     std::vector<double> &localize_sol,
-                                                     std::vector<unsigned int> var_ids) {
-
-  // gather solution in all processors
-  sys.d_sys.current_local_solution->localize(collect_sol);
-
-  //  if (localize_sol.size()!= collect_sol.size()) {
-  //    if (resize_vec)
-  //      localize_sol.resize(collect_sol.size());
-  //    else
-  //      libmesh_error_msg("localize_sol size should match collect_sol size for system " + sys.d_sys_name);
-  //  }
-  auto num_vars = var_ids.size();
-  if (localize_sol.size() != sys.d_mesh.n_elem() * num_vars)
-    localize_sol.resize(sys.d_mesh.n_elem() * num_vars);
+  // check if system has only 1 variable
+  bool has_multiple_vars = sys.d_num_vars > 1;
+  if (!has_multiple_vars and (var_ids.size() > 1 or var_ids[0] != 0))
+    libmesh_error_msg("Invalid var ids to collect and localize solution");
 
   for (const auto &elem : sys.d_mesh.active_element_ptr_range()) {
 
@@ -233,8 +194,98 @@ inline void localize_solution_with_elem_id_numbering_multi_vars_non_constant(uti
 
       // compute value at center
       auto val = 0.;
-      for (unsigned int l = 0; l < sys.d_phi.size(); l++)
-        val += collect_sol[sys.get_var_global_dof_id(l, var)];
+      if (has_multiple_vars)
+        val += collect_sol[sys.get_var_global_dof_id(0, var)];
+      else
+        val += collect_sol[sys.get_global_dof_id(0)];
+
+      localize_sol[elem->id() * num_vars + counter] = val;
+      counter++;
+    }
+  }
+}
+
+inline void localize_solution_with_elem_id_numbering_const_elem(util::BaseAssembly &sys,
+                                                                std::unique_ptr<NumericVector<Number>> &collect_sol,
+                                                                std::vector<double> &localize_sol,
+                                                                std::vector<unsigned int> var_ids = {0},
+                                                                bool resize_vec = true) {
+
+  // gather solution in all processors
+  //sys.d_sys.current_local_solution->localize(collect_sol);
+  sys.d_sys.solution->localize(*collect_sol);
+
+  // check if we need to resize the vector
+  auto num_vars = var_ids.size();
+  if (localize_sol.size() != sys.d_mesh.n_elem() * num_vars) {
+    if (resize_vec)
+      localize_sol.resize(sys.d_mesh.n_elem() * num_vars);
+    else
+      libmesh_error_msg("localize_sol size should match collect_sol size for system " + sys.d_sys_name);
+  }
+
+  // check if system has only 1 variable
+  bool has_multiple_vars = sys.d_num_vars > 1;
+  if (!has_multiple_vars and (var_ids.size() > 1 or var_ids[0] != 0))
+    libmesh_error_msg("Invalid var ids to collect and localize solution");
+
+  for (const auto &elem : sys.d_mesh.active_element_ptr_range()) {
+
+    sys.init_dof(elem);
+    int counter = 0;
+    for (auto var: var_ids) {
+
+      // compute value at center
+      auto val = 0.;
+      if (has_multiple_vars)
+        val += (*collect_sol)(sys.get_var_global_dof_id(0, var));
+      else
+        val += (*collect_sol)(sys.get_global_dof_id(0));
+
+      localize_sol[elem->id() * num_vars + counter] = val;
+      counter++;
+    }
+  }
+}
+
+inline void localize_solution_with_elem_id_numbering_non_const_elem(util::BaseAssembly &sys,
+                                                                std::vector<double> &collect_sol,
+                                                                std::vector<double> &localize_sol,
+                                                                std::vector<unsigned int> var_ids = {0},
+                                                                bool resize_vec = true) {
+
+  // gather solution in all processors
+  //sys.d_sys.current_local_solution->localize(collect_sol);
+  sys.d_sys.solution->localize(collect_sol);
+
+  // check if we need to resize the vector
+  auto num_vars = var_ids.size();
+  if (localize_sol.size() != sys.d_mesh.n_elem() * num_vars) {
+    if (resize_vec)
+      localize_sol.resize(sys.d_mesh.n_elem() * num_vars);
+    else
+      libmesh_error_msg("localize_sol size should match collect_sol size for system " + sys.d_sys_name);
+  }
+
+  // check if system has only 1 variable
+  bool has_multiple_vars = sys.d_num_vars > 1;
+  if (!has_multiple_vars and (var_ids.size() > 1 or var_ids[0] != 0))
+    libmesh_error_msg("Invalid var ids to collect and localize solution");
+
+  for (const auto &elem : sys.d_mesh.active_element_ptr_range()) {
+
+    sys.init_dof(elem);
+    int counter = 0;
+    for (auto var: var_ids) {
+
+      // compute value at center
+      auto val = 0.;
+      for (unsigned int l = 0; l < sys.d_phi.size(); l++) {
+        if (has_multiple_vars)
+          val += collect_sol[sys.get_var_global_dof_id(l, var)];
+        else
+          val += collect_sol[sys.get_global_dof_id(l)];
+      }
       val = val / (double(sys.d_phi.size()));
 
       localize_sol[elem->id() * num_vars + counter] = val;
@@ -244,13 +295,52 @@ inline void localize_solution_with_elem_id_numbering_multi_vars_non_constant(uti
   }
 }
 
-
-inline void localize_solution(util::BaseAssembly &sys, std::vector<double> &localize_sol) {
+inline void localize_solution_with_elem_id_numbering_non_const_elem(util::BaseAssembly &sys,
+                                                                    std::unique_ptr<NumericVector<Number>> &collect_sol,
+                                                                    std::vector<double> &localize_sol,
+                                                                    std::vector<unsigned int> var_ids = {0},
+                                                                    bool resize_vec = true) {
 
   // gather solution in all processors
-  sys.d_sys.current_local_solution->localize(localize_sol);
-}
+  //sys.d_sys.current_local_solution->localize(collect_sol);
+  sys.d_sys.solution->localize(*collect_sol);
 
+  // check if we need to resize the vector
+  auto num_vars = var_ids.size();
+  if (localize_sol.size() != sys.d_mesh.n_elem() * num_vars) {
+    if (resize_vec)
+      localize_sol.resize(sys.d_mesh.n_elem() * num_vars);
+    else
+      libmesh_error_msg("localize_sol size should match collect_sol size for system " + sys.d_sys_name);
+  }
+
+  // check if system has only 1 variable
+  bool has_multiple_vars = sys.d_num_vars > 1;
+  if (!has_multiple_vars and (var_ids.size() > 1 or var_ids[0] != 0))
+    libmesh_error_msg("Invalid var ids to collect and localize solution");
+
+  for (const auto &elem : sys.d_mesh.active_element_ptr_range()) {
+
+    sys.init_dof(elem);
+    int counter = 0;
+    for (auto var: var_ids) {
+
+      // compute value at center
+      auto val = 0.;
+      for (unsigned int l = 0; l < sys.d_phi.size(); l++) {
+        if (has_multiple_vars)
+          val += (*collect_sol)(sys.get_var_global_dof_id(l, var));
+        else
+          val += (*collect_sol)(sys.get_global_dof_id(l));
+      }
+      val = val / (double(sys.d_phi.size()));
+
+      localize_sol[elem->id() * num_vars + counter] = val;
+
+      counter++;
+    }
+  }
+}
 
 } // namespace util
 
