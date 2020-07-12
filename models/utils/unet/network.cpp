@@ -19,6 +19,7 @@ std::vector<double> get_nut;
 void util::unet::Network::create_initial_network() {
 
   const auto &input = d_model_p->get_input_deck();
+  auto comm = d_model_p->get_comm();
   d_is_network_changed = true;
 
   // equation system
@@ -130,6 +131,15 @@ void util::unet::Network::create_initial_network() {
   D_TAF = input.d_D_TAF;
 
   osmotic_sigma = input.d_osmotic_sigma;
+
+  // initialize fields which will localize the solutions in processors
+  localized_P_3D = NumericVector<Number>::build(*comm);
+  localized_nut_3D = NumericVector<Number>::build(*comm);
+  localized_taf_3D = NumericVector<Number>::build(*comm);
+
+  localized_P_3D->init(d_model_p->get_assembly("Pressure").d_sys.solution->size(), false, SERIAL);
+  localized_nut_3D->init(d_model_p->get_assembly("Nutrient").d_sys.solution->size(), false, SERIAL);
+  localized_taf_3D->init(d_model_p->get_assembly("TAF").d_sys.solution->size(), false, SERIAL);
 }
 
 void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
@@ -319,7 +329,7 @@ void util::unet::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
     libmesh_error_msg("Must pass Pressure system to solve 1D pressure");
 
   // gather pressure solution in all processors
-  util::localize_solution_with_elem_id_numbering(pres_sys, get_pres, P_3D, false);
+  util::localize_solution_with_elem_id_numbering_const_elem(pres_sys, localized_P_3D, P_3D, {0}, false);
 
   // std::cout << "Assemble pressure matrix and right hand side" << std::endl;
   assembleVGMSystemForPressure(pres_sys);
@@ -368,7 +378,7 @@ void util::unet::Network::solveVGMforNutrient(BaseAssembly &pres_sys,
   // already updated
 
   // gather nutrient solution in all processors
-  util::localize_solution_with_elem_id_numbering(nut_sys, get_nut, phi_sigma_3D, false);
+  util::localize_solution_with_elem_id_numbering_const_elem(nut_sys, localized_nut_3D, phi_sigma_3D, {0}, false);
 
   // std::cout << " " << std::endl;
   // std::cout << "Assemble nutrient matrix and right hand side" << std::endl;
