@@ -17,7 +17,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys, BaseAssembly &gra
 
      int numberOfNodesOld = VGM.getNumberOfNodes();
 
-     if( d_update_number%2 == 0 ){
+     if( d_update_number%3 == 0 ){
 
 	std::cout << " " << std::endl;
 	std::cout << "Number of nodes: " << numberOfNodesOld << std::endl;
@@ -71,13 +71,104 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys, BaseAssembly &gra
 
      }
 
-     if( (d_update_number+1)%2 == 0 ){
+     if( (d_update_number+1)%3 == 0 ){
 
          std::cout << " " << std::endl;
          std::cout << "Adapt radius" << std::endl;
          adaptRadius();
 
      }
+
+
+     auto pointer = VGM.getHead();
+
+     while( pointer ) {
+
+            int numberOfNeighbors = pointer->neighbors.size();
+
+            for( int i=0;i<numberOfNeighbors;i++){
+
+                 double length = util::dist_between_points(pointer->coord, pointer->neighbors[i]->coord);
+
+                 if( length <1.0e-16 ){
+
+                     pointer->removeComponent( i );
+                     std::cout << " " << std::endl;
+                     std::cout << "neighbor removed length=0!!!" << std::endl;
+
+                 }
+
+            }
+        
+            pointer = pointer->global_successor;
+
+     }
+
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfEdges = pointer->neighbors.size();
+
+            if( numberOfEdges == 0 ){
+
+                std::cout << "Remove node" << std::endl;
+
+                std::shared_ptr<VGNode> old_pointer = pointer;
+
+                if( pointer->global_predecessor ){
+ 
+                    pointer->global_predecessor->global_successor = pointer->global_successor;
+
+                }
+                else{
+
+                    pointer->global_successor->global_predecessor = NULL;
+
+                }
+
+                if( pointer->global_successor ){
+
+                    pointer->global_successor->global_predecessor = pointer->global_predecessor;   
+
+                }
+                else{
+
+                    pointer->global_predecessor->global_successor = NULL;
+
+                }
+
+                pointer = pointer->global_successor; 
+
+                old_pointer.reset(); 
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     std::cout << " " << std::endl;
+     std::cout << "Reset nodes" << std::endl;
+
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfEdges = pointer->neighbors.size();
+
+            for(int i=0;i<numberOfEdges;i++){
+
+                pointer->edge_touched[ i ] = false;
+                pointer->sprouting_edge[ i ] = false;
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     VGM.determineNumberOfNodes();
 
      auto numberOfNodes = VGM.getNumberOfNodes();
 
@@ -113,7 +204,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys, BaseAssembly &gra
 
      }
 
-     auto pointer = VGM.getHead();
+     pointer = VGM.getHead();
 
      while( pointer ) {
 
@@ -205,7 +296,7 @@ void util::unet::Network::linkTerminalVessels() {
 
                        int numberOfNeighbors_1 = pointer_1->neighbors.size();
 
-                       if( dist_plane>0.05 && index != index_1 && dist < h_3D ){
+                       if( dist_plane>0.1 && index != index_1 && dist < 1.5*h_3D && dist>0.5 * h_3D && length_dir>0.0 ){
 
                            if( numberOfNeighbors_1 == 1 && pv_1<0.95*p_v ){
 
@@ -251,7 +342,7 @@ void util::unet::Network::linkTerminalVessels() {
                                pointer_1->tau_w_initial.push_back( tau_w_ini );
 
                            }
-                           else if( numberOfNeighbors_1 > 1 ){
+                           else if( numberOfNeighbors_1 == 2 && pv_1<0.95*p_v ){
 
                                std::cout << " " << std::endl;
                                std::cout << "dist: " << dist << "\n";
@@ -397,7 +488,9 @@ void util::unet::Network::processApicalGrowth() {
      // mark node for growth based on a certain criterion
      std::shared_ptr<VGNode> pointer = VGM.getHead();
 
-     //std::cout << "Number of nodes before: " << VGM.getNumberOfNodes() << "\n";
+     std::cout << "Number of nodes before: " << VGM.getNumberOfNodes() << "\n";
+
+     int counter = 0;
 
      while( pointer ){
 
@@ -411,6 +504,7 @@ void util::unet::Network::processApicalGrowth() {
 
                int element_index = getElementIndex( coord, h_3D, N_3D );
                std::cout << "element_index: " << element_index << "\n";
+               std::cout << "counter: " << counter << "\n";
 
                std::vector<int> indicesNeighbors = getNeighboringElementIndices( element_index, N_3D, h_3D, L_x );
                std::vector<double> TAF_neighbors;
@@ -543,7 +637,7 @@ void util::unet::Network::processApicalGrowth() {
 
                    for(int i=0;i<3;i++){
 
-                       direction[ i ] = ( max_vec[ i ] - coord[ i ] ) + ( 0.5 * normal_plane[ i ] ); 
+                       direction[ i ] = ( max_vec[ i ] - coord[ i ] ) + ( 0.65 * normal_plane[ i ] ); 
 
                    }
 
@@ -576,6 +670,7 @@ void util::unet::Network::processApicalGrowth() {
 
                    } 
 
+
                    for(int i=0;i<3;i++){
 
                        new_point_1[ i ] = coord[ i ] + length*direction[ i ];
@@ -587,7 +682,7 @@ void util::unet::Network::processApicalGrowth() {
                std::vector<double> new_point_link  = std::vector<double>(3,0.0);
 
                bool isIntersecting = testIntersection( coord, new_point_1, radius_p, pointer );
- /*    
+    
                std::cout << "coord: " << coord << "\n";
                std::cout << "rotator: " << rotator << "\n";
                std::cout << "max_vec: " << max_vec << "\n";
@@ -597,7 +692,7 @@ void util::unet::Network::processApicalGrowth() {
                std::cout << "direction: " << direction << "\n";
                std::cout << "new_point: " << new_point_1 << "\n";
                std::cout << "TAF_point: " << TAF_point << "\n";
- */
+ 
                double global_max_TAF = gmm::vect_norminf(phi_TAF);
 /*
                std::cout << "global_max_TAF: " << global_max_TAF << "\n";
@@ -618,16 +713,17 @@ void util::unet::Network::processApicalGrowth() {
 
                }
 
-               if( !bifurcate && length_d>0.0 ){
+               if( !bifurcate && length_d>0.0 && length>0.0 ){
 
                    if( !isIntersecting ){
 
                        createASingleNode( new_point_1, radius_p, pointer );
+                       counter++;
 
                    }
 
                }
-               else if( bifurcate ){
+               else if( bifurcate && radius_p>input.d_min_radius ){
 
 		  // std::cout << "Create bifuraction" << "\n";
 
@@ -673,13 +769,13 @@ void util::unet::Network::processApicalGrowth() {
 
                        branch_angle_1 = std::acos( angle_arg_1 );
                        branch_angle_2 = std::acos( angle_arg_2 );
-/*
+
                        std::cout << "radius_p: "  << radius_p << "\n";
                        std::cout << "radius_b1: " << radius_b1 << "\n";
                        std::cout << "radius_b2: " << radius_b2 << "\n";
                        std::cout << "branch_angle_1: " << branch_angle_1*180.0/M_PI << "\n";
                        std::cout << "branch_angle_2: " << branch_angle_2*180.0/M_PI << "\n";
-*/
+
                        double branch_angle = branch_angle_1 + branch_angle_2;
 
                        if( branch_angle*180.0/M_PI<160.0 && branch_angle*180.0/M_PI>40.0 ){
@@ -739,14 +835,14 @@ void util::unet::Network::processApicalGrowth() {
                                }
 
                            }
-/*
+
                            std::cout << "rotation_axis: " << rotation_axis << "\n";
                            std::cout << "branch_angle: " << branch_angle << "\n";
                            std::cout << "length_1: " << length_1 << "\n";
                            std::cout << "length_2: " << length_2 << "\n";
                            std::cout << "new_point_1: " << new_point_1 << "\n";
                            std::cout << "new_point_2: " << new_point_2 << "\n";
-*/
+
                            if( gmm::vect_norm2( direction )>0.0 && length_diff_2>0.0 && length_diff_1>0.0 ){
 
                                bool isIntersecting_1 = testIntersection( coord, new_point_1, radius_p, pointer );
@@ -985,7 +1081,7 @@ void util::unet::Network::createASingleNode( std::vector<double> new_point, doub
 	 new_node.coord = new_point;
 	 new_node.p_boundary = 0.95*pointer->p_v;
 	 new_node.p_v = 0.95*pointer->p_v;
-	 new_node.c_boundary = input.d_in_nutrient;
+	 new_node.c_boundary = 0.0;
 	 new_node.c_v = pointer->c_v;//0.0;
 	 new_node.apicalGrowth = false;
 	 new_node.radii.push_back( radius );
@@ -1415,7 +1511,7 @@ void util::unet::Network::processSproutingGrowth() {
 
                     double radius = pointer->radii[ i ];
 
-                    double PSI = 1.05;
+                    double PSI = 1.1;
 
                     double radius_prime = std::pow( ( std::pow( PSI,gamma )-1.0 ), 1.0/gamma ) * radius;
 
@@ -1443,7 +1539,7 @@ void util::unet::Network::processSproutingGrowth() {
 
                     }
 
-                    std::cout<< "mid_point: " << mid_point << std::endl;
+                    //std::cout<< "mid_point: " << mid_point << std::endl;
 
                     double length_vessel = normVector( dir_vessel );
 
@@ -1526,7 +1622,7 @@ void util::unet::Network::processSproutingGrowth() {
 
                     }
 
-                    std::cout<< "max_vessel_point: " << max_vessel_point << std::endl;
+                    //std::cout<< "max_vessel_point: " << max_vessel_point << std::endl;
 
                     theta = 0.0;
 
@@ -1618,7 +1714,7 @@ void util::unet::Network::processSproutingGrowth() {
 
                     bool isColliding = testCollision( new_point );
 
-                    if( angle*180.0/M_PI>10.0 && angle*180.0/M_PI<170.0 && norm_dir_new_vessel>0.0 && !isColliding ){
+                    if( angle*180.0/M_PI>10.0 && angle*180.0/M_PI<170.0 && norm_dir_new_vessel>0.0 && !isColliding && norm_dir_vessel>0.12 ){
 
                         std::cout<< "Create new node_1" << std::endl;
                         VGNode new_node_1;
@@ -1627,7 +1723,7 @@ void util::unet::Network::processSproutingGrowth() {
                         new_node_1.coord = mid_point;
                         new_node_1.p_boundary = 0.0;
                         new_node_1.p_v = pointer->p_v;
-                        new_node_1.c_boundary = input.d_in_nutrient;
+                        new_node_1.c_boundary = 0.0;//input.d_in_nutrient;
                         new_node_1.c_v = pointer->c_v;//0.0;
                         new_node_1.typeOfVGNode = TypeOfNode::InnerNode;
                         new_node_1.apicalGrowth = false;
@@ -1701,7 +1797,7 @@ void util::unet::Network::processSproutingGrowth() {
                         new_node_2.coord = new_point;
                         new_node_2.p_boundary = 0.95*pointer->p_v;
                         new_node_2.p_v = 0.95*pointer->p_v;
-                        new_node_2.c_boundary = input.d_in_nutrient;
+                        new_node_2.c_boundary = 0.0;//pointer->c_v;
                         new_node_2.c_v = pointer->c_v;//0.0;
                         new_node_2.apicalGrowth = false;
                         new_node_2.radii.push_back( radius_new );
@@ -1957,7 +2053,7 @@ void util::unet::Network::adaptRadius(){
                 }
 
             }
-
+/*
             // Remove redundant vessels
             for(int i=0;i<numberOfNeighbors;i++){
 
@@ -1976,13 +2072,13 @@ void util::unet::Network::adaptRadius(){
                 pointer->removeComponents( edgesToBeRemoved );
 
             }
-
+*/
             pointer = pointer->global_successor;
 
      }
 
      std::cout << " " << std::endl;
-
+/*
      // Remove nodes without neighbor
      pointer = VGM.getHead();
 
@@ -2062,7 +2158,7 @@ void util::unet::Network::adaptRadius(){
             pointer = pointer->global_successor;
 
      }
-
+*/
      VGM.determineNumberOfNodes();
 
      // Reset

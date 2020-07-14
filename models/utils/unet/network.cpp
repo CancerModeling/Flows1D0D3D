@@ -174,17 +174,7 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
 
   // gmm::iteration iter(10E-11, 2);
 
-  size_t restart = 100;
-
-  gmm::iteration iter(5.0E-12);
-
-  //gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> Pr(A_flow_3D1D, 50, 1e-4);
-
-  gmm::identity_matrix PR;
-
-  //gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50, 1e-4); 
-
-  //gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
+  size_t restart = 500;
 
   if( d_update_number == 1 ){
 
@@ -192,8 +182,22 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
 
   }
 
-  gmm::gmres(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, restart, iter);
-  //gmm::bicgstab(A_flow_3D1D, P_3D1D, b_flow_3D1D, Pr, iter);
+
+  gmm::iteration iter(1.0E-10,2);
+
+  //gmm::identity_matrix PR;
+
+  gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50, 1e-4);
+
+  //gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50, 1e-4); 
+
+  //gmm::ildlt_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
+
+  // gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
+
+  //gmm::gmres(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, restart, iter);
+
+  gmm::bicgstab(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, iter);
 
   auto pointer = VGM.getHead();
 
@@ -275,8 +279,7 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
   util::set_elem_sol(pres_sys, P_3D);
 }
 
-void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
-                                                   BaseAssembly &tum_sys) {
+void util::unet::Network::solve3D1DNutrientProblem( BaseAssembly &nut_sys, BaseAssembly &tum_sys ) {
 
   if (nut_sys.d_sys_name != "Nutrient" or tum_sys.d_sys_name != "Tumor")
     libmesh_error_msg("Must pass Nutrient and Tumor system to solve 3D-1D "
@@ -286,8 +289,6 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
   const auto timeStep = d_model_p->d_step;
 
   // Solver
-  //gmm::iteration iter(5.0e-11);
-
   assemble3D1DSystemForNutrients(nut_sys, tum_sys);
 
   // if this is first call inside nonlinear loop, we guess current
@@ -297,25 +298,22 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
     phi_sigma = phi_sigma_old;
   if (d_model_p->d_step == 1)
     phi_sigma = b_nut_3D1D;
-/*
-  gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> P(A_nut_3D1D, 60,
-                                                              1e-8);
-  gmm::bicgstab(A_nut_3D1D, phi_sigma, b_nut_3D1D, P, iter);
-*/
 
-  size_t restart = 50;
+  size_t restart = 150;
 
-  gmm::iteration iter(2.0E-10);
+  gmm::iteration iter(1.0E-10);
 
-  //gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> Pr(A_flow_3D1D, 50, 1e-4);
+  //gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D, 50, 1e-4);
 
-  gmm::identity_matrix PR;
+  //gmm::identity_matrix PR;
 
-  //gmm::ilutp_precond<matrix_type> PR(A_flow_3D1D, 150, 1e-8); 
+  //gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D, 70, 1e-8); 
 
-  //gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
+  gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D);
 
   gmm::gmres(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, restart, iter);
+
+  //gmm::bicgstab(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, iter);
 
   auto pointer = VGM.getHead();
 
@@ -539,7 +537,7 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
             A_flow_3D1D(index, index) =
                 A_flow_3D1D(index, index) + K_3D * h_3D * h_3D / h_3D;
 
-            A_flow_3D1D(index, index_neighbor) = -K_3D * h_3D * h_3D / h_3D;
+            A_flow_3D1D(index, index_neighbor) =  -K_3D * h_3D * h_3D / h_3D;
 
           } else {
 
@@ -555,8 +553,7 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
                   A_flow_3D1D(index, index) + 2.0 * K_3D * h_3D * h_3D / h_3D;
 
               b_flow_3D1D[index] =
-                  b_flow_3D1D[index] +
-                  (2.0 * K_3D * h_3D * h_3D * dirichlet_value) / h_3D;
+                  b_flow_3D1D[index] + (2.0 * K_3D * h_3D * h_3D * dirichlet_value) / h_3D;
             }
           }
         }
@@ -600,8 +597,11 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
 
           } // elem neighbor is not null
         }   // loop over faces
+
       }
+
     }
+
   }
 
   // Assemble 1D Matrix, 1D right hand side and coupling matrices (pressure)
@@ -620,11 +620,11 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
 
     int numberOfNeighbors = pointer->neighbors.size();
 
-    // std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
+    //std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
 
     std::vector<double> coord = pointer->coord;
 
-    // std::cout << "coord: " << coord << std::endl;
+    //std::cout << "coord: " << coord << std::endl;
 
     if (numberOfNeighbors == 1) {
 
@@ -635,9 +635,11 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
 
         double radius = pointer->radii[0];
 
+        //std::cout << "radius: " << radius << std::endl;
+
         // Assemble coupling terms (nutrients)
         std::vector<double> coord_neighbor = pointer->neighbors[0]->coord;
-
+        //std::cout << "coord_neighbor: " << coord_neighbor << std::endl;
         int N_s = input.d_num_points_length;
         int N_theta = input.d_num_points_angle;
 
@@ -646,6 +648,8 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
 
         double length = util::dist_between_points(coord, coord_neighbor);
         double length_edge = 0.5 * length;
+
+        //std::cout << "length: " << length << std::endl;
 
         // Surface area of cylinder
         double surface_area = 2.0 * M_PI * length_edge * radius;
@@ -659,6 +663,7 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
 
         // Permeabilty vessel wall for nutrients
         double L_p = pointer->L_p[0];
+        //std::cout << "L_p: " << L_p << std::endl;
 
         for (int j = 0; j < numberOfElements; j++) {
 
@@ -679,9 +684,11 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
 
         double radius = pointer->radii[0];
 
+        //std::cout << "radius: " << radius << std::endl;
+
         // Assemble coupling terms (nutrients)
         std::vector<double> coord_neighbor = pointer->neighbors[0]->coord;
-
+        //std::cout << "coord_neighbor: " << coord_neighbor << std::endl;
         int N_s = input.d_num_points_length;
         int N_theta = input.d_num_points_angle;
         int indexNeighbor = pointer->neighbors[0]->index;
@@ -694,11 +701,14 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
         double length = util::dist_between_points(coord, coord_neighbor);
         double K_1D = getK1D(0.5 * (coord[2] + coord_neighbor[2]), L_p, radius);
 
+        //std::cout << "length: " << length << std::endl;
+        //std::cout << "L_p: " << L_p << std::endl;
+
         // diffusion term
         A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
-            A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) + 1.0 / length;
+            A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) + K_1D / length;
 
-        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) = -1.0 / length;
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) = -K_1D / length;
 
         double length_edge = 0.5 * length;
 
@@ -733,11 +743,11 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
             // A_1D3D
             A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) =
                 A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) -
-                L_p * surface_area * weights[j]/K_1D;
+                L_p * surface_area * weights[j];
           }
         } // loop over 3D elements
 
-      } // if neumann node
+     } // if neumann node
 
     } // if number of neighbors = 1
     else {
@@ -747,18 +757,23 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
         // Discretisation of the differential operator
         double radius = pointer->radii[i];
 
+        //std::cout << "radius: " << radius << std::endl;
+
         int indexNeighbor = pointer->neighbors[i]->index;
 
         std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
 
+        //std::cout << "coord_neighbor: " << coord_neighbor << std::endl;
         double length = util::dist_between_points(coord, coord_neighbor);
         double L_p = pointer->L_p[i];
         double K_1D = getK1D(0.5 * (coord[2] + coord_neighbor[2]), L_p, radius);
+        //std::cout << "length: " << length << std::endl;
+        //std::cout << "L_p: " << L_p << std::endl;
 
         // diffusion term
         A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
-            A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) + 1.0 / length;
-        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) = -1.0 / length;
+            A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) + K_1D / length;
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) = -K_1D / length;
 
         // Coupling terms
         int N_s = input.d_num_points_length;
@@ -776,10 +791,11 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
                                radius, h_3D, length_edge, weights,
                                id_3D_elements);
 
+        
+
         // Add coupling entry to 1D1D matrix
         A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
-            A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +
-            L_p * surface_area/K_1D;
+            A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) + L_p * surface_area;
 
         // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
         int numberOfElements = id_3D_elements.size();
@@ -789,31 +805,32 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
           if (id_3D_elements[j] > -1) {
             // A_3D1D
             A_flow_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) =
-                A_flow_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) -
-                L_p * surface_area * weights[j];
+                A_flow_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) - L_p * surface_area * weights[j];
 
             // A_3D3D
             A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) =
-                A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) +
-                L_p * surface_area * weights[j];
+                A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) + L_p * surface_area * weights[j];
 
             // A_1D3D
             A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) =
-                A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) -
-                L_p * surface_area * weights[j]/K_1D;
+                A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) - L_p * surface_area * weights[j];
           }
         } // loop over 3D elements
+
       }   // loop over neighbor segments
 
       b_flow_3D1D[N_tot_3D + indexOfNode] = 0.0;
     } // if number of neighbors > 1
 
+    //std::cout << "b_flow_3D1D[N_tot_3D + indexOfNode]: " << b_flow_3D1D[N_tot_3D + indexOfNode] << std::endl;
+    //std::cout << "A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode): " << A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) << std::endl;
+
     pointer = pointer->global_successor;
   }
+
 }
 
-void util::unet::Network::assemble3D1DSystemForNutrients(
-    BaseAssembly &nut_sys, BaseAssembly &tum_sys) {
+void util::unet::Network::assemble3D1DSystemForNutrients( BaseAssembly &nut_sys, BaseAssembly &tum_sys ) {
 
   const auto &input = d_model_p->get_input_deck();
   const auto &mesh = d_model_p->get_mesh();
@@ -942,8 +959,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
             // A_nut_3D1D(index, index_neighbor) = -dt * D_v_3D * area_face /
             // h_3D;
 
-            A_nut_3D1D(index, index_neighbor) +=
-                -dt * D_v_3D * area_face / h_3D;
+            A_nut_3D1D(index, index_neighbor) += -dt * D_v_3D * area_face / h_3D;
           }
         }
 
@@ -1064,6 +1080,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
         } // loop over quad points
 
       } // z - loop
+
     }
   }
 
@@ -1084,8 +1101,6 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
     double p_v = pointer->p_v;
 
-    double c_v_k = pointer->c_v;
-
     if (numberOfNeighbors == 1) {
 
       double radius = pointer->radii[0];
@@ -1103,8 +1118,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
       double volume = length / 2.0 * radius * radius * M_PI;
 
-      if (v_interface > 0.0 &&
-          pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
+      if (v_interface > 0.0 && pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
 
         double phi_sigma_boundary = 0.0;
 
@@ -1145,6 +1159,8 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
         double p_t = 0.0;
 
+        double L_p = pointer->L_p[0];
+
         for (int j = 0; j < numberOfElements; j++) {
 
           if (id_3D_elements[j] > -1) {
@@ -1161,28 +1177,39 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
             // TODO
             //  Add osmotic term
+
+            // osmotic reflection term
+            p_t = P_3D1D[id_3D_elements[j]];
+
+            if (p_v - p_t > 0.0) {
+
+              // 1D equation
+              // -2pi R (p_v - p_t) phi_v term in right hand side of 1D equation
+              A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
+                  A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +
+                  dt * (1. - osmotic_sigma) * L_p * surface_area * weights[j] * (p_v - p_t);
+
+              // 3D equation?
+              // 2pi R (p_v - p_t) phi_v term in right hand side of 3D equation?
+
+            } 
+
           }
         }
 
       } // if dirichlet node
-      else {
+      else if( v_interface < 0.0 && pointer->typeOfVGNode == TypeOfNode::DirichletNode ){
 
-        // mass matrix
-        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) = 1.0; //length;
+        A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexOfNode) = length;
 
-        // diffusion and advection
-        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) =
-            dt * v_interface - dt * D_v / length / length;
+        A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexNeighbor) = dt * v_interface - dt * D_v / length;
 
-        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
-            A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) -
-            dt * v_interface + dt * D_v / length / length;
+        A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexOfNode) = A_nut_3D1D(N_tot_3D+indexOfNode, N_tot_3D+indexOfNode) - dt * v_interface + dt * D_v / length;
 
         // old time step term
-        b_nut_3D1D[N_tot_3D + indexOfNode] = phi_sigma_old[N_tot_3D + indexOfNode];//length * phi_sigma_old[N_tot_3D + indexOfNode];
+        b_nut_3D1D[N_tot_3D + indexOfNode] = length * phi_sigma_old[N_tot_3D + indexOfNode];
 
         // Assemble coupling terms (nutrients)
-
         int N_s = input.d_num_points_length;
         int N_theta = input.d_num_points_angle;
 
@@ -1196,8 +1223,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
         double surface_area = 2.0 * M_PI * length_edge * radius;
 
         determineWeightsAndIds(N_s, N_theta, N_3D, coord, coord_neighbor,
-                               radius, h_3D, length_edge, weights,
-                               id_3D_elements);
+                               radius, h_3D, length_edge, weights, id_3D_elements);
 
         // Permeabilty vessel wall for nutrients
         double L_s = pointer->L_s[0];
@@ -1205,8 +1231,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
         // 1D part of the coupling
         A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
-            A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +
-            dt * L_s * surface_area / length;
+            A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) + dt * L_s * surface_area;
 
         // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
         int numberOfElements = id_3D_elements.size();
@@ -1230,7 +1255,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
             // A_1D3D
             A_nut_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) =
                 A_nut_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) -
-                dt * L_s * surface_area * weights[j] / length;
+                dt * L_s * surface_area * weights[j];
 
             // osmotic reflection term
             p_t = P_3D1D[id_3D_elements[j]];
@@ -1241,8 +1266,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
               // -2pi R (p_v - p_t) phi_v term in right hand side of 1D equation
               A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
                   A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +
-                  dt * (1. - osmotic_sigma) * L_p * surface_area * weights[j] *
-                      (p_v - p_t) / length;
+                  dt * (1. - osmotic_sigma) * L_p * surface_area * weights[j] * (p_v - p_t);
 
               // 3D equation?
               // 2pi R (p_v - p_t) phi_v term in right hand side of 3D equation?
@@ -1253,14 +1277,124 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
               // 2pi R (p_v - p_t) phi_sigma term in right hand side of 3D equation
               A_nut_3D1D(id_3D_elements[j], id_3D_elements[j]) =
                   A_nut_3D1D(id_3D_elements[j], id_3D_elements[j]) -
-                  dt * (1. - osmotic_sigma) * L_p * surface_area * weights[j] *
-                      (p_v - p_t) / length;
+                  dt * (1. - osmotic_sigma) * L_p * surface_area * weights[j] * (p_v - p_t);
 
               // 1D equation?
               // -2pi R (p_v - p_t) phi_sigma term in right hand side of 1D equation?
             }
+
           }
+
         } // loop over 3D elements
+
+      } // if outflow dirichlet node
+      else {
+
+        // mass matrix
+        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) = length;
+
+        double p_neighbor = pointer->neighbors[0]->p_v;
+
+        // advection term
+        if (v_interface > 0.0) {
+
+          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += dt * v_interface;
+
+        } else {
+
+          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) += dt * v_interface;
+
+        }
+
+        // diffusion term
+        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+            dt * D_v / length;
+
+        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) -=
+            dt * D_v / length;
+
+        // old time step term
+        b_nut_3D1D[N_tot_3D + indexOfNode] = length * phi_sigma_old[N_tot_3D + indexOfNode];
+
+        // Assemble coupling terms (nutrients)
+
+        int N_s = input.d_num_points_length;
+        int N_theta = input.d_num_points_angle;
+
+        std::vector<double> weights;
+
+        std::vector<int> id_3D_elements;
+
+        double length_edge = 0.5 * length;
+
+        // Surface area of cylinder
+        double surface_area = 2.0 * M_PI * length_edge * radius;
+
+        determineWeightsAndIds(N_s, N_theta, N_3D, coord, coord_neighbor,
+                               radius, h_3D, length_edge, weights, id_3D_elements);
+
+        // Permeabilty vessel wall for nutrients
+        double L_s = pointer->L_s[0];
+        double L_p = pointer->L_p[0];
+
+        // 1D part of the coupling
+        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
+            A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) + dt * L_s * surface_area;
+
+        // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
+        int numberOfElements = id_3D_elements.size();
+
+        double p_t = 0.0;
+
+        for (int j = 0; j < numberOfElements; j++) {
+
+          if (id_3D_elements[j] > -1) {
+
+            // A_3D1D
+            A_nut_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) =
+                A_nut_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) -
+                dt * L_s * surface_area * weights[j];
+
+            // A_3D3D
+            A_nut_3D1D(id_3D_elements[j], id_3D_elements[j]) =
+                A_nut_3D1D(id_3D_elements[j], id_3D_elements[j]) +
+                dt * L_s * surface_area * weights[j];
+
+            // A_1D3D
+            A_nut_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) =
+                A_nut_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) -
+                dt * L_s * surface_area * weights[j];
+
+            // osmotic reflection term
+            p_t = P_3D1D[id_3D_elements[j]];
+
+            if (p_v - p_t > 0.0) {
+
+              // 1D equation
+              // -2pi R (p_v - p_t) phi_v term in right hand side of 1D equation
+              A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
+                  A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +
+                  dt * (1. - osmotic_sigma) * L_p * surface_area * weights[j] * (p_v - p_t);
+
+              // 3D equation?
+              // 2pi R (p_v - p_t) phi_v term in right hand side of 3D equation?
+
+            } else {
+
+              // 3D equation
+              // 2pi R (p_v - p_t) phi_sigma term in right hand side of 3D equation
+              A_nut_3D1D(id_3D_elements[j], id_3D_elements[j]) =
+                  A_nut_3D1D(id_3D_elements[j], id_3D_elements[j]) -
+                  dt * (1. - osmotic_sigma) * L_p * surface_area * weights[j] * (p_v - p_t);
+
+              // 1D equation?
+              // -2pi R (p_v - p_t) phi_sigma term in right hand side of 1D equation?
+            }
+
+          }
+
+        } // loop over 3D elements
+
       }   // if neumann node
 
     } // if number of neighbors = 1
@@ -1280,33 +1414,32 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
         double p_neighbor = pointer->neighbors[i]->p_v;
 
-        double v_interface = -(radius * radius * M_PI) / (8.0 * length * mu) *
-                             (p_neighbor - p_v);
+        double v_interface = -(radius * radius * M_PI) / (8.0 * length * mu) * (p_neighbor - p_v);
 
         // mass matrix
-        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += 1.0;
+        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += length;
 
         // advection term
         if (v_interface > 0.0) {
 
           A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
-              dt * v_interface / length;
+              dt * v_interface;
 
         } else {
 
           A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
-              dt * v_interface / length;
+              dt * v_interface;
         }
 
         // diffusion term
         A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
-            dt * D_v / length / length;
+            dt * D_v / length;
 
         A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) -=
-            dt * D_v / length / length;
+            dt * D_v / length;
 
         // from previous time step
-        b_nut_3D1D[N_tot_3D + indexOfNode] += phi_sigma_old[N_tot_3D + indexOfNode];// length * phi_sigma_old[N_tot_3D + indexOfNode];
+        b_nut_3D1D[N_tot_3D + indexOfNode] += length * phi_sigma_old[N_tot_3D + indexOfNode];// length * phi_sigma_old[N_tot_3D + indexOfNode];
 
         // Assemble coupling terms (nutrients)
 
@@ -1334,7 +1467,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
         // 1D part of the coupling
         A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
             A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +
-            dt * L_s * surface_area / length;
+            dt * L_s * surface_area;
 
         // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
         int numberOfElements = id_3D_elements.size();
@@ -1358,7 +1491,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
             // A_1D3D
             A_nut_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) =
                 A_nut_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) -
-                dt * L_s * surface_area * weights[j] / length;
+                dt * L_s * surface_area * weights[j];
 
             // osmotic reflection term
             p_t = P_3D1D[id_3D_elements[j]];
@@ -1370,7 +1503,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
               A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
                   A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +
                   dt * (1. - osmotic_sigma) * pointer->L_p[i] * surface_area *
-                      weights[j] * (p_v - p_t) / length;
+                      weights[j] * (p_v - p_t);
 
               // 3D equation?
               // 2pi R (p_v - p_t) phi_v term in right hand side of 3D equation?
@@ -1387,9 +1520,13 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
               // 1D equation?
               // -2pi R (p_v - p_t) phi_sigma term in right hand side of 1D equation?
             }
+
           }
+
         } // loop over 3D elements
+
       }   // loop over neighbor segments
+
     }     // if number of neighbors > 1
 
     pointer = pointer->global_successor;
