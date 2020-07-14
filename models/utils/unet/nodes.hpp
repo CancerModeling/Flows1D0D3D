@@ -149,7 +149,7 @@ public:
 
     for(int i=0;i<numberOfNeighbors;i++){
 
-      if( neighbor->index == neighbors[i]->index ){
+      if( util::dist_between_points(neighbor->coord, neighbors[i]->coord) < 1.0e-12 ){ // neighbor->index == neighbors[i]->index ){
 
         local_index_neighbor = i;
 
