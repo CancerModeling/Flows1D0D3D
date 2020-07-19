@@ -296,53 +296,9 @@ void util::unet::Network::linkTerminalVessels() {
 
                        int numberOfNeighbors_1 = pointer_1->neighbors.size();
 
-                       if( dist_plane>0.1 && index != index_1 && dist < 1.5*h_3D && dist>0.5 * h_3D && length_dir>0.0 ){
+                       if( dist_plane>0.01 && index != index_1 && dist < 1.5*h_3D && dist>0.0 && length_dir>0.0 ){
 
-                           if( numberOfNeighbors_1 == 1 && pv_1<0.95*p_v ){
-
-                               std::cout << " " << std::endl;
-                               std::cout << "dist: " << dist << "\n";
-                               std::cout << "index: " << index << "\n";
-                               std::cout << "index_1: " << index_1 << "\n";
-                               std::cout << "Update pointer" << "\n";
-
-                               pointer->p_boundary = 0.0;
-                               pointer->c_boundary = 0.0;
-                               pointer->typeOfVGNode = TypeOfNode::InnerNode;
-                               pointer->apicalGrowth = false;
-                               pointer->radii.push_back( radius );
-                               pointer->radii_initial.push_back( radius );
-                               pointer->L_p.push_back(input.d_tissue_flow_L_p);
-                               pointer->L_s.push_back(input.d_tissue_nut_L_s);
-                               pointer->edge_touched.push_back( true );
-                               pointer->sprouting_edge.push_back( false );
-                               pointer->neighbors.push_back( pointer_1 );
- 
-                               double length = util::dist_between_points( pointer->coord, pointer_1->coord ); 
-                               double p_node = pointer->p_v;              
-                               double p_neighbor = pointer_1->p_v; 
-                               double delta_p = p_neighbor-p_node;
-                               double tau_w_ini = ( radius * std::abs( delta_p ) )/( 2.0*length ); 
-
-                               pointer->tau_w_initial.push_back( tau_w_ini );
-
-                               std::cout << "Update pointer 1" << "\n";
-
-                               pointer_1->p_boundary = 0.0;
-                               pointer_1->c_boundary = 0.0;
-                               pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
-                               pointer_1->apicalGrowth = false;
-                               pointer_1->radii.push_back( radius );
-                               pointer_1->radii_initial.push_back( radius );
-                               pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
-                               pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
-                               pointer_1->edge_touched.push_back( true );
-                               pointer_1->sprouting_edge.push_back( false );
-                               pointer_1->neighbors.push_back( pointer ); 
-                               pointer_1->tau_w_initial.push_back( tau_w_ini );
-
-                           }
-                           else if( numberOfNeighbors_1 == 2 && pv_1<0.95*p_v ){
+                           if( numberOfNeighbors_1 <3 ){
 
                                std::cout << " " << std::endl;
                                std::cout << "dist: " << dist << "\n";
