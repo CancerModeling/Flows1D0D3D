@@ -644,15 +644,14 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
         double length = util::dist_between_points(coord, coord_neighbor);
         double length_edge = 0.5 * length;
 
-        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) = K_1D/length_edge;
-        b_flow_3D1D[N_tot_3D + indexOfNode] = K_1D * pointer->p_boundary/length_edge;
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) = 1.0;
+        b_flow_3D1D[N_tot_3D + indexOfNode] = pointer->p_boundary;
 
         // Surface area of cylinder
         double surface_area = 2.0 * M_PI * length_edge * radius;
 
         determineWeightsAndIds(N_s, N_theta, N_3D, coord, coord_neighbor,
-                               radius, h_3D, length_edge, weights,
-                               id_3D_elements);
+                               radius, h_3D, length_edge, weights, id_3D_elements);
 
         // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
         int numberOfElements = id_3D_elements.size();
@@ -669,11 +668,6 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
             // A_3D3D
             A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) =
                 A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) +
-                L_p * surface_area * weights[j];
-
-            // A_1D3D
-            A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) =
-                A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) -
                 L_p * surface_area * weights[j];
 
           }
