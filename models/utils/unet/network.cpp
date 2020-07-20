@@ -123,7 +123,7 @@ void util::unet::Network::create_initial_network() {
 
     int indexOfNode = pointer->index;
 
-    if( pointer->radii[0]< 0.04){
+    if( pointer->radii[0]< 0.05 ){
 
        phi_sigma_old[N_tot_3D + indexOfNode] = 1.0;
        phi_sigma[N_tot_3D + indexOfNode] = 1.0;
