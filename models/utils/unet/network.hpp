@@ -43,7 +43,7 @@ public:
   /*! @brief Constructor */
   Network(util::BaseModel *model)
       : d_is_network_changed(false), d_model_p(model), d_update_number(0),
-      localized_P_3D(nullptr), localized_nut_3D(nullptr), localized_taf_3D(nullptr) {}
+      localized_P_3D(nullptr), localized_nut_3D(nullptr), localized_taf_3D(nullptr), d_coupled_solver(false) {}
 
   const util::unet::ListStructure<util::unet::VGNode> &get_mesh() const { return
   VGM; }
@@ -253,6 +253,8 @@ public:
   int N_tot_3D;
 
   unsigned int d_update_number;
+
+  bool d_coupled_solver;
 };
 
 } // namespace unet

@@ -33,13 +33,13 @@ class BaseModel {
 
 public:
   /*! @brief Constructor */
-  BaseModel(Parallel::Communicator *comm, InpDeck &input,
-            ReplicatedMesh &mesh, EquationSystems &tum_sys, util::Logger &log)
-      : d_step(0), d_time(0.), d_dt(0.), d_hmin(0.), d_hmax(0.),
+  BaseModel(Parallel::Communicator *comm, InpDeck &input, ReplicatedMesh &mesh,
+            EquationSystems &tum_sys, util::Logger &log,
+            const std::string &name)
+      : d_name(name), d_step(0), d_time(0.), d_dt(0.), d_hmin(0.), d_hmax(0.),
         d_bounding_box(Point(), Point()), d_nonlinear_step(0),
-        d_is_output_step(false), d_is_growth_step(false),
-        d_log(log), d_delayed_msg(""),
-        d_input(input), d_comm_p(comm), d_mesh(mesh),
+        d_is_output_step(false), d_is_growth_step(false), d_log(log),
+        d_delayed_msg(""), d_input(input), d_comm_p(comm), d_mesh(mesh),
         d_tum_sys(tum_sys) {}
 
   /*! @brief Get equation system */
@@ -66,6 +66,9 @@ public:
   };
 
 public:
+  /*! @brief To store input parameters */
+  std::string d_name;
+
   /*! @brief To store input parameters */
   unsigned int d_step;
 

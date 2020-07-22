@@ -210,7 +210,7 @@ netfcfvfe::Model::Model(
     TransientLinearImplicitSystem &grad_taf,
     TransientLinearImplicitSystem &vel,
     util::Logger &log)
-    : util::BaseModel(comm, input, mesh, tum_sys, log),
+    : util::BaseModel(comm, input, mesh, tum_sys, log, "NetFCFVFE"),
       d_network(this),
       d_nec_assembly(this, "Necrotic", d_mesh, nec),
       d_tum_assembly(this, "Tumor", d_mesh, tum),

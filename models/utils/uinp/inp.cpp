@@ -902,6 +902,9 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
 
   d_assembly_factor_c_t = input("assembly_factor_c_t", 1.);
   d_identify_vein_pres = input("identify_vein_pressure", 0.);
+  d_identify_artery_radius = input("identify_artery_radius", -1.);
+  if (d_identify_artery_radius < 0.)
+    libmesh_error_msg("Error. Must specify radius to identify artery.");
 
   // growth related params
   d_network_update_interval = input("network_update_interval", 1);

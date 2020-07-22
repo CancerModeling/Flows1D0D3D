@@ -10,17 +10,13 @@
 #include "network_data_structure.cpp"
 #include "network_growth_processes.cpp"
 
-namespace {
-
-std::vector<double> get_pres;
-std::vector<double> get_nut;
-}
-
 void util::unet::Network::create_initial_network() {
 
   const auto &input = d_model_p->get_input_deck();
   auto comm = d_model_p->get_comm();
   d_is_network_changed = true;
+  d_coupled_solver =
+      d_model_p->d_name == "NetFCFVFE" or d_model_p->d_name == "NetFV";
 
   // equation system
   std::vector<std::vector<double>> vertices;
@@ -130,17 +126,17 @@ void util::unet::Network::create_initial_network() {
 
     int indexOfNode = pointer->index;
 
-    if( pointer->radii[0]< 0.05 ){
+    if( pointer->radii[0]< input.d_identify_artery_radius ){
 
        phi_sigma_old[N_tot_3D + indexOfNode] = 1.0;
        phi_sigma[N_tot_3D + indexOfNode] = 1.0;
 
-    } 
+    }
     else{
 
        phi_sigma_old[N_tot_3D + indexOfNode] = 0.0;
        phi_sigma[N_tot_3D + indexOfNode] = 0.0;
-    
+
     }
 
     pointer = pointer->global_successor;
@@ -1623,6 +1619,9 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
         // multiply by factor_p?
         A_VGM(indexOfNode, indexOfNode) = factor_p * 1.0;
         b[indexOfNode] = factor_p * pointer->p_boundary;
+
+        // TODO rhs contribution from 1D-3D coupling?
+
       } else if (pointer->typeOfVGNode == TypeOfNode::NeumannNode) {
 
         // NOTE: We missed this contribution earlier?
