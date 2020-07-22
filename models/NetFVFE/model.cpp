@@ -211,7 +211,7 @@ netfvfe::Model::Model(
     TransientLinearImplicitSystem &grad_taf,
     TransientLinearImplicitSystem &vel,
     util::Logger &log)
-    : util::BaseModel(comm, input, mesh, tum_sys, log),
+    : util::BaseModel(comm, input, mesh, tum_sys, log, "NetFVFE"),
       d_network(this),
       d_nec_assembly(this, "Necrotic", d_mesh, nec),
       d_tum_assembly(this, "Tumor", d_mesh, tum),
@@ -506,6 +506,7 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
   if (d_comm_p->rank() == 0 and d_step > 1) {
 
     std::ofstream of;
+    of.precision(16);
     of.open(d_input.d_outfilename + "_debug_" + std::to_string(t_step) +
             ".txt");
     for (unsigned int i = 0; i < d_network.N_tot_3D; i++) {

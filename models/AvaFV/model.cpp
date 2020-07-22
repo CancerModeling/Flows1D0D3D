@@ -156,7 +156,7 @@ avafv::Model::Model(
     TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
     TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &grad_taf,
     util::Logger &log)
-    : util::BaseModel(comm, input, mesh, tum_sys, log),
+    : util::BaseModel(comm, input, mesh, tum_sys, log, "AvaFV"),
       d_nec_assembly(this, "Necrotic", d_mesh, nec),
       d_tum_assembly(this, "Tumor", d_mesh, tum),
       d_nut_assembly(this, "Nutrient", d_mesh, nut),
