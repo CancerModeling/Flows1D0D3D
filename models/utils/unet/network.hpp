@@ -42,7 +42,8 @@ class Network {
 public:
   /*! @brief Constructor */
   Network(util::BaseModel *model)
-      : d_is_network_changed(false), d_model_p(model), d_update_number(0) {}
+      : d_is_network_changed(false), d_model_p(model), d_update_number(0),
+      localized_P_3D(nullptr), localized_nut_3D(nullptr), localized_taf_3D(nullptr) {}
 
   const util::unet::ListStructure<util::unet::VGNode> &get_mesh() const { return
   VGM; }
@@ -228,6 +229,10 @@ public:
 
   /*! @brief Old TAF concentration */
   std::vector<double> phi_TAF_old;
+
+  std::unique_ptr<NumericVector<Number>> localized_P_3D;
+  std::unique_ptr<NumericVector<Number>> localized_nut_3D;
+  std::unique_ptr<NumericVector<Number>> localized_taf_3D;
 
   double mu;
 
