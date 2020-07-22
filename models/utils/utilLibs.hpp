@@ -61,6 +61,7 @@
 #include "libmesh/petsc_macro.h"
 //#include "libmesh/vtk_io.h"
 
+#include "libmesh/petsc_vector.h"
 #include "libmesh/petsc_matrix.h"
 
 #include "libmesh/communicator.h"
