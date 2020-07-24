@@ -27,9 +27,8 @@ public:
   BaseAssembly(const std::string system_name, MeshBase &mesh,
                TransientLinearImplicitSystem &sys, const unsigned int &num_vars,
                const std::vector<unsigned int> &var_id)
-      : d_sys_name(system_name), d_mesh(mesh), d_sys(sys),
-        d_num_vars(num_vars), d_var_id(var_id),
-        d_n_dofs(0), d_n_dofs_var(0),
+      : d_sys_name(system_name), d_mesh(mesh), d_sys(sys), d_num_vars(num_vars),
+        d_var_id(var_id), d_n_dofs(0), d_n_dofs_var(0),
         d_dof_map_sys(d_sys.get_dof_map()), d_fe_type(d_sys.variable_type(0)),
         d_qrule(d_mesh.mesh_dimension(), d_fe_type.default_quadrature_order()),
         d_fe(FEBase::build(d_mesh.mesh_dimension(), d_fe_type)),
@@ -40,7 +39,7 @@ public:
         d_fe_face(FEBase::build(d_mesh.mesh_dimension(), d_fe_type)),
         d_qpoints_face(d_fe_face->get_xyz()), d_JxW_face(d_fe_face->get_JxW()),
         d_phi_face(d_fe_face->get_phi()), d_dphi_face(d_fe_face->get_dphi()),
-        d_qface_normals(d_fe_face->get_normals()) {
+        d_qface_normals(d_fe_face->get_normals()), d_localized_sol(nullptr) {
 
     d_dof_indices_sys_var.resize(d_num_vars);
 
@@ -67,16 +66,15 @@ public:
    *
    * @param elem Pointer to the element
    */
-  void init_fe(const Elem * elem) {
+  void init_fe(const Elem *elem) {
 
     d_fe->reinit(elem);
 
     d_Fe.resize(d_n_dofs);
     d_Ke.resize(d_n_dofs, d_n_dofs);
 
-
     if (d_num_vars > 1)
-      for (unsigned int i=0; i<d_num_vars; i++) {
+      for (unsigned int i = 0; i < d_num_vars; i++) {
 
         d_Fe_var[i].reposition(i * d_n_dofs_var, d_n_dofs_var);
 
@@ -86,21 +84,21 @@ public:
       }
   }
 
-    /*!
-     * @brief Initializes the fe and local matrix and vector
-     *
-     * @param elem Pointer to the element
-     */
-    void init_face_fe(const Elem * elem, unsigned short side) {
-        d_fe_face->reinit(elem, side);
-    }
+  /*!
+   * @brief Initializes the fe and local matrix and vector
+   *
+   * @param elem Pointer to the element
+   */
+  void init_face_fe(const Elem *elem, unsigned short side) {
+    d_fe_face->reinit(elem, side);
+  }
 
   /*!
    * @brief Initializes the dof state with given element
    *
    * @param elem Pointer to the element
    */
-  void init_dof(const Elem * elem) {
+  void init_dof(const Elem *elem) {
 
     d_dof_map_sys.dof_indices(elem, d_dof_indices_sys);
     d_n_dofs = d_dof_indices_sys.size();
@@ -108,7 +106,8 @@ public:
 
     if (d_num_vars > 1) {
       for (unsigned int var = 0; var < d_num_vars; var++)
-        d_dof_map_sys.dof_indices(elem, d_dof_indices_sys_var[var], d_var_id[var]);
+        d_dof_map_sys.dof_indices(elem, d_dof_indices_sys_var[var],
+                                  d_var_id[var]);
 
       d_n_dofs_var = d_dof_indices_sys_var[0].size();
     }
@@ -121,11 +120,12 @@ public:
    *
    * @param elem Pointer to the element
    */
-  void init_var_dof(const Elem * elem) {
+  void init_var_dof(const Elem *elem) {
 
     d_dof_map_sys.dof_indices(elem, d_dof_indices_sys);
     for (unsigned int var = 0; var < d_num_vars; var++)
-      d_dof_map_sys.dof_indices(elem, d_dof_indices_sys_var[var], d_var_id[var]);
+      d_dof_map_sys.dof_indices(elem, d_dof_indices_sys_var[var],
+                                d_var_id[var]);
 
     d_n_dofs = d_dof_indices_sys.size();
     d_n_dofs_var = d_dof_indices_sys_var[0].size();
@@ -139,7 +139,7 @@ public:
    * @param elem Pointer to the element
    * @param dof_indices_sys Dof indices vector
    */
-  void init_dof(const Elem * elem, std::vector<unsigned int> &dof_indices_sys) {
+  void init_dof(const Elem *elem, std::vector<unsigned int> &dof_indices_sys) {
 
     d_dof_map_sys.dof_indices(elem, dof_indices_sys);
   }
@@ -155,9 +155,9 @@ public:
    * @param dof_indices_sys Dof indices vector
    * @param dof_indices_sys_var Vector of vector of dof indices
    */
-  void init_var_dof(const Elem *elem, std::vector<unsigned int>
-      &dof_indices_sys,
-                std::vector<std::vector<unsigned int>> &dof_indices_sys_var) {
+  void
+  init_var_dof(const Elem *elem, std::vector<unsigned int> &dof_indices_sys,
+               std::vector<std::vector<unsigned int>> &dof_indices_sys_var) {
 
     d_dof_map_sys.dof_indices(elem, dof_indices_sys);
     for (unsigned int var = 0; var < d_num_vars; var++)
@@ -187,7 +187,7 @@ public:
    * @return id Global dof id
    */
   unsigned int get_var_global_dof_id(const unsigned int &local_dof_id,
-                                 const unsigned int &local_var_id) {
+                                     const unsigned int &local_var_id) {
     return d_dof_indices_sys_var[local_var_id][local_dof_id];
   }
 
@@ -212,8 +212,9 @@ public:
    * @return solution Solution at the given dof
    */
   double get_current_sol_var(const unsigned int &local_dof_id,
-                         const unsigned int &local_var_id) {
-    return d_sys.current_solution(d_dof_indices_sys_var[local_var_id][local_dof_id]);
+                             const unsigned int &local_var_id) {
+    return d_sys.current_solution(
+        d_dof_indices_sys_var[local_var_id][local_dof_id]);
   }
 
   /*!
@@ -243,10 +244,11 @@ public:
    * @param dof_indices_sys_var Vector of Dof indices vector
    * @return solution Solution at the given dof
    */
-  double get_current_sol_var(const unsigned int &local_dof_id,
-                         const unsigned int &local_var_id,
-                         const std::vector<std::vector<unsigned int>> &dof_indices_sys_var) {
-    return d_sys.current_solution(dof_indices_sys_var[local_var_id][local_dof_id]);
+  double get_current_sol_var(
+      const unsigned int &local_dof_id, const unsigned int &local_var_id,
+      const std::vector<std::vector<unsigned int>> &dof_indices_sys_var) {
+    return d_sys.current_solution(
+        dof_indices_sys_var[local_var_id][local_dof_id]);
   }
 
   /*!
@@ -270,8 +272,9 @@ public:
    * @return solution Solution at the given dof
    */
   double get_old_sol_var(const unsigned int &local_dof_id,
-                             const unsigned int &local_var_id) {
-    return d_sys.old_solution(d_dof_indices_sys_var[local_var_id][local_dof_id]);
+                         const unsigned int &local_var_id) {
+    return d_sys.old_solution(
+        d_dof_indices_sys_var[local_var_id][local_dof_id]);
   }
 
   /*!
@@ -285,7 +288,7 @@ public:
    * @return solution Solution at the given dof
    */
   double get_old_sol(const unsigned int &local_dof_id,
-                         const std::vector<unsigned int> &dof_indices_sys) {
+                     const std::vector<unsigned int> &dof_indices_sys) {
     return d_sys.old_solution(dof_indices_sys[local_dof_id]);
   }
 
@@ -301,15 +304,169 @@ public:
    * @param dof_indices_sys_var Vector of Dof indices vector
    * @return solution Solution at the given dof
    */
-  double get_old_sol_var(const unsigned int &local_dof_id,
-                         const unsigned int &local_var_id,
-                         const std::vector<std::vector<unsigned int>> &dof_indices_sys_var) {
+  double get_old_sol_var(
+      const unsigned int &local_dof_id, const unsigned int &local_var_id,
+      const std::vector<std::vector<unsigned int>> &dof_indices_sys_var) {
     return d_sys.old_solution(dof_indices_sys_var[local_var_id][local_dof_id]);
   }
 
+  /*!
+   * @brief Set element solution in Libmesh system
+   *
+   * @param sol Solution vector
+   * @param scale Factor if any
+   */
+  void set_elem_sol(const std::vector<double> &sol, double scale = 1.) {
+
+    // Looping through elements
+    for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
+
+      init_dof(elem);
+      d_sys.solution->set(get_global_dof_id(0), scale * sol[elem->id()]);
+    }
+
+    d_sys.solution->close();
+    d_sys.update();
+  }
+
+  /*!
+   * @brief Get element solution from Libmesh system
+   *
+   * @param sol Solution vector where we write the solution
+   * @param scale Factor if any
+   */
+  void get_elem_sol(std::vector<double> &sol, double scale = 1.) {
+
+    if (sol.size() < d_mesh.n_elem())
+      sol = std::vector<double>(d_mesh.n_elem(), 0.);
+
+    // Looping through elements
+    for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
+
+      init_dof(elem);
+      sol[elem->id()] = scale * get_current_sol(0);
+    }
+  }
+
+  /*!
+   * @brief Initializes localized solution vector
+   *
+   * @param comm Reference to comm object
+   */
+  void init_localized_sol(const Parallel::Communicator &comm) {
+    d_localized_sol = NumericVector<Number>::build(comm);
+    d_localized_sol->init(d_sys.solution->size(), false, SERIAL);
+  }
+
+  /*!
+   * @brief Localize the solution where the entries are number by the element id
+   *
+   * Here the fields are assumed to be constant in each element
+   *
+   * @param localize_sol Vector where solution are arranged element wise
+   * @param var_ids Ids of variable for which we build the solutions
+   * @param resize_vec Set to true to resize the vector
+   */
+  void localize_solution_with_elem_id_numbering_const_elem(
+      std::vector<double> &localize_sol,
+      std::vector<unsigned int> var_ids = {0}, bool resize_vec = true) {
+
+    // gather solution in all processors
+    // sys.d_sys.current_local_solution->localize(collect_sol);
+    d_sys.solution->localize(*d_localized_sol);
+
+    // check if we need to resize the vector
+    auto num_vars = var_ids.size();
+    if (localize_sol.size() != d_mesh.n_elem() * num_vars) {
+      if (resize_vec)
+        localize_sol.resize(d_mesh.n_elem() * num_vars);
+      else
+        libmesh_error_msg(
+            "localize_sol size should match collect_sol size for system " +
+            d_sys_name);
+    }
+
+    // check if system has only 1 variable
+    bool has_multiple_vars = d_num_vars > 1;
+    if (!has_multiple_vars and (var_ids.size() > 1 or var_ids[0] != 0))
+      libmesh_error_msg("Invalid var ids to collect and localize solution");
+
+    for (const auto &elem : d_mesh.active_element_ptr_range()) {
+
+      init_dof(elem);
+      int counter = 0;
+      for (auto var : var_ids) {
+
+        // compute value at center
+        auto val = 0.;
+        if (has_multiple_vars)
+          val += (*d_localized_sol)(get_var_global_dof_id(0, var));
+        else
+          val += (*d_localized_sol)(get_global_dof_id(0));
+
+        localize_sol[elem->id() * num_vars + counter] = val;
+        counter++;
+      }
+    }
+  }
+
+  /*!
+   * @brief Localize the solution where the entries are number by the element id
+   *
+   * Here the fields are not piecewise constant
+   *
+   * @param localize_sol Vector where solution are arranged element wise
+   * @param var_ids Ids of variable for which we build the solutions
+   * @param resize_vec Set to true to resize the vector
+   */
+  void localize_solution_with_elem_id_numbering_non_const_elem(
+      std::vector<double> &localize_sol,
+      std::vector<unsigned int> var_ids = {0}, bool resize_vec = true) {
+
+    // gather solution in all processors
+    // sys.d_sys.current_local_solution->localize(collect_sol);
+    d_sys.solution->localize(*d_localized_sol);
+
+    // check if we need to resize the vector
+    auto num_vars = var_ids.size();
+    if (localize_sol.size() != d_mesh.n_elem() * num_vars) {
+      if (resize_vec)
+        localize_sol.resize(d_mesh.n_elem() * num_vars);
+      else
+        libmesh_error_msg(
+            "localize_sol size should match collect_sol size for system " +
+            d_sys_name);
+    }
+
+    // check if system has only 1 variable
+    bool has_multiple_vars = d_num_vars > 1;
+    if (!has_multiple_vars and (var_ids.size() > 1 or var_ids[0] != 0))
+      libmesh_error_msg("Invalid var ids to collect and localize solution");
+
+    for (const auto &elem : d_mesh.active_element_ptr_range()) {
+
+      init_dof(elem);
+      int counter = 0;
+      for (auto var : var_ids) {
+
+        // compute value at center
+        auto val = 0.;
+        for (unsigned int l = 0; l < d_phi.size(); l++) {
+          if (has_multiple_vars)
+            val += (*d_localized_sol)(get_var_global_dof_id(l, var));
+          else
+            val += (*d_localized_sol)(get_global_dof_id(l));
+        }
+        val = val / (double(d_phi.size()));
+
+        localize_sol[elem->id() * num_vars + counter] = val;
+
+        counter++;
+      }
+    }
+  }
 
 public:
-
   /*! @brief Name of system */
   std::string d_sys_name;
 
@@ -373,6 +530,9 @@ public:
   /*! @brief Local matrix and vector for multi-variable systems */
   std::vector<std::vector<DenseSubMatrix<Number>>> d_Ke_var;
   std::vector<DenseSubVector<Number>> d_Fe_var;
+
+  /*! @brief Localized solution vector */
+  std::unique_ptr<NumericVector<Number>> d_localized_sol;
 };
 
 } // namespace util
