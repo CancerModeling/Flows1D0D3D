@@ -179,13 +179,13 @@ public:
   gmm::row_matrix<gmm::wsvector<double>> A_VGM;
 
   /*! @brief System matrix for vessel nutrient */
-  gmm::row_matrix<gmm::wsvector<double>> Ac_VGM;
+  //gmm::row_matrix<gmm::wsvector<double>> Ac_VGM;
 
   /*! @brief System matrix for 3D1D pressure flow model*/
   gmm::row_matrix<gmm::wsvector<double>> A_flow_3D1D;
 
   /*! @brief System matrix for 3D1D nutrient model*/
-  gmm::row_matrix<gmm::wsvector<double>> A_nut_3D1D;
+  //gmm::row_matrix<gmm::wsvector<double>> A_nut_3D1D;
 
   /*! @brief System force for vessel pressure */
   std::vector<double> b;

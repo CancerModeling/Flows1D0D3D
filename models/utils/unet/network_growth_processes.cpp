@@ -173,8 +173,8 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
     C_v.resize(numberOfNodes);
     C_v_old.resize(numberOfNodes);
 
-    Ac_VGM =
-        gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
+    //Ac_VGM =
+    //    gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
     b_c.resize(numberOfNodes);
   }
 
@@ -184,8 +184,8 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
         N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
     b_flow_3D1D.resize(N_tot_3D + numberOfNodes);
 
-    A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
-        N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
+    //A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
+    //    N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
     b_nut_3D1D.resize(N_tot_3D + numberOfNodes);
 
     // resize function does not change the value of existing elements

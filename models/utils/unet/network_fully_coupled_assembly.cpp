@@ -225,12 +225,12 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
   const auto &mesh = d_model_p->get_mesh();
 
   int numberOfNodes = VGM.getNumberOfNodes();
-  if (A_nut_3D1D.nrows() != N_tot_3D + numberOfNodes)
-    A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
+  if (A_flow_3D1D.nrows() != N_tot_3D + numberOfNodes)
+    A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
         N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
 
-  for (int i = 0; i < A_nut_3D1D.nrows(); i++)
-    A_nut_3D1D[i].clear();
+  for (int i = 0; i < A_flow_3D1D.nrows(); i++)
+    A_flow_3D1D[i].clear();
 
   if (b_nut_3D1D.size() != N_tot_3D + numberOfNodes)
     b_nut_3D1D.resize(N_tot_3D + numberOfNodes);
@@ -307,7 +307,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
         index = i + j * N_3D + k * N_3D * N_3D;
 
-        A_nut_3D1D(index, index) += vol_elem;
+        A_flow_3D1D(index, index) += vol_elem;
         b_nut_3D1D[index] += vol_elem * phi_sigma_old[index];
 
         // Get element center
@@ -327,13 +327,13 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
             // upwinding
             if (v > 0.0)
-              A_nut_3D1D(index, index) += dt * area_face * v;
+              A_flow_3D1D(index, index) += dt * area_face * v;
             else
-              A_nut_3D1D(index, index_neighbor) += dt * area_face * v;
+              A_flow_3D1D(index, index_neighbor) += dt * area_face * v;
 
             // diffusion term
-            A_nut_3D1D(index, index) += dt * D_v_3D * area_face_by_h;
-            A_nut_3D1D(index, index_neighbor) +=
+            A_flow_3D1D(index, index) += dt * D_v_3D * area_face_by_h;
+            A_flow_3D1D(index, index_neighbor) +=
                 -dt * D_v_3D * area_face_by_h;
           }
         } // loop over faces
@@ -375,7 +375,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
                      (tum_grad * tum_sys.d_qface_normals[qp]);
 
               // goes to the dof of element (not the neighbor)
-              A_nut_3D1D(index, index) += v_mu;
+              A_flow_3D1D(index, index) += v_mu;
             } // loop over quadrature points on face
 
           } // elem neighbor is not null
@@ -448,7 +448,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
           b_nut_3D1D[index] += compute_rhs;
 
           // add matrix
-          A_nut_3D1D(index, index) += compute_mat;
+          A_flow_3D1D(index, index) += compute_mat;
 
         } // loop over quad points
       }   // z-loop
@@ -497,7 +497,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
             pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
 
           // mass matrix
-          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += length;
+          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += length;
 
           if (p_v < input.d_identify_vein_pres)
             phi_sigma_boundary = input.d_in_nutrient_vein;
@@ -505,9 +505,9 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
             phi_sigma_boundary = input.d_in_nutrient;
 
           // diffusion and advection
-          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
+          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
               -dt * D_v / length;
-          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
               dt * v_interface + 2.0 * dt * D_v / length;
 
           // old time step, advection, diffusion flux due to boundary condition
@@ -520,12 +520,12 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
         else {
 
           // mass matrix
-          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += length;
+          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += length;
 
           // diffusion and advection
-          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
+          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
               dt * v_interface - dt * D_v / length;
-          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
               -dt * v_interface + dt * D_v / length;
 
           // old time step term
@@ -536,20 +536,20 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
       else {
 
         // mass matrix
-        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += 0.5 * length;
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += 0.5 * length;
 
         // advection term
         if (v_interface > 0.0)
-          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
               dt * v_interface;
         else
-          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
+          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
               dt * v_interface;
 
         // diffusion term
-        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
             dt * D_v / length;
-        A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
             -dt * D_v / length;
 
         // from previous time step
@@ -562,7 +562,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
       //  This term is not considered previously when dirichlet node with vel v > 0
       //  where as the osmotic term is considered. This goes to diagonal and so
       //  does osmotic term when p_v - p_t > 0.
-      A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+      A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
           dt * L_s * surface_area;
 
       // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
@@ -574,25 +574,25 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
           continue;
 
         // A_3D1D
-        A_nut_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) +=
+        A_flow_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) +=
             -dt * L_s * surface_area * weights[j];
 
         // A_3D3D
-        A_nut_3D1D(id_3D_elements[j], id_3D_elements[j]) +=
+        A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) +=
             dt * L_s * surface_area * weights[j];
 
         // A_1D3D
-        A_nut_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) +=
+        A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) +=
             -dt * L_s * surface_area * weights[j];
 
         // osmotic reflection term
-        p_t = P_3D1D[id_3D_elements[j]];
+        p_t = P_3D[id_3D_elements[j]];
 
         if (p_v - p_t > 0.0) {
 
           // 1D equation
           // -2pi R (p_v - p_t) phi_v term in right hand side of 1D equation
-          A_nut_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
               dt * (1. - osmotic_sigma) * L_p * surface_area * weights[j] *
               (p_v - p_t);
         } else {
@@ -600,7 +600,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
           // 3D equation
           // 2pi R (p_v - p_t) phi_sigma term in right hand side of 3D
           // equation
-          A_nut_3D1D(id_3D_elements[j], id_3D_elements[j]) +=
+          A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) +=
               -dt * (1. - osmotic_sigma) * L_p * surface_area * weights[j] *
               (p_v - p_t);
         }
