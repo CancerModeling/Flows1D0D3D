@@ -12,13 +12,13 @@ namespace {
 double get_exact_source(const Point &p) {
 
   return std::sin(2. * M_PI * p(0)) * std::sin(2. * M_PI * p(1)) *
-         std::sin(2.* M_PI * p(2));
+         std::sin(2. * M_PI * p(2));
 }
-}
+} // namespace
 
 Number netfvfe::initial_condition_pres(const Point &p, const Parameters &es,
-                                      const std::string &system_name,
-                                      const std::string &var_name) {
+                                       const std::string &system_name,
+                                       const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Pressure");
 
@@ -79,7 +79,7 @@ void netfvfe::PressureAssembly::assemble_1d_coupling() {
     const auto &network = d_model_p->get_network();
     auto pointer = network.get_mesh().getHead();
 
-    DenseMatrix<Number> Ke(1,1);
+    DenseMatrix<Number> Ke(1, 1);
     DenseVector<Number> Fe(1);
 
     double h_3D = network.h_3D;
@@ -117,9 +117,9 @@ void netfvfe::PressureAssembly::assemble_1d_coupling() {
         // Surface area of cylinder
         double surface_area = 2.0 * M_PI * length_edge * radius;
 
-        util::unet::determineWeightsAndIds(N_s, N_theta, N_3D, coord, coord_neighbor,
-                               radius, h_3D, length_edge, weights,
-                               id_3D_elements);
+        util::unet::determineWeightsAndIds(
+            N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D,
+            length_edge, weights, id_3D_elements, d_mesh, true);
 
         // Add coupling entry
         int numberOfElements = id_3D_elements.size();
@@ -147,7 +147,7 @@ void netfvfe::PressureAssembly::assemble_1d_coupling() {
             }
           }
         } // loop over 3D elements
-      } // loop over neighbor segments
+      }   // loop over neighbor segments
 
       pointer = pointer->global_successor;
     } // loop over vertex in 1-d
@@ -187,7 +187,7 @@ void netfvfe::PressureAssembly::assemble_face() {
   Gradient tum_grad = 0.;
 
   // Looping through elements
-  for (const auto & elem : d_mesh.active_local_element_ptr_range()) {
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
     tum.init_dof(elem);
@@ -219,8 +219,7 @@ void netfvfe::PressureAssembly::assemble_face() {
                             deck.d_tissue_flow_coeff * deck.d_face_by_h;
 
         // diffusion
-        util::add_unique(get_global_dof_id(0), a_diff, Ke_dof_col,
-                         Ke_val_col);
+        util::add_unique(get_global_dof_id(0), a_diff, Ke_dof_col, Ke_val_col);
         util::add_unique(dof_indices_pres_neigh[0], -a_diff, Ke_dof_col,
                          Ke_val_col);
 

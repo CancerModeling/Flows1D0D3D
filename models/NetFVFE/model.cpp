@@ -229,6 +229,11 @@ netfvfe::Model::Model(
       d_grad_taf_assembly(this, "TAF_Gradient", d_mesh, grad_taf),
       d_vel_assembly(this, "Velocity", d_mesh, vel), d_ghosting_fv(d_mesh) {
 
+  // we require pressure, nutrient, and TAF localized to each processor
+  d_pres_assembly.init_localized_sol(*d_comm_p);
+  d_nut_assembly.init_localized_sol(*d_comm_p);
+  d_taf_assembly.init_localized_sol(*d_comm_p);
+
   d_nut_id = d_nut_assembly.d_sys.number();
   d_tum_id = d_tum_assembly.d_sys.number();
   d_hyp_id = d_hyp_assembly.d_sys.number();
@@ -425,6 +430,8 @@ void netfvfe::Model::run() {
     if (d_step % d_input.d_network_update_interval == 0)
       d_is_growth_step = true;
 
+    d_network.d_update_number += 1;
+
     oss << "Time step: " << d_step << ", time: " << d_time << "\n";
     d_log(oss, "integrate");
     d_log(" \n", "integrate");
@@ -504,9 +511,8 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
   // header
   // pressure nutrient taf
   //if (d_comm_p->size() > 1)
-    util::localize_solution_with_elem_id_numbering_non_const_elem(
-      d_taf_assembly, d_network.localized_taf_3D, d_network.phi_TAF, {0},
-      false);
+  d_taf_assembly.localize_solution_with_elem_id_numbering_non_const_elem(
+      d_network.phi_TAF_3D, {0}, false);
 
   if (d_comm_p->rank() == 0 and d_step > 1) {
 
@@ -538,7 +544,7 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
 
         pres_val = d_network.P_3D[i];
         nut_val = d_network.phi_sigma_3D[i];
-        taf_val = d_network.phi_TAF[i];
+        taf_val = d_network.phi_TAF_3D[i];
       }
 
       of << pres_val << " " << nut_val << " " << taf_val << "\n";
