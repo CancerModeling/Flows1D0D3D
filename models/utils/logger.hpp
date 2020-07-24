@@ -125,7 +125,7 @@ public:
     d_sys_assembly_time = std::vector<TimePair>(d_n, TimePair());
   }
 
-  void ready_new_step(int step) {
+  void ready_new_step(int step, double cur_time = 0.) {
 
     // check
     if (d_cur_step >= step or (d_cur_step >= 0 and d_cur_step < step - 1)) {
@@ -137,7 +137,7 @@ public:
                         " step in model: " + std::to_string(step));
     }
 
-    d_times.push_back(0.);
+    d_times.push_back(cur_time);
     d_cur_step = int(d_times.size()) - 1;
 
     d_solve_time.emplace_back();
@@ -194,6 +194,15 @@ public:
   void add_nonlin_iter(const int &i) {d_nonlinear_iters[d_cur_step] = i;}
 
   void add_pres_nonlin_iter(const int &i) {d_pres_nonlinear_iters[d_cur_step] = i;}
+
+  std::vector<float> get_delta_t_vec(const std::vector<TimePair> &list) {
+
+    auto delta_t = std::vector<float>(list.size(), 0.);
+    for (size_t i=0; i<list.size(); i++)
+      delta_t[i] = list[i].time_diff();
+
+    return delta_t;
+  }
 };
 
 /*!
@@ -256,6 +265,7 @@ public:
 
   // output time step log
   std::string log_ts_base(const int i, const int ns);
+  std::string log_ts_base_final_avg(double sim_time, const int ns);
 
   void log_ts() {
 
@@ -270,6 +280,16 @@ public:
       log(log_ts_base(i, 2), "TS log");
       log(" \n");
     }
+  }
+
+  void log_ts_final(double sim_time) {
+
+    // print to file without any format
+    if (d_comm_p->rank() == 0)
+      d_ts_file << log_ts_base_final_avg(sim_time, 0);
+
+    // print to screen with format
+    log(log_ts_base_final_avg(sim_time, 2), "TS log");
   }
 
   void log_ts_all() {

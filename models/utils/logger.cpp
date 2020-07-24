@@ -99,6 +99,32 @@ std::string helper2(int width, int s_width, std::string
   return std::string(pad1, ' ') + tag + std::string(pad2, ' ');
 }
 
+template <class T>
+inline T get_avg(const std::vector<T> &list) {
+
+  if (list.size() == 0)
+    return 0.;
+
+  T avg = 0.;
+  for (const auto &l : list)
+    avg += l;
+  avg = avg / (T(list.size()));
+
+  return avg;
+}
+
+template <class T>
+inline T get_total(const std::vector<T> &list) {
+
+  if (list.size() == 0)
+    return 0.;
+
+  T avg = 0.;
+  for (const auto &l : list)
+    avg += l;
+  return avg;
+}
+
 } // namespace
 
 util::Logger::Logger(const std::string &log_file, Parallel::Communicator *comm,
@@ -161,7 +187,7 @@ std::string util::Logger::log_ts_base(const int i, const int ns) {
     // initial stuff
     if (i == 0) {
       oss << spS << "# TimeStepLog\n";
-      oss << spS << "Setup_Time " << d_setup_time.time_diff() << "\n";
+      oss << spS << "SetupTime " << d_setup_time.time_diff() << "\n";
 
       oss << spS << "#\n";
       oss << spS << "SysNames " << d_n << "\n";
@@ -214,6 +240,100 @@ std::string util::Logger::log_ts_base(const int i, const int ns) {
       else
         oss << "\n";
     }
+  }
+
+  return oss.str();
+}
+
+std::string util::Logger::log_ts_base_final_avg(double sim_time, const int ns) {
+
+  std::ostringstream oss;
+
+  auto spS = util::io::getSpaceS(ns);
+
+  if (d_comm_p->rank() == 0) {
+
+    oss << spS << "#\n";
+
+    // add header for next step
+    oss << spS << "AvgStepLog " << 6 + d_n << "\n";
+    oss << spS << "'T' 'ST' 'PST' 'NETT' 'NLI' 'PNLI' ";
+
+    for (unsigned int j = 0; j < d_n; j++) {
+
+      oss << "'S" + std::to_string(j) + "'";
+
+      if (j < d_sys_solve_time[0].size() - 1)
+        oss << " ";
+      else
+        oss << "\n";
+    }
+
+    // compute avg and write
+
+    oss << spS << get_avg(d_times) << " "
+        << get_avg(get_delta_t_vec(d_solve_time)) << " "
+        << get_avg(get_delta_t_vec(d_pres_solve_time)) << " "
+        << get_avg(get_delta_t_vec(d_update_network_time)) << " "
+        << get_avg(d_nonlinear_iters) << " "
+        << get_avg(d_pres_nonlinear_iters) << " ";
+
+    for (unsigned int j = 0; j < d_sys_solve_time[0].size(); j++) {
+
+      std::vector<float> delta_t;
+      for (auto & i : d_sys_solve_time)
+        delta_t.push_back(i[j].time_diff());
+
+      oss << get_avg(delta_t);
+
+      if (j < d_sys_solve_time[0].size() - 1)
+        oss << " ";
+      else
+        oss << "\n";
+    }
+
+    oss << spS << "#\n";
+
+    // add header for next step
+    oss << spS << "TotalStepLog " << 6 + d_n << "\n";
+    oss << spS << "'T' 'ST' 'PST' 'NETT' 'NLI' 'PNLI' ";
+
+    for (unsigned int j = 0; j < d_n; j++) {
+
+      oss << "'S" + std::to_string(j) + "'";
+
+      if (j < d_sys_solve_time[0].size() - 1)
+        oss << " ";
+      else
+        oss << "\n";
+    }
+
+    // compute avg and write
+
+    oss << spS << get_total(d_times) << " "
+        << get_total(get_delta_t_vec(d_solve_time)) << " "
+        << get_total(get_delta_t_vec(d_pres_solve_time)) << " "
+        << get_total(get_delta_t_vec(d_update_network_time)) << " "
+        << get_total(d_nonlinear_iters) << " "
+        << get_total(d_pres_nonlinear_iters) << " ";
+
+    for (unsigned int j = 0; j < d_sys_solve_time[0].size(); j++) {
+
+      std::vector<float> delta_t;
+      for (auto & i : d_sys_solve_time)
+        delta_t.push_back(i[j].time_diff());
+
+      oss << get_total(delta_t);
+
+      if (j < d_sys_solve_time[0].size() - 1)
+        oss << " ";
+      else
+        oss << "\n";
+    }
+
+    // write total sim time
+    oss << "#\n";
+    oss << "FinalSimTime " << sim_time << "\n";
   }
 
   return oss.str();

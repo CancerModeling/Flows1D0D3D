@@ -420,6 +420,20 @@ inline void clear_oss(std::ostringstream &oss) {
   oss.str("");
   oss.clear();
 }
+
+template <class T>
+inline T get_avg(const std::vector<T> &list) {
+
+  if (list.size() == 0)
+    return 0.;
+
+  T avg = 0.;
+  for (const auto &l : list)
+    avg += l;
+  avg = avg / (double(list.size()));
+
+  return avg;
+}
 } // namespace util
 
 #endif // UTILS_H
