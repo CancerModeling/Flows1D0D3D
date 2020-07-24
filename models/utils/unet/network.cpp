@@ -76,8 +76,8 @@ void util::unet::Network::create_initial_network() {
     P_v = std::vector<double>(numberOfNodes, 0.);
 
     // 1D nutrient: matrix, rhs, and solution
-    Ac_VGM =
-        gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
+    //Ac_VGM =
+    //    gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
     b_c = std::vector<double>(numberOfNodes, 0.0);
 
     C_v = std::vector<double>(numberOfNodes, 0.0);
@@ -90,8 +90,8 @@ void util::unet::Network::create_initial_network() {
 
     P_3D1D = std::vector<double>(N_tot_3D + numberOfNodes, 0.0);
 
-    A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
-        N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
+    //A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
+    //    N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
     b_nut_3D1D = std::vector<double>(N_tot_3D + numberOfNodes, 0.0);
 
     phi_sigma = std::vector<double>(N_tot_3D + numberOfNodes, 0.0);
@@ -231,9 +231,9 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
   // gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D,
   // 70, 1e-8);
 
-  gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D);
+  gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
 
-  gmm::gmres(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, restart, iter);
+  gmm::gmres(A_flow_3D1D, phi_sigma, b_nut_3D1D, PR, restart, iter);
 
   // gmm::bicgstab(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, iter);
 
@@ -335,11 +335,11 @@ void util::unet::Network::solveVGMforNutrient(BaseAssembly &pres_sys,
     C_v = b_c;
 
   // get preconditioner
-  gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> P(Ac_VGM, 50, 1e-6);
+  gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> P(A_VGM, 50, 1e-6);
 
   // solve
   gmm::iteration iter(5.0e-11);
-  gmm::bicgstab(Ac_VGM, C_v, b_c, P, iter);
+  gmm::bicgstab(A_VGM, C_v, b_c, P, iter);
 
   auto pointer = VGM.getHead();
 

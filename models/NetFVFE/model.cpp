@@ -229,11 +229,6 @@ netfvfe::Model::Model(
       d_grad_taf_assembly(this, "TAF_Gradient", d_mesh, grad_taf),
       d_vel_assembly(this, "Velocity", d_mesh, vel), d_ghosting_fv(d_mesh) {
 
-  // we require pressure, nutrient, and TAF localized to each processor
-  d_pres_assembly.init_localized_sol(*d_comm_p);
-  d_nut_assembly.init_localized_sol(*d_comm_p);
-  d_taf_assembly.init_localized_sol(*d_comm_p);
-
   d_nut_id = d_nut_assembly.d_sys.number();
   d_tum_id = d_tum_assembly.d_sys.number();
   d_hyp_id = d_hyp_assembly.d_sys.number();
@@ -333,6 +328,11 @@ netfvfe::Model::Model(
   d_log(oss, "init");
   d_network.create_initial_network();
   d_log(d_delayed_msg, "debug");
+
+  // we require pressure, nutrient, and TAF localized to each processor
+  d_pres_assembly.init_localized_sol(*d_comm_p);
+  d_nut_assembly.init_localized_sol(*d_comm_p);
+  d_taf_assembly.init_localized_sol(*d_comm_p);
 
   // initialize qoi data
   d_qoi = util::QoIVec({"tumor_mass", "hypoxic_mass", "necrotic_mass",

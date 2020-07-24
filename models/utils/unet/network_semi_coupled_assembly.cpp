@@ -112,12 +112,12 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
   const double factor_c = input.d_assembly_factor_c_t;
 
   int numberOfNodes = VGM.getNumberOfNodes();
-  if (Ac_VGM.nrows() != numberOfNodes)
-    Ac_VGM =
+  if (A_VGM.nrows() != numberOfNodes)
+    A_VGM =
         gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
 
-  for (unsigned int i = 0; i < Ac_VGM.nrows(); i++)
-      Ac_VGM[i].clear();
+  for (unsigned int i = 0; i < A_VGM.nrows(); i++)
+      A_VGM[i].clear();
 
   if (b_c.size() != numberOfNodes)
     b_c.resize(numberOfNodes);
@@ -189,8 +189,8 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
             phi_sigma_boundary = input.d_in_nutrient;
 
           // diffusion and advection
-          Ac_VGM(indexOfNode, indexNeighbor) += -factor_c * dt * D_v / length;
-          Ac_VGM(indexOfNode, indexOfNode) +=
+          A_VGM(indexOfNode, indexNeighbor) += -factor_c * dt * D_v / length;
+          A_VGM(indexOfNode, indexOfNode) +=
               factor_c * (dt * v_interface + 2.0 * dt * D_v / length);
 
           // advection, diffusion flux due to boundary condition
@@ -201,9 +201,9 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
         } else {
 
           // diffusion and advection
-          Ac_VGM(indexOfNode, indexNeighbor) +=
+          A_VGM(indexOfNode, indexNeighbor) +=
               factor_c * (dt * v_interface - dt * D_v / length);
-          Ac_VGM(indexOfNode, indexOfNode) +=
+          A_VGM(indexOfNode, indexOfNode) +=
               -factor_c * dt * v_interface + dt * D_v / length;
         }
       } // if numberOfNeighbors = 1
@@ -211,23 +211,23 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
 
         // advection term
         if (v_interface > 0.0)
-          Ac_VGM(indexOfNode, indexOfNode) += factor_c * dt * v_interface;
+          A_VGM(indexOfNode, indexOfNode) += factor_c * dt * v_interface;
         else
-          Ac_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
+          A_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
 
         // diffusion term
-        Ac_VGM(indexOfNode, indexOfNode) += factor_c * dt * D_v / length;
-        Ac_VGM(indexOfNode, indexNeighbor) += -factor_c * dt * D_v / length;
+        A_VGM(indexOfNode, indexOfNode) += factor_c * dt * D_v / length;
+        A_VGM(indexOfNode, indexNeighbor) += -factor_c * dt * D_v / length;
       } // if numberOfNeighbors > 1
 
       // mass matrix
-      Ac_VGM(indexOfNode, indexOfNode) += factor_c * 0.5 * length;
+      A_VGM(indexOfNode, indexOfNode) += factor_c * 0.5 * length;
 
       // old time step term
       b_c[indexOfNode] += factor_c * 0.5 * length * C_v_old[indexOfNode];
 
       // 1D part of the coupling
-      Ac_VGM(indexOfNode, indexOfNode) +=
+      A_VGM(indexOfNode, indexOfNode) +=
           factor_c * dt * L_s * surface_area;
 
       // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
@@ -243,13 +243,13 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
             factor_c * dt * L_s * surface_area * weights[j] * c_t;
 
         // osmotic reflection term
-        p_t = P_3D1D[id_3D_elements[j]];
+        p_t = P_3D[id_3D_elements[j]];
 
         if (p_v - p_t > 0.0) {
 
           // 1D equation
           // -2pi R (p_v - p_t) phi_v term in right hand side of 1D equation
-          Ac_VGM(indexOfNode, indexOfNode) +=
+          A_VGM(indexOfNode, indexOfNode) +=
               factor_c * dt * (1. - osmotic_sigma) * L_p * surface_area *
               weights[j] * (p_v - p_t);
         } else {
