@@ -70,6 +70,8 @@ void netfvfe::model_setup_run(int argc, char **argv,
                              const std::string &filename,
                              Parallel::Communicator *comm) {
 
+  auto sim_begin = steady_clock::now();
+
   reset_clock();
 
   // init seed for random number
@@ -198,6 +200,9 @@ void netfvfe::model_setup_run(int argc, char **argv,
 
   // run model
   model.run();
+
+  model.d_log.log_ts_final(
+      util::time_diff(sim_begin, steady_clock::now()));
 }
 
 // Model class
@@ -406,7 +411,7 @@ void netfvfe::Model::run() {
     d_time += d_dt;
 
     // init ts log
-    d_log.ready_new_step(int(d_step) - 1);
+    d_log.ready_new_step(int(d_step) - 1, d_time);
     auto solve_clock = steady_clock::now();
 
     // check if this is output step
