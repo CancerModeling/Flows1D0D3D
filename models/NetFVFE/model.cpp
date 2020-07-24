@@ -334,10 +334,6 @@ netfvfe::Model::Model(
   d_nut_assembly.init_localized_sol(*d_comm_p);
   d_taf_assembly.init_localized_sol(*d_comm_p);
 
-  // initialize qoi data
-  d_qoi = util::QoIVec({"tumor_mass", "hypoxic_mass", "necrotic_mass",
-                        "tumor_l2"});
-
   // save setup end time
   clock_end = steady_clock::now();
   d_log.d_setup_time = util::TimePair(clock_begin, clock_end);
@@ -555,44 +551,56 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
 
 void netfvfe::Model::compute_qoi() {
 
+  // initialize qoi data
+  int N = 11;
+  std::vector<double> qoi(N, 0.);
+  if (d_step <= 1)
+    d_qoi = util::QoIVec({"tumor_mass", "hypoxic_mass", "necrotic_mass",
+                        "tumor_l2",
+                        "r_v_mean", "r_v_std",
+                        "l_v_mean", "l_v_std",
+                        "l_v_total",
+                        "vessel_vol", "vessel_density"});
+
   // integral of total tumor
   double value_mass = 0.;
   double total_mass = 0.;
   util::computeMass(d_tum_sys, "Tumor", "tumor", value_mass);
   MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-
-  // add to qoi data
-  double tumor_mass = total_mass;
+  qoi[0] = total_mass;
 
   // integral of hypoxic
   value_mass = 0.; total_mass = 0.;
   util::computeMass(d_tum_sys, "Hypoxic", "hypoxic", value_mass);
   MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-
-  // add to qoi data
-  double hypoxic_mass = total_mass;
+  qoi[1] = total_mass;
 
   // integral of necrotic
   value_mass = 0.; total_mass = 0.;
   util::computeMass(d_tum_sys, "Necrotic", "necrotic", value_mass);
   MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-
-  // add to qoi data
-  double necrotic_mass = total_mass;
+  qoi[2] = total_mass;
 
   // L2 norm of total tumor
   value_mass = 0.; total_mass = 0.;
-  value_mass = d_tum_assembly.d_sys.solution->l2_norm();
-  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE,
-                MPI_SUM, MPI_COMM_WORLD);
+  value_mass = std::pow(d_input.d_mesh_size, 1.5) * d_tum_assembly.d_sys.solution->l2_norm();
+  //MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE,
+  //              MPI_SUM, MPI_COMM_WORLD);
+  qoi[3] = value_mass;
 
-  // add to qoi data
-  double tumor_L2_norm = total_mass;
+  //d_qoi.add({tumor_mass, hypoxic_mass, necrotic_mass, tumor_L2_norm});
 
-  d_qoi.add({tumor_mass, hypoxic_mass, necrotic_mass, tumor_L2_norm});
+  // get other qoi such as radius mean, radius std dev,
+  // length mean, length std dev, total length, total vessel vol, total domain vol
+  auto vessel_qoi = d_network.compute_qoi();
+  unsigned int i = 4;
+  for (const auto &q: vessel_qoi)
+    qoi[i++] = q;
+
+  d_qoi.add(qoi);
 }
 
 void netfvfe::Model::solve_system() {

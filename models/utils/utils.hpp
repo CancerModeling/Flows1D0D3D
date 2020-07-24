@@ -425,7 +425,7 @@ template <class T>
 inline T get_avg(const std::vector<T> &list) {
 
   if (list.size() == 0)
-    return 0.;
+    return T(0);
 
   T avg = 0.;
   for (const auto &l : list)
@@ -433,6 +433,37 @@ inline T get_avg(const std::vector<T> &list) {
   avg = avg / (double(list.size()));
 
   return avg;
+}
+
+template <class T>
+inline T get_std_dev(const std::vector<T> &list, const T mean) {
+
+  if (list.size() == 0)
+    return T(0);
+
+  T dev = 0.;
+  for (const auto &l : list)
+    dev += (l - mean) * (l - mean);
+  dev = dev / (T(list.size()));
+
+  return std::sqrt(dev);
+}
+
+template <class T>
+inline T get_std_dev(const std::vector<T> &list) {
+
+  if (list.size() == 0)
+    return T(0);
+
+  // get mean
+  auto mean = get_avg(list);
+
+  T dev = 0.;
+  for (const auto &l : list)
+    dev += (l - mean) * (l - mean);
+  dev = dev / (T(list.size()));
+
+  return std::sqrt(dev);
 }
 } // namespace util
 
