@@ -430,6 +430,8 @@ void netfvfe::Model::run() {
     if (d_step % d_input.d_network_update_interval == 0)
       d_is_growth_step = true;
 
+    d_network.d_update_number += 1;
+
     oss << "Time step: " << d_step << ", time: " << d_time << "\n";
     d_log(oss, "integrate");
     d_log(" \n", "integrate");
