@@ -131,7 +131,7 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
 
         util::unet::determineWeightsAndIds(
             N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D,
-            length_edge, weights, id_3D_elements);
+            length_edge, weights, id_3D_elements, d_mesh, true);
 
         // Add coupling entry
         int numberOfElements = id_3D_elements.size();

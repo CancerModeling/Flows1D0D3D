@@ -8,12 +8,6 @@
 #include "netUtil.hpp"
 #include "network.hpp"
 
-namespace {
-
-std::ostringstream oss;
-
-} // namespace
-
 void util::unet::Network::readData(
     std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
     std::vector<double> &radii,
