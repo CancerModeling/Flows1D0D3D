@@ -42,8 +42,7 @@ class Network {
 public:
   /*! @brief Constructor */
   Network(util::BaseModel *model)
-      : d_is_network_changed(false), d_model_p(model), d_update_number(0),
-      localized_P_3D(nullptr), localized_nut_3D(nullptr), localized_taf_3D(nullptr), d_coupled_solver(false) {}
+      : d_is_network_changed(false), d_model_p(model), d_update_number(0), d_coupled_solver(false) {}
 
   const util::unet::ListStructure<util::unet::VGNode> &get_mesh() const { return
   VGM; }
@@ -225,14 +224,7 @@ public:
   std::vector<double> phi_sigma_3D;
 
   /*! @brief Current TAF concentration */
-  std::vector<double> phi_TAF;
-
-  /*! @brief Old TAF concentration */
-  std::vector<double> phi_TAF_old;
-
-  std::unique_ptr<NumericVector<Number>> localized_P_3D;
-  std::unique_ptr<NumericVector<Number>> localized_nut_3D;
-  std::unique_ptr<NumericVector<Number>> localized_taf_3D;
+  std::vector<double> phi_TAF_3D;;
 
   double mu;
 
@@ -252,9 +244,14 @@ public:
 
   int N_tot_3D;
 
+  double K_3D;
+  double L_x;
+
   unsigned int d_update_number;
 
   bool d_coupled_solver;
+
+  std::ostringstream oss;
 };
 
 } // namespace unet

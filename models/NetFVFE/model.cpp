@@ -70,6 +70,8 @@ void netfvfe::model_setup_run(int argc, char **argv,
                              const std::string &filename,
                              Parallel::Communicator *comm) {
 
+  auto sim_begin = steady_clock::now();
+
   reset_clock();
 
   // init seed for random number
@@ -198,6 +200,10 @@ void netfvfe::model_setup_run(int argc, char **argv,
 
   // run model
   model.run();
+
+  model.d_log("sim time: " + std::to_string(util::time_diff(
+                                 sim_begin, steady_clock::now())),
+              "TS log");
 }
 
 // Model class
@@ -223,6 +229,11 @@ netfvfe::Model::Model(
       d_pres_assembly(this, "Pressure", d_mesh, pres),
       d_grad_taf_assembly(this, "TAF_Gradient", d_mesh, grad_taf),
       d_vel_assembly(this, "Velocity", d_mesh, vel), d_ghosting_fv(d_mesh) {
+
+  // we require pressure, nutrient, and TAF localized to each processor
+  d_pres_assembly.init_localized_sol(*d_comm_p);
+  d_nut_assembly.init_localized_sol(*d_comm_p);
+  d_taf_assembly.init_localized_sol(*d_comm_p);
 
   d_nut_id = d_nut_assembly.d_sys.number();
   d_tum_id = d_tum_assembly.d_sys.number();
@@ -499,9 +510,8 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
   // header
   // pressure nutrient taf
   //if (d_comm_p->size() > 1)
-    util::localize_solution_with_elem_id_numbering_non_const_elem(
-      d_taf_assembly, d_network.localized_taf_3D, d_network.phi_TAF, {0},
-      false);
+  d_taf_assembly.localize_solution_with_elem_id_numbering_non_const_elem(
+      d_network.phi_TAF_3D, {0}, false);
 
   if (d_comm_p->rank() == 0 and d_step > 1) {
 
@@ -533,7 +543,7 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
 
         pres_val = d_network.P_3D[i];
         nut_val = d_network.phi_sigma_3D[i];
-        taf_val = d_network.phi_TAF[i];
+        taf_val = d_network.phi_TAF_3D[i];
       }
 
       of << pres_val << " " << nut_val << " " << taf_val << "\n";

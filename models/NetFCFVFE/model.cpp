@@ -69,6 +69,8 @@ void netfcfvfe::model_setup_run(int argc, char **argv,
                              const std::string &filename,
                              Parallel::Communicator *comm) {
 
+  auto sim_begin = steady_clock::now();
+
   reset_clock();
 
   // init seed for random number
@@ -197,6 +199,10 @@ void netfcfvfe::model_setup_run(int argc, char **argv,
 
   // run model
   model.run();
+
+  model.d_log("sim time: " + std::to_string(util::time_diff(
+      sim_begin, steady_clock::now())),
+              "TS log");
 }
 
 // Model class
