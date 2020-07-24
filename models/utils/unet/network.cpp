@@ -393,3 +393,81 @@ double util::unet::Network::getK1D(double s, double L_p, double radius) {
     return (radius * radius * radius * radius * M_PI) / (8.0 * mu);
   }
 }
+
+std::vector<double> util::unet::Network::compute_qoi() {
+
+  // 0 - r_v_mean             1 - r_v_std
+  // 2 - l_v_mean             3 - l_v_std         4 - l_v_total
+  // 5 - vessel_vol           6 - vessel_density
+  auto qoi = std::vector<double>(7, 0.);
+
+  const auto &input = d_model_p->get_input_deck();
+
+  // compute the mean and also store the array for calculation of std dev
+  std::vector<double> r_v;
+  std::vector<double> l_v;
+  int numberOfSegments = 0;
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+
+  int indexOfNode = 0;
+  int numberOfNeighbors = 0;
+  int indexNeighbor = 0;
+  std::vector<double> coord;
+  std::vector<double> coord_neighbor;
+  double radius = 0.;
+  double length = 0.;
+
+  double domain_vol = std::pow(input.d_domain_params[1], 3);
+
+  while (pointer) {
+
+    indexOfNode = pointer->index;
+    coord = pointer->coord;
+    numberOfNeighbors = pointer->neighbors.size();
+
+    for (int i = 0; i < numberOfNeighbors; i++) {
+
+      if (!pointer->edge_touched[i]) {
+
+        radius = pointer->radii[i];
+        indexNeighbor = pointer->neighbors[i]->index;
+        coord_neighbor = pointer->neighbors[i]->coord;
+        length = util::dist_between_points(coord, coord_neighbor);
+
+        // add to data
+        r_v.push_back(radius);
+        l_v.push_back(length);
+        qoi[0] += radius;
+        qoi[2] += length;
+        qoi[4] += length;
+        qoi[5] += M_PI * radius * radius * length;
+        qoi[6] += M_PI * radius * radius * length;
+
+        numberOfSegments = numberOfSegments + 1;
+        pointer->edge_touched[i] = true;
+        pointer->neighbors[i]->markEdge(pointer->index);
+      }
+    }
+
+    pointer = pointer->global_successor;
+  }
+
+  // compute mean and std dev
+  qoi[0] = qoi[0] / numberOfSegments;
+  qoi[2] = qoi[2] / numberOfSegments;
+  qoi[1] = util::get_std_dev(r_v, qoi[0]);
+  qoi[3] = util::get_std_dev(r_v, qoi[2]);
+
+  // reset the marked edges
+  pointer = VGM.getHead();
+  while (pointer) {
+
+    numberOfNeighbors = pointer->neighbors.size();
+    for (int i = 0; i < numberOfNeighbors; i++)
+      pointer->edge_touched[i] = false;
+
+    pointer = pointer->global_successor;
+  }
+
+  return qoi;
+}

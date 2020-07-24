@@ -164,6 +164,9 @@ public:
   /*! @brief Compute intersecting element and weight in tumor domain */
   void compute_elem_weights();
 
+  /*! @brief Compute qoi */
+  std::vector<double> compute_qoi();
+
   /** @}*/
 
   /*! @brief Did we change network from last step */
