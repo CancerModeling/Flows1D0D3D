@@ -183,6 +183,12 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
         if (v_interface > 0.0 &&
             pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
 
+          // mass matrix
+          A_VGM(indexOfNode, indexOfNode) += factor_c * length;
+
+          // old time step term
+          b_c[indexOfNode] += factor_c * length * C_v_old[indexOfNode];
+
           if (p_v < input.d_identify_vein_pres)
             phi_sigma_boundary = input.d_in_nutrient_vein;
           else
@@ -200,14 +206,30 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
 
         } else {
 
+          // mass matrix
+          A_VGM(indexOfNode, indexOfNode) += factor_c * length;
+
+          // old time step term
+          b_c[indexOfNode] += factor_c * length * C_v_old[indexOfNode];
+
           // diffusion and advection
           A_VGM(indexOfNode, indexNeighbor) +=
               factor_c * (dt * v_interface - dt * D_v / length);
           A_VGM(indexOfNode, indexOfNode) +=
               -factor_c * dt * v_interface + dt * D_v / length;
+
+          // 1D part of the coupling
+          A_VGM(indexOfNode, indexOfNode) +=
+              factor_c * dt * L_s * surface_area;
         }
       } // if numberOfNeighbors = 1
       else {
+
+        // mass matrix
+        A_VGM(indexOfNode, indexOfNode) += factor_c * 0.5 * length;
+
+        // old time step term
+        b_c[indexOfNode] += factor_c * 0.5 * length * C_v_old[indexOfNode];
 
         // advection term
         if (v_interface > 0.0)
@@ -218,17 +240,11 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
         // diffusion term
         A_VGM(indexOfNode, indexOfNode) += factor_c * dt * D_v / length;
         A_VGM(indexOfNode, indexNeighbor) += -factor_c * dt * D_v / length;
+
+        // 1D part of the coupling
+        A_VGM(indexOfNode, indexOfNode) +=
+            factor_c * dt * L_s * surface_area;
       } // if numberOfNeighbors > 1
-
-      // mass matrix
-      A_VGM(indexOfNode, indexOfNode) += factor_c * 0.5 * length;
-
-      // old time step term
-      b_c[indexOfNode] += factor_c * 0.5 * length * C_v_old[indexOfNode];
-
-      // 1D part of the coupling
-      A_VGM(indexOfNode, indexOfNode) +=
-          factor_c * dt * L_s * surface_area;
 
       // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
       numberOfElements = id_3D_elements.size();

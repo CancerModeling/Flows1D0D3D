@@ -51,6 +51,7 @@ void util::unet::Network::create_initial_network() {
   d_model_p->d_log(oss, "debug");
 
   // get some fixed parameters
+  d_update_interval = input.d_network_update_interval;
   N_3D = input.d_num_elems;
   N_tot_3D = N_3D * N_3D * N_3D;
   L_x = input.d_domain_params[1];
@@ -166,15 +167,15 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
 
   // gmm::identity_matrix PR;
 
-  gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50,
-                                                               1e-8);
+  //gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50,
+  //                                                             1e-8);
 
   // gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D,
   // 50, 1e-4);
 
   // gmm::ildlt_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
 
-  // gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
+  gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
 
   gmm::gmres(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, restart, iter);
 
@@ -441,7 +442,6 @@ std::vector<double> util::unet::Network::compute_qoi() {
         qoi[2] += length;
         qoi[4] += length;
         qoi[5] += M_PI * radius * radius * length;
-        qoi[6] += M_PI * radius * radius * length;
 
         numberOfSegments = numberOfSegments + 1;
         pointer->edge_touched[i] = true;
@@ -457,6 +457,7 @@ std::vector<double> util::unet::Network::compute_qoi() {
   qoi[2] = qoi[2] / numberOfSegments;
   qoi[1] = util::get_std_dev(r_v, qoi[0]);
   qoi[3] = util::get_std_dev(r_v, qoi[2]);
+  qoi[6] = qoi[5] / domain_vol;
 
   // reset the marked edges
   pointer = VGM.getHead();

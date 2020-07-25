@@ -531,6 +531,10 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
           // old time step term
           b_nut_3D1D[N_tot_3D + indexOfNode] +=
               length * phi_sigma_old[N_tot_3D + indexOfNode];
+
+          // 1D part of the coupling (Check this term for v > 0 and Dirichlet node)
+          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+              dt * L_s * surface_area;
         }
       } // if numberOfNeighbors = 1
       else {
@@ -555,15 +559,11 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
         // from previous time step
         b_nut_3D1D[N_tot_3D + indexOfNode] +=
              0.5 * length * phi_sigma_old[N_tot_3D + indexOfNode];
-      } // if numberOfNeighbors > 1
 
-      // 1D part of the coupling (Check this term for v > 0 and Dirichlet node)
-      // TODO
-      //  This term is not considered previously when dirichlet node with vel v > 0
-      //  where as the osmotic term is considered. This goes to diagonal and so
-      //  does osmotic term when p_v - p_t > 0.
-      A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
-          dt * L_s * surface_area;
+        // 1D part of the coupling (Check this term for v > 0 and Dirichlet node)
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+            dt * L_s * surface_area;
+      } // if numberOfNeighbors > 1
 
       // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
       numberOfElements = id_3D_elements.size();
