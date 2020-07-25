@@ -85,44 +85,51 @@ void netfvfe::PressureAssembly::assemble_1d_coupling() {
     double h_3D = network.h_3D;
     int N_3D = network.N_3D;
 
+    int indexOfNode = 0;
+    int numberOfNeighbors = 0;
+    int indexNeighbor = 0;
+    std::vector<double> coord;
+    std::vector<double> coord_neighbor;
+    double radius = 0.;
+    double length = 0.;
+    double L_p = 0.;
+    double surface_area = 0.;
+    std::vector<double> weights;
+    std::vector<int> id_3D_elements;
+    int numberOfElements = 0;
+    double p_v = 0.;
+    std::string assembly_cases;
+
     while (pointer) {
 
-      int indexOfNode = pointer->index;
-      std::vector<double> coord = pointer->coord;
+      indexOfNode = pointer->index;
+      coord = pointer->coord;
+      p_v = pointer->p_v;
+      numberOfNeighbors = pointer->neighbors.size();
 
-      double p_v_k = pointer->p_v;
-
-      int numberOfNeighbors = pointer->neighbors.size();
+      // find cases
+      assembly_cases = network.get_assembly_cases_pres(pointer, deck.d_identify_vein_pres);
 
       for (int i = 0; i < numberOfNeighbors; i++) {
 
-        double radius = pointer->radii[i];
+        radius = pointer->radii[i];
+        indexNeighbor = pointer->neighbors[i]->index;
+        coord_neighbor = pointer->neighbors[i]->coord;
+        length = util::dist_between_points(coord, coord_neighbor);
+        L_p = pointer->L_p[i];
 
-        int indexNeighbor = pointer->neighbors[i]->index;
-
-        std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
-
-        double length = util::dist_between_points(coord, coord_neighbor);
-        double L_p = pointer->L_p[i];
-
-        // Coupling terms
-        int N_s = deck.d_num_points_length;
-        int N_theta = deck.d_num_points_angle;
-
-        std::vector<double> weights;
-        std::vector<int> id_3D_elements;
-
-        double length_edge = 0.5 * length;
+        if (assembly_cases == "boundary_dirichlet")
+          continue;
 
         // Surface area of cylinder
-        double surface_area = 2.0 * M_PI * length_edge * radius;
-
-        util::unet::determineWeightsAndIds(
-            N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D,
-            length_edge, weights, id_3D_elements, d_mesh, true);
+        surface_area = 2.0 * M_PI * (0.5 * length) * radius;
+        util::unet::determineWeightsAndIds(deck.d_num_points_length,
+                               deck.d_num_points_angle, N_3D, coord,
+                               coord_neighbor, radius, h_3D, 0.5 * length,
+                               weights, id_3D_elements, d_mesh, true);
 
         // Add coupling entry
-        int numberOfElements = id_3D_elements.size();
+        numberOfElements = id_3D_elements.size();
 
         for (int j = 0; j < numberOfElements; j++) {
 
@@ -138,7 +145,7 @@ void netfvfe::PressureAssembly::assemble_1d_coupling() {
               Ke(0, 0) = factor_p * L_p * surface_area * weights[j];
 
               // explicit for p_v in source
-              Fe(0) = factor_p * L_p * surface_area * weights[j] * p_v_k;
+              Fe(0) = factor_p * L_p * surface_area * weights[j] * p_v;
 
               // update matrix
               d_sys.matrix->add_matrix(Ke, d_dof_indices_sys,

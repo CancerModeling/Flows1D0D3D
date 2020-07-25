@@ -56,6 +56,7 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
   double surface_area = 0.;
   std::vector<double> weights;
   std::vector<int> id_3D_elements;
+  std::string assembly_cases;
 
   // assemble 3D
   for (int i = 0; i < N_3D; i++) { // x-loop
@@ -146,6 +147,9 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
     coord = pointer->coord;
     numberOfNeighbors = pointer->neighbors.size();
 
+    // find cases
+    assembly_cases = get_assembly_cases_pres(pointer, input.d_identify_vein_pres);
+
     // loop over segments and compute 1D and 1D-3D coupling
     for (int i = 0; i < numberOfNeighbors; i++) {
 
@@ -163,11 +167,12 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
                              coord_neighbor, radius, h_3D, 0.5 * length,
                              weights, id_3D_elements, mesh, false);
 
-      if (numberOfNeighbors == 1 and
-          pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
+      // case specific implementation
+      if (assembly_cases == "boundary_dirichlet") {
 
         A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += 1.0;
         b_flow_3D1D[N_tot_3D + indexOfNode] += pointer->p_boundary;
+
       } else {
 
         // diffusion term
@@ -186,31 +191,21 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
 
       for (int j = 0; j < numberOfElements; j++) {
 
-        if (id_3D_elements[j] < 0)
+        if (id_3D_elements[j] < 0 or assembly_cases == "boundary_dirichlet")
           continue;
 
-        if (numberOfNeighbors == 1 and
-            pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
-          // A_3D1D
-          A_flow_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) +=
-              -L_p * surface_area * weights[j];
+        // A_3D1D
+        A_flow_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) +=
+            -L_p * surface_area * weights[j];
 
-          // A_3D3D
-          A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) +=
-              L_p * surface_area * weights[j];
-        } else {
-          // A_3D1D
-          A_flow_3D1D(id_3D_elements[j], N_tot_3D + indexOfNode) +=
-              -L_p * surface_area * weights[j];
+        // A_3D3D
+        A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) +=
+            L_p * surface_area * weights[j];
 
-          // A_3D3D
-          A_flow_3D1D(id_3D_elements[j], id_3D_elements[j]) +=
-              L_p * surface_area * weights[j];
+        // A_1D3D
+        A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) +=
+            -L_p * surface_area * weights[j];
 
-          // A_1D3D
-          A_flow_3D1D(N_tot_3D + indexOfNode, id_3D_elements[j]) +=
-              -L_p * surface_area * weights[j];
-        }
       } // loop over 3D elements
     }   // loop over neighbor segments
 
@@ -297,6 +292,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
   double v_interface = 0.;
   double p_t = 0.0;
   double phi_sigma_boundary = 0.0;
+  std::string assembly_cases;
 
   // assemble 3D
   for (int i = 0; i < N_3D; i++) { // x-loop
@@ -464,6 +460,9 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
     p_v = pointer->p_v;
     numberOfNeighbors = pointer->neighbors.size();
 
+    // find cases
+    assembly_cases = get_assembly_cases_nut(pointer, input.d_identify_vein_pres);
+
     // loop over segments and compute 1D and 1D-3D coupling
     for (int i = 0; i < numberOfNeighbors; i++) {
 
@@ -484,63 +483,30 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
                              coord_neighbor, radius, h_3D, 0.5 * length,
                              weights, id_3D_elements, mesh, false);
 
-      //
-      // TODO
-      //  Check. For case when we have only
-      //  one neighboring node, we consider whole segment to compute mass matrix
-      //  and rhs due to old time step, however, we only consider half of the
-      //  segment to compute the 3D-1D coupling. This is a mismatch.
+      // case specific implementation
+      if (assembly_cases == "boundary_artery_inlet") {
 
-      if (numberOfNeighbors == 1) {
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += 1.0;
+        b_nut_3D1D[N_tot_3D + indexOfNode] += input.d_in_nutrient;
 
-        if (v_interface > 0.0 &&
-            pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
+      } else if (assembly_cases == "boundary_vein_inlet" or
+                 assembly_cases == "boundary_inner_inlet") {
 
-          // mass matrix
-          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += length;
+        // advection
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+            dt * v_interface;
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
+            -dt * v_interface;
 
-          if (p_v < input.d_identify_vein_pres)
-            phi_sigma_boundary = input.d_in_nutrient_vein;
-          else
-            phi_sigma_boundary = input.d_in_nutrient;
+      } else if (assembly_cases == "boundary_outlet") {
 
-          // diffusion and advection
-          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
-              -dt * D_v / length;
-          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
-              dt * v_interface + 2.0 * dt * D_v / length;
+        // advection
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+            -dt * v_interface;
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
+            dt * v_interface;
 
-          // old time step, advection, diffusion flux due to boundary condition
-          b_nut_3D1D[N_tot_3D + indexOfNode] +=
-              length * phi_sigma_old[N_tot_3D + indexOfNode] +
-              (dt * v_interface - dt * D_v / length) * phi_sigma_boundary;
-        }
-        // else if (v_interface < 0.0 &&
-        //           pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
-        else {
-
-          // mass matrix
-          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += length;
-
-          // diffusion and advection
-          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
-              dt * v_interface - dt * D_v / length;
-          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
-              -dt * v_interface + dt * D_v / length;
-
-          // old time step term
-          b_nut_3D1D[N_tot_3D + indexOfNode] +=
-              length * phi_sigma_old[N_tot_3D + indexOfNode];
-
-          // 1D part of the coupling (Check this term for v > 0 and Dirichlet node)
-          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
-              dt * L_s * surface_area;
-        }
-      } // if numberOfNeighbors = 1
-      else {
-
-        // mass matrix
-        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += 0.5 * length;
+      } else if (assembly_cases == "inner") {
 
         // advection term
         if (v_interface > 0.0)
@@ -550,7 +516,15 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
           A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
               dt * v_interface;
 
-        // diffusion term
+      }
+
+      // common entries to various cases
+      if (assembly_cases != "boundary_artery_inlet") {
+
+        // mass matrix
+        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += 0.5 * length;
+
+        // diffusion
         A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
             dt * D_v / length;
         A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
@@ -558,19 +532,19 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
         // from previous time step
         b_nut_3D1D[N_tot_3D + indexOfNode] +=
-             0.5 * length * phi_sigma_old[N_tot_3D + indexOfNode];
+            0.5 * length * phi_sigma_old[N_tot_3D + indexOfNode];
 
         // 1D part of the coupling (Check this term for v > 0 and Dirichlet node)
         A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
             dt * L_s * surface_area;
-      } // if numberOfNeighbors > 1
+      }
 
       // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
       numberOfElements = id_3D_elements.size();
 
       for (int j = 0; j < numberOfElements; j++) {
 
-        if (id_3D_elements[j] < 0)
+        if (id_3D_elements[j] < 0 or assembly_cases == "boundary_artery_inlet")
           continue;
 
         // A_3D1D

@@ -210,7 +210,7 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
   const auto &input = d_model_p->get_input_deck();
   const auto timeStep = d_model_p->d_step;
 
-  assemble3D1DSystemForNutrientsOld(nut_sys, tum_sys);
+  assemble3D1DSystemForNutrients(nut_sys, tum_sys);
 
   // if this is first call inside nonlinear loop, we guess current
   // concentration as old concentration
@@ -471,4 +471,42 @@ std::vector<double> util::unet::Network::compute_qoi() {
   }
 
   return qoi;
+}
+
+std::string util::unet::Network::get_assembly_cases_pres(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const {
+
+  // find various cases
+  if (pointer->neighbors.size() == 1) {
+    if (pointer->typeOfVGNode == TypeOfNode::DirichletNode)
+      return "boundary_dirichlet";
+    else
+      return "boundary_inner";
+  } // neighbor == 1
+  else {
+    return "inner";
+  }
+}
+
+std::string util::unet::Network::get_assembly_cases_nut(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const {
+
+  // find various cases
+  if (pointer->neighbors.size() == 1) {
+    if (pointer->p_v > pointer->neighbors[0]->p_v) {
+      if (pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
+        if (pointer->p_v >= identify_vein_pres)
+          return "boundary_artery_inlet";
+        else
+          return "boundary_vein_inlet";
+      } // inlet dirichlet
+      else {
+        return "boundary_inner_inlet";
+      } // not dirichlet
+    }   // v > 0
+    else {
+      return "boundary_outlet";
+    } // v < 0
+  } // neighbor == 1
+  else {
+    return "inner";
+  }
 }

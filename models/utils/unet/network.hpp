@@ -168,6 +168,9 @@ public:
   /*! @brief Compute qoi */
   std::vector<double> compute_qoi();
 
+  std::string get_assembly_cases_pres(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const;
+  std::string get_assembly_cases_nut(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const;
+
   /** @}*/
 
   /*! @brief Did we change network from last step */
