@@ -87,6 +87,7 @@ public:
                                      &pres_sys, BaseAssembly &tum_sys);
 
   void assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
+  void assemble3D1DSystemForNutrientsOld(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
 
    void solve3D1DFlowProblem(BaseAssembly
    &pres_sys, BaseAssembly &tum_sys);
