@@ -42,6 +42,7 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
   double surface_area = 0.;
   std::vector<double> weights;
   std::vector<int> id_3D_elements;
+  std::string assembly_cases;
 
   // assemble 1D and 1D-3D coupling
   std::shared_ptr<VGNode> pointer = VGM.getHead();
@@ -50,6 +51,9 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
     indexOfNode = pointer->index;
     coord = pointer->coord;
     numberOfNeighbors = pointer->neighbors.size();
+
+    // find cases
+    assembly_cases = get_assembly_cases_pres(pointer, input.d_identify_vein_pres);
 
     // loop over segments and compute 1D and 1D-3D coupling
     for (int i = 0; i < numberOfNeighbors; i++) {
@@ -68,29 +72,27 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
                              coord_neighbor, radius, h_3D, 0.5 * length,
                              weights, id_3D_elements, mesh, false);
 
-      if (numberOfNeighbors == 1 and
-          pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
+      // case specific implementation
+      if (assembly_cases == "boundary_dirichlet") {
 
         A_VGM(indexOfNode, indexOfNode) += factor_p * 1.0;
         b[indexOfNode] += factor_p * pointer->p_boundary;
+      } else {
 
-        // we do not consider 1D-3D coupling for this case
-        continue;
+        // diffusion term
+        A_VGM(indexOfNode, indexOfNode) += factor_p * K_1D / length;
+        A_VGM(indexOfNode, indexNeighbor) += -factor_p * K_1D / length;
+
+        // Add coupling entry to 1D1D matrix
+        A_VGM(indexOfNode, indexOfNode) += factor_p * L_p * surface_area;
       }
-
-      // diffusion term
-      A_VGM(indexOfNode, indexOfNode) += factor_p * K_1D / length;
-      A_VGM(indexOfNode, indexNeighbor) += -factor_p * K_1D / length;
-
-      // Add coupling entry to 1D1D matrix
-      A_VGM(indexOfNode, indexOfNode) += factor_p * L_p * surface_area;
 
       // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
       int numberOfElements = id_3D_elements.size();
 
       for (int j = 0; j < numberOfElements; j++) {
 
-        if (id_3D_elements[j] < 0)
+        if (id_3D_elements[j] < 0 or assembly_cases == "boundary_dirichlet")
           continue;
 
         b[indexOfNode] += factor_p * L_p * surface_area * weights[j] *
@@ -148,6 +150,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
   double p_t = 0.0;
   double c_t = 0.0;
   double phi_sigma_boundary = 0.0;
+  std::string assembly_cases;
 
   // assemble 1D and 1D-3D coupling
   std::shared_ptr<VGNode> pointer = VGM.getHead();
@@ -157,6 +160,9 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
     coord = pointer->coord;
     p_v = pointer->p_v;
     numberOfNeighbors = pointer->neighbors.size();
+
+    // find cases
+    assembly_cases = get_assembly_cases_nut(pointer, input.d_identify_vein_pres);
 
     // loop over segments and compute 1D and 1D-3D coupling
     for (int i = 0; i < numberOfNeighbors; i++) {
@@ -178,58 +184,26 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
                              coord_neighbor, radius, h_3D, 0.5 * length,
                              weights, id_3D_elements, mesh, false);
 
-      if (numberOfNeighbors == 1) {
+      // case specific implementation
+      if (assembly_cases == "boundary_artery_inlet") {
 
-        if (v_interface > 0.0 &&
-            pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
+        A_VGM(indexOfNode, indexOfNode) += factor_c * 1.0;
+        b_c[indexOfNode] += factor_c * input.d_in_nutrient;
 
-          // mass matrix
-          A_VGM(indexOfNode, indexOfNode) += factor_c * length;
+      } else if (assembly_cases == "boundary_vein_inlet" or
+                 assembly_cases == "boundary_inner_inlet") {
 
-          // old time step term
-          b_c[indexOfNode] += factor_c * length * C_v_old[indexOfNode];
+        // advection
+        A_VGM(indexOfNode, indexOfNode) += factor_c * dt * v_interface;
+        A_VGM(indexOfNode, indexNeighbor) += -factor_c * dt * v_interface;
 
-          if (p_v < input.d_identify_vein_pres)
-            phi_sigma_boundary = input.d_in_nutrient_vein;
-          else
-            phi_sigma_boundary = input.d_in_nutrient;
+      } else if (assembly_cases == "boundary_outlet") {
 
-          // diffusion and advection
-          A_VGM(indexOfNode, indexNeighbor) += -factor_c * dt * D_v / length;
-          A_VGM(indexOfNode, indexOfNode) +=
-              factor_c * (dt * v_interface + 2.0 * dt * D_v / length);
+        // advection
+        A_VGM(indexOfNode, indexOfNode) += -factor_c * dt * v_interface;
+        A_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
 
-          // advection, diffusion flux due to boundary condition
-          b_c[indexOfNode] +=
-              factor_c *
-              (dt * v_interface - dt * D_v / length) * phi_sigma_boundary;
-
-        } else {
-
-          // mass matrix
-          A_VGM(indexOfNode, indexOfNode) += factor_c * length;
-
-          // old time step term
-          b_c[indexOfNode] += factor_c * length * C_v_old[indexOfNode];
-
-          // diffusion and advection
-          A_VGM(indexOfNode, indexNeighbor) +=
-              factor_c * (dt * v_interface - dt * D_v / length);
-          A_VGM(indexOfNode, indexOfNode) +=
-              -factor_c * dt * v_interface + dt * D_v / length;
-
-          // 1D part of the coupling
-          A_VGM(indexOfNode, indexOfNode) +=
-              factor_c * dt * L_s * surface_area;
-        }
-      } // if numberOfNeighbors = 1
-      else {
-
-        // mass matrix
-        A_VGM(indexOfNode, indexOfNode) += factor_c * 0.5 * length;
-
-        // old time step term
-        b_c[indexOfNode] += factor_c * 0.5 * length * C_v_old[indexOfNode];
+      } else if (assembly_cases == "inner") {
 
         // advection term
         if (v_interface > 0.0)
@@ -237,21 +211,31 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
         else
           A_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
 
-        // diffusion term
+      }
+
+      // common entries to various cases
+      if (assembly_cases != "boundary_artery_inlet") {
+
+        // mass matrix
+        A_VGM(indexOfNode, indexOfNode) += factor_c * 0.5 * length;
+
+        // diffusion
         A_VGM(indexOfNode, indexOfNode) += factor_c * dt * D_v / length;
         A_VGM(indexOfNode, indexNeighbor) += -factor_c * dt * D_v / length;
 
-        // 1D part of the coupling
-        A_VGM(indexOfNode, indexOfNode) +=
-            factor_c * dt * L_s * surface_area;
-      } // if numberOfNeighbors > 1
+        // from previous time step
+        b_c[indexOfNode] += factor_c * 0.5 * length * C_v_old[indexOfNode];
+
+        // 1D part of the coupling (Check this term for v > 0 and Dirichlet node)
+        A_VGM(indexOfNode, indexOfNode) += factor_c * dt * L_s * surface_area;
+      }
 
       // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
       numberOfElements = id_3D_elements.size();
 
       for (int j = 0; j < numberOfElements; j++) {
 
-        if (id_3D_elements[j] < 0)
+        if (id_3D_elements[j] < 0 or assembly_cases == "boundary_artery_inlet")
           continue;
 
         c_t = phi_sigma_3D[id_3D_elements[j]];
