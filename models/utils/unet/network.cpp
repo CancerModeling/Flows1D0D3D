@@ -210,7 +210,7 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
   const auto &input = d_model_p->get_input_deck();
   const auto timeStep = d_model_p->d_step;
 
-  assemble3D1DSystemForNutrients(nut_sys, tum_sys);
+  assemble3D1DSystemForNutrientsOld(nut_sys, tum_sys);
 
   // if this is first call inside nonlinear loop, we guess current
   // concentration as old concentration
