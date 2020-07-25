@@ -324,9 +324,10 @@ netfcfvfe::Model::Model(
   d_network.create_initial_network();
   d_log(d_delayed_msg, "debug");
 
-  // initialize qoi data
-  d_qoi = util::QoIVec({"tumor_mass", "hypoxic_mass", "necrotic_mass",
-                        "tumor_l2"});
+  // we require pressure, nutrient, and TAF localized to each processor
+  d_pres_assembly.init_localized_sol(*d_comm_p);
+  d_nut_assembly.init_localized_sol(*d_comm_p);
+  d_taf_assembly.init_localized_sol(*d_comm_p);
 
   // save setup end time
   clock_end = steady_clock::now();

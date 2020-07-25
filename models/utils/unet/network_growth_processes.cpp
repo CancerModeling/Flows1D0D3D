@@ -17,7 +17,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
   int numberOfNodesOld = VGM.getNumberOfNodes();
 
-  if (d_update_number % 3 == 0) {
+  if (d_update_number % d_update_interval == 0) {
 
     std::cout << " " << std::endl;
     std::cout << "Number of nodes: " << numberOfNodesOld << std::endl;
@@ -75,11 +75,14 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
         "net update");
   }
 
-  if ((d_update_number + 1) % 3 == 0) {
+  if ((d_update_number + 1) % d_update_interval == 0) {
 
     d_model_p->d_log("Adapt radius \n", "net update");
     adaptRadius();
   }
+
+  if (d_update_number % d_update_interval != 0)
+    return;
 
   auto pointer = VGM.getHead();
 
@@ -213,7 +216,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
     } else {
       C_v[indexOfNode] = pointer->c_v;
       C_v_old[indexOfNode] = pointer->c_v;
-      P_v[N_tot_3D + indexOfNode] = pointer->p_v;
+      P_v[indexOfNode] = pointer->p_v;
     }
 
     pointer = pointer->global_successor;
@@ -1997,7 +2000,7 @@ void util::unet::Network::adaptRadius() {
     pointer = pointer->global_successor;
   }
 
-  std::cout << " " << std::endl;
+  //std::cout << " " << std::endl;
   /*
        // Remove nodes without neighbor
        pointer = VGM.getHead();

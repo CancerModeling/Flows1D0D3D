@@ -251,6 +251,7 @@ public:
   double L_x;
 
   unsigned int d_update_number;
+  unsigned int d_update_interval;
 
   bool d_coupled_solver;
 
