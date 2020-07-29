@@ -348,7 +348,13 @@ void util::unet::Network::solveVGMforNutrient(BaseAssembly &pres_sys,
 
     int indexOfNode = pointer->index;
 
-    pointer->c_v = C_v[indexOfNode];
+      pointer->c_v = C_v[indexOfNode];
+
+      if (C_v[indexOfNode] > 1.0) {
+
+          pointer->c_v = 1.0;
+          C_v[indexOfNode] = 1.0;
+      }
 
     pointer = pointer->global_successor;
   }
