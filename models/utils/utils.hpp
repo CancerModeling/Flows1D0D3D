@@ -465,6 +465,16 @@ inline T get_std_dev(const std::vector<T> &list) {
 
   return std::sqrt(dev);
 }
+
+inline std::mt19937 get_random_generator(int seed) {
+  if (seed < 0) {
+    std::random_device rd;
+    return std::mt19937(rd());
+  } else {
+    return std::mt19937(seed);
+  }
+}
+
 } // namespace util
 
 #endif // UTILS_H

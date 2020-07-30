@@ -430,10 +430,7 @@ void util::unet::Network::processApicalGrowth() {
   // Initialize random objects
   std::lognormal_distribution<> log_normal_distribution(
       input.d_log_normal_mean, input.d_log_normal_std_dev);
-  std::random_device rd;
-  std::mt19937 generator(rd());
-  if (input.d_seed >= 0)
-    generator.seed(input.d_seed);
+  auto generator = util::get_random_generator(input.d_seed);
 
   int numberOfNodes_old = VGM.getNumberOfNodes();
 
@@ -1302,10 +1299,7 @@ void util::unet::Network::markSproutingGrowth() {
 
   std::lognormal_distribution<> log_normal_distribution(
       input.d_log_normal_mean, input.d_log_normal_std_dev);
-  std::random_device rd;
-  std::mt19937 generator(rd());
-  if (input.d_seed >= 0)
-    generator.seed(input.d_seed);
+  auto generator = util::get_random_generator(input.d_seed);
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -1403,6 +1397,11 @@ void util::unet::Network::markSproutingGrowth() {
 void util::unet::Network::processSproutingGrowth() {
 
   const auto &input = d_model_p->get_input_deck();
+  static int print_seed = -1;
+  if (print_seed < 0) {
+    std::cout << "seed: " << input.d_seed << "\n";
+    print_seed = 0;
+  }
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -1410,14 +1409,13 @@ void util::unet::Network::processSproutingGrowth() {
 
   std::lognormal_distribution<> log_normal_distribution(
       input.d_log_normal_mean, input.d_log_normal_std_dev);
-  std::random_device rd;
-  std::mt19937 generator_log(rd());
-  if (input.d_seed >= 0)
-    generator_log.seed(input.d_seed);
+  auto generator_log = util::get_random_generator(input.d_seed);
 
-  std::default_random_engine generator;
-  if (input.d_seed >= 0)
-    generator.seed(input.d_seed);
+  // this is used for uniform distribution
+  // we seed it to fixed value
+  // TODO
+  //  See if this should also be controlled by input seed
+  auto generator = util::get_random_generator(1);
 
   double L_x = input.d_domain_params[1];
 

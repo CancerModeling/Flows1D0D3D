@@ -528,14 +528,19 @@ void util::unet::Network::writeDataToVTK_3D(std::vector<double> P_3D,
 
 void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
-  if (d_model_p->get_comm()->rank() > 0)
+  // check if each processor produces same network
+  bool out_on_all_proc = true;
+
+  if (d_model_p->get_comm()->rank() > 0 and !out_on_all_proc)
     return;
 
   const auto &input = d_model_p->get_input_deck();
 
   std::string path = input.d_outfilename_net + "_";
   path += std::to_string(timeStep);
-  path.append(".vtk");
+  if (out_on_all_proc and d_model_p->get_comm()->rank() > 0)
+    path += "_" + std::to_string(d_model_p->get_comm()->rank());
+  path += ".vtk";
 
   std::fstream filevtk;
   filevtk.open(path, std::ios::out);
