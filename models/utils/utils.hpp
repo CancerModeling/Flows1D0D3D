@@ -10,6 +10,7 @@
 
 #include "utilLibs.hpp"
 #include "utilIO.hpp"
+#include <boost/random.hpp>
 
 //#include "../../external/gmm/gmm.h"
 
@@ -472,6 +473,17 @@ inline std::mt19937 get_random_generator(int seed) {
     return std::mt19937(rd());
   } else {
     return std::mt19937(seed);
+  }
+}
+
+inline boost::mt19937 get_random_generator_boost(int seed) {
+
+  if (seed < 0) {
+    auto rd = boost::mt19937();
+    return rd;
+  } else {
+    auto rd = boost::mt19937(seed);
+    return rd;
   }
 }
 

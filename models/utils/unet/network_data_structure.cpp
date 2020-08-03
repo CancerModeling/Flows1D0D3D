@@ -529,6 +529,7 @@ void util::unet::Network::writeDataToVTK_3D(std::vector<double> P_3D,
 void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
   // check if each processor produces same network
+  // TODO set this to false after test is done
   bool out_on_all_proc = true;
 
   if (d_model_p->get_comm()->rank() > 0 and !out_on_all_proc)
