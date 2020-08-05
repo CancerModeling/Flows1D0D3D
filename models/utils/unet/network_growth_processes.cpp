@@ -491,8 +491,6 @@ void util::unet::Network::markApicalGrowth() {
 
   const auto &input = d_model_p->get_input_deck();
 
-  double L_x = input.d_domain_params[1];
-
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
   while (pointer) {
@@ -530,32 +528,11 @@ void util::unet::Network::markApicalGrowth() {
 void util::unet::Network::processApicalGrowth() {
 
   const auto &input = d_model_p->get_input_deck();
-
-  // TAG: Random
-  auto log_normal_dist = util::LogNormalDistributionCustom(
-      input.d_log_normal_mean, input.d_log_normal_std_dev, input.d_seed);
-
-  // generate log normal dist in processor 0 and gather in all processors
-  unsigned int counter_log_normal = 0;
-  std::vector<double> log_normal_dist_samples;
-  if (d_model_p->d_procRank == 0) {
-    for (unsigned int i=0; i<2 * VGM.getNumberOfNodes(); i++)
-      log_normal_dist_samples.push_back(log_normal_dist());
-  }
-  // gather in all processors
-  d_model_p->get_comm()->allgather(log_normal_dist_samples);
-  {
-    if (log_normal_dist_samples.size() != 2 * VGM.getNumberOfNodes())
-      libmesh_error_msg("Error communicating vector");
-
-    // print to file for reference
-    util::io::printFile("receive_dist_" + std::to_string(d_model_p->d_step) +
-                            "_" + std::to_string(d_model_p->d_procRank) +
-                            ".txt",
-                        log_normal_dist_samples);
-  }
-
   int numberOfNodes_old = VGM.getNumberOfNodes();
+
+  d_logNormalDist.debug_out("debug_lognormal_" + std::to_string(d_model_p->d_step));
+  d_normalDist.debug_out("debug_normal_" + std::to_string(d_model_p->d_step));
+  d_uniformDist.debug_out("debug_uniform_" + std::to_string(d_model_p->d_step));
 
   // mark node for growth based on a certain criterion
   std::shared_ptr<VGNode> pointer = VGM.getHead();
@@ -614,8 +591,7 @@ void util::unet::Network::processApicalGrowth() {
       }
 
       // TAG: Random
-      //auto log_dist = log_normal_dist();
-      auto log_dist = log_normal_dist_samples[counter_log_normal++];
+      auto log_dist = d_logNormalDist();
 
       double radius_p = pointer->radii[0];
 
@@ -802,9 +778,10 @@ void util::unet::Network::processApicalGrowth() {
         }
 
         // TAG: Random
-        auto normal_dist = util::NormalDistributionCustom(R_c, R_c / 35.0, input.d_seed);
-        double radius_b1 = normal_dist();
-        double radius_b2 = normal_dist();
+        double radius_b1 =
+            util::transform_to_normal_dist(R_c, R_c / 35.0, d_normalDist());
+        double radius_b2 =
+            util::transform_to_normal_dist(R_c, R_c / 35.0, d_normalDist());
 
         if (radius_b1 < input.d_min_radius) {
 
@@ -879,8 +856,7 @@ void util::unet::Network::processApicalGrowth() {
             double length_diff_2 = gmm::vect_norm2(diff_2);
 
             // TAG: Random
-            //double log_dist = log_normal_dist();
-            log_dist = log_normal_dist_samples[counter_log_normal++];
+            log_dist = d_logNormalDist();
 
             // get length
             double length_1 = log_dist * radius_b1;
@@ -1423,20 +1399,6 @@ void util::unet::Network::markSproutingGrowth() {
 
   const auto &input = d_model_p->get_input_deck();
 
-  // TAG: Random
-  auto log_normal_dist = util::LogNormalDistributionCustom(
-      input.d_log_normal_mean, input.d_log_normal_std_dev, input.d_seed);
-
-  // generate log normal dist in processor 0 and gather in all processors
-  unsigned int counter_log_normal = 0;
-  std::vector<double> log_normal_dist_samples;
-  if (d_model_p->d_procRank == 0) {
-    for (unsigned int i=0; i<3 * VGM.getNumberOfNodes(); i++)
-      log_normal_dist_samples.push_back(log_normal_dist());
-  }
-  // gather in all processors
-  d_model_p->get_comm()->allgather(log_normal_dist_samples);
-
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
   while (pointer) {
@@ -1476,8 +1438,7 @@ void util::unet::Network::markSproutingGrowth() {
         double length = gmm::vect_norm2(diff);
 
         // TAG: Random
-        //double log_dist = log_normal_dist();
-        double log_dist = log_normal_dist_samples[counter_log_normal++];
+        double log_dist = d_logNormalDist();
 
         sproutingProbability =
             0.5 +
@@ -1546,23 +1507,7 @@ void util::unet::Network::processSproutingGrowth() {
 
   double gamma = input.d_net_radius_exponent_gamma;
 
-  // TAG: Random
-  auto log_normal_dist = util::LogNormalDistributionCustom(
-      input.d_log_normal_mean, input.d_log_normal_std_dev, input.d_seed);
-
-  // generate log normal dist in processor 0 and gather in all processors
-  unsigned int counter_log_normal = 0;
-  std::vector<double> log_normal_dist_samples;
-  if (d_model_p->d_procRank == 0) {
-    for (unsigned int i=0; i<3 * VGM.getNumberOfNodes(); i++)
-      log_normal_dist_samples.push_back(log_normal_dist());
-  }
-  // gather in all processors
-  d_model_p->get_comm()->allgather(log_normal_dist_samples);
-
-  double L_x = input.d_domain_params[1];
-
-  std::cout << " " << std::endl;
+  //std::cout << " " << std::endl;
 
   while (pointer) {
 
@@ -1590,15 +1535,13 @@ void util::unet::Network::processSproutingGrowth() {
 
         double p_v_neighbor = pointer->neighbors[i]->p_v;
 
-        // TAG: Random
-        auto uniform_dist =
-            util::UniformDistributionCustom(1.25 * radius_min, radius_prime, input.d_seed);
         double radius_new = 1.25 * radius_min;
 
         if (1.25 * radius_min < radius_prime) {
 
           // TAG: Random
-          radius_new = uniform_dist();
+          radius_new = util::transform_to_uniform_dist(
+              1.25 * radius_min, radius_prime, d_uniformDist());
         }
 
         std::vector<double> dir_vessel = std::vector<double>(3, 0.0);
@@ -1750,8 +1693,7 @@ void util::unet::Network::processSproutingGrowth() {
         double angle = std::acos(prod_angle);
 
         // TAG: Random
-        //double log_dist = log_normal_dist();
-        double log_dist = log_normal_dist_samples[counter_log_normal++];
+        double log_dist = d_logNormalDist();
 
         // get length
         double length_new = log_dist * radius_new;

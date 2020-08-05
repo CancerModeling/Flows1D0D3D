@@ -24,28 +24,28 @@ typedef std::normal_distribution<> NormalDistribution;
 
 namespace util {
 
-inline RandGenerator get_rd_gen(int seed) {
+inline RandGenerator get_rd_gen(int &seed) {
 
   //return RandGenerator();
 
   if (seed < 0) {
     std::random_device rd;
-    return RandGenerator(rd());
-  } else {
-    return RandGenerator(seed);
+    seed = rd();
   }
+
+  return RandGenerator(seed);
 }
 
-inline std::default_random_engine get_rd_engine(int seed) {
+inline std::default_random_engine get_rd_engine(int &seed) {
 
   //return std::default_random_engine();
 
   if (seed < 0) {
     std::random_device rd;
-    return std::default_random_engine(rd());
-  } else {
-    return std::default_random_engine(seed);
+    seed = rd();
   }
+
+  return std::default_random_engine(seed);
 }
 
 inline double transform_to_normal_dist(double mean, double std, double sample) {
@@ -168,7 +168,11 @@ public:
 
     d_comm_p->allgather(d_samples);
     if (d_samples.size() != d_sampleSize)
-      libmesh_error_msg("Error collecting log normal samples");
+      libmesh_error_msg("Error collecting samples");
+  }
+
+  void debug_out(std::string filename) {
+    util::io::printFile(filename + "_" + std::to_string(d_procRank) + ".txt", d_samples, 0, " ");
   }
 
   int d_seed;
@@ -179,7 +183,7 @@ public:
   unsigned int d_procRank;
   unsigned int d_procSize;
   Parallel::Communicator *d_comm_p;
-  std::vector<float> d_samples;
+  std::vector<double> d_samples;
 };
 
 class LogNormalDistributionSampleParallel {
