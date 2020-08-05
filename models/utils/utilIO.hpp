@@ -42,15 +42,15 @@ inline std::string printStr(const bool flag, int nt = 0) {
   return oss.str();
 }
 
-inline std::string printStr(const Point &x, int nt = 0) {
+inline std::string printStr(const Point &x, int nt = 0, std::string delim = ", ") {
   auto tabS = getTabS(nt);
   std::ostringstream oss;
-  oss << tabS << "(" << x(0) << ", " << x(1) << ", " << x(2) << ")";
+  oss << tabS << "(" << x(0) << delim << x(1) << delim << x(2) << ")";
   return oss.str();
 }
 
 template <class T>
-inline std::string printStr(const std::vector<T> &list, int nt = 0) {
+inline std::string printStr(const std::vector<T> &list, int nt = 0, std::string delim = ", ") {
 
   auto tabS = getTabS(nt);
   std::ostringstream oss;
@@ -60,7 +60,7 @@ inline std::string printStr(const std::vector<T> &list, int nt = 0) {
     oss << l;
     i++;
     if (i != list.size())
-      oss << ", ";
+      oss << delim;
   }
 
   return oss.str();
@@ -68,7 +68,7 @@ inline std::string printStr(const std::vector<T> &list, int nt = 0) {
 
 template <class T>
 inline std::string printStr(const std::vector<std::vector<T>> &list,
-                            int nt = 0) {
+                            int nt = 0, std::string delim = ", ") {
 
   auto tabS = getTabS(nt);
   std::ostringstream oss;
@@ -85,14 +85,14 @@ inline std::string printStr(const std::vector<std::vector<T>> &list,
 
     i++;
     if (i != list.size())
-      oss << ", ";
+      oss << delim;
   }
 
   return oss.str();
 }
 
 template <>
-inline std::string printStr(const std::vector<Point> &list, int nt) {
+inline std::string printStr(const std::vector<Point> &list, int nt, std::string delim) {
 
   auto tabS = getTabS(nt);
   std::ostringstream oss;
@@ -102,7 +102,7 @@ inline std::string printStr(const std::vector<Point> &list, int nt) {
     oss << "(" << l(0) << ", " << l(1) << ", " << l(2) << ")";
     i++;
     if (i != list.size())
-      oss << ", ";
+      oss << delim;
   }
 
   return oss.str();
@@ -110,9 +110,9 @@ inline std::string printStr(const std::vector<Point> &list, int nt) {
 
 
 
-template <class T> inline void print(const std::vector<T> &list, int nt = 0) {
+template <class T> inline void print(const std::vector<T> &list, int nt = 0, std::string delim = ", ") {
 
-  std::cout << printStr(list, nt);
+  std::cout << printStr(list, nt, delim);
 }
 
 bool read_network_file(std::string filename, std::vector<Point> &nodes,
@@ -122,10 +122,10 @@ bool read_network_file(std::string filename, std::vector<Point> &nodes,
                        std::vector<double> &elem_radius,
                        std::vector<double> &elem_viscosity);
 
-template <class T> inline void printFile(std::string filename, const std::vector<T> &list, int nt = 0) {
+template <class T> inline void printFile(std::string filename, const std::vector<T> &list, int nt = 0, std::string delim = ", ") {
 
   std::ofstream off(filename);
-  off << printStr(list, nt);
+  off << printStr(list, nt, delim);
   off.close();
 }
 
