@@ -39,8 +39,8 @@ public:
       : d_name(name), d_step(0), d_time(0.), d_dt(0.), d_hmin(0.), d_hmax(0.),
         d_bounding_box(Point(), Point()), d_nonlinear_step(0),
         d_is_output_step(false), d_is_growth_step(false), d_log(log),
-        d_delayed_msg(""), d_input(input), d_comm_p(comm), d_mesh(mesh),
-        d_tum_sys(tum_sys) {}
+        d_delayed_msg(""), d_procRank(comm->rank()), d_procSize(comm->size()),
+        d_input(input), d_comm_p(comm), d_mesh(mesh), d_tum_sys(tum_sys) {}
 
   /*! @brief Get equation system */
   const EquationSystems &get_system() const { return d_tum_sys; }
@@ -102,6 +102,12 @@ public:
 
   /*! @brief Store delayed message */
   std::string d_delayed_msg;
+
+  /*! @brief Rank of processor */
+  unsigned int d_procRank;
+
+  /*! @brief Size of processors */
+  unsigned int d_procSize;
 
 protected:
 

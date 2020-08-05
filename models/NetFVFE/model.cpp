@@ -75,7 +75,7 @@ void netfvfe::model_setup_run(int argc, char **argv,
   reset_clock();
 
   // init seed for random number
-  random_init();
+  //random_init();
 
   // read input file
   auto input = InpDeck(filename);

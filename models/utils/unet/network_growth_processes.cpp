@@ -22,9 +22,10 @@ void test_random_gen(int proc, int step) {
   std::vector<double> nordist;
   std::vector<double> unidist;
 
-  auto generator = util::get_random_generator(100);
+  //auto generator = util::get_random_generator(100);
 
   {
+    auto generator = util::get_random_generator(100);
     std::lognormal_distribution<> log_normal_distribution(1., 0.2);
 
     //auto generator = util::get_random_generator(100);
@@ -34,6 +35,7 @@ void test_random_gen(int proc, int step) {
   }
 
   {
+    auto generator = util::get_random_generator(100);
     std::normal_distribution<> normal_distribution(1., 1.);
 
     //auto generator = util::get_random_generator(100);
@@ -43,6 +45,7 @@ void test_random_gen(int proc, int step) {
   }
 
   {
+    auto generator = util::get_random_generator(100);
     std::uniform_real_distribution<> distribution_uniform(0., 1.);
 
     //auto generator = util::get_random_generator(100);
@@ -68,9 +71,10 @@ void test_random_gen_boost(int proc, int step) {
   std::vector<double> nordist;
   std::vector<double> unidist;
 
-  auto generator = util::get_random_generator_boost(100);
+  //auto generator = util::get_random_generator_boost(100);
 
   {
+    auto generator = util::get_random_generator_boost(100);
     boost::lognormal_distribution<> log_normal_distribution(1., 0.2);
 
     //auto generator = util::get_random_generator(100);
@@ -80,6 +84,7 @@ void test_random_gen_boost(int proc, int step) {
   }
 
   {
+    auto generator = util::get_random_generator_boost(100);
     boost::normal_distribution<> normal_distribution(1., 1.);
 
     //auto generator = util::get_random_generator(100);
@@ -89,6 +94,7 @@ void test_random_gen_boost(int proc, int step) {
   }
 
   {
+    auto generator = util::get_random_generator_boost(100);
     boost::uniform_real<> distribution_uniform(0., 1.);
 
     //auto generator = util::get_random_generator(100);
@@ -112,7 +118,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
   d_model_p->d_log("Update the network \n", "net update");
 
-  d_model_p->d_log("Testing random number \n", "net update");
+  //d_model_p->d_log("Testing random number \n", "net update");
   //test_random_gen(d_model_p->get_comm()->rank(), d_model_p->d_step);
   //test_random_gen_boost(d_model_p->get_comm()->rank(), d_model_p->d_step);
   //exit(0);
@@ -332,7 +338,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
     d_is_network_changed = true;
     d_model_p->d_log("Added " +
                          std::to_string(numberOfNodes - numberOfNodesOld) +
-                         " to the network \n",
+                         " vertices to the network \n",
                      "net update");
   }
 }
@@ -340,8 +346,6 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 void util::unet::Network::linkTerminalVessels() {
 
   const auto &input = d_model_p->get_input_deck();
-
-  double L_x = input.d_domain_params[1];
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -527,19 +531,29 @@ void util::unet::Network::processApicalGrowth() {
 
   const auto &input = d_model_p->get_input_deck();
 
-  double L_x = input.d_domain_params[1];
-
   // TAG: Random
-  // Initialize random objects
-  //std::lognormal_distribution<> log_normal_distribution(
-  //    input.d_log_normal_mean, input.d_log_normal_std_dev);
-  //auto generator = util::get_random_generator(input.d_seed);
+  auto log_normal_dist = util::LogNormalDistributionCustom(
+      input.d_log_normal_mean, input.d_log_normal_std_dev, input.d_seed);
 
-  auto generator_b = util::get_random_generator_boost(input.d_seed);
-  boost::lognormal_distribution<> log_normal_distribution(input.d_log_normal_mean, input.d_log_normal_std_dev);
-  boost::variate_generator<boost::mt19937, boost::lognormal_distribution<> >
-      log_normal_generator(generator_b, log_normal_distribution);
+  // generate log normal dist in processor 0 and gather in all processors
+  unsigned int counter_log_normal = 0;
+  std::vector<double> log_normal_dist_samples;
+  if (d_model_p->d_procRank == 0) {
+    for (unsigned int i=0; i<2 * VGM.getNumberOfNodes(); i++)
+      log_normal_dist_samples.push_back(log_normal_dist());
+  }
+  // gather in all processors
+  d_model_p->get_comm()->allgather(log_normal_dist_samples);
+  {
+    if (log_normal_dist_samples.size() != 2 * VGM.getNumberOfNodes())
+      libmesh_error_msg("Error communicating vector");
 
+    // print to file for reference
+    util::io::printFile("receive_dist_" + std::to_string(d_model_p->d_step) +
+                            "_" + std::to_string(d_model_p->d_procRank) +
+                            ".txt",
+                        log_normal_dist_samples);
+  }
 
   int numberOfNodes_old = VGM.getNumberOfNodes();
 
@@ -600,9 +614,9 @@ void util::unet::Network::processApicalGrowth() {
       }
 
       // TAG: Random
-      // lognormal distribution
-      //double log_dist = log_normal_distribution(generator);
-      double log_dist = log_normal_generator();
+      //auto log_dist = log_normal_dist();
+      auto log_dist = log_normal_dist_samples[counter_log_normal++];
+
       double radius_p = pointer->radii[0];
 
       // get length
@@ -752,6 +766,7 @@ void util::unet::Network::processApicalGrowth() {
       // check if we bifurcate at this node
       bool bifurcate = false;
 
+      // TAG: Random
       double prob =
           0.5 + 0.5 * std::erf((std::log(log_dist) - input.d_log_normal_mean) /
                                std::sqrt(2.0 * input.d_log_normal_std_dev *
@@ -787,16 +802,9 @@ void util::unet::Network::processApicalGrowth() {
         }
 
         // TAG: Random
-        // create normal distribution function
-        //std::normal_distribution<> normal_distribution(R_c, R_c / 35.0);
-        boost::normal_distribution<> normal_distribution(R_c, R_c / 35.0);
-        boost::variate_generator<boost::mt19937, boost::normal_distribution<> >
-            normal_generator(generator_b, normal_distribution);
-
-        //double radius_b1 = normal_distribution(generator);
-        //double radius_b2 = normal_distribution(generator);
-        double radius_b1 = normal_generator();
-        double radius_b2 = normal_generator();
+        auto normal_dist = util::NormalDistributionCustom(R_c, R_c / 35.0, input.d_seed);
+        double radius_b1 = normal_dist();
+        double radius_b2 = normal_dist();
 
         if (radius_b1 < input.d_min_radius) {
 
@@ -871,9 +879,8 @@ void util::unet::Network::processApicalGrowth() {
             double length_diff_2 = gmm::vect_norm2(diff_2);
 
             // TAG: Random
-            // lognormal distribution
-            //double log_dist = log_normal_distribution(generator);
-            double log_dist = log_normal_generator();
+            //double log_dist = log_normal_dist();
+            log_dist = log_normal_dist_samples[counter_log_normal++];
 
             // get length
             double length_1 = log_dist * radius_b1;
@@ -1417,12 +1424,18 @@ void util::unet::Network::markSproutingGrowth() {
   const auto &input = d_model_p->get_input_deck();
 
   // TAG: Random
-  //std::lognormal_distribution<> log_normal_distribution(
-  //    input.d_log_normal_mean, input.d_log_normal_std_dev);
-  auto generator_b = util::get_random_generator_boost(input.d_seed);
-  boost::lognormal_distribution<> log_normal_distribution(input.d_log_normal_mean, input.d_log_normal_std_dev);
-  boost::variate_generator<boost::mt19937, boost::lognormal_distribution<> >
-      log_normal_generator(generator_b, log_normal_distribution);
+  auto log_normal_dist = util::LogNormalDistributionCustom(
+      input.d_log_normal_mean, input.d_log_normal_std_dev, input.d_seed);
+
+  // generate log normal dist in processor 0 and gather in all processors
+  unsigned int counter_log_normal = 0;
+  std::vector<double> log_normal_dist_samples;
+  if (d_model_p->d_procRank == 0) {
+    for (unsigned int i=0; i<3 * VGM.getNumberOfNodes(); i++)
+      log_normal_dist_samples.push_back(log_normal_dist());
+  }
+  // gather in all processors
+  d_model_p->get_comm()->allgather(log_normal_dist_samples);
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -1463,8 +1476,8 @@ void util::unet::Network::markSproutingGrowth() {
         double length = gmm::vect_norm2(diff);
 
         // TAG: Random
-        //double log_dist = log_normal_distribution(generator);
-        double log_dist = log_normal_generator();
+        //double log_dist = log_normal_dist();
+        double log_dist = log_normal_dist_samples[counter_log_normal++];
 
         sproutingProbability =
             0.5 +
@@ -1534,21 +1547,18 @@ void util::unet::Network::processSproutingGrowth() {
   double gamma = input.d_net_radius_exponent_gamma;
 
   // TAG: Random
-  //std::lognormal_distribution<> log_normal_distribution(
-  //    input.d_log_normal_mean, input.d_log_normal_std_dev);
+  auto log_normal_dist = util::LogNormalDistributionCustom(
+      input.d_log_normal_mean, input.d_log_normal_std_dev, input.d_seed);
 
-  //auto generator_log = util::get_random_generator(input.d_seed);
-
-  auto generator_b = util::get_random_generator_boost(input.d_seed);
-  boost::lognormal_distribution<> log_normal_distribution(input.d_log_normal_mean, input.d_log_normal_std_dev);
-  boost::variate_generator<boost::mt19937, boost::lognormal_distribution<> >
-      log_normal_generator(generator_b, log_normal_distribution);
-
-  // this is used for uniform distribution
-  // we seed it to fixed value
-  // TODO
-  //  See if this should also be controlled by input seed
-  //auto generator = util::get_random_generator(1);
+  // generate log normal dist in processor 0 and gather in all processors
+  unsigned int counter_log_normal = 0;
+  std::vector<double> log_normal_dist_samples;
+  if (d_model_p->d_procRank == 0) {
+    for (unsigned int i=0; i<3 * VGM.getNumberOfNodes(); i++)
+      log_normal_dist_samples.push_back(log_normal_dist());
+  }
+  // gather in all processors
+  d_model_p->get_comm()->allgather(log_normal_dist_samples);
 
   double L_x = input.d_domain_params[1];
 
@@ -1581,19 +1591,14 @@ void util::unet::Network::processSproutingGrowth() {
         double p_v_neighbor = pointer->neighbors[i]->p_v;
 
         // TAG: Random
-        //std::uniform_real_distribution<double> distribution_uniform(
-        //    1.25 * radius_min, radius_prime);
-        boost::uniform_real<> uniform_distribution(1.25 * radius_min, radius_prime);
-        boost::variate_generator<boost::mt19937, boost::uniform_real<> >
-            uniform_generator(generator_b, uniform_distribution);
-
+        auto uniform_dist =
+            util::UniformDistributionCustom(1.25 * radius_min, radius_prime, input.d_seed);
         double radius_new = 1.25 * radius_min;
 
         if (1.25 * radius_min < radius_prime) {
 
           // TAG: Random
-          //radius_new = distribution_uniform(generator_log);
-          radius_new = uniform_generator();
+          radius_new = uniform_dist();
         }
 
         std::vector<double> dir_vessel = std::vector<double>(3, 0.0);
@@ -1745,9 +1750,8 @@ void util::unet::Network::processSproutingGrowth() {
         double angle = std::acos(prod_angle);
 
         // TAG: Random
-        // lognormal distribution
-        //double log_dist = log_normal_distribution(generator_log);
-        double log_dist = log_normal_generator();
+        //double log_dist = log_normal_dist();
+        double log_dist = log_normal_dist_samples[counter_log_normal++];
 
         // get length
         double length_new = log_dist * radius_new;

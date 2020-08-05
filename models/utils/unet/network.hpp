@@ -10,6 +10,7 @@
 
 // Libmesh
 #include "utils.hpp"
+#include "random_dist.hpp"
 
 // gmm dependencies
 #include "gmm.h"
@@ -42,7 +43,17 @@ class Network {
 public:
   /*! @brief Constructor */
   Network(util::BaseModel *model)
-      : d_is_network_changed(false), d_model_p(model), d_update_number(0), d_coupled_solver(false) {}
+      : d_is_network_changed(false), d_model_p(model), d_update_number(0), d_coupled_solver(false) {
+
+    // initialize random distribution samplers
+    const auto &input = d_model_p->get_input_deck();
+
+    // TAG: Random
+    d_logNormalDist.init(input.d_log_normal_mean, input.d_log_normal_std_dev,
+                         d_model_p->get_comm(), input.d_seed);
+    d_normalDist.init(0., 1., d_model_p->get_comm(), input.d_seed);
+    d_uniformDist.init(0., 1., d_model_p->get_comm(), input.d_seed);
+  }
 
   const util::unet::ListStructure<util::unet::VGNode> &get_mesh() const { return
   VGM; }
@@ -260,6 +271,10 @@ public:
   bool d_coupled_solver;
 
   std::ostringstream oss;
+
+  util::DistributionSampleParallel<LogNormalDistribution> d_logNormalDist;
+  util::DistributionSampleParallel<NormalDistribution> d_normalDist;
+  util::DistributionSampleParallel<UniformDistribution> d_uniformDist;
 };
 
 } // namespace unet
