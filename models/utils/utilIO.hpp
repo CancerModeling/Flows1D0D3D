@@ -121,6 +121,14 @@ bool read_network_file(std::string filename, std::vector<Point> &nodes,
                        std::vector<bool> &node_branch_flag,
                        std::vector<double> &elem_radius,
                        std::vector<double> &elem_viscosity);
+
+template <class T> inline void printFile(std::string filename, const std::vector<T> &list, int nt = 0) {
+
+  std::ofstream off(filename);
+  off << printStr(list, nt);
+  off.close();
+}
+
 } // namespace io
 
 } // namespace util
