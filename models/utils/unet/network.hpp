@@ -193,6 +193,21 @@ public:
   /*! @brief 1-D mesh */
   util::unet::ListStructure<util::unet::VGNode> VGM;
 
+  /*! @brief Vertices data
+   *
+   * (x-coord, y-coord, z-coord, boundry flag)
+   *
+   */
+  std::vector<double> d_vertexData;
+
+  /*! @brief Segments data
+   *
+   * (node 1, node 2, r)
+   *
+   */
+  std::vector<double> d_segmentData;
+
+
   /*! @brief System matrix for vessel pressure */
   gmm::row_matrix<gmm::wsvector<double>> A_VGM;
 
