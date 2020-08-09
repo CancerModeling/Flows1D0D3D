@@ -356,6 +356,8 @@ public:
   void init_localized_sol(const Parallel::Communicator &comm) {
     d_localized_sol = NumericVector<Number>::build(comm);
     d_localized_sol->init(d_sys.solution->size(), false, SERIAL);
+    //if (comm.rank() == 0)
+    //  d_localized_sol_std = std::vector<double>(d_sys.solution->size(), 0.);
   }
 
   /*!
@@ -371,9 +373,16 @@ public:
       std::vector<double> &localize_sol,
       std::vector<unsigned int> var_ids = {0}, bool resize_vec = true) {
 
+    // TODO
+    //  Should localize_to_one() be used so that only on processor 0 is localized
+    //  Syntax: d_sys.solution->localize_to_one(d_localized_sol_std);
+
     // gather solution in all processors
     // sys.d_sys.current_local_solution->localize(collect_sol);
     d_sys.solution->localize(*d_localized_sol);
+
+    if (d_mesh.comm().rank() > 0)
+      return;
 
     // check if we need to resize the vector
     auto num_vars = var_ids.size();
@@ -426,6 +435,9 @@ public:
     // gather solution in all processors
     // sys.d_sys.current_local_solution->localize(collect_sol);
     d_sys.solution->localize(*d_localized_sol);
+
+    if (d_mesh.comm().rank() > 0)
+      return;
 
     // check if we need to resize the vector
     auto num_vars = var_ids.size();
@@ -533,6 +545,7 @@ public:
 
   /*! @brief Localized solution vector */
   std::unique_ptr<NumericVector<Number>> d_localized_sol;
+  std::vector<Number> d_localized_sol_std;
 };
 
 } // namespace util

@@ -43,16 +43,20 @@ class Network {
 public:
   /*! @brief Constructor */
   Network(util::BaseModel *model)
-      : d_is_network_changed(false), d_model_p(model), d_update_number(0), d_coupled_solver(false) {
+      : d_has_network_changed(false), d_model_p(model), d_update_number(0), d_coupled_solver(false), d_comm_p(model->get_comm()), d_procRank(0), d_procSize(0) {
 
     // initialize random distribution samplers
     const auto &input = d_model_p->get_input_deck();
 
+    if (d_comm_p) {
+      d_procSize = d_comm_p->size();
+      d_procRank = d_comm_p->rank();
+    }
+
     // TAG: Random
-    d_logNormalDist.init(input.d_log_normal_mean, input.d_log_normal_std_dev,
-                         d_model_p->get_comm(), input.d_seed);
-    d_normalDist.init(0., 1., d_model_p->get_comm(), input.d_seed);
-    d_uniformDist.init(0., 1., d_model_p->get_comm(), input.d_seed);
+    d_logNormalDist.init(input.d_log_normal_mean, input.d_log_normal_std_dev, input.d_seed);
+    d_normalDist.init(0., 1., input.d_seed);
+    d_uniformDist.init(0., 1., input.d_seed);
   }
 
   const util::unet::ListStructure<util::unet::VGNode> &get_mesh() const { return
@@ -98,7 +102,6 @@ public:
                                      &pres_sys, BaseAssembly &tum_sys);
 
   void assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
-  void assemble3D1DSystemForNutrientsOld(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
 
    void solve3D1DFlowProblem(BaseAssembly
    &pres_sys, BaseAssembly &tum_sys);
@@ -179,32 +182,51 @@ public:
   /*! @brief Compute qoi */
   std::vector<double> compute_qoi();
 
-  std::string get_assembly_cases_pres(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const;
-  std::string get_assembly_cases_nut(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const;
+  unsigned int get_assembly_cases_pres(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const;
+  unsigned int get_assembly_cases_nut(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const;
+
+  void prepare_and_communicate_network();
 
   /** @}*/
 
   /*! @brief Did we change network from last step */
-  bool d_is_network_changed;
+  bool d_has_network_changed;
 
   /*! @brief Reference to model class */
   util::BaseModel *d_model_p;
 
+  /*! @brief Pointer to communicator */
+  Parallel::Communicator *d_comm_p;
+
+  /*! @brief Rank of processor */
+  unsigned int d_procRank;
+
+  /*! @brief Size of processors */
+  unsigned int d_procSize;
+
   /*! @brief 1-D mesh */
   util::unet::ListStructure<util::unet::VGNode> VGM;
 
+  /*! @brief number of vertices in 1D network */
+  unsigned int d_numVertices;
+
+  /*! @brief number of segments in 1D network */
+  unsigned int d_numSegments;
+
   /*! @brief Vertices data
    *
-   * (x-coord, y-coord, z-coord, boundry flag)
+   * (x-coord, y-coord, z-coord) and boundry flag
    *
    */
-  std::vector<double> d_vertexData;
+  std::vector<double> d_vertices;
+  std::vector<unsigned int> d_vertexBdFlag;
 
   /*! @brief Segments data
    *
-   * (node 1, node 2, r)
+   * (node 1, node 2) and radius
    *
    */
+  std::vector<unsigned int> d_segments;
   std::vector<double> d_segmentData;
 
 
@@ -280,6 +302,9 @@ public:
   double K_3D;
   double L_x;
 
+  double L_p;
+  double L_s;
+
   unsigned int d_update_number;
   unsigned int d_update_interval;
 
@@ -287,9 +312,9 @@ public:
 
   std::ostringstream oss;
 
-  util::DistributionSampleParallel<LogNormalDistribution> d_logNormalDist;
-  util::DistributionSampleParallel<NormalDistribution> d_normalDist;
-  util::DistributionSampleParallel<UniformDistribution> d_uniformDist;
+  util::DistributionSample<LogNormalDistribution> d_logNormalDist;
+  util::DistributionSample<NormalDistribution> d_normalDist;
+  util::DistributionSample<UniformDistribution> d_uniformDist;
 };
 
 } // namespace unet

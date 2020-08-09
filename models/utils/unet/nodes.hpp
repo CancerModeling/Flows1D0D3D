@@ -11,6 +11,17 @@
 #include "utils.hpp"
 #include "list_structure.hpp"
 
+// definitions
+#define UNET_FREE_MASK 0x0000
+#define UNET_PRES_BDRY_DIRIC 0x0001
+#define UNET_PRES_BDRY_INNER 0x0002
+#define UNET_PRES_INNER 0x0004
+#define UNET_NUT_BDRY_ARTERY_INLET 0x0008
+#define UNET_NUT_BDRY_VEIN_INLET 0x0010
+#define UNET_NUT_BDRY_INNER_INLET 0x0020
+#define UNET_NUT_BDRY_OUTLET 0x0040
+#define UNET_NUT_INNER 0x0080
+
 namespace util {
 
 namespace unet {

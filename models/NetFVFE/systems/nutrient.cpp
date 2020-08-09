@@ -95,16 +95,18 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
 
     double h_3D = network.h_3D;
     int N_3D = network.N_3D;
+    double L_p = network.L_p;
+    double L_s = network.L_s;
+    double osmotic_sigma = network.osmotic_sigma;
 
-    int indexOfNode = 0;
-    int numberOfNeighbors = 0;
-    int indexNeighbor = 0;
-    std::vector<double> coord;
-    std::vector<double> coord_neighbor;
+    int node_proc = 0;
+    int node_neigh = 1;
+    std::vector<unsigned int> nodes(2, 0);
+    std::vector<std::vector<double>> coords;
+    coords.emplace_back(3, 0.);
+    coords.emplace_back(3, 0.);
     double radius = 0.;
     double length = 0.;
-    double L_s = 0.;
-    double L_p = 0.;
     double surface_area = 0.;
     std::vector<double> weights;
     std::vector<int> id_3D_elements;
@@ -112,90 +114,91 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
     double p_v = 0.;
     double c_v = 0.;
     double p_t = 0.;
-    double c_t = 0.;
-    std::string assembly_cases;
+    unsigned int assembly_cases;
 
-    while (pointer) {
+    for (unsigned int i=0; i<network.d_numSegments; i++) {
 
-      indexOfNode = pointer->index;
-      coord = pointer->coord;
-      p_v = pointer->p_v;
-      c_v = pointer->c_v;
-      numberOfNeighbors = pointer->neighbors.size();
+      nodes[0] = network.d_segments[2*i + 0];
+      nodes[1] = network.d_segments[2*i + 1];
+      radius = network.d_segmentData[i];
+      for (unsigned int j=0; j<3; j++) {
+        coords[0][j] = network.d_vertices[3*nodes[0] + j];
+        coords[1][j] = network.d_vertices[3*nodes[1] + j];
+      }
+      length = util::dist_between_points(coords[0], coords[1]);
 
-      // find cases
-      assembly_cases = network.get_assembly_cases_nut(pointer, deck.d_identify_vein_pres);
+      for (unsigned int j=0; j<2; j++) {
 
-      for (int i = 0; i < numberOfNeighbors; i++) {
+        node_proc = 0;
+        node_neigh = 1;
+        if (j==1) {
+          node_proc = 1;
+          node_neigh = 0;
+        }
 
-        radius = pointer->radii[i];
-        indexNeighbor = pointer->neighbors[i]->index;
-        coord_neighbor = pointer->neighbors[i]->coord;
-        length = util::dist_between_points(coord, coord_neighbor);
-        L_s = pointer->L_s[i];
-        L_p = pointer->L_p[i];
+        p_v = network.P_v[nodes[node_proc]];
+        c_v = network.C_v[nodes[node_proc]];
+        assembly_cases = network.d_vertexBdFlag[nodes[node_proc]];
 
-        if (assembly_cases == "boundary_artery_inlet")
-          continue;
+        if (!(assembly_cases & UNET_NUT_BDRY_ARTERY_INLET)) {
 
-        // Surface area of cylinder
-        surface_area = 2.0 * M_PI * (0.5 * length) * radius;
-        util::unet::determineWeightsAndIds(
-            deck.d_num_points_length, deck.d_num_points_angle, N_3D, coord,
-            coord_neighbor, radius, h_3D, 0.5 * length, weights, id_3D_elements,
-            d_mesh, true);
+          // Surface area of cylinder
+          surface_area = 2.0 * M_PI * (0.5 * length) * radius;
+          util::unet::determineWeightsAndIds(
+              deck.d_num_points_length, deck.d_num_points_angle, N_3D, coords[node_proc],
+              coords[node_neigh], radius, h_3D, 0.5 * length, weights,
+              id_3D_elements, d_mesh, true);
 
-        // Add coupling entry
-        numberOfElements = id_3D_elements.size();
+          // Add coupling entry
+          numberOfElements = id_3D_elements.size();
 
-        for (int j = 0; j < numberOfElements; j++) {
+          for (int j = 0; j < numberOfElements; j++) {
 
-          if (id_3D_elements[j] > -1) {
+            if (id_3D_elements[j] > -1) {
 
-            // get 3d pressure
-            const auto *elem = d_mesh.elem_ptr(id_3D_elements[j]);
-            if (elem->processor_id() == d_model_p->get_comm()->rank()) {
+              const auto *elem = d_mesh.elem_ptr(id_3D_elements[j]);
+              if (elem->processor_id() == d_model_p->get_comm()->rank()) {
 
-              pres.init_dof(elem);
-              p_t = pres.get_current_sol(0);
+                // get 3d pressure
+                pres.init_dof(elem);
+                p_t = pres.get_current_sol(0);
 
-              // get 3d nutrient
-              init_dof(elem);
-              c_t = get_current_sol(0);
+                // init nutrient dof
+                init_dof(elem);
 
-              // implicit for c_t in source
-              Ke(0, 0) = dt * factor_nut * L_s * surface_area * weights[j];
+                // implicit for c_t in source
+                Ke(0, 0) = dt * factor_nut * L_s * surface_area * weights[j];
 
-              // explicit for c_v in source
-              Fe(0) = dt * factor_nut * L_s * surface_area * weights[j] * c_v;
+                // explicit for c_v in source
+                Fe(0) = dt * factor_nut * L_s * surface_area * weights[j] * c_v;
 
-              // osmotic reflection term
-              if (p_v - p_t > 0.0) {
+                // osmotic reflection term
+                if (p_v - p_t > 0.0) {
 
-                // 3D equation
-                // 2pi R (p_v - p_t) phi_v term in right hand side of 3D equation
-                Fe(0) += dt * factor_nut * (1. - deck.d_osmotic_sigma) * L_p *
-                         surface_area * weights[j] * (p_v - p_t) * c_v;
+                  // 3D equation
+                  // 2pi R (p_v - p_t) phi_v term in right hand side of 3D equation
+                  Fe(0) += dt * factor_nut * (1. - osmotic_sigma) * L_p *
+                           surface_area * weights[j] * (p_v - p_t) * c_v;
 
-              } else {
+                } else {
 
-                // 3D equation
-                // 2pi R (p_v - p_t) phi_sigma term in right hand side of 3D equation
-                Ke(0, 0) += -dt * factor_nut * (1. - deck.d_osmotic_sigma) *
-                            L_p * surface_area * weights[j] * (p_v - p_t);
+                  // 3D equation
+                  // 2pi R (p_v - p_t) phi_sigma term in right hand side of 3D equation
+                  Ke(0, 0) += -dt * factor_nut * (1. - osmotic_sigma) *
+                              L_p * surface_area * weights[j] * (p_v - p_t);
+                }
+
+                // update matrix
+                d_sys.matrix->add_matrix(Ke, d_dof_indices_sys,
+                                         d_dof_indices_sys);
+                d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
               }
-
-              // update matrix
-              d_sys.matrix->add_matrix(Ke, d_dof_indices_sys,
-                                       d_dof_indices_sys);
-              d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
             }
-          }
-        } // loop over 3D elements
-      }   // loop over neighbor segments
+          } // loop over 3D elements
+        } // if not dirichlet
+      } // segment's node loop
 
-      pointer = pointer->global_successor;
-    } // loop over vertex in 1-d
+    } // loop over segments
   }
 }
 

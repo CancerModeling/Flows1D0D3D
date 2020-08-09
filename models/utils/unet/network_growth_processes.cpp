@@ -8,130 +8,16 @@
 #include "modelUtil.hpp"
 #include "netUtil.hpp"
 #include "network.hpp"
-//#include <random>
-//#include <boost/random.hpp>
 #include "random_dist.hpp"
-
-namespace {
-// test random number generator and distribution
-void test_random_gen(int proc, int step) {
-
-  int i = 0;
-  int N = 10000;
-  std::vector<double> logdist;
-  std::vector<double> nordist;
-  std::vector<double> unidist;
-
-  //auto generator = util::get_random_generator(100);
-
-  {
-    auto generator = util::get_random_generator(100);
-    std::lognormal_distribution<> log_normal_distribution(1., 0.2);
-
-    //auto generator = util::get_random_generator(100);
-
-    for (i = 0; i < N; i++)
-      logdist.push_back(log_normal_distribution(generator));
-  }
-
-  {
-    auto generator = util::get_random_generator(100);
-    std::normal_distribution<> normal_distribution(1., 1.);
-
-    //auto generator = util::get_random_generator(100);
-
-    for (i = 0; i < N; i++)
-      nordist.push_back(normal_distribution(generator));
-  }
-
-  {
-    auto generator = util::get_random_generator(100);
-    std::uniform_real_distribution<> distribution_uniform(0., 1.);
-
-    //auto generator = util::get_random_generator(100);
-
-    for (i = 0; i < N; i++)
-      unidist.push_back(distribution_uniform(generator));
-  }
-
-  // output to file
-  std::ofstream ofs("debug_random_" + std::to_string(step) + "_" + std::to_string(proc) + ".txt");
-  for (i=0; i<N; i++)
-    ofs << logdist[i] << " " << nordist[i] << " " << unidist[i] << "\n";
-  ofs.close();
-
-}
-
-// test random number generator and distribution
-void test_random_gen_boost(int proc, int step) {
-
-  int i = 0;
-  int N = 10000;
-  std::vector<double> logdist;
-  std::vector<double> nordist;
-  std::vector<double> unidist;
-
-  //auto generator = util::get_random_generator_boost(100);
-
-  {
-    auto generator = util::get_random_generator_boost(100);
-    boost::lognormal_distribution<> log_normal_distribution(1., 0.2);
-
-    //auto generator = util::get_random_generator(100);
-
-    for (i = 0; i < N; i++)
-      logdist.push_back(log_normal_distribution(generator));
-  }
-
-  {
-    auto generator = util::get_random_generator_boost(100);
-    boost::normal_distribution<> normal_distribution(1., 1.);
-
-    //auto generator = util::get_random_generator(100);
-
-    for (i = 0; i < N; i++)
-      nordist.push_back(normal_distribution(generator));
-  }
-
-  {
-    auto generator = util::get_random_generator_boost(100);
-    boost::uniform_real<> distribution_uniform(0., 1.);
-
-    //auto generator = util::get_random_generator(100);
-
-    for (i = 0; i < N; i++)
-      unidist.push_back(distribution_uniform(generator));
-  }
-
-  // output to file
-  std::ofstream ofs("debug_random_boost_" + std::to_string(step) + "_" + std::to_string(proc) + ".txt");
-  for (i=0; i<N; i++)
-    ofs << logdist[i] << " " << nordist[i] << " " << unidist[i] << "\n";
-  ofs.close();
-
-}
-
-}
 
 void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
                                         BaseAssembly &grad_taf_sys) {
 
   d_model_p->d_log("Update the network \n", "net update");
 
-  //d_model_p->d_log("Testing random number \n", "net update");
-  //test_random_gen(d_model_p->get_comm()->rank(), d_model_p->d_step);
-  //test_random_gen_boost(d_model_p->get_comm()->rank(), d_model_p->d_step);
-  //exit(0);
-
   int numberOfNodesOld = VGM.getNumberOfNodes();
 
   if (d_update_number % d_update_interval == 0) {
-
-    std::cout << " " << std::endl;
-    std::cout << "Number of nodes: " << numberOfNodesOld << std::endl;
-    d_model_p->d_log("Number of nodes: " + std::to_string(numberOfNodesOld) +
-                         " \n",
-                     "net update");
 
     // update TAF vector from libmesh taf system
     if (taf_sys.d_sys_name != "TAF")
@@ -140,53 +26,64 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
     // get TAF at element centroid
     taf_sys.localize_solution_with_elem_id_numbering_non_const_elem(phi_TAF_3D, {0}, false);
 
-    // util::get_elem_sol(taf_sys, phi_TAF);
+    if (d_procRank == 0) {
 
-    d_model_p->d_log("Mark nodes for apical growth \n", "net update");
-    markApicalGrowth();
+      std::cout << " " << std::endl;
+      std::cout << "Number of nodes: " << numberOfNodesOld << std::endl;
+      d_model_p->d_log("Number of nodes: " + std::to_string(numberOfNodesOld) +
+                           " \n",
+                       "net update");
 
-    d_model_p->d_log("Process apical growth \n", "net update");
-    processApicalGrowth();
+      // util::get_elem_sol(taf_sys, phi_TAF);
 
-    auto numberOfNodes = VGM.getNumberOfNodes();
+      d_model_p->d_log("Mark nodes for apical growth \n", "net update");
+      markApicalGrowth();
 
-    std::cout << " " << std::endl;
-    std::cout << "Number of nodes after growing the network: " << numberOfNodes
-              << std::endl;
-    d_model_p->d_log("Number of nodes after growing the network: " +
-                         std::to_string(numberOfNodes) + " \n",
-                     "net update");
+      d_model_p->d_log("Process apical growth \n", "net update");
+      processApicalGrowth();
 
-    d_model_p->d_log("Mark edges for sprouting \n", "net update");
-    markSproutingGrowth();
+      auto numberOfNodes = VGM.getNumberOfNodes();
 
-    d_model_p->d_log("Process sprouting growth \n", "net update");
-    processSproutingGrowth();
+      std::cout << " " << std::endl;
+      std::cout << "Number of nodes after growing the network: "
+                << numberOfNodes << std::endl;
+      d_model_p->d_log("Number of nodes after growing the network: " +
+                           std::to_string(numberOfNodes) + " \n",
+                       "net update");
 
-    numberOfNodes = VGM.getNumberOfNodes();
+      d_model_p->d_log("Mark edges for sprouting \n", "net update");
+      markSproutingGrowth();
 
-    d_model_p->d_log("Number of nodes after growing the network: " +
-                         std::to_string(numberOfNodes) + " \n",
-                     "net update");
-    removeRedundantTerminalVessels();
+      d_model_p->d_log("Process sprouting growth \n", "net update");
+      processSproutingGrowth();
 
-    numberOfNodes = VGM.getNumberOfNodes();
+      numberOfNodes = VGM.getNumberOfNodes();
 
-    d_model_p->d_log("Link terminal vessels \n", "net update");
-    linkTerminalVessels();
+      d_model_p->d_log("Number of nodes after growing the network: " +
+                           std::to_string(numberOfNodes) + " \n",
+                       "net update");
+      removeRedundantTerminalVessels();
 
-    numberOfNodes = VGM.getNumberOfNodes();
+      numberOfNodes = VGM.getNumberOfNodes();
 
-    d_model_p->d_log(
-        "Number of nodes after linking terminal vessels to the network: " +
-            std::to_string(numberOfNodes) + " \n",
-        "net update");
+      d_model_p->d_log("Link terminal vessels \n", "net update");
+      linkTerminalVessels();
+
+      numberOfNodes = VGM.getNumberOfNodes();
+
+      d_model_p->d_log(
+          "Number of nodes after linking terminal vessels to the network: " +
+              std::to_string(numberOfNodes) + " \n",
+          "net update");
+    } // if zero processor
   }
 
   if ((d_update_number + 1) % d_update_interval == 0) {
 
-    d_model_p->d_log("Adapt radius \n", "net update");
-    adaptRadius();
+    if (d_procRank == 0) {
+      d_model_p->d_log("Adapt radius \n", "net update");
+      adaptRadius();
+    }
   }
 
   if (d_update_number % d_update_interval != 0)
@@ -335,12 +232,15 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
   if (input.d_compute_elem_weights and input.d_model_name != "NetFCFVFE")
     compute_elem_weights();
   if (numberOfNodes != numberOfNodesOld) {
-    d_is_network_changed = true;
+    d_has_network_changed = true;
     d_model_p->d_log("Added " +
                          std::to_string(numberOfNodes - numberOfNodesOld) +
                          " vertices to the network \n",
                      "net update");
   }
+
+  // compute and communicate updated network
+  prepare_and_communicate_network();
 }
 
 void util::unet::Network::linkTerminalVessels() {
