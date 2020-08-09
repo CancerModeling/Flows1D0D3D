@@ -42,7 +42,7 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
   double surface_area = 0.;
   std::vector<double> weights;
   std::vector<int> id_3D_elements;
-  std::string assembly_cases;
+  unsigned int assembly_cases;
 
   // assemble 1D and 1D-3D coupling
   std::shared_ptr<VGNode> pointer = VGM.getHead();
@@ -53,7 +53,7 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
     numberOfNeighbors = pointer->neighbors.size();
 
     // find cases
-    assembly_cases = get_assembly_cases_pres(pointer, input.d_identify_vein_pres);
+    assembly_cases = d_vertexBdFlag[indexOfNode];
 
     // loop over segments and compute 1D and 1D-3D coupling
     for (int i = 0; i < numberOfNeighbors; i++) {
@@ -73,7 +73,7 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
                              weights, id_3D_elements, mesh, false);
 
       // case specific implementation
-      if (assembly_cases == "boundary_dirichlet") {
+      if (assembly_cases & UNET_PRES_BDRY_DIRIC) {
 
         A_VGM(indexOfNode, indexOfNode) += factor_p * 1.0;
         b[indexOfNode] += factor_p * pointer->p_boundary;
@@ -92,7 +92,7 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
 
       for (int j = 0; j < numberOfElements; j++) {
 
-        if (id_3D_elements[j] < 0 or assembly_cases == "boundary_dirichlet")
+        if (id_3D_elements[j] < 0 or assembly_cases & UNET_PRES_BDRY_DIRIC)
           continue;
 
         b[indexOfNode] += factor_p * L_p * surface_area * weights[j] *
@@ -150,7 +150,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
   double p_t = 0.0;
   double c_t = 0.0;
   double phi_sigma_boundary = 0.0;
-  std::string assembly_cases;
+  unsigned int assembly_cases;
 
   // assemble 1D and 1D-3D coupling
   std::shared_ptr<VGNode> pointer = VGM.getHead();
@@ -162,7 +162,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
     numberOfNeighbors = pointer->neighbors.size();
 
     // find cases
-    assembly_cases = get_assembly_cases_nut(pointer, input.d_identify_vein_pres);
+    assembly_cases = d_vertexBdFlag[indexOfNode];
 
     // loop over segments and compute 1D and 1D-3D coupling
     for (int i = 0; i < numberOfNeighbors; i++) {
@@ -185,25 +185,25 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
                              weights, id_3D_elements, mesh, false);
 
       // case specific implementation
-      if (assembly_cases == "boundary_artery_inlet") {
+      if (assembly_cases & UNET_NUT_BDRY_ARTERY_INLET) {
 
         A_VGM(indexOfNode, indexOfNode) += factor_c * 1.0;
         b_c[indexOfNode] += factor_c * input.d_in_nutrient;
 
-      } else if (assembly_cases == "boundary_vein_inlet" or
-                 assembly_cases == "boundary_inner_inlet") {
+      } else if (assembly_cases & UNET_NUT_BDRY_VEIN_INLET or
+                 assembly_cases & UNET_NUT_BDRY_INNER_INLET) {
 
         // advection
         A_VGM(indexOfNode, indexOfNode) += factor_c * dt * v_interface;
         A_VGM(indexOfNode, indexNeighbor) += -factor_c * dt * v_interface;
 
-      } else if (assembly_cases == "boundary_outlet") {
+      } else if (assembly_cases & UNET_NUT_BDRY_OUTLET) {
 
         // advection
         A_VGM(indexOfNode, indexOfNode) += -factor_c * dt * v_interface;
         A_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
 
-      } else if (assembly_cases == "inner") {
+      } else if (assembly_cases & UNET_NUT_INNER) {
 
         // advection term
         if (v_interface > 0.0)
@@ -214,7 +214,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
       }
 
       // common entries to various cases
-      if (assembly_cases != "boundary_artery_inlet") {
+      if (!(assembly_cases & UNET_NUT_BDRY_ARTERY_INLET)) {
 
         // mass matrix
         A_VGM(indexOfNode, indexOfNode) += factor_c * 0.5 * length;
@@ -235,7 +235,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
 
       for (int j = 0; j < numberOfElements; j++) {
 
-        if (id_3D_elements[j] < 0 or assembly_cases == "boundary_artery_inlet")
+        if (id_3D_elements[j] < 0 or assembly_cases & UNET_NUT_BDRY_ARTERY_INLET)
           continue;
 
         c_t = phi_sigma_3D[id_3D_elements[j]];

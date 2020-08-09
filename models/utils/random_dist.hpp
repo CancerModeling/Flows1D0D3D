@@ -56,45 +56,35 @@ inline double transform_to_uniform_dist(double min, double max, double sample) {
   return min + sample * (max - min);
 }
 
-class LogNormalDistributionCustom {
-public:
-  LogNormalDistributionCustom(double mean, double std, int seed = -1)
-      : d_seed(seed), d_gen(get_rd_gen(seed)), d_dist(mean, std){};
 
-  double operator()() { return d_dist(d_gen); }
+template <class T>
+class DistributionSample {
+public:
+  DistributionSample(double arg1, double arg2, int seed = -1)
+      : d_seed(seed), d_gen(get_rd_gen(seed)), d_dist(arg1, arg2) {};
+
+  DistributionSample() : d_seed(-1){};
+
+  void init(double arg1, double arg2, int seed = -1) {
+
+    d_seed = seed;
+    d_gen = RandGenerator(get_rd_gen(seed));
+    d_dist = T(arg1, arg2);
+  }
+
+  double operator()() {
+    return d_dist(d_gen);
+  }
+
+  // not implemented for this
+  void debug_out(std::string filename) {
+    return ;
+  }
 
   int d_seed;
   RandGenerator d_gen;
-  //std::default_random_engine d_gen;
-  LogNormalDistribution d_dist;
+  T d_dist;
 };
-
-class NormalDistributionCustom {
-public:
-  NormalDistributionCustom(double mean, double std, int seed = -1)
-      : d_seed(seed), d_gen(get_rd_gen(seed)), d_dist(mean, std) {}
-
-  double operator()() { return d_dist(d_gen); }
-
-  int d_seed;
-  RandGenerator d_gen;
-  //std::default_random_engine d_gen;
-  NormalDistribution d_dist;
-};
-
-class UniformDistributionCustom {
-public:
-  UniformDistributionCustom(double min, double max, int seed = -1)
-      : d_seed(seed), d_gen(get_rd_gen(seed)), d_dist(min, max) {}
-
-  double operator()() { return d_dist(d_gen); }
-
-  int d_seed;
-  RandGenerator d_gen;
-  //std::default_random_engine d_gen;
-  UniformDistribution d_dist;
-};
-
 
 template <class T>
 class DistributionSampleParallel {
@@ -184,185 +174,6 @@ public:
   unsigned int d_procSize;
   Parallel::Communicator *d_comm_p;
   std::vector<double> d_samples;
-};
-
-class LogNormalDistributionSampleParallel {
-public:
-  LogNormalDistributionSampleParallel(double mean, double std,
-                                      Parallel::Communicator *comm,
-                                      int seed = -1,
-                                      unsigned int sample_size = 1000)
-      : d_seed(seed), d_curSample(0), d_sampleSize(sample_size),
-        d_gen(get_rd_gen(seed)), d_dist(mean, std), d_procRank(0),
-        d_procSize(0), d_comm_p(comm) {
-
-    if (comm) {
-      d_procRank = d_comm_p->rank();
-      d_procSize = d_comm_p->size();
-    }
-
-    d_samples.reserve(d_sampleSize);
-    if (d_procRank == 0)
-      d_samples.resize(d_sampleSize);
-
-    update();
-  };
-
-  double operator()() {
-    if (d_curSample < d_sampleSize) {
-      return d_samples[d_curSample++];
-    } else {
-      update();
-      return d_samples[d_curSample++];
-    }
-  }
-
-  void update() {
-
-    d_curSample = 0;
-    if (d_procRank == 0) {
-      for (unsigned int i=0; i<d_sampleSize; i++)
-        d_samples[i] = d_dist(d_gen);
-    } else {
-      d_samples.resize(0);
-    }
-
-    d_comm_p->allgather(d_samples);
-    if (d_samples.size() != d_sampleSize)
-      libmesh_error_msg("Error collecting log normal samples");
-  }
-
-  int d_seed;
-  unsigned int d_curSample;
-  unsigned int d_sampleSize;
-  RandGenerator d_gen;
-  LogNormalDistribution d_dist;
-  unsigned int d_procRank;
-  unsigned int d_procSize;
-  Parallel::Communicator *d_comm_p;
-  std::vector<float> d_samples;
-};
-
-class NormalDistributionSampleParallel {
-public:
-  NormalDistributionSampleParallel(double mean, double std,
-                                      Parallel::Communicator *comm,
-                                      int seed = -1,
-                                      unsigned int sample_size = 1000)
-      : d_seed(seed), d_curSample(0), d_sampleSize(sample_size),
-        d_gen(get_rd_gen(seed)), d_dist(mean, std), d_procRank(0),
-        d_procSize(0), d_comm_p(comm) {
-
-    if (comm) {
-      d_procRank = d_comm_p->rank();
-      d_procSize = d_comm_p->size();
-    }
-
-    d_samples.reserve(d_sampleSize);
-    if (d_procRank == 0)
-      d_samples.resize(d_sampleSize);
-
-    update();
-  };
-
-  double operator()() {
-    if (d_curSample < d_sampleSize) {
-      return d_samples[d_curSample++];
-    } else {
-      update();
-      return d_samples[d_curSample++];
-    }
-  }
-
-  void update() {
-
-    d_curSample = 0;
-    if (d_procRank == 0) {
-      for (unsigned int i=0; i<d_sampleSize; i++)
-        d_samples[i] = d_dist(d_gen);
-    } else {
-      d_samples.resize(0);
-    }
-
-    d_comm_p->allgather(d_samples);
-    if (d_samples.size() != d_sampleSize)
-      libmesh_error_msg("Error collecting log normal samples");
-  }
-
-  int d_seed;
-  unsigned int d_curSample;
-  unsigned int d_sampleSize;
-  RandGenerator d_gen;
-  NormalDistribution d_dist;
-  unsigned int d_procRank;
-  unsigned int d_procSize;
-  Parallel::Communicator *d_comm_p;
-  std::vector<float> d_samples;
-};
-
-class UniformDistributionSampleParallel {
-public:
-  UniformDistributionSampleParallel(double min, double max,
-                                   Parallel::Communicator *comm,
-                                   int seed = -1,
-                                   unsigned int sample_size = 1000)
-      : d_seed(seed), d_curSample(0), d_sampleSize(sample_size),
-        d_gen(get_rd_gen(seed)), d_dist(min, max), d_procRank(0),
-        d_procSize(0), d_comm_p(comm) {
-
-    if (comm) {
-      d_procRank = d_comm_p->rank();
-      d_procSize = d_comm_p->size();
-    }
-
-    d_samples.reserve(d_sampleSize);
-    if (d_procRank == 0)
-      d_samples.resize(d_sampleSize);
-
-    update();
-  };
-
-  double operator()() {
-    if (d_curSample < d_sampleSize) {
-      return d_samples[d_curSample++];
-    } else {
-      update();
-    }
-  }
-
-  double operator()(double min, double max) {
-    if (d_curSample < d_sampleSize) {
-      return min + d_samples[d_curSample++] * (max - min);
-    } else {
-      update();
-      return min + d_samples[d_curSample++] * (max - min);
-    }
-  }
-
-  void update() {
-
-    d_curSample = 0;
-    if (d_procRank == 0) {
-      for (unsigned int i=0; i<d_sampleSize; i++)
-        d_samples[i] = d_dist(d_gen);
-    } else {
-      d_samples.resize(0);
-    }
-
-    d_comm_p->allgather(d_samples);
-    if (d_samples.size() != d_sampleSize)
-      libmesh_error_msg("Error collecting log normal samples");
-  }
-
-  int d_seed;
-  unsigned int d_curSample;
-  unsigned int d_sampleSize;
-  RandGenerator d_gen;
-  UniformDistribution d_dist;
-  unsigned int d_procRank;
-  unsigned int d_procSize;
-  Parallel::Communicator *d_comm_p;
-  std::vector<float> d_samples;
 };
 
 } // namespace util
