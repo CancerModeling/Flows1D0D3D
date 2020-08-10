@@ -185,7 +185,12 @@ public:
   unsigned int get_assembly_cases_pres(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const;
   unsigned int get_assembly_cases_nut(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const;
 
+  std::string get_assembly_cases_pres_str(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const;
+  std::string get_assembly_cases_nut_str(const std::shared_ptr<VGNode> &pointer, const double &identify_vein_pres) const;
+
   void prepare_and_communicate_network();
+  void update_and_communicate_bdry_flag();
+  void check_vessel_length();
 
   /** @}*/
 

@@ -28,8 +28,6 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
     if (d_procRank == 0) {
 
-      std::cout << " " << std::endl;
-      std::cout << "Number of nodes: " << numberOfNodesOld << std::endl;
       d_model_p->d_log("Number of nodes: " + std::to_string(numberOfNodesOld) +
                            " \n",
                        "net update");
@@ -41,12 +39,10 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
       d_model_p->d_log("Process apical growth \n", "net update");
       processApicalGrowth();
+      check_vessel_length();
 
       auto numberOfNodes = VGM.getNumberOfNodes();
 
-      std::cout << " " << std::endl;
-      std::cout << "Number of nodes after growing the network: "
-                << numberOfNodes << std::endl;
       d_model_p->d_log("Number of nodes after growing the network: " +
                            std::to_string(numberOfNodes) + " \n",
                        "net update");
@@ -56,18 +52,22 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
       d_model_p->d_log("Process sprouting growth \n", "net update");
       processSproutingGrowth();
+      //check_vessel_length();
 
       numberOfNodes = VGM.getNumberOfNodes();
 
       d_model_p->d_log("Number of nodes after growing the network: " +
                            std::to_string(numberOfNodes) + " \n",
                        "net update");
+      d_model_p->d_log("Remove redundant vessels \n", "net update");
       removeRedundantTerminalVessels();
+      //check_vessel_length();
 
       numberOfNodes = VGM.getNumberOfNodes();
 
       d_model_p->d_log("Link terminal vessels \n", "net update");
       linkTerminalVessels();
+      //check_vessel_length();
 
       numberOfNodes = VGM.getNumberOfNodes();
 
@@ -75,172 +75,182 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
           "Number of nodes after linking terminal vessels to the network: " +
               std::to_string(numberOfNodes) + " \n",
           "net update");
-    } // if zero processor
-  }
 
+
+      d_model_p->d_log("Remove short vessels \n", "net update");
+      auto pointer = VGM.getHead();
+
+      while (pointer) {
+
+        int numberOfNeighbors = pointer->neighbors.size();
+
+        for (int i = 0; i < numberOfNeighbors; i++) {
+
+          double length = util::dist_between_points(
+              pointer->coord, pointer->neighbors[i]->coord);
+
+          if (util::definitelyLessThan(length, 1.e-8)) {
+
+            pointer->removeComponent(i);
+            d_model_p->d_log("neighbor removed length=0!!! \n", "net update");
+          }
+        }
+
+        pointer = pointer->global_successor;
+      } // loop for zero length
+
+      check_vessel_length();
+
+      d_model_p->d_log("Remove isolated nodes \n", "net update");
+
+      pointer = VGM.getHead();
+
+      while (pointer) {
+
+        int numberOfEdges = pointer->neighbors.size();
+
+        if (numberOfEdges == 0) {
+
+          d_model_p->d_log("Remove node \n", "net update");
+
+          std::shared_ptr<VGNode> old_pointer = pointer;
+
+          if (pointer->global_predecessor) {
+
+            pointer->global_predecessor->global_successor =
+                pointer->global_successor;
+
+          } else {
+
+            pointer->global_successor->global_predecessor = NULL;
+          }
+
+          if (pointer->global_successor) {
+
+            pointer->global_successor->global_predecessor =
+                pointer->global_predecessor;
+
+          } else {
+
+            pointer->global_predecessor->global_successor = NULL;
+          }
+
+          pointer = pointer->global_successor;
+
+          old_pointer.reset();
+        }
+
+        pointer = pointer->global_successor;
+      } // loop for remove node
+
+      check_vessel_length();
+
+      d_model_p->d_log("Reset nodes \n", "net update");
+
+      pointer = VGM.getHead();
+
+      while (pointer) {
+
+        int numberOfEdges = pointer->neighbors.size();
+
+        for (int i = 0; i < numberOfEdges; i++) {
+
+          pointer->edge_touched[i] = false;
+          pointer->sprouting_edge[i] = false;
+        }
+
+        pointer = pointer->global_successor;
+      } // loop for reset node
+
+      VGM.determineNumberOfNodes();
+
+      numberOfNodes = VGM.getNumberOfNodes();
+
+      d_model_p->d_log("Rescale the 1D matrices and vectors \n", "net update");
+      if (!d_coupled_solver and numberOfNodesOld != numberOfNodes) {
+        A_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes,
+                                                       numberOfNodes);
+        b.resize(numberOfNodes);
+        P_v.resize(numberOfNodes);
+
+        C_v.resize(numberOfNodes);
+        C_v_old.resize(numberOfNodes);
+
+        // Ac_VGM =
+        //    gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
+        b_c.resize(numberOfNodes);
+      } // update matrix and vector
+
+      if (d_coupled_solver and numberOfNodesOld != numberOfNodes) {
+
+        A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
+            N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
+        b_flow_3D1D.resize(N_tot_3D + numberOfNodes);
+
+        // A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
+        //    N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
+        b_nut_3D1D.resize(N_tot_3D + numberOfNodes);
+
+        // resize function does not change the value of existing elements
+        phi_sigma.resize(N_tot_3D + numberOfNodes);
+        phi_sigma_old.resize(N_tot_3D + numberOfNodes);
+        P_3D1D.resize(N_tot_3D + numberOfNodes);
+
+        for (int i = 0; i < N_tot_3D; i++) {
+
+          phi_sigma[i] = phi_sigma_3D[i];
+          phi_sigma_old[i] = phi_sigma_3D[i];
+          P_3D1D[i] = P_3D[i];
+        }
+      } // update matrix and vector
+
+      pointer = VGM.getHead();
+      while (pointer) {
+
+        int indexOfNode = pointer->index;
+
+        if (d_coupled_solver) {
+          phi_sigma[N_tot_3D + indexOfNode] = pointer->c_v;
+          phi_sigma_old[N_tot_3D + indexOfNode] = pointer->c_v;
+          P_3D1D[N_tot_3D + indexOfNode] = pointer->p_v;
+        } else {
+          C_v[indexOfNode] = pointer->c_v;
+          C_v_old[indexOfNode] = pointer->c_v;
+          P_v[indexOfNode] = pointer->p_v;
+        }
+
+        pointer = pointer->global_successor;
+      } // loop for update solution in network
+
+      // compute element and weights (iterative method may require this data)
+      const auto &input = d_model_p->get_input_deck();
+      if (input.d_compute_elem_weights and input.d_model_name != "NetFCFVFE")
+        compute_elem_weights();
+      if (numberOfNodes != numberOfNodesOld) {
+        d_has_network_changed = true;
+        d_model_p->d_log("Added " +
+                             std::to_string(numberOfNodes - numberOfNodesOld) +
+                             " vertices to the network \n",
+                         "net update");
+      }
+    } // if zero processor
+  } // if network update step
+
+  // adopt radius
   if ((d_update_number + 1) % d_update_interval == 0) {
 
     if (d_procRank == 0) {
       d_model_p->d_log("Adapt radius \n", "net update");
       adaptRadius();
     }
-  }
-
-  if (d_update_number % d_update_interval != 0)
-    return;
-
-  auto pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      double length = util::dist_between_points(pointer->coord,
-                                                pointer->neighbors[i]->coord);
-
-      if (length < 1.0e-16) {
-
-        pointer->removeComponent(i);
-        d_model_p->d_log("neighbor removed length=0!!! \n", "net update");
-      }
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfEdges = pointer->neighbors.size();
-
-    if (numberOfEdges == 0) {
-
-      d_model_p->d_log("Remove node \n", "net update");
-
-      std::shared_ptr<VGNode> old_pointer = pointer;
-
-      if (pointer->global_predecessor) {
-
-        pointer->global_predecessor->global_successor =
-            pointer->global_successor;
-
-      } else {
-
-        pointer->global_successor->global_predecessor = NULL;
-      }
-
-      if (pointer->global_successor) {
-
-        pointer->global_successor->global_predecessor =
-            pointer->global_predecessor;
-
-      } else {
-
-        pointer->global_predecessor->global_successor = NULL;
-      }
-
-      pointer = pointer->global_successor;
-
-      old_pointer.reset();
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  d_model_p->d_log("Reset nodes \n", "net update");
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfEdges = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfEdges; i++) {
-
-      pointer->edge_touched[i] = false;
-      pointer->sprouting_edge[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  VGM.determineNumberOfNodes();
-
-  auto numberOfNodes = VGM.getNumberOfNodes();
-
-  d_model_p->d_log("Rescale the 1D matrices and vectors \n", "net update");
-  if (!d_coupled_solver and numberOfNodesOld != numberOfNodes) {
-    A_VGM =
-        gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
-    b.resize(numberOfNodes);
-    P_v.resize(numberOfNodes);
-
-    C_v.resize(numberOfNodes);
-    C_v_old.resize(numberOfNodes);
-
-    //Ac_VGM =
-    //    gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
-    b_c.resize(numberOfNodes);
-  }
-
-  if (d_coupled_solver and numberOfNodesOld != numberOfNodes) {
-
-    A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
-        N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
-    b_flow_3D1D.resize(N_tot_3D + numberOfNodes);
-
-    //A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
-    //    N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
-    b_nut_3D1D.resize(N_tot_3D + numberOfNodes);
-
-    // resize function does not change the value of existing elements
-    phi_sigma.resize(N_tot_3D + numberOfNodes);
-    phi_sigma_old.resize(N_tot_3D + numberOfNodes);
-    P_3D1D.resize(N_tot_3D + numberOfNodes);
-
-    for (int i = 0; i < N_tot_3D; i++) {
-
-      phi_sigma[i] = phi_sigma_3D[i];
-      phi_sigma_old[i] = phi_sigma_3D[i];
-      P_3D1D[i] = P_3D[i];
-    }
-  }
-
-  pointer = VGM.getHead();
-  while (pointer) {
-
-    int indexOfNode = pointer->index;
-
-    if (d_coupled_solver) {
-      phi_sigma[N_tot_3D + indexOfNode] = pointer->c_v;
-      phi_sigma_old[N_tot_3D + indexOfNode] = pointer->c_v;
-      P_3D1D[N_tot_3D + indexOfNode] = pointer->p_v;
-    } else {
-      C_v[indexOfNode] = pointer->c_v;
-      C_v_old[indexOfNode] = pointer->c_v;
-      P_v[indexOfNode] = pointer->p_v;
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  // compute element and weights (iterative method may require this data)
-  const auto &input = d_model_p->get_input_deck();
-  if (input.d_compute_elem_weights and input.d_model_name != "NetFCFVFE")
-    compute_elem_weights();
-  if (numberOfNodes != numberOfNodesOld) {
-    d_has_network_changed = true;
-    d_model_p->d_log("Added " +
-                         std::to_string(numberOfNodes - numberOfNodesOld) +
-                         " vertices to the network \n",
-                     "net update");
-  }
+  } // loop for adopt radius
 
   // compute and communicate updated network
-  prepare_and_communicate_network();
+  if (d_update_number % d_update_interval == 0 or
+      (d_update_number + 1) % d_update_interval == 0) {
+    check_vessel_length();
+    prepare_and_communicate_network();
+  }
 }
 
 void util::unet::Network::linkTerminalVessels() {
@@ -307,8 +317,11 @@ void util::unet::Network::linkTerminalVessels() {
 
         int numberOfNeighbors_1 = pointer_1->neighbors.size();
 
-        if (dist_plane > 0.01 && index != index_1 && dist < 1.5 * h_3D &&
-            dist > 0.0 && length_dir > 0.0) {
+        if (util::definitelyGreaterThan(dist_plane, 0.01) &&
+            index != index_1 &&
+            util::definitelyLessThan(dist, 1.5 * h_3D) &&
+            util::definitelyGreaterThan(dist, 0.) &&
+            util::definitelyGreaterThan(length_dir, 0.)) {
 
           if (numberOfNeighbors_1 < 3) {
 
@@ -402,9 +415,12 @@ void util::unet::Network::markApicalGrowth() {
       const auto &coord = pointer->coord;
 
       // if node is near the boundary, we do not process Omega = (0,L)^3
-      if (0.0001 < coord[0] && coord[0] < L_x - 0.0001 && 0.0001 < coord[1] &&
-          coord[1] < L_x - 0.0001 && 0.0001 < coord[2] &&
-          coord[2] < L_x - 0.0001) {
+      if (util::definitelyGreaterThan(coord[0], 1.e-4) &&
+          util::definitelyLessThan(coord[0], L_x - 1.e-4) &&
+          util::definitelyGreaterThan(coord[1], 1.e-4) &&
+          util::definitelyLessThan(coord[1], L_x - 1.e-4) &&
+          util::definitelyGreaterThan(coord[2], 1.e-4) &&
+          util::definitelyLessThan(coord[2], L_x - 1.e-4)) {
 
         int index = getElementIndex(coord, h_3D, N_3D);
 
@@ -412,7 +428,7 @@ void util::unet::Network::markApicalGrowth() {
 
         // std::cout << "taf_node: " << taf_node << std::endl;
 
-        if (taf_node > input.d_network_update_taf_threshold) {
+        if (util::definitelyGreaterThan(taf_node, input.d_network_update_taf_threshold)) {
 
           // std::cout << "index: " << pointer->index << std::endl;
 
@@ -428,11 +444,6 @@ void util::unet::Network::markApicalGrowth() {
 void util::unet::Network::processApicalGrowth() {
 
   const auto &input = d_model_p->get_input_deck();
-  int numberOfNodes_old = VGM.getNumberOfNodes();
-
-  d_logNormalDist.debug_out("debug_lognormal_" + std::to_string(d_model_p->d_step));
-  d_normalDist.debug_out("debug_normal_" + std::to_string(d_model_p->d_step));
-  d_uniformDist.debug_out("debug_uniform_" + std::to_string(d_model_p->d_step));
 
   // mark node for growth based on a certain criterion
   std::shared_ptr<VGNode> pointer = VGM.getHead();
@@ -446,13 +457,11 @@ void util::unet::Network::processApicalGrowth() {
 
     if (pointer->apicalGrowth) {
 
-      oss << " "
-                << "\n";
+      oss << " \n";
       oss << "Processing node: " << pointer->index << "\n";
 
       std::vector<double> coord = pointer->coord;
-      oss << "Compute direction based on TAF"
-                << "\n";
+      oss << "Compute direction based on TAF\n";
 
       int element_index = getElementIndex(coord, h_3D, N_3D);
       oss << "element_index: " << element_index << "\n";
@@ -495,18 +504,18 @@ void util::unet::Network::processApicalGrowth() {
 
       double radius_p = pointer->radii[0];
 
-      // get length
-      double length = log_dist * radius_p;
-
-      if (radius_p < input.d_min_radius) {
+      if (util::definitelyLessThan(radius_p, input.d_min_radius)) {
 
         radius_p = input.d_min_radius;
       }
 
-      if (length > 3.0 * h_3D) {
+      // get length
+      double length = log_dist * radius_p;
+
+      if (util::definitelyGreaterThan(length, 3. * h_3D)) {
 
         length = 3.0 * h_3D;
-        std::cout << "Length is shortened !!!" << std::endl;
+        d_model_p->d_log("Length is shortened !!!", "net update");
       }
 
       std::vector<double> rotator = determineRotator(normal_plane);
@@ -541,24 +550,26 @@ void util::unet::Network::processApicalGrowth() {
           std::vector<double> cylinder_node = computeNodesOnCylinders(
               normal_plane, rotator, midpoint, r, theta);
 
-          if (isCenterInDomain(cylinder_node, L_x) && length_rotator > 0.0) {
+          if (isCenterInDomain(cylinder_node, L_x) &&
+              util::definitelyGreaterThan(length_rotator, 0.)) {
 
             int index_cone = getElementIndex(cylinder_node, h_3D, N_3D);
 
             double TAF = phi_TAF_3D[index_cone];
 
-            if (TAF_max < 1.0e-16) {
+            if (util::definitelyLessThan(TAF_max, 1.e-12)) {
 
               TAF_max = TAF;
             }
 
-            if (TAF > TAF_max - 1.0e-8) {
+            if (util::definitelyGreaterThan(TAF, TAF_max - 1.e-8)) {
 
               TAF_max = TAF;
 
               max_vec = cylinder_node;
 
-            } else if (TAF_max - 1.0e-8 > TAF && TAF > TAF_max_2 - 1.0e-8) {
+            } else if (util::definitelyGreaterThan(TAF_max - 1.e-8, TAF) &&
+                       util::definitelyGreaterThan(TAF, TAF_max_2 - 1.e-8)) {
 
               TAF_max_2 = TAF;
 
@@ -572,12 +583,12 @@ void util::unet::Network::processApicalGrowth() {
               min_vec = cylinder_node;
             }
           }
-        }
-      }
+        } // radial loop
+      } // tangential loop
 
       std::vector<double> direction(3, 0.0);
 
-      if (TAF_point < TAF_max) {
+      if (util::definitelyLessThan(TAF_point, TAF_max)) {
 
         for (int i = 0; i < 3; i++) {
 
@@ -604,7 +615,7 @@ void util::unet::Network::processApicalGrowth() {
 
       double length_d = gmm::vect_norm2(direction);
 
-      if (length_d > 0.0) {
+      if (util::definitelyGreaterThan(length_d, 0.)) {
 
         for (int i = 0; i < 3; i++) {
 
@@ -629,6 +640,7 @@ void util::unet::Network::processApicalGrowth() {
       oss << "length_d: " << length_d << "\n";
       oss << "dir_term_vessel: " << dir_term_vessel << "\n";
       oss << "direction: " << direction << "\n";
+      oss << "length: " << length << "\n";
       oss << "new_point: " << new_point_1 << "\n";
       oss << "TAF_point: " << TAF_point << "\n";
       d_model_p->d_log(oss, "net update");
@@ -652,12 +664,17 @@ void util::unet::Network::processApicalGrowth() {
                      std::cout << "input.d_network_bifurcate_prob: " <<
          input.d_network_bifurcate_prob << "\n";
       */
-      if (prob > input.d_network_bifurcate_prob) {
+
+      //bifurcate only if intersection point is from two segments
+      if (util::definitelyGreaterThan(prob, input.d_network_bifurcate_prob)
+          && pointer->neighbors.size() < 3) {
 
         bifurcate = true;
       }
 
-      if (!bifurcate && length_d > 0.0 && length > 0.0) {
+      if (!bifurcate &&
+          util::definitelyGreaterThan(length_d, 0.) &&
+          util::definitelyGreaterThan(length, 0.)) {
 
         if (!isIntersecting) {
 
@@ -665,14 +682,15 @@ void util::unet::Network::processApicalGrowth() {
           counter++;
         }
 
-      } else if (bifurcate && radius_p > input.d_min_radius) {
+      } else if (bifurcate &&
+                util::definitelyGreaterThan(radius_p, input.d_min_radius)) {
 
         // std::cout << "Create bifuraction" << "\n";
 
         double gamma = input.d_net_radius_exponent_gamma;
         double R_c = std::pow(2.0, -1.0 / gamma) * radius_p;
 
-        if (R_c > radius_p) {
+        if (util::definitelyGreaterThan(R_c, radius_p)) {
 
           R_c = radius_p;
         }
@@ -683,12 +701,12 @@ void util::unet::Network::processApicalGrowth() {
         double radius_b2 =
             util::transform_to_normal_dist(R_c, R_c / 35.0, d_normalDist());
 
-        if (radius_b1 < input.d_min_radius) {
+        if (util::definitelyLessThan(radius_b1, input.d_min_radius)) {
 
           radius_b1 = input.d_min_radius;
         }
 
-        if (radius_b2 < input.d_min_radius) {
+        if (util::definitelyLessThan(radius_b2, input.d_min_radius)) {
 
           radius_b2 = input.d_min_radius;
         }
@@ -710,7 +728,8 @@ void util::unet::Network::processApicalGrowth() {
              (radius_b1 * radius_b1 * radius_b1 * radius_b1)) /
             (2.0 * radius_p * radius_p * radius_b2 * radius_b2);
 
-        if (std::abs(angle_arg_1) < 1.0 && std::abs(angle_arg_2) < 1.0) {
+        if (util::definitelyLessThan(std::abs(angle_arg_1), 1.) &&
+            util::definitelyLessThan(std::abs(angle_arg_2), 1.)) {
 
           branch_angle_1 = std::acos(angle_arg_1);
           branch_angle_2 = std::acos(angle_arg_2);
@@ -726,8 +745,8 @@ void util::unet::Network::processApicalGrowth() {
 
           double branch_angle = branch_angle_1 + branch_angle_2;
 
-          if (branch_angle * 180.0 / M_PI < 160.0 &&
-              branch_angle * 180.0 / M_PI > 40.0) {
+          if (util::definitelyLessThan(branch_angle * 180.0 / M_PI, 160.) &&
+              util::definitelyGreaterThan(branch_angle * 180.0 / M_PI, 40.)) {
 
             std::vector<double> rotation_axis =
                 util::cross_prod(direction, dir_term_vessel);
@@ -762,17 +781,18 @@ void util::unet::Network::processApicalGrowth() {
             double length_1 = log_dist * radius_b1;
             double length_2 = log_dist * radius_b2;
 
-            if (length_1 > 3.0 * h_3D) {
+            if (util::definitelyGreaterThan(length_1, 3. * h_3D)) {
 
               length_1 = 3.0 * h_3D;
             }
 
-            if (length_2 > 3.0 * h_3D) {
+            if (util::definitelyGreaterThan(length_2, 3. * h_3D)) {
 
               length_2 = 3.0 * h_3D;
             }
 
-            if (length_diff_2 > 0.0 && length_diff_1 > 0.0) {
+            if (util::definitelyGreaterThan(length_diff_2, 0.) &&
+                util::definitelyGreaterThan(length_diff_1, 0.)) {
 
               for (int i = 0; i < 3; i++) {
 
@@ -791,8 +811,9 @@ void util::unet::Network::processApicalGrowth() {
             oss << "new_point_2: " << new_point_2 << "\n";
             d_model_p->d_log(oss, "net update");
 
-            if (gmm::vect_norm2(direction) > 0.0 && length_diff_2 > 0.0 &&
-                length_diff_1 > 0.0) {
+            if (util::definitelyGreaterThan(gmm::vect_norm2(direction), 0.) &&
+                util::definitelyGreaterThan(length_diff_2, 0.) &&
+                util::definitelyGreaterThan(length_diff_1, 0.)) {
 
               bool isIntersecting_1 =
                   testIntersection(coord, new_point_1, radius_p, pointer);
@@ -811,8 +832,8 @@ void util::unet::Network::processApicalGrowth() {
             }
           }
         }
-      }
-    }
+      } // if bifurcate
+    } // if apical
 
     pointer = pointer->global_successor;
   }
@@ -864,10 +885,14 @@ bool util::unet::Network::testIntersection(
 
         double radius_p = pointer->radii[i];
 
-        if (util::dist_between_points(point_1, point_p1) < 1.0e-11 ||
-            util::dist_between_points(point_2, point_p1) < 1.0e-11 ||
-            util::dist_between_points(point_1, point_p2) < 1.0e-11 ||
-            util::dist_between_points(point_2, point_p2) < 1.0e-11) {
+        if (util::definitelyLessThan(
+                util::dist_between_points(point_1, point_p1), 1.0e-11) ||
+            util::definitelyLessThan(
+                util::dist_between_points(point_2, point_p1), 1.0e-11) ||
+            util::definitelyLessThan(
+                util::dist_between_points(point_1, point_p2), 1.0e-11) ||
+            util::definitelyLessThan(
+                util::dist_between_points(point_2, point_p2), 1.0e-11)) {
 
           isIntersecting = false;
 
@@ -898,8 +923,9 @@ bool util::unet::Network::testIntersection(
                   point_1[k] + (length_test * (double)j / 20.0 * dir_test[k]);
             }
 
-            if (util::dist_between_points(new_point_p, new_point_test) <
-                radius + radius_p) {
+            if (util::definitelyLessThan(
+                    util::dist_between_points(new_point_p, new_point_test),
+                    radius + radius_p)) {
 
               isIntersecting = true;
 
@@ -1085,7 +1111,7 @@ bool util::unet::Network::testCollision(std::vector<double> point) {
 
     double dist = gmm::vect_norm2(diff);
 
-    if (dist < h_3D) {
+    if (util::definitelyLessThan(dist, h_3D)) {
 
       // std::cout << "Node not inserted, dist: " << dist << "\n";
 
@@ -1117,9 +1143,12 @@ void util::unet::Network::removeRedundantTerminalVessels() {
       const auto &coord = pointer->coord;
 
       // if node is near the boundary, we do not process Omega = (0,L)^3
-      if (0.0001 < coord[0] && coord[0] < L_x - 0.0001 && 0.0001 < coord[1] &&
-          coord[1] < L_x - 0.0001 && 0.0001 < coord[2] &&
-          coord[2] < L_x - 0.0001) {
+      if (util::definitelyGreaterThan(coord[0], 1.e-4) &&
+          util::definitelyLessThan(coord[0], L_x - 1.e-4) &&
+          util::definitelyGreaterThan(coord[1], 1.e-4) &&
+          util::definitelyLessThan(coord[1], L_x - 1.e-4) &&
+          util::definitelyGreaterThan(coord[2], 1.e-4) &&
+          util::definitelyLessThan(coord[2], L_x - 1.e-4)) {
 
         int updateNumber = pointer->notUpdated;
 
@@ -1262,9 +1291,12 @@ void util::unet::Network::removeRedundantTerminalVessels() {
 
     const auto &coord = pointer->coord;
 
-    if (0.0001 < coord[0] && coord[0] < L_x - 0.0001 && 0.0001 < coord[1] &&
-        coord[1] < L_x - 0.0001 && 0.0001 < coord[2] &&
-        coord[2] < L_x - 0.0001) {
+    if (util::definitelyGreaterThan(coord[0], 1.e-4) &&
+        util::definitelyLessThan(coord[0], L_x - 1.e-4) &&
+        util::definitelyGreaterThan(coord[1], 1.e-4) &&
+        util::definitelyLessThan(coord[1], L_x - 1.e-4) &&
+        util::definitelyGreaterThan(coord[2], 1.e-4) &&
+        util::definitelyLessThan(coord[2], L_x - 1.e-4)) {
 
       if (pointer->typeOfVGNode == TypeOfNode::InnerNode &&
           pointer->neighbors.size() == 1) {
@@ -1346,7 +1378,7 @@ void util::unet::Network::markSproutingGrowth() {
                            std::sqrt(2.0 * input.d_log_normal_std_dev *
                                      input.d_log_normal_std_dev));
 
-        double global_max_TAF = gmm::vect_norminf(phi_TAF_3D);
+        //double global_max_TAF = gmm::vect_norminf(phi_TAF_3D);
         /*
                             std::cout << "TAF: " << TAF << std::endl;
                             std::cout << "TAF_th: " << TAF_th << std::endl;
@@ -1362,7 +1394,8 @@ void util::unet::Network::markSproutingGrowth() {
         oss << "coord: " << coord << std::endl;
         d_model_p->d_log(oss, "net update");
 
-        if (sproutingProbability > input.d_sprouting_prob && TAF > TAF_th) {
+        if (util::definitelyGreaterThan(sproutingProbability, input.d_sprouting_prob)
+            && util::definitelyGreaterThan(TAF, TAF_th)) {
 
           pointer->neighbors[i]->sprouting_edge[local_index] = true;
           pointer->sprouting_edge[i] = true;
@@ -1396,12 +1429,6 @@ void util::unet::Network::markSproutingGrowth() {
 void util::unet::Network::processSproutingGrowth() {
 
   const auto &input = d_model_p->get_input_deck();
-  static int print_seed = -1;
-  if (print_seed < 0) {
-    oss << "seed: " << input.d_seed << "\n";
-    d_model_p->d_log(oss, "net update");
-    print_seed = 0;
-  }
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -1437,7 +1464,7 @@ void util::unet::Network::processSproutingGrowth() {
 
         double radius_new = 1.25 * radius_min;
 
-        if (1.25 * radius_min < radius_prime) {
+        if (util::definitelyLessThan(1.25 * radius_min, radius_prime)) {
 
           // TAG: Random
           radius_new = util::transform_to_uniform_dist(
@@ -1500,7 +1527,8 @@ void util::unet::Network::processSproutingGrowth() {
             std::vector<double> cylinder_node = computeNodesOnCylinders(
                 normed_dir_vessel, rotator, vessel_point, radius, theta);
 
-            if (isCenterInDomain(cylinder_node, L_x) && length_rotator > 0.0) {
+            if (isCenterInDomain(cylinder_node, L_x) &&
+                util::definitelyGreaterThan(length_rotator, 0.)) {
 
               int index = getElementIndex(cylinder_node, h_3D, N_3D);
 
@@ -1512,19 +1540,19 @@ void util::unet::Network::processSproutingGrowth() {
             }
           }
 
-          if (counter > 0.0) {
+          if (util::definitelyGreaterThan(counter, 0.)) {
 
             TAF_vessel_surf = TAF_vessel_surf / counter;
           }
 
-          if (TAF_vessel_surf > Max_TAF_vessel_surf) {
+          if (util::definitelyGreaterThan(TAF_vessel_surf, Max_TAF_vessel_surf)) {
 
             Max_TAF_vessel_surf = TAF_vessel_surf;
 
             max_vessel_point = vessel_point;
           }
 
-          if (Max_TAF_vessel_surf < 1.0e-16) {
+          if (util::definitelyLessThan(Max_TAF_vessel_surf, 1.0e-12)) {
 
             Max_TAF_vessel_surf = TAF_vessel_surf;
 
@@ -1546,18 +1574,19 @@ void util::unet::Network::processSproutingGrowth() {
               computeNodesOnCylinders(normed_dir_vessel, rotator,
                                       max_vessel_point, 2.0 * radius, theta);
 
-          if (isCenterInDomain(cylinder_node, L_x) && length_rotator > 0.0) {
+          if (isCenterInDomain(cylinder_node, L_x) &&
+          util::definitelyGreaterThan(length_rotator, 0.)) {
 
             int index_cone = getElementIndex(cylinder_node, h_3D, N_3D);
 
             double TAF = phi_TAF_3D[index_cone];
 
-            if (TAF_max < 1.0e-16) {
+            if (util::definitelyLessThan(TAF_max, 1.e-12)) {
 
               TAF_max = TAF;
             }
 
-            if (TAF > TAF_max - 1.0e-8) {
+            if (util::definitelyGreaterThan(TAF, TAF_max - 1.e-8)) {
 
               TAF_max = TAF;
 
@@ -1591,6 +1620,7 @@ void util::unet::Network::processSproutingGrowth() {
         }
 
         double angle = std::acos(prod_angle);
+        double angle_deg = angle * 180. / M_PI;
 
         // TAG: Random
         double log_dist = d_logNormalDist();
@@ -1598,12 +1628,12 @@ void util::unet::Network::processSproutingGrowth() {
         // get length
         double length_new = log_dist * radius_new;
 
-        if (length_new < 2.0 * radius) {
+        if (util::definitelyLessThan(length_new, 2 * radius)) {
 
           length_new = 2.0 * radius;
         }
 
-        if (length_new > 3.0 * h_3D) {
+        if (util::definitelyGreaterThan(length_new, 3. * h_3D)) {
 
           length_new = 3.0 * h_3D;
         }
@@ -1613,13 +1643,32 @@ void util::unet::Network::processSproutingGrowth() {
           new_point[j] = mid_point[j] + length_new * dir_new_vessel[j];
         }
 
+        if (util::definitelyGreaterThan(
+                util::dist_between_points(new_point, mid_point), 3.0 * h_3D))
+          libmesh_error_msg("Error new vessel length " +
+                            std::to_string(util::dist_between_points(new_point, mid_point))
+                            + " is larger than permissible value " +
+                            std::to_string(3. * h_3D));
+        if (util::definitelyLessThan(
+            util::dist_between_points(new_point, mid_point), 1.e-8))
+          libmesh_error_msg("Error new vessel length " +
+                            std::to_string(util::dist_between_points(new_point, mid_point))
+                            + " is too small");
+
         bool isColliding = testCollision(new_point);
 
-        if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 &&
-            norm_dir_new_vessel > 0.0 && !isColliding &&
-            norm_dir_vessel > 0.12) {
+        if (util::definitelyGreaterThan(angle_deg, 10.) &&
+            util::definitelyLessThan(angle_deg, 170.) &&
+            util::definitelyGreaterThan(norm_dir_new_vessel, 0.) &&
+            util::definitelyGreaterThan(norm_dir_vessel, 0.12) &&
+            !isColliding) {
 
-          std::cout << "Create new node_1" << std::endl;
+          d_model_p->d_log("New vessel with length = " +
+                               std::to_string(util::dist_between_points(
+                                   new_point, mid_point)) +
+                               "\n",
+                           "net update");
+          d_model_p->d_log("Create new node_1\n", "net update");
           VGNode new_node_1;
 
           new_node_1.index = VGM.getNumberOfNodes();
@@ -1704,8 +1753,7 @@ void util::unet::Network::processSproutingGrowth() {
 
           auto sp_newNode_1 = std::make_shared<VGNode>(new_node_1);
 
-          oss << "Create new node_2" << std::endl;
-          d_model_p->d_log(oss, "net update");
+          d_model_p->d_log("Create new node_2\n", "net update");
           VGNode new_node_2;
 
           new_node_2.index = VGM.getNumberOfNodes() + 1;
@@ -1831,7 +1879,7 @@ util::unet::Network::findNearNetworkNode(std::vector<double> coord,
       dist_plane += normal_plane[i] * diff[i];
     }
 
-    if (dist_plane > 0.0) {
+    if (util::definitelyGreaterThan(dist_plane, 0.)) {
 
       dist_min = dist_plane;
 
@@ -1915,7 +1963,7 @@ void util::unet::Network::adaptRadius() {
 
         double S_WSS = 0.0;
 
-        if (1.0 + tau_w > 0.0) {
+        if (util::definitelyGreaterThan(1. + tau_w, 0.)) {
 
           S_WSS = std::log(1.0 + tau_w);
         }
@@ -1928,7 +1976,8 @@ void util::unet::Network::adaptRadius() {
         int numberOfNeighbors_Neighbor =
             pointer->neighbors[i]->neighbors.size();
 
-        if ((radius < input.d_min_radius && numberOfNeighbors < 2) ||
+        if ((util::definitelyLessThan(radius, input.d_min_radius) &&
+             numberOfNeighbors < 2) ||
             (numberOfNeighbors_Neighbor == 1 && numberOfNeighbors == 1)) {
 
           radius_new = input.d_min_radius;
@@ -1941,7 +1990,8 @@ void util::unet::Network::adaptRadius() {
           remove_edge[i] = true;
         }
 
-        if (radius_new < 1.2 * radius && radius_new > 0.9 * radius) {
+        if (util::definitelyLessThan(radius_new, 1.2 * radius) &&
+            util::definitelyGreaterThan(radius_new, 0.9 * radius)) {
 
           oss << " " << std::endl;
           oss << "tau_w: " << tau_w << std::endl;

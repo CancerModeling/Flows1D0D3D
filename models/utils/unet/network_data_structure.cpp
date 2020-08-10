@@ -528,19 +528,43 @@ void util::unet::Network::writeDataToVTK_3D(std::vector<double> P_3D,
 
 void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
-  // check if each processor produces same network
-  // TODO set this to false after test is done
-  bool out_on_all_proc = true;
+    //check_vessel_length();
 
-  if (d_model_p->get_comm()->rank() > 0 and !out_on_all_proc)
+  if (d_model_p->get_comm()->rank() > 0)
     return;
 
   const auto &input = d_model_p->get_input_deck();
 
+  // TODO delete when test is done
+  // output segment data for debug
+  if (d_procRank == 0) {
+    std::string path =
+        input.d_outfilename_net + "_segments_" + std::to_string(timeStep) + ".txt";
+    std::ofstream off;
+    off.open(path);
+    for (unsigned int i=0; i<d_numSegments; i++) {
+      auto node1 = d_segments[2*i + 0];
+      auto node2 = d_segments[2*i + 1];
+
+      std::vector<double> coord1, coord2;
+      for (unsigned int j=0; j<3; j++) {
+        coord1.push_back(d_vertices[3*node1 + j]);
+        coord2.push_back(d_vertices[3*node2 + j]);
+      }
+
+      // radius and length
+      double radius = d_segmentData[i];
+      double length = util::dist_between_points(coord1, coord2);
+      if (length > 0.75)
+          libmesh_error_msg("Error vessel is too long");
+
+      off << node1 << " " << node2 << " " << radius << " " << length << "\n";
+    }
+    off.close();
+  } // debug write segment
+
   std::string path = input.d_outfilename_net + "_";
   path += std::to_string(timeStep);
-  if (out_on_all_proc and d_model_p->get_comm()->rank() > 0)
-    path += "_" + std::to_string(d_model_p->get_comm()->rank());
   path += ".vtk";
 
   std::fstream filevtk;
@@ -619,6 +643,13 @@ void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
         filevtk << "2 " << pointer->index << " " << pointer->neighbors[i]->index
                 << std::endl;
+
+        auto length = util::dist_between_points(pointer->coord,
+                                                pointer->neighbors[i]->coord);
+        d_model_p->d_log("vessel length: " + std::to_string(length) + "\n",
+                         "debug");
+        if (util::definitelyGreaterThan(length, 0.75))
+          d_model_p->d_log("vessel is too long\n", "debug");
 
         pointer->edge_touched[i] = true;
 
