@@ -10,6 +10,7 @@
 
 #include "utilLibs.hpp"
 #include "utilIO.hpp"
+#include "utilCompare.hpp"
 #include <boost/random.hpp>
 
 //#include "../../external/gmm/gmm.h"

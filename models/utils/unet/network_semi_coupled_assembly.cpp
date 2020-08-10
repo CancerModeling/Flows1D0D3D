@@ -55,6 +55,9 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
     // find cases
     assembly_cases = d_vertexBdFlag[indexOfNode];
 
+      std::string assembly_cases_str =
+              get_assembly_cases_pres_str(pointer, input.d_identify_vein_pres);
+
     // loop over segments and compute 1D and 1D-3D coupling
     for (int i = 0; i < numberOfNeighbors; i++) {
 
@@ -74,6 +77,12 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
 
       // case specific implementation
       if (assembly_cases & UNET_PRES_BDRY_DIRIC) {
+
+          libmesh_assert_equal_to_msg(assembly_cases_str, "boundary_dirichlet",
+                                      "Error assembly case "
+                                      + std::to_string(assembly_cases)
+                                      + " does not match expected case "
+                                      + "boundary_dirichlet");
 
         A_VGM(indexOfNode, indexOfNode) += factor_p * 1.0;
         b[indexOfNode] += factor_p * pointer->p_boundary;
@@ -162,7 +171,11 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
     numberOfNeighbors = pointer->neighbors.size();
 
     // find cases
-    assembly_cases = d_vertexBdFlag[indexOfNode];
+    //assembly_cases = get_assembly_cases_nut(pointer, input.d_identify_vein_pres);
+      assembly_cases = d_vertexBdFlag[indexOfNode];
+
+    std::string assembly_cases_str =
+        get_assembly_cases_nut_str(pointer, input.d_identify_vein_pres);
 
     // loop over segments and compute 1D and 1D-3D coupling
     for (int i = 0; i < numberOfNeighbors; i++) {
@@ -187,23 +200,51 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
       // case specific implementation
       if (assembly_cases & UNET_NUT_BDRY_ARTERY_INLET) {
 
+        libmesh_assert_equal_to_msg(assembly_cases_str, "boundary_artery_inlet",
+                                    "Error assembly case "
+                                    + std::to_string(assembly_cases)
+                                    + " does not match expected case "
+                                    + "boundary_artery_inlet");
+
         A_VGM(indexOfNode, indexOfNode) += factor_c * 1.0;
         b_c[indexOfNode] += factor_c * input.d_in_nutrient;
 
-      } else if (assembly_cases & UNET_NUT_BDRY_VEIN_INLET or
-                 assembly_cases & UNET_NUT_BDRY_INNER_INLET) {
+      } else if ((assembly_cases & UNET_NUT_BDRY_VEIN_INLET) or
+          (assembly_cases & UNET_NUT_BDRY_INNER_INLET)) {
 
-        // advection
+        if (assembly_cases_str != "boundary_vein_inlet" and
+            assembly_cases_str != "boundary_inner_inlet") {
+
+          libmesh_error_msg(
+                  "assembly_cases_str = " + assembly_cases_str + "\n"
+              "Error assembly case " + std::to_string(assembly_cases) +
+              " does not match expected case " + "boundary_vein_inlet" +
+              " or " + "boundary_inner_inlet");
+        }
+
+          // advection
         A_VGM(indexOfNode, indexOfNode) += factor_c * dt * v_interface;
         A_VGM(indexOfNode, indexNeighbor) += -factor_c * dt * v_interface;
 
       } else if (assembly_cases & UNET_NUT_BDRY_OUTLET) {
+
+        libmesh_assert_equal_to_msg(assembly_cases_str, "boundary_outlet",
+                                    "Error assembly case "
+                                    + std::to_string(assembly_cases)
+                                    + " does not match expected case "
+                                    + "boundary_outlet");
 
         // advection
         A_VGM(indexOfNode, indexOfNode) += -factor_c * dt * v_interface;
         A_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
 
       } else if (assembly_cases & UNET_NUT_INNER) {
+
+        libmesh_assert_equal_to_msg(assembly_cases_str, "inner",
+                                    "Error assembly case "
+                                    + std::to_string(assembly_cases)
+                                    + " does not match expected case "
+                                    + "inner");
 
         // advection term
         if (v_interface > 0.0)
