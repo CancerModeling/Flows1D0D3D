@@ -887,6 +887,11 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
 
   GetPot input(filename);
 
+  // get model name first
+  std::string model_name = input("model_name", "");
+  if (model_name == "TwoSpecies" or model_name == "AvaFV")
+    return;
+
   network_active = input("is_network_active", false);
   d_network_init_file = input("network_init_file", "");
   d_network_init_refinement = input("network_init_refinement", 1);
@@ -942,6 +947,11 @@ void util::Flow1DDeck::read_parameters(const std::string &filename) {
 
   GetPot input(filename);
 
+  // get model name first
+  std::string model_name = input("model_name", "");
+  if (model_name == "TwoSpecies" or model_name == "AvaFV")
+    return;
+
   d_init_vessel_mu = input("init_vessel_viscosity", 1.);
   d_in_pressure = input("vessel_in_pressure", 0.);
   d_in_nutrient = input("vessel_in_nutrient", 0.);
@@ -976,6 +986,11 @@ void util::FlowDeck::read_parameters(const std::string &filename) {
     return;
 
   GetPot input(filename);
+
+  // get model name first
+  std::string model_name = input("model_name", "");
+  if (model_name == "TwoSpecies" or model_name == "AvaFV")
+    return;
 
   d_tissue_flow_mu = input("tissue_flow_viscosity", 1.);
   d_tissue_flow_K = input("tissue_flow_K", 1.);
