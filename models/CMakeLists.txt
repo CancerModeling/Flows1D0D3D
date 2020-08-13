@@ -50,3 +50,9 @@ if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
         "Build_NetFC")
     add_subdirectory(NetFC)
 endif ()
+
+if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}" STREQUAL
+        "Build_TwoSpecies")
+    add_subdirectory(TwoSpecies)
+
+endif ()
