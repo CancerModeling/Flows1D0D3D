@@ -319,7 +319,7 @@ void twosp::Model::compute_qoi() {
   value_mass = std::pow(d_input.d_mesh_size, 1.5) * d_tum_assembly.d_sys.solution->l2_norm();
   //MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE,
   //              MPI_SUM, MPI_COMM_WORLD);
-  qoi[3] = value_mass;
+  qoi[2] = value_mass;
 
   d_qoi.add(qoi);
 }
