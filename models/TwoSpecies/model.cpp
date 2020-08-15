@@ -316,7 +316,8 @@ void twosp::Model::compute_qoi() {
 
   // L2 norm of total tumor
   value_mass = 0.; total_mass = 0.;
-  value_mass = std::pow(d_input.d_mesh_size, 1.5) * d_tum_assembly.d_sys.solution->l2_norm();
+  value_mass = std::sqrt(std::pow(d_input.d_mesh_size, d_input.d_dim)) *
+               d_tum_assembly.d_sys.solution->l2_norm();
   //MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE,
   //              MPI_SUM, MPI_COMM_WORLD);
   qoi[2] = value_mass;
@@ -371,7 +372,7 @@ void twosp::Model::solve_system() {
     reset_clock();
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    d_log("|tumor| -> ", "solve sys");
+    d_log("|tumor|\n", "solve sys");
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
