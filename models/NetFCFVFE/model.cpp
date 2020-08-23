@@ -74,7 +74,7 @@ void netfcfvfe::model_setup_run(int argc, char **argv,
   reset_clock();
 
   // init seed for random number
-  random_init();
+  //random_init();
 
   // read input file
   auto input = InpDeck(filename);
@@ -226,7 +226,7 @@ netfcfvfe::Model::Model(
       d_mde_assembly(this, "MDE", d_mesh, mde),
       d_pres_assembly(this, "Pressure", d_mesh, pres),
       d_grad_taf_assembly(this, "TAF_Gradient", d_mesh, grad_taf),
-      d_vel_assembly(this, "Velocity", d_mesh, vel) {
+      d_vel_assembly(this, "Velocity", d_mesh, vel), d_ghosting_fv(d_mesh) {
 
   d_nut_id = d_nut_assembly.d_sys.number();
   d_tum_id = d_tum_assembly.d_sys.number();
@@ -279,6 +279,10 @@ netfcfvfe::Model::Model(
     pres.attach_assemble_object(d_pres_assembly);
     grad_taf.attach_assemble_object(d_grad_taf_assembly);
     vel.attach_assemble_object(d_vel_assembly);
+
+    // add ghosting functors
+    //pres.get_dof_map().add_coupling_functor(d_ghosting_fv);
+    //nut.get_dof_map().add_coupling_functor(d_ghosting_fv);
 
     //
     // Initialize and print system
@@ -427,8 +431,6 @@ void netfcfvfe::Model::run() {
     d_log(oss, "integrate");
     d_log(" \n", "integrate");
 
-    oss << "d_network.d_update_number: " << d_network.d_update_number << "\n";
-
     // solve tumor-network system
     solve_system();
 
@@ -436,11 +438,11 @@ void netfcfvfe::Model::run() {
     compute_qoi();
 
     // update network
-    //if (d_is_growth_step) {
+    if (d_is_growth_step) {
       d_log("  Updating Network\n", "net update");
       d_network.updateNetwork(d_taf_assembly, d_grad_taf_assembly);
       d_log(" \n", "net update");
-    //}
+    }
 
     // Post-processing
     if (d_is_output_step) {
@@ -469,13 +471,13 @@ void netfcfvfe::Model::run() {
 
 void netfcfvfe::Model::write_system(const unsigned int &t_step) {
 
-  ExodusII_IO exodus(d_mesh);
+  //ExodusII_IO exodus(d_mesh);
 
   // write mesh and simulation results
-  std::string filename = d_input.d_outfilename + ".e";
+  //std::string filename = d_input.d_outfilename + ".e";
 
   // write to exodus
-  // exodus.write_timestep(filename, d_tum_sys, 1, d_time);
+  //exodus.write_timestep(filename, d_tum_sys, 1, d_time);
 
   //
   rw::VTKIO(d_mesh).write_equation_systems(
@@ -623,6 +625,9 @@ void netfcfvfe::Model::solve_system() {
   // solve for pressure
   solve_pressure();
 
+  // reset nonlinear step
+  d_nonlinear_step = 0;
+
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
       tum.solution->clone());
@@ -745,6 +750,8 @@ void netfcfvfe::Model::solve_pressure() {
   // update time
   pres.time = d_time;
   vel.time = d_time;
+
+  d_tum_sys.parameters.set<Real>("time") = d_time;
 
   // update old solution
   *pres.old_local_solution = *pres.current_local_solution;

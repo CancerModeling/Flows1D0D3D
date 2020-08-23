@@ -9,6 +9,7 @@
 #define NETFCFVFE_MODEL_H
 
 #include "umodel/model.hpp"
+#include "usystem/ghosting_functor.hpp"
 #include "modelUtil.hpp"
 #include "systems/systems.hpp"
 #include "unet/network.hpp"
@@ -236,6 +237,10 @@ private:
   int d_vel_id;
   int d_pres_1d_id;
   int d_nut_1d_id;
+
+  /*! Ghosting functor so that PetSc does not give error when coupling dofs
+   * of element with neighboring elements */
+  util::GhostingFunctorFV d_ghosting_fv;
 };
 
 } // namespace netfcfvfe
