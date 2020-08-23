@@ -58,6 +58,8 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
   std::vector<int> id_3D_elements;
   unsigned int assembly_cases;
 
+  double row_sum = 0.;
+
   // assemble 3D
   for (int i = 0; i < N_3D; i++) { // x-loop
 
@@ -209,6 +211,17 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
       } // loop over 3D elements
     }   // loop over neighbor segments
 
+    row_sum = A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode);
+    for (int i = 0; i < numberOfNeighbors; i++) {
+      row_sum += A_flow_3D1D(N_tot_3D + indexOfNode,
+                             N_tot_3D + pointer->neighbors[i]->index);
+    }
+
+    if (row_sum < 0.)
+      libmesh_warning("Network node " + std::to_string(indexOfNode) +
+                      " is not diagonally dominated. Sum of row = " +
+                      std::to_string(row_sum));
+
     pointer = pointer->global_successor;
   }
 }
@@ -293,6 +306,8 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
   double p_t = 0.0;
   double phi_sigma_boundary = 0.0;
   unsigned int assembly_cases;
+
+  double row_sum = 0.;
 
   // assemble 3D
   for (int i = 0; i < N_3D; i++) { // x-loop
@@ -580,6 +595,17 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
         }
       } // loop over 3D elements
     }   // loop over neighbor segments
+
+    row_sum = A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode);
+    for (int i = 0; i < numberOfNeighbors; i++) {
+      row_sum += A_flow_3D1D(N_tot_3D + indexOfNode,
+                             N_tot_3D + pointer->neighbors[i]->index);
+    }
+
+    if (row_sum < 0.)
+      libmesh_warning("Network node " + std::to_string(indexOfNode) +
+                      " is not diagonally dominated. Sum of row = " +
+                      std::to_string(row_sum));
 
     pointer = pointer->global_successor;
   }

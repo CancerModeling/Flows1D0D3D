@@ -142,7 +142,8 @@ void util::unet::Network::create_initial_network() {
 
   // initialize nutrient as one in artery
   // Only on processor zero
-  if (d_procRank == 0) {
+  //if (d_procRank == 0) {
+  if (false) {
     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
     while (pointer) {
@@ -236,6 +237,9 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
 
   // copy the 3D pressure to libmesh pressure system
   pres_sys.set_elem_sol(P_3D);
+
+  // also update the boundary flag
+  update_and_communicate_bdry_flag();
 }
 
 void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
@@ -634,8 +638,8 @@ std::string util::unet::Network::get_assembly_cases_nut_str(
 
 void util::unet::Network::prepare_and_communicate_network() {
 
-  if (d_coupled_solver)
-    return;
+//  if (d_coupled_solver)
+//    return;
 
   // On processor zero, prepare the network data
   if (d_procRank == 0) {
@@ -754,8 +758,8 @@ void util::unet::Network::prepare_and_communicate_network() {
 
 void util::unet::Network::update_and_communicate_bdry_flag() {
 
-  if (d_coupled_solver)
-    return;
+//  if (d_coupled_solver)
+//    return;
 
   // On processor zero, prepare the network data
   if (d_procRank == 0) {

@@ -537,7 +537,8 @@ void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
   // TODO delete when test is done
   // output segment data for debug
-  if (d_procRank == 0) {
+  //if (d_procRank == 0) {
+  if (false) {
     std::string path =
         input.d_outfilename_net + "_segments_" + std::to_string(timeStep) + ".txt";
     std::ofstream off;
@@ -646,8 +647,8 @@ void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
         auto length = util::dist_between_points(pointer->coord,
                                                 pointer->neighbors[i]->coord);
-        d_model_p->d_log("vessel length: " + std::to_string(length) + "\n",
-                         "debug");
+        //d_model_p->d_log("vessel length: " + std::to_string(length) + "\n",
+        //                "debug");
         if (util::definitelyGreaterThan(length, 0.75))
           d_model_p->d_log("vessel is too long\n", "debug");
 

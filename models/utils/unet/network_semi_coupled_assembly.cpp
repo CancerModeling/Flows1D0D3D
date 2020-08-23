@@ -44,6 +44,8 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
   std::vector<int> id_3D_elements;
   unsigned int assembly_cases;
 
+  double row_sum = 0.;
+
   // assemble 1D and 1D-3D coupling
   std::shared_ptr<VGNode> pointer = VGM.getHead();
   while (pointer) {
@@ -109,6 +111,16 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
       } // loop over 3D elements
     }   // loop over neighbor segments
 
+    row_sum = A_VGM(indexOfNode, indexOfNode);
+    for (int i = 0; i < numberOfNeighbors; i++) {
+      row_sum += A_VGM(indexOfNode, pointer->neighbors[i]->index);
+    }
+
+    if (row_sum < 0.)
+      libmesh_warning("Network node " + std::to_string(indexOfNode)
+                      + " is not diagonally dominated. Sum of row = "
+                      + std::to_string(row_sum));
+
     pointer = pointer->global_successor;
   }
 }
@@ -160,6 +172,8 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
   double c_t = 0.0;
   double phi_sigma_boundary = 0.0;
   unsigned int assembly_cases;
+
+  double row_sum = 0.;
 
   // assemble 1D and 1D-3D coupling
   std::shared_ptr<VGNode> pointer = VGM.getHead();
@@ -303,6 +317,16 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
         }
       } // loop over 3D elements
     }   // loop over neighbor segments
+
+    row_sum = A_VGM(indexOfNode, indexOfNode);
+    for (int i = 0; i < numberOfNeighbors; i++) {
+      row_sum += A_VGM(indexOfNode, pointer->neighbors[i]->index);
+    }
+
+    if (row_sum < 0.)
+      libmesh_warning("Network node " + std::to_string(indexOfNode)
+        + " is not diagonally dominated. Sum of row = "
+        + std::to_string(row_sum));
 
     pointer = pointer->global_successor;
   }
