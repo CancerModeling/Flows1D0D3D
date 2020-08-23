@@ -576,8 +576,17 @@ unsigned int util::unet::Network::get_assembly_cases_nut(
       } // not dirichlet
     }   // v > 0
     else {
-      // return "boundary_outlet";
-      return UNET_NUT_BDRY_OUTLET;
+      if (pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
+
+        if (pointer->p_v >= identify_vein_pres)
+          // return "boundary_artery_inlet";
+          return UNET_NUT_BDRY_ARTERY_OUTLET;
+        else
+          // return "boundary_vein_inlet";
+          return UNET_NUT_BDRY_VEIN_OUTLET;
+      }
+      else 
+        return UNET_NUT_BDRY_INNER_OUTLET;
     } // v < 0
   }   // neighbor == 1
   else {
@@ -615,24 +624,34 @@ std::string util::unet::Network::get_assembly_cases_nut_str(
       if (pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
         if (pointer->p_v >= identify_vein_pres)
           return "boundary_artery_inlet";
-        // return UNET_NUT_BDRY_ARTERY_INLET;
+          //return UNET_NUT_BDRY_ARTERY_INLET;
         else
           return "boundary_vein_inlet";
-        // return UNET_NUT_BDRY_VEIN_INLET;
+          //return UNET_NUT_BDRY_VEIN_INLET;
       } // inlet dirichlet
       else {
         return "boundary_inner_inlet";
-        // return UNET_NUT_BDRY_INNER_INLET;
+        //return UNET_NUT_BDRY_INNER_INLET;
       } // not dirichlet
     }   // v > 0
     else {
-      return "boundary_outlet";
-      // return UNET_NUT_BDRY_OUTLET;
+      if (pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
+
+        if (pointer->p_v >= identify_vein_pres)
+          return "boundary_artery_outlet";
+          //return UNET_NUT_BDRY_ARTERY_OUTLET;
+        else
+          return "boundary_vein_outlet";
+          //return UNET_NUT_BDRY_VEIN_OUTLET;
+      }
+      else
+        return "boundary_inner_outlet";
+        //return UNET_NUT_BDRY_INNER_OUTLET;
     } // v < 0
   }   // neighbor == 1
   else {
     return "inner";
-    // return UNET_NUT_INNER;
+    //return UNET_NUT_INNER;
   }
 }
 

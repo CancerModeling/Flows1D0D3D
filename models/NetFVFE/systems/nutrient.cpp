@@ -115,23 +115,24 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
     double c_v = 0.;
     double p_t = 0.;
     unsigned int assembly_cases;
+    bool dirichlet_fixed = false;
 
-    for (unsigned int i=0; i<network.d_numSegments; i++) {
+    for (unsigned int i = 0; i < network.d_numSegments; i++) {
 
-      nodes[0] = network.d_segments[2*i + 0];
-      nodes[1] = network.d_segments[2*i + 1];
+      nodes[0] = network.d_segments[2 * i + 0];
+      nodes[1] = network.d_segments[2 * i + 1];
       radius = network.d_segmentData[i];
-      for (unsigned int j=0; j<3; j++) {
-        coords[0][j] = network.d_vertices[3*nodes[0] + j];
-        coords[1][j] = network.d_vertices[3*nodes[1] + j];
+      for (unsigned int j = 0; j < 3; j++) {
+        coords[0][j] = network.d_vertices[3 * nodes[0] + j];
+        coords[1][j] = network.d_vertices[3 * nodes[1] + j];
       }
       length = util::dist_between_points(coords[0], coords[1]);
 
-      for (unsigned int j=0; j<2; j++) {
+      for (unsigned int j = 0; j < 2; j++) {
 
         node_proc = 0;
         node_neigh = 1;
-        if (j==1) {
+        if (j == 1) {
           node_proc = 1;
           node_neigh = 0;
         }
@@ -140,14 +141,19 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
         c_v = network.C_v[nodes[node_proc]];
         assembly_cases = network.d_vertexBdFlag[nodes[node_proc]];
 
-        if (!(assembly_cases & UNET_NUT_BDRY_ARTERY_INLET)) {
+        dirichlet_fixed = false;
+        if (assembly_cases & UNET_NUT_BDRY_ARTERY_INLET or
+            assembly_cases & UNET_NUT_BDRY_VEIN_INLET)
+          dirichlet_fixed = true;
+
+        if (dirichlet_fixed == false) {
 
           // Surface area of cylinder
           surface_area = 2.0 * M_PI * (0.5 * length) * radius;
           util::unet::determineWeightsAndIds(
-              deck.d_num_points_length, deck.d_num_points_angle, N_3D, coords[node_proc],
-              coords[node_neigh], radius, h_3D, 0.5 * length, weights,
-              id_3D_elements, d_mesh, true);
+              deck.d_num_points_length, deck.d_num_points_angle, N_3D,
+              coords[node_proc], coords[node_neigh], radius, h_3D, 0.5 * length,
+              weights, id_3D_elements, d_mesh, true);
 
           // Add coupling entry
           numberOfElements = id_3D_elements.size();
@@ -176,16 +182,18 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
                 if (p_v - p_t > 0.0) {
 
                   // 3D equation
-                  // 2pi R (p_v - p_t) phi_v term in right hand side of 3D equation
+                  // 2pi R (p_v - p_t) phi_v term in right hand side of 3D
+                  // equation
                   Fe(0) += dt * factor_nut * (1. - osmotic_sigma) * L_p *
                            surface_area * weights[j] * (p_v - p_t) * c_v;
 
                 } else {
 
                   // 3D equation
-                  // 2pi R (p_v - p_t) phi_sigma term in right hand side of 3D equation
-                  Ke(0, 0) += -dt * factor_nut * (1. - osmotic_sigma) *
-                              L_p * surface_area * weights[j] * (p_v - p_t);
+                  // 2pi R (p_v - p_t) phi_sigma term in right hand side of 3D
+                  // equation
+                  Ke(0, 0) += -dt * factor_nut * (1. - osmotic_sigma) * L_p *
+                              surface_area * weights[j] * (p_v - p_t);
                 }
 
                 // update matrix
@@ -195,8 +203,8 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
               }
             }
           } // loop over 3D elements
-        } // if not dirichlet
-      } // segment's node loop
+        }   // if not dirichlet
+      }     // segment's node loop
 
     } // loop over segments
   }

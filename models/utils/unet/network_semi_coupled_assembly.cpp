@@ -172,7 +172,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
   double c_t = 0.0;
   double phi_sigma_boundary = 0.0;
   unsigned int assembly_cases;
-
+  bool dirichlet_fixed = false;
   double row_sum = 0.;
 
   // assemble 1D and 1D-3D coupling
@@ -186,10 +186,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
 
     // find cases
     //assembly_cases = get_assembly_cases_nut(pointer, input.d_identify_vein_pres);
-      assembly_cases = d_vertexBdFlag[indexOfNode];
-
-    std::string assembly_cases_str =
-        get_assembly_cases_nut_str(pointer, input.d_identify_vein_pres);
+    assembly_cases = d_vertexBdFlag[indexOfNode];
 
     // loop over segments and compute 1D and 1D-3D coupling
     for (int i = 0; i < numberOfNeighbors; i++) {
@@ -211,65 +208,49 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
                              coord_neighbor, radius, h_3D, 0.5 * length,
                              weights, id_3D_elements, mesh, false);
 
+      dirichlet_fixed = false;
       // case specific implementation
       if (assembly_cases & UNET_NUT_BDRY_ARTERY_INLET) {
-
-        libmesh_assert_equal_to_msg(assembly_cases_str, "boundary_artery_inlet",
-                                    "Error assembly case "
-                                    + std::to_string(assembly_cases)
-                                    + " does not match expected case "
-                                    + "boundary_artery_inlet");
 
         A_VGM(indexOfNode, indexOfNode) += factor_c * 1.0;
         b_c[indexOfNode] += factor_c * input.d_in_nutrient;
 
-      } else if ((assembly_cases & UNET_NUT_BDRY_VEIN_INLET) or
-          (assembly_cases & UNET_NUT_BDRY_INNER_INLET)) {
+        dirichlet_fixed = true;
 
-        if (assembly_cases_str != "boundary_vein_inlet" and
-            assembly_cases_str != "boundary_inner_inlet") {
+      } else if (assembly_cases & UNET_NUT_BDRY_VEIN_INLET) {
 
-          libmesh_error_msg(
-                  "assembly_cases_str = " + assembly_cases_str + "\n"
-              "Error assembly case " + std::to_string(assembly_cases) +
-              " does not match expected case " + "boundary_vein_inlet" +
-              " or " + "boundary_inner_inlet");
-        }
+        A_VGM(indexOfNode, indexOfNode) += factor_c * 1.0;
+        b_c[indexOfNode] += factor_c * input.d_in_nutrient_vein;
 
-          // advection
-        A_VGM(indexOfNode, indexOfNode) += factor_c * dt * v_interface;
-        A_VGM(indexOfNode, indexNeighbor) += -factor_c * dt * v_interface;
+        dirichlet_fixed = true;
 
-      } else if (assembly_cases & UNET_NUT_BDRY_OUTLET) {
-
-        libmesh_assert_equal_to_msg(assembly_cases_str, "boundary_outlet",
-                                    "Error assembly case "
-                                    + std::to_string(assembly_cases)
-                                    + " does not match expected case "
-                                    + "boundary_outlet");
+      } else if (assembly_cases & UNET_NUT_BDRY_ARTERY_OUTLET or
+                  assembly_cases & UNET_NUT_BDRY_VEIN_OUTLET) {
 
         // advection
-        A_VGM(indexOfNode, indexOfNode) += -factor_c * dt * v_interface;
-        A_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
+        A_VGM(indexOfNode, indexOfNode) += -dt * v_interface;
+        A_VGM(indexOfNode, indexNeighbor) += +dt * v_interface;
+
+      } else if (assembly_cases & UNET_NUT_BDRY_INNER_OUTLET or
+                 assembly_cases & UNET_NUT_BDRY_INNER_INLET) {
+
+        // advection
+        if (v_interface > -1.0e-8)
+          A_VGM(indexOfNode, indexOfNode) += dt * v_interface;
+        else
+          A_VGM(indexOfNode, indexNeighbor) += dt * v_interface;
 
       } else if (assembly_cases & UNET_NUT_INNER) {
 
-        libmesh_assert_equal_to_msg(assembly_cases_str, "inner",
-                                    "Error assembly case "
-                                    + std::to_string(assembly_cases)
-                                    + " does not match expected case "
-                                    + "inner");
-
         // advection term
-        if (v_interface > 0.0)
-          A_VGM(indexOfNode, indexOfNode) += factor_c * dt * v_interface;
+        if (v_interface > -1.0e-8)
+          A_VGM(indexOfNode, indexOfNode) += dt * v_interface;
         else
-          A_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
-
+          A_VGM(indexOfNode, indexNeighbor) += dt * v_interface;
       }
 
       // common entries to various cases
-      if (!(assembly_cases & UNET_NUT_BDRY_ARTERY_INLET)) {
+      if (dirichlet_fixed == false) {
 
         // mass matrix
         A_VGM(indexOfNode, indexOfNode) += factor_c * 0.5 * length;
@@ -290,7 +271,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
 
       for (int j = 0; j < numberOfElements; j++) {
 
-        if (id_3D_elements[j] < 0 or assembly_cases & UNET_NUT_BDRY_ARTERY_INLET)
+        if (id_3D_elements[j] < 0 or dirichlet_fixed)
           continue;
 
         c_t = phi_sigma_3D[id_3D_elements[j]];
