@@ -446,6 +446,11 @@ struct NetworkDeck {
 
   double d_identify_artery_radius;
 
+  // 0 - surface coupling
+  // 1 - line coupling
+  // 2 - surface coupling for radius >= h/2, line coupling otherwise
+  int d_coupling_3d1d_integration_method;
+
   // growth related params
   unsigned int d_network_update_interval;
   double d_network_update_taf_threshold;
@@ -482,7 +487,7 @@ struct NetworkDeck {
         d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
         d_identify_vein_pres(0.), d_compute_elem_weights(false),
         d_network_bifurcate_prob(0.9), d_min_radius(8.5e-3), d_sprouting_prob(0.9),
-        d_identify_artery_radius(0.) {
+        d_identify_artery_radius(0.), d_coupling_3d1d_integration_method(0) {
 
     if (!filename.empty())
       read_parameters(filename);

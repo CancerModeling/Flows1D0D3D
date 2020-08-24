@@ -911,6 +911,8 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   if (d_identify_artery_radius < 0.)
     libmesh_error_msg("Error. Must specify radius to identify artery.");
 
+  d_coupling_3d1d_integration_method = input("coupling_3d1d_integration_method", 0);
+
   // growth related params
   d_network_update_interval = input("network_update_interval", 1);
   d_network_update_taf_threshold = input("network_update_taf_threshold", 0.);

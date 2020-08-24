@@ -75,7 +75,8 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
       determineWeightsAndIds(input.d_num_points_length,
                              input.d_num_points_angle, N_3D, coord,
                              coord_neighbor, radius, h_3D, 0.5 * length,
-                             weights, id_3D_elements, mesh, false);
+                             weights, id_3D_elements,
+                             input.d_coupling_3d1d_integration_method, mesh, false);
 
       // case specific implementation
       if (assembly_cases & UNET_PRES_BDRY_DIRIC) {
@@ -206,7 +207,8 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
       determineWeightsAndIds(input.d_num_points_length,
                              input.d_num_points_angle, N_3D, coord,
                              coord_neighbor, radius, h_3D, 0.5 * length,
-                             weights, id_3D_elements, mesh, false);
+                             weights, id_3D_elements,
+                               input.d_coupling_3d1d_integration_method, mesh, false);
 
       dirichlet_fixed = false;
       // case specific implementation
