@@ -40,7 +40,6 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
       d_model_p->d_log("Process apical growth \n", "net update");
       processApicalGrowth();
-      check_vessel_length();
 
       auto numberOfNodes = VGM.getNumberOfNodes();
 
@@ -53,7 +52,6 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
       d_model_p->d_log("Process sprouting growth \n", "net update");
       processSproutingGrowth();
-      // check_vessel_length();
 
       numberOfNodes = VGM.getNumberOfNodes();
 
@@ -62,13 +60,11 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
                        "net update");
       d_model_p->d_log("Remove redundant vessels \n", "net update");
       removeRedundantTerminalVessels();
-      // check_vessel_length();
 
       numberOfNodes = VGM.getNumberOfNodes();
 
       d_model_p->d_log("Link terminal vessels \n", "net update");
       linkTerminalVessels();
-      // check_vessel_length();
 
       numberOfNodes = VGM.getNumberOfNodes();
 
@@ -89,7 +85,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
           double length = util::dist_between_points(
               pointer->coord, pointer->neighbors[i]->coord);
 
-          if (util::definitelyLessThan(length, 1.e-8)) {
+                 if( length <1.0e-16 ){
 
             pointer->removeComponent(i);
             d_model_p->d_log("neighbor removed length=0!!! \n", "net update");
@@ -98,8 +94,6 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
         pointer = pointer->global_successor;
       } // loop for zero length
-
-      check_vessel_length();
 
       d_model_p->d_log("Remove isolated nodes \n", "net update");
 
@@ -249,31 +243,30 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
   // mark nodes too close to boundary as dirichlet
   if (d_update_number % d_update_interval == 0 or
       (d_update_number + 1) % d_update_interval == 0) {
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
+    std::shared_ptr<VGNode> pointer = VGM.getHead();
 
-  while( pointer ) {
+    while (pointer) {
 
-         int numberOfNeighbors = pointer->neighbors.size();
+      int numberOfNeighbors = pointer->neighbors.size();
 
-         if( numberOfNeighbors == 1 ) {
+      if (numberOfNeighbors == 1) {
 
-             const auto &coord = pointer->coord;
+        const auto &coord = pointer->coord;
 
-             // if node is near the boundary, we do not process Omega = (0,L)^3 
-             if( 0.00001>coord[0] || coord[0]>L_x-0.00001 || 0.00001>coord[1] || coord[1]>L_x-0.00001 || 0.00001>coord[2] || coord[2]>L_x-0.00001 ){
+        // if node is near the boundary, we do not process Omega = (0,L)^3
+        if (0.00001 > coord[0] || coord[0] > L_x - 0.00001 ||
+            0.00001 > coord[1] || coord[1] > L_x - 0.00001 ||
+            0.00001 > coord[2] || coord[2] > L_x - 0.00001) {
 
-                   pointer->typeOfVGNode = TypeOfNode::DirichletNode;
+          pointer->typeOfVGNode = TypeOfNode::DirichletNode;
+        }
+      }
 
-             }
+      pointer = pointer->global_successor;
+    }
 
-         }
-
-         pointer = pointer->global_successor;
-
+    pointer = VGM.getHead();
   }
-
-  pointer = VGM.getHead();
-}
 
   // compute and communicate updated network
   if (d_update_number % d_update_interval == 0 or
@@ -1218,6 +1211,10 @@ void util::unet::Network::removeRedundantTerminalVessels() {
           new_radii.push_back(pointer->neighbors[0]->radii[i]);
           new_L_p.push_back(pointer->neighbors[0]->L_p[i]);
           new_L_s.push_back(pointer->neighbors[0]->L_s[i]);
+
+          //pointer->neighbors[0]->neighbors[i]->printInformationOfNode();
+          //exit(0);
+
           new_tau_w_initial.push_back(pointer->neighbors[0]->tau_w_initial[i]);
         }
       }

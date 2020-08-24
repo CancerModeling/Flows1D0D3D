@@ -155,6 +155,7 @@ void util::unet::Network::transferDataToVGM( std::vector<std::vector<double>> &v
     pointer_1->neighbors.push_back(pointer_2);
     pointer_1->edge_touched.push_back(false);
     pointer_1->sprouting_edge.push_back(false);
+    pointer_1->tau_w_initial.push_back(0.); // we missed this
 
     pointer_2->radii.push_back(radius);
     pointer_2->radii_initial.push_back(radius);
@@ -163,6 +164,7 @@ void util::unet::Network::transferDataToVGM( std::vector<std::vector<double>> &v
     pointer_2->neighbors.push_back(pointer_1);
     pointer_2->edge_touched.push_back(false);
     pointer_2->sprouting_edge.push_back(false);
+    pointer_2->tau_w_initial.push_back(0.); // we missed this
 
   }
 
@@ -331,6 +333,10 @@ void util::unet::Network::refine1DMesh() {
         new_node.radii_initial.push_back(pointer->radii[i]);
 
         new_node.radii_initial.push_back(pointer->radii[i]);
+
+        // missed tau_w_initial?
+        new_node.tau_w_initial.push_back(pointer->tau_w_initial[i]);
+        new_node.tau_w_initial.push_back(pointer->tau_w_initial[i]);
 
         new_node.typeOfVGNode = TypeOfNode::InnerNode;
 
