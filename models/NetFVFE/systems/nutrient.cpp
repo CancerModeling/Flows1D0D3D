@@ -153,7 +153,8 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
           util::unet::determineWeightsAndIds(
               deck.d_num_points_length, deck.d_num_points_angle, N_3D,
               coords[node_proc], coords[node_neigh], radius, h_3D, 0.5 * length,
-              weights, id_3D_elements, d_mesh, true);
+              weights, id_3D_elements,
+              deck.d_coupling_3d1d_integration_method, d_mesh, true);
 
           // Add coupling entry
           numberOfElements = id_3D_elements.size();

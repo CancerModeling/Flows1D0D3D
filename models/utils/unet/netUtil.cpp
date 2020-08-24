@@ -322,8 +322,15 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
                                         double length_edge,
                                         std::vector<double> &weights,
                                         std::vector<int> &id_3D_elements,
+                                        const int & integration_method,
                                         const MeshBase &mesh,
                                         bool check_elem_owner) {
+
+  if (integration_method == 1 or
+      (integration_method == 2 and radius < 0.5 * h_3D))
+    return determineWeightsAndIdsLineSource(
+        N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge,
+        weights, id_3D_elements, integration_method, mesh, check_elem_owner);
 
   weights.clear();
   id_3D_elements.clear();
@@ -371,6 +378,54 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
         updateWeightsAndIds(N_s - 2, N_theta, elementIndex, weights,
                             id_3D_elements);
       }
+    }
+  }
+}
+
+void util::unet::determineWeightsAndIdsLineSource(int N_s, int N_theta, int N_3D,
+                                        std::vector<double> coord,
+                                        std::vector<double> coord_neighbor,
+                                        double radius, double h_3D,
+                                        double length_edge,
+                                        std::vector<double> &weights,
+                                        std::vector<int> &id_3D_elements,
+                                                  const int & integration_method,
+                                        const MeshBase &mesh,
+                                        bool check_elem_owner) {
+
+  weights.clear();
+  id_3D_elements.clear();
+
+  std::vector<double> direction, rotator;
+
+  for (int j = 0; j < 3; j++) {
+
+    direction.push_back(coord_neighbor[j] - coord[j]);
+  }
+
+  // N_s interval with quadrature point at the mid point of interval
+  for (int i_s = 0; i_s < N_s; i_s++) {
+
+    std::vector<double> midpoint(3);
+
+    for (int j = 0; j < 3; j++) {
+
+      midpoint[j] = coord[j] + length_edge * (double(i_s + 0.5) / double(N_s)) *
+                                   direction[j];
+    }
+
+    if (isCenterInDomain(midpoint, 2.0)) {
+
+      int elementIndex = getElementIndex(midpoint, h_3D, N_3D);
+
+      // check if element is owned by processor
+      if (check_elem_owner and mesh.elem_ptr(elementIndex)->processor_id() !=
+                               mesh.processor_id())
+        continue;
+
+      // Compute weights and element ids
+      weights.push_back(1./double(N_s));
+      id_3D_elements.push_back(elementIndex);
     }
   }
 }
