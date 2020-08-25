@@ -56,3 +56,10 @@ if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}" STREQUAL
     add_subdirectory(TwoSpecies)
 
 endif ()
+
+
+if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}" STREQUAL
+        "Build_NetPresNut")
+    add_subdirectory(NetPresNut)
+
+endif ()
