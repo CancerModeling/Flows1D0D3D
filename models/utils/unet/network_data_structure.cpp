@@ -118,6 +118,7 @@ void util::unet::Network::transferDataToVGM( std::vector<std::vector<double>> &v
     new_node.p_v = 0.0;
     new_node.c_boundary = input.d_in_nutrient;
     new_node.c_v = 0.0;
+    new_node.is_initial_node = true;
 
     if (new_node.p_boundary > 0.0) {
 
