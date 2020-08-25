@@ -137,8 +137,6 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
         pointer = pointer->global_successor;
       } // loop for remove node
 
-      check_vessel_length();
-
       d_model_p->d_log("Reset nodes \n", "net update");
 
       pointer = VGM.getHead();
@@ -430,11 +428,12 @@ void util::unet::Network::markApicalGrowth() {
 
     int numberOfNeighbors = pointer->neighbors.size();
 
-    if (numberOfNeighbors == 1) {
+    if (numberOfNeighbors == 1 && !pointer->is_initial_node) {
 
       const auto &coord = pointer->coord;
 
       // if node is near the boundary, we do not process Omega = (0,L)^3
+      // and if it is part of initial network
       if (0.00001 < coord[0] && coord[0] < L_x - 0.00001 &&
           0.00001 < coord[1] && coord[1] < L_x - 0.00001 &&
           0.00001 < coord[2] && coord[2] < L_x - 0.00001) {
@@ -1137,6 +1136,9 @@ void util::unet::Network::removeRedundantTerminalVessels() {
 
   const auto &input = d_model_p->get_input_deck();
 
+  if (input.d_disable_remove_redundant_vessel)
+    return;
+
   double L_x = input.d_domain_params[1];
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
@@ -1145,7 +1147,7 @@ void util::unet::Network::removeRedundantTerminalVessels() {
 
     int numberOfNeighbors = pointer->neighbors.size();
 
-    if (numberOfNeighbors == 1) {
+    if (numberOfNeighbors == 1 and !pointer->is_initial_node) {
 
       const auto &coord = pointer->coord;
 
@@ -1158,7 +1160,8 @@ void util::unet::Network::removeRedundantTerminalVessels() {
 
         pointer->notUpdated = updateNumber + 1;
 
-        oss << "pointer->notUpdated: " << pointer->notUpdated << std::endl;
+        oss << "pointer->notUpdated: " << pointer->notUpdated << ", ";
+        oss << "coord: " << pointer->coord << std::endl;
         d_model_p->d_log(oss, "net update");
       }
     }
