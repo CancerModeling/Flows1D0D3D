@@ -273,7 +273,7 @@ public:
 
     // print to file without any format
     if (d_comm_p->rank() == 0)
-      d_ts_file << log_ts_base(i, 0);
+      d_ts_file << log_ts_base(i, 0) << std::flush;
 
     // print to screen with format
     if (i > 0) {
@@ -286,7 +286,7 @@ public:
 
     // print to file without any format
     if (d_comm_p->rank() == 0)
-      d_ts_file << log_ts_base_final_avg(sim_time, 0);
+      d_ts_file << log_ts_base_final_avg(sim_time, 0) << std::flush;
 
     // print to screen with format
     log(log_ts_base_final_avg(sim_time, 2), "TS log");
@@ -295,7 +295,7 @@ public:
   void log_ts_all() {
     for (int i=0; i<d_solve_time.size(); i++) {
       if (d_comm_p->rank() == 0)
-        d_ts_file << log_ts_base(i, 0);
+        d_ts_file << log_ts_base(i, 0) << std::flush;
     }
   }
 
@@ -313,7 +313,7 @@ public:
     }
 
     // log to file
-    d_qoi_file << oss.str();
+    d_qoi_file << oss.str() << std::flush;
 
     // log to screen
     std::string str = "\n  QoI log header\n  " + oss.str();
@@ -335,7 +335,7 @@ public:
     }
 
     // log to file
-    d_qoi_file << oss.str();
+    d_qoi_file << oss.str() << std::flush;
 
     // log to screen
     std::string str = "  " + oss.str();
