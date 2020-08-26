@@ -656,18 +656,6 @@ void util::unet::Network::processApicalGrowth() {
       bool isIntersecting =
           testIntersection(coord, new_point_1, radius_p, pointer);
 
-      oss << "coord: " << coord << "\n";
-      oss << "rotator: " << rotator << "\n";
-      oss << "max_vec: " << max_vec << "\n";
-      oss << "normal_plane: " << normal_plane << "\n";
-      oss << "length_d: " << length_d << "\n";
-      oss << "dir_term_vessel: " << dir_term_vessel << "\n";
-      oss << "direction: " << direction << "\n";
-      oss << "length: " << length << "\n";
-      oss << "new_point: " << new_point_1 << "\n";
-      oss << "TAF_point: " << TAF_point << "\n";
-      d_model_p->d_log(oss, "net update");
-
       double global_max_TAF = gmm::vect_norminf(phi_TAF_3D);
       /*
                      std::cout << "global_max_TAF: " << global_max_TAF << "\n";
@@ -681,6 +669,20 @@ void util::unet::Network::processApicalGrowth() {
           0.5 + 0.5 * std::erf((std::log(log_dist) - input.d_log_normal_mean) /
                                std::sqrt(2.0 * input.d_log_normal_std_dev *
                                          input.d_log_normal_std_dev));
+
+      oss << "coord: " << coord << "\n";
+      oss << "rotator: " << rotator << "\n";
+      oss << "max_vec: " << max_vec << "\n";
+      oss << "normal_plane: " << normal_plane << "\n";
+      oss << "length_d: " << length_d << "\n";
+      oss << "dir_term_vessel: " << dir_term_vessel << "\n";
+      oss << "direction: " << direction << "\n";
+      oss << "length: " << length << "\n";
+      oss << "new_point: " << new_point_1 << "\n";
+      oss << "TAF_point: " << TAF_point << "\n";
+      oss << "bifurc. prob.: " << prob << "\n";
+      d_model_p->d_log(oss, "net update");
+
       /*
                      std::cout << "prob: " << prob << "\n";
                      std::cout << "input.d_network_bifurcate_prob: " <<
