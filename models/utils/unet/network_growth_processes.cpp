@@ -1400,6 +1400,7 @@ void util::unet::Network::markSproutingGrowth() {
         oss << "radius_initial: " << pointer->radii_initial[i] << std::endl;
         oss << "radius: " << radius << std::endl;
         oss << "coord: " << coord << std::endl;
+        oss << "sprouting prob.: " << sproutingProbability << std::endl;
         d_model_p->d_log(oss, "net update");
 
         if (sproutingProbability > input.d_sprouting_prob && TAF > TAF_th) {
@@ -1670,8 +1671,10 @@ void util::unet::Network::processSproutingGrowth() {
 
         bool isColliding = testCollision(new_point);
 
+        // replace hard code for minimum vessel length with the
+        // input specified value
         if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 &&
-            length_vessel > 0.0 && !isColliding && length_vessel > 0.13) {
+            !isColliding && length_vessel > input.d_min_length_for_sprouting) {
 
           d_model_p->d_log("New vessel with length = " +
                                std::to_string(util::dist_between_points(
