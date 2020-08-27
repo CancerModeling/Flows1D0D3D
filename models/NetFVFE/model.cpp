@@ -343,8 +343,10 @@ netfvfe::Model::Model(
 void netfvfe::Model::run() {
 
   // print initial state
-  if (d_input.d_perform_output)
+  if (d_input.d_perform_output) {
+    d_is_output_step = true;
     write_system(0);
+  }
 
   // set time parameters
   d_step = d_input.d_init_step;
