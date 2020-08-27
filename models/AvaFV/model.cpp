@@ -298,9 +298,8 @@ void avafv::Model::run() {
 
     // output qoi
     if (d_step == 1)
-      d_log.log_qoi_header(d_time, d_qoi.get_last(), d_qoi.get_names());
-    else
-      d_log.log_qoi(d_time, d_qoi.get_last());
+      d_log.log_qoi_header(d_time, d_qoi.get_names());
+    d_log.log_qoi(d_time, d_qoi.get_last());
 
   } while (d_step < d_input.d_steps);
 }

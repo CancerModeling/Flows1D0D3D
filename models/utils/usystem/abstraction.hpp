@@ -62,6 +62,18 @@ public:
   virtual void assemble() = 0;
 
   /*!
+   * @brief Calls system solver
+   *
+   * This function is virtual for flexibility. Default method should work.
+   */
+  virtual void solve() { d_sys.solve(); };
+
+  /*!
+   * @brief compute norm of the system
+   */
+  double compute_qoi(const std::string &type, unsigned int local_var_id = 0);
+
+  /*!
    * @brief Initializes the fe and local matrix and vector
    *
    * @param elem Pointer to the element
