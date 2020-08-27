@@ -299,14 +299,13 @@ public:
     }
   }
 
-  void log_qoi_header(const double &time, const std::vector<double> &qoi,
-      const std::vector<std::string> &qoi_names) {
+  void log_qoi_header(const double &time, const std::vector<std::string> &qoi_names) {
 
     std::ostringstream oss;
     oss << "time ";
-    for (unsigned int i =0; i< qoi.size(); i++) {
+    for (unsigned int i =0; i< qoi_names.size(); i++) {
       oss << qoi_names[i];
-      if (i < qoi.size() - 1)
+      if (i < qoi_names.size() - 1)
         oss << " ";
       else
         oss << "\n";
@@ -319,7 +318,7 @@ public:
     std::string str = "\n  QoI log header\n  " + oss.str();
     log(str, "debug");
 
-    log_qoi(time, qoi);
+    //log_qoi(time, qoi);
   }
 
   void log_qoi(const double &time, const std::vector<double> &qoi) {

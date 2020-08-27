@@ -297,9 +297,8 @@ void netpresnut::Model::run() {
 
     // output qoi
     if (d_step == 1)
-      d_log.log_qoi_header(d_time, d_qoi.get_last(), d_qoi.get_names());
-    else
-      d_log.log_qoi(d_time, d_qoi.get_last());
+      d_log.log_qoi_header(d_time, d_qoi.get_names());
+    d_log.log_qoi(d_time, d_qoi.get_last());
 
     // add to log
     d_log.add_solve_time(util::TimePair(solve_clock, steady_clock::now()));
@@ -381,11 +380,7 @@ void netpresnut::Model::solve_system() {
     d_log.add_sys_solve_time(clock_begin, d_nut_id);
 
     // Nonlinear iteration error
-    double nonlinear_loc_error = last_nonlinear_soln_nut->linfty_norm();
-    double nonlinear_global_error = 0.;
-    MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_MAX, MPI_COMM_WORLD);
-
+    double nonlinear_iter_error = last_nonlinear_soln_nut->linfty_norm();
     if (d_input.d_perform_output) {
 
       const unsigned int n_linear_iterations = nut.n_linear_iterations();
@@ -394,10 +389,10 @@ void netpresnut::Model::solve_system() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl << std::endl;
       d_log(oss, "debug");
     }
-    if (nonlinear_global_error < d_input.d_nonlin_tol) {
+    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
       d_log(" \n", "debug");
       oss << "      NC step: " << l << std::endl
@@ -472,11 +467,7 @@ void netpresnut::Model::solve_pressure() {
       d_log.add_sys_solve_time(clock_begin, d_pres_id);
 
     // Nonlinear iteration error
-    double nonlinear_loc_error_pres = last_nonlinear_soln_pres->linfty_norm();
-    double nonlinear_global_error_pres = 0.;
-    MPI_Allreduce(&nonlinear_loc_error_pres, &nonlinear_global_error_pres, 1,
-                  MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-
+    double nonlinear_iter_error = last_nonlinear_soln_pres->linfty_norm();
     if (d_input.d_perform_output) {
 
       const unsigned int n_linear_iterations = pres.n_linear_iterations();
@@ -485,20 +476,18 @@ void netpresnut::Model::solve_pressure() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error_pres << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl << std::endl;
       d_log(oss, "debug");
     }
-    if (nonlinear_global_error_pres < d_input.d_nonlin_tol) {
+    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
       d_log(" \n", "debug");
-      oss << "\n      NC step: " << l << std::endl
+      oss << "      NC step: " << l << std::endl
           << std::endl;
-      d_log(oss, "converge pres");
+      d_log(oss, "converge sys");
 
       break;
     }
-
-    log_msg(d_delayed_msg, d_log);
 
   } // nonlinear solver loop
 

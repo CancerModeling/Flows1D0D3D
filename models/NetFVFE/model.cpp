@@ -12,6 +12,7 @@ namespace {
 
 steady_clock::time_point clock_begin = steady_clock::now();
 steady_clock::time_point clock_end = steady_clock::now();
+steady_clock::time_point solve_clock = steady_clock::now();
 
 void reset_clock() {
   clock_begin = steady_clock::now();
@@ -342,14 +343,8 @@ netfvfe::Model::Model(
 void netfvfe::Model::run() {
 
   // print initial state
-  {
-    // Tumor model
-    if (d_input.d_perform_output)
-      write_system(0);
-
-    // network
-    d_network.writeDataToVTKTimeStep_VGM(0);
-  }
+  if (d_input.d_perform_output)
+    write_system(0);
 
   // set time parameters
   d_step = d_input.d_init_step;
@@ -386,7 +381,6 @@ void netfvfe::Model::run() {
 
     // write tumor solution
     write_system(1);
-    d_network.writeDataToVTKTimeStep_VGM(1);
     return;
   }
 
@@ -410,10 +404,7 @@ void netfvfe::Model::run() {
     // Prepare time step
     d_step++;
     d_time += d_dt;
-
-    // init ts log
-    d_log.ready_new_step(int(d_step) - 1, d_time);
-    auto solve_clock = steady_clock::now();
+    d_network.d_update_number += 1;
 
     // check if this is output step
     d_is_output_step = false;
@@ -426,17 +417,16 @@ void netfvfe::Model::run() {
     if (d_step % d_input.d_network_update_interval == 0)
       d_is_growth_step = true;
 
-    d_network.d_update_number += 1;
+    // init ts log
+    d_log.ready_new_step(int(d_step) - 1, d_time);
+    solve_clock = steady_clock::now();
 
-    oss << "Time step: " << d_step << ", time: " << d_time << "\n";
-    d_log(oss, "integrate");
-    d_log(" \n", "integrate");
+    d_log("Time step: " + std::to_string(d_step) +
+          ", time: " + std::to_string(d_time) + "\n",
+          "integrate");
 
     // solve tumor-network system
     solve_system();
-
-    // compute qoi
-    compute_qoi();
 
     // update network
     if (d_is_growth_step) {
@@ -445,158 +435,71 @@ void netfvfe::Model::run() {
       d_log(" \n", "net update");
     }
 
-    // Post-processing
-    if (d_is_output_step) {
+    // write tumor solution
+    write_system((d_step - d_input.d_init_step) /
+                 d_input.d_dt_output_interval);
+  } while (d_step < d_input.d_steps);
+}
 
-      // write tumor solution
-      write_system((d_step - d_input.d_init_step) /
-                       d_input.d_dt_output_interval);
-      d_network.writeDataToVTKTimeStep_VGM((d_step - d_input.d_init_step) /
-                                           d_input.d_dt_output_interval);
-    }
+void netfvfe::Model::write_system(const unsigned int &t_step) {
 
-    // output qoi
-    if (d_step == 1)
-      d_log.log_qoi_header(d_time, d_qoi.get_last(), d_qoi.get_names());
-    else
-      d_log.log_qoi(d_time, d_qoi.get_last());
+  if (d_step >= 1) {
+    // compute qoi
+    compute_qoi();
+    d_log.log_qoi(d_time, d_qoi.get_last());
 
     // add to log
     d_log.add_solve_time(util::TimePair(solve_clock, steady_clock::now()));
 
     // output time logger info
     d_log.log_ts();
+  }
 
-  } while (d_step < d_input.d_steps);
-}
+  // check if for writing to vtk files
+  if (!d_is_output_step)
+    return;
 
-void netfvfe::Model::write_system(const unsigned int &t_step) {
+  // write network simulation
+  d_network.writeDataToVTKTimeStep_VGM(t_step);
 
-  //ExodusII_IO exodus(d_mesh);
-
-  // write mesh and simulation results
-  //std::string filename = d_input.d_outfilename + ".e";
-
-  // write to exodus
-  //exodus.write_timestep(filename, d_tum_sys, 1, d_time);
-
-  //
+  // write tumor simulation
   rw::VTKIO(d_mesh).write_equation_systems(
       d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
       d_tum_sys);
-
-  // save for restart
-  if (d_input.d_restart_save &&
-      (d_step % d_input.d_dt_restart_save_interval == 0)) {
-
-    oss << "\n  Saving files for restart\n";
-    d_log(oss);
-    if (t_step == 0) {
-
-      std::string mesh_file = "mesh_" + d_input.d_outfile_tag + ".e";
-      d_mesh.write(mesh_file);
-    }
-
-    std::string solutions_file = "solution_" + d_input.d_outfile_tag + "_" +
-                                 std::to_string(d_step) + ".e";
-    d_tum_sys.write(solutions_file, WRITE);
-  }
-
-  // debug
-  // output 3D pressure and nutrient stored in network to txt file
-  // header
-  // pressure nutrient taf
-  //if (d_comm_p->size() > 1)
-  d_taf_assembly.localize_solution_with_elem_id_numbering_non_const_elem(
-      d_network.phi_TAF_3D, {0}, false);
-
-  if (d_comm_p->rank() == 0 and d_step > 1) {
-
-    std::ofstream of;
-    of.precision(16);
-    of.open(d_input.d_outfilename + "_debug_" + std::to_string(t_step) +
-            ".txt");
-    for (unsigned int i = 0; i < d_network.N_tot_3D; i++) {
-
-      double pres_val = 0.;
-      double nut_val = 0.;
-      double taf_val = 0.;
-
-      if (d_comm_p->size() == 1) {
-
-        const auto *elem = d_mesh.elem_ptr(i);
-        d_pres_assembly.init_dof(elem);
-        d_nut_assembly.init_dof(elem);
-        d_taf_assembly.init_dof(elem);
-
-        pres_val = d_pres_assembly.get_current_sol(0);
-        nut_val = d_nut_assembly.get_current_sol(0);
-        taf_val = 0.;
-        for (unsigned int j=0; j < d_taf_assembly.d_phi.size(); j++)
-          taf_val += d_taf_assembly.get_current_sol(j);
-        taf_val = taf_val / d_taf_assembly.d_phi.size();
-
-      } else {
-
-        pres_val = d_network.P_3D[i];
-        nut_val = d_network.phi_sigma_3D[i];
-        taf_val = d_network.phi_TAF_3D[i];
-      }
-
-      of << pres_val << " " << nut_val << " " << taf_val << "\n";
-    }
-    of.close();
-  }
 }
 
 void netfvfe::Model::compute_qoi() {
 
   // initialize qoi data
-  int N = 11;
+  int N = 17;
   std::vector<double> qoi(N, 0.);
-  if (d_step <= 1)
-    d_qoi = util::QoIVec({"tumor_mass", "hypoxic_mass", "necrotic_mass",
-                        "tumor_l2",
-                        "r_v_mean", "r_v_std",
-                        "l_v_mean", "l_v_std",
-                        "l_v_total",
-                        "vessel_vol", "vessel_density"});
+  if (d_qoi.d_vec.empty()) {
+    d_qoi = util::QoIVec(
+        {"tumor_mass", "hypoxic_mass", "necrotic_mass", "prolific_mass",
+         "nutrient_mass", "tumor_l2", "hypoxic_l2", "necrotic_l2",
+         "prolific_l2", "nutrient_l2", "r_v_mean", "r_v_std", "l_v_mean",
+         "l_v_std", "l_v_total", "vessel_vol", "vessel_density"});
 
-  // integral of total tumor
-  double value_mass = 0.;
-  double total_mass = 0.;
-  util::computeMass(d_tum_sys, "Tumor", "tumor", value_mass);
-  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
-                MPI_COMM_WORLD);
-  qoi[0] = total_mass;
+    d_log.log_qoi_header(d_time, d_qoi.get_names());
+  }
 
-  // integral of hypoxic
-  value_mass = 0.; total_mass = 0.;
-  util::computeMass(d_tum_sys, "Hypoxic", "hypoxic", value_mass);
-  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
-                MPI_COMM_WORLD);
-  qoi[1] = total_mass;
-
-  // integral of necrotic
-  value_mass = 0.; total_mass = 0.;
-  util::computeMass(d_tum_sys, "Necrotic", "necrotic", value_mass);
-  MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
-                MPI_COMM_WORLD);
-  qoi[2] = total_mass;
-
-  // L2 norm of total tumor
-  value_mass = 0.; total_mass = 0.;
-  value_mass = std::pow(d_input.d_mesh_size, 1.5) * d_tum_assembly.d_sys.solution->l2_norm();
-  //MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE,
-  //              MPI_SUM, MPI_COMM_WORLD);
-  qoi[3] = value_mass;
-
-  //d_qoi.add({tumor_mass, hypoxic_mass, necrotic_mass, tumor_L2_norm});
+  qoi[0] = d_tum_assembly.compute_qoi("mass");
+  qoi[1] = d_hyp_assembly.compute_qoi("mass");
+  qoi[2] = d_nec_assembly.compute_qoi("mass");
+  qoi[3] = util::compute_prolific_qoi("mass", d_tum_assembly, d_hyp_assembly,
+                                      d_nec_assembly);
+  qoi[4] = d_nut_assembly.compute_qoi("mass");
+  qoi[5] = d_tum_assembly.compute_qoi("l2");
+  qoi[6] = d_hyp_assembly.compute_qoi("l2");
+  qoi[7] = d_nec_assembly.compute_qoi("l2");
+  qoi[8] = util::compute_prolific_qoi("l2", d_tum_assembly, d_hyp_assembly,
+                                      d_nec_assembly);
+  qoi[9] = d_nut_assembly.compute_qoi("l2");
 
   // get other qoi such as radius mean, radius std dev,
   // length mean, length std dev, total length, total vessel vol, total domain vol
   auto vessel_qoi = d_network.compute_qoi();
-  unsigned int i = 4;
+  unsigned int i = 10; // start of network qoi
   for (const auto &q: vessel_qoi)
     qoi[i++] = q;
 
@@ -760,11 +663,7 @@ void netfvfe::Model::solve_system() {
     d_log.add_sys_solve_time(clock_begin, d_ecm_id);
 
     // Nonlinear iteration error
-    double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
-    double nonlinear_global_error = 0.;
-    MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_MAX, MPI_COMM_WORLD);
-
+    double nonlinear_iter_error = last_nonlinear_soln_tum->linfty_norm();
     if (d_input.d_perform_output) {
 
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
@@ -773,10 +672,10 @@ void netfvfe::Model::solve_system() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl << std::endl;
       d_log(oss, "debug");
     }
-    if (nonlinear_global_error < d_input.d_nonlin_tol) {
+    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
       d_log(" \n", "debug");
       oss << "      NC step: " << l << std::endl
@@ -790,11 +689,18 @@ void netfvfe::Model::solve_system() {
   d_log(" \n", "solve sys");
   d_log.add_nonlin_iter(d_nonlinear_step);
 
-  // solve for gradient of taf
-  reset_clock();
-  d_log("      Solving |grad taf| \n", "solve sys");
-  grad_taf.solve();
-  d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
+  // compute below only when we are performing output as these do not play
+  // direct role in evolution of sub-system
+
+  if (d_is_output_step or d_is_growth_step) {
+
+    // solve for taf
+    reset_clock();
+    d_log("      Solving |grad taf| \n", "solve sys");
+    grad_taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_grad_taf_id);
+  }
+  d_log(" \n", "solve sys");
 }
 
 void netfvfe::Model::solve_pressure() {
@@ -859,11 +765,7 @@ void netfvfe::Model::solve_pressure() {
       d_log.add_sys_solve_time(clock_begin, d_pres_id);
 
     // Nonlinear iteration error
-    double nonlinear_loc_error_pres = last_nonlinear_soln_pres->linfty_norm();
-    double nonlinear_global_error_pres = 0.;
-    MPI_Allreduce(&nonlinear_loc_error_pres, &nonlinear_global_error_pres, 1,
-                  MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-
+    double nonlinear_iter_error = last_nonlinear_soln_pres->linfty_norm();
     if (d_input.d_perform_output) {
 
       const unsigned int n_linear_iterations = pres.n_linear_iterations();
@@ -872,21 +774,18 @@ void netfvfe::Model::solve_pressure() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error_pres << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl << std::endl;
       d_log(oss, "debug");
     }
-    if (nonlinear_global_error_pres < d_input.d_nonlin_tol) {
+    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
       d_log(" \n", "debug");
-      oss << "\n      NC step: " << l << std::endl
+      oss << "      NC step: " << l << std::endl
           << std::endl;
-      d_log(oss, "converge pres");
+      d_log(oss, "converge sys");
 
       break;
     }
-
-    log_msg(d_delayed_msg, d_log);
-
   } // nonlinear solver loop
 
   d_log(" \n", "solve pres");
@@ -960,25 +859,20 @@ void netfvfe::Model::test_nut() {
     last_nonlinear_soln_nut->add(-1., *nut.solution);
     last_nonlinear_soln_nut->close();
 
-    double nonlinear_loc_error_nut = last_nonlinear_soln_nut->linfty_norm();
-    double nonlinear_global_error_nut = 0.;
-    MPI_Allreduce(&nonlinear_loc_error_nut, &nonlinear_global_error_nut, 1,
-                  MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-
+    // Nonlinear iteration error
+    double nonlinear_iter_error = last_nonlinear_soln_nut->linfty_norm();
     if (d_input.d_perform_output) {
 
-      // const unsigned int n_linear_iterations = tum.n_linear_iterations();
-      // const Real final_linear_residual = tum.final_linear_residual();
       const unsigned int n_linear_iterations = nut.n_linear_iterations();
       const Real final_linear_residual = nut.final_linear_residual();
 
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error_nut << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl << std::endl;
       d_log(oss, "debug");
     }
-    if (nonlinear_global_error_nut < d_input.d_nonlin_tol) {
+    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
       d_log(" \n", "debug");
       oss << "      NC step: " << l << std::endl
@@ -1168,11 +1062,7 @@ void netfvfe::Model::test_tum() {
     d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
-    double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
-    double nonlinear_global_error = 0.;
-    MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_MAX, MPI_COMM_WORLD);
-
+    double nonlinear_iter_error = last_nonlinear_soln_tum->linfty_norm();
     if (d_input.d_perform_output) {
 
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
@@ -1181,10 +1071,10 @@ void netfvfe::Model::test_tum() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl << std::endl;
       d_log(oss, "debug");
     }
-    if (nonlinear_global_error < d_input.d_nonlin_tol) {
+    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
       d_log(" \n", "debug");
       oss << "      NC step: " << l << std::endl
@@ -1271,11 +1161,7 @@ void netfvfe::Model::test_tum_2() {
     d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
-    double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
-    double nonlinear_global_error = 0.;
-    MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_MAX, MPI_COMM_WORLD);
-
+    double nonlinear_iter_error = last_nonlinear_soln_tum->linfty_norm();
     if (d_input.d_perform_output) {
 
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
@@ -1284,10 +1170,10 @@ void netfvfe::Model::test_tum_2() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl << std::endl;
       d_log(oss, "debug");
     }
-    if (nonlinear_global_error < d_input.d_nonlin_tol) {
+    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
       d_log(" \n", "debug");
       oss << "      NC step: " << l << std::endl
@@ -1406,11 +1292,7 @@ void netfvfe::Model::test_net_tum() {
     d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
-    double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
-    double nonlinear_global_error = 0.;
-    MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_MAX, MPI_COMM_WORLD);
-
+    double nonlinear_iter_error = last_nonlinear_soln_tum->linfty_norm();
     if (d_input.d_perform_output) {
 
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
@@ -1419,10 +1301,10 @@ void netfvfe::Model::test_net_tum() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl << std::endl;
       d_log(oss, "debug");
     }
-    if (nonlinear_global_error < d_input.d_nonlin_tol) {
+    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
       d_log(" \n", "debug");
       oss << "      NC step: " << l << std::endl
@@ -1558,11 +1440,7 @@ void netfvfe::Model::test_net_tum_2() {
     d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
-    double nonlinear_loc_error = last_nonlinear_soln_tum->linfty_norm();
-    double nonlinear_global_error = 0.;
-    MPI_Allreduce(&nonlinear_loc_error, &nonlinear_global_error, 1, MPI_DOUBLE,
-                  MPI_MAX, MPI_COMM_WORLD);
-
+    double nonlinear_iter_error = last_nonlinear_soln_tum->linfty_norm();
     if (d_input.d_perform_output) {
 
       const unsigned int n_linear_iterations = tum.n_linear_iterations();
@@ -1571,10 +1449,10 @@ void netfvfe::Model::test_net_tum_2() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl << std::endl;
       d_log(oss, "debug");
     }
-    if (nonlinear_global_error < d_input.d_nonlin_tol) {
+    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
       d_log(" \n", "debug");
       oss << "      NC step: " << l << std::endl
