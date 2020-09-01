@@ -966,6 +966,16 @@ void util::Flow1DDeck::read_parameters(const std::string &filename) {
   d_osmotic_sigma = input("osmotic_reflection_coeff", 0.1);
 
   d_scenario = input("scenario", "scenario not available");
+
+  d_outlet_apply_neumann = input("outlet_apply_neumann", false);
+  d_inlet_apply_neumann = input("inlet_apply_neumann", false);
+  d_outlet_neumann_val = input("outlet_neumann_val", 0.);
+  d_inlet_neumann_val = input("inlet_neumann_val", 0.);
+
+  // we can not have neumann on both inlet and outlet
+  if (d_outlet_apply_neumann and d_inlet_apply_neumann)
+    libmesh_error_msg("Error: Can not apply Neumann boundary condition on "
+                      "both inlets and outlets.");
 }
 
 void util::Flow1DDeck::print(unsigned int level) {

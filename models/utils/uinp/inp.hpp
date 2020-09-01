@@ -516,10 +516,17 @@ struct Flow1DDeck {
 
   std::string d_scenario;
 
+  bool d_outlet_apply_neumann;
+  bool d_inlet_apply_neumann;
+  double d_outlet_neumann_val;
+  double d_inlet_neumann_val;
+
   explicit Flow1DDeck(const std::string &filename = "")
       : d_init_vessel_mu(0.), d_in_pressure(0.), d_in_nutrient(0.),
           d_blood_density(1.),
-      d_D_sigma_v(1.), d_in_nutrient_vein(0.), d_osmotic_sigma(0.) {
+      d_D_sigma_v(1.), d_in_nutrient_vein(0.), d_osmotic_sigma(0.),
+        d_outlet_apply_neumann(false), d_outlet_neumann_val(0.),
+        d_inlet_apply_neumann(false), d_inlet_neumann_val(0.){
 
     if (!filename.empty())
       read_parameters(filename);
