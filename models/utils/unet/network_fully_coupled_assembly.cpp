@@ -57,6 +57,7 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
   std::vector<double> weights;
   std::vector<int> id_3D_elements;
   unsigned int assembly_cases;
+  bool dirichlet_fixed = false;
 
   double row_sum = 0.;
 
@@ -172,10 +173,78 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
                              input.d_coupling_3d1d_integration_method, mesh, false);
 
       // case specific implementation
+      dirichlet_fixed = false;
       if (assembly_cases & UNET_PRES_BDRY_DIRIC) {
 
-        A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += 1.0;
-        b_flow_3D1D[N_tot_3D + indexOfNode] += pointer->p_boundary;
+        if ((!input.d_outlet_apply_neumann and !input.d_inlet_apply_neumann) or
+            !pointer->is_initial_node) {
+
+          dirichlet_fixed = true;
+          A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) += 1.0;
+          b_flow_3D1D[N_tot_3D + indexOfNode] += pointer->p_boundary;
+        }
+        else {
+
+          // Experiment
+          if (pointer->p_v < input.d_identify_vein_pres) {
+
+            // vein's end node
+            if (input.d_outlet_apply_neumann) {
+
+              std::cout << "P1D: " << P_3D1D[N_tot_3D + indexOfNode] << "\n";
+              if (P_3D1D[N_tot_3D + indexOfNode] < -1.e-8 or
+                  P_3D1D[N_tot_3D + indexOfNode] > 1.e10)
+                libmesh_error_msg("Error: Pressure should not be negative or "
+                                  "very large\n");
+
+              // diffusion term
+              A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+                  K_1D / length;
+              A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
+                  -K_1D / length;
+
+              // nonhomogeneous neumann flux
+              b_flow_3D1D[N_tot_3D + indexOfNode] +=
+                  M_PI * radius * radius * input.d_outlet_neumann_val;
+
+            } else {
+              A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+                  1.0;
+              b_flow_3D1D[N_tot_3D + indexOfNode] += pointer->p_boundary;
+
+              dirichlet_fixed = true;
+            }
+          } // vein's end point
+          else {
+
+            // artery's end node
+            if (input.d_inlet_apply_neumann) {
+
+              std::cout << "P1D: " << P_3D1D[N_tot_3D + indexOfNode] << "\n";
+              if (P_3D1D[N_tot_3D + indexOfNode] < -1.e-8 or
+                  P_3D1D[N_tot_3D + indexOfNode] > 1.e10)
+                libmesh_error_msg("Error: Pressure should not be negative or "
+                                  "very large\n");
+
+              // diffusion term
+              A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+                  K_1D / length;
+              A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) +=
+                  -K_1D / length;
+
+              // nonhomogeneous neumann flux
+              b_flow_3D1D[N_tot_3D + indexOfNode] +=
+                  M_PI * radius * radius * input.d_inlet_neumann_val;
+
+            } else {
+              A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) +=
+                  1.0;
+              b_flow_3D1D[N_tot_3D + indexOfNode] += pointer->p_boundary;
+
+              dirichlet_fixed = true;
+            }
+          } // artery's end point
+        } // apply non-homogeneous Neumann bc
 
       } else {
 

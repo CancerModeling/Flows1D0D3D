@@ -220,7 +220,7 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
     P_3D1D = b_flow_3D1D;
   }
 
-  gmm::iteration iter(1.0E-10, 2);
+  gmm::iteration iter(1.0E-10, 2, 1000);
 
   // gmm::identity_matrix PR;
 
