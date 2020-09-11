@@ -45,8 +45,9 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
 
   if (system_name == "Nutrient")
     sys.project_solution(netfvfe::initial_condition_nut, nullptr, es.parameters);
-  else if (system_name == "Tumor")
-    sys.project_solution(netfvfe::initial_condition_tum, nullptr, es.parameters);
+  else if (system_name == "Prolific")
+    sys.project_solution(netfvfe::initial_condition_pro, nullptr,
+                         es.parameters);
   else if (system_name == "Hypoxic")
     sys.project_solution(netfvfe::initial_condition_hyp, nullptr, es.parameters);
   else if (system_name == "Necrotic")
@@ -114,7 +115,7 @@ void netfvfe::model_setup_run(int argc, char **argv,
 
   // Add systems, variables and assemble
   auto &nut = tum_sys.add_system<TransientLinearImplicitSystem>("Nutrient");
-  auto &tum = tum_sys.add_system<TransientLinearImplicitSystem>("Tumor");
+  auto &pro = tum_sys.add_system<TransientLinearImplicitSystem>("Prolific");
   auto &hyp = tum_sys.add_system<TransientLinearImplicitSystem>("Hypoxic");
   auto &nec = tum_sys.add_system<TransientLinearImplicitSystem>("Necrotic");
   auto &taf = tum_sys.add_system<TransientLinearImplicitSystem>("TAF");
@@ -130,7 +131,7 @@ void netfvfe::model_setup_run(int argc, char **argv,
   {
     if (input.d_restart) {
       nut.update();
-      tum.update();
+      pro.update();
       hyp.update();
       nec.update();
       taf.update();
@@ -146,11 +147,12 @@ void netfvfe::model_setup_run(int argc, char **argv,
       nut.add_variable("nutrient", CONSTANT, MONOMIAL);
 
       // variable in tumor system
-      tum.add_variable("tumor", FIRST);
-      tum.add_variable("chemical_tumor", FIRST);
+      pro.add_variable("prolific", FIRST);
+      pro.add_variable("chemical_prolific", FIRST);
 
       // variable in hypoxic system
       hyp.add_variable("hypoxic", FIRST);
+      hyp.add_variable("chemical_hypoxic", FIRST);
 
       // variable in necrotic system
       nec.add_variable("necrotic", FIRST);
@@ -180,7 +182,7 @@ void netfvfe::model_setup_run(int argc, char **argv,
         vel.add_variable("velocity_z", FIRST);
 
       // attach initial condition function to systems
-      tum.attach_init_function(initial_condition);
+      pro.attach_init_function(initial_condition);
       hyp.attach_init_function(initial_condition);
       nut.attach_init_function(initial_condition);
       ecm.attach_init_function(initial_condition);
@@ -196,7 +198,7 @@ void netfvfe::model_setup_run(int argc, char **argv,
   // Create Model class
   //
   auto model = Model(argc, argv, filename, comm, input, mesh, tum_sys,
-                     nec, tum, nut, hyp, taf, ecm, mde, pres, grad_taf, vel,
+                     nec, pro, nut, hyp, taf, ecm, mde, pres, grad_taf, vel,
                      log);
 
   // run model
@@ -210,7 +212,7 @@ void netfvfe::model_setup_run(int argc, char **argv,
 netfvfe::Model::Model(
     int argc, char **argv, const std::string &filename, Parallel::Communicator *comm,
     InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
-    TransientLinearImplicitSystem &nec, TransientLinearImplicitSystem &tum,
+    TransientLinearImplicitSystem &nec, TransientLinearImplicitSystem &pro,
     TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
     TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &ecm,
     TransientLinearImplicitSystem &mde, TransientLinearImplicitSystem &pres,
@@ -220,7 +222,7 @@ netfvfe::Model::Model(
     : util::BaseModel(comm, input, mesh, tum_sys, log, "NetFVFE"),
       d_network(this),
       d_nec_assembly(this, "Necrotic", d_mesh, nec),
-      d_tum_assembly(this, "Tumor", d_mesh, tum),
+      d_pro_assembly(this, "Prolific", d_mesh, pro),
       d_nut_assembly(this, "Nutrient", d_mesh, nut),
       d_hyp_assembly(this, "Hypoxic", d_mesh, hyp),
       d_taf_assembly(this, "TAF", d_mesh, taf),
@@ -231,7 +233,7 @@ netfvfe::Model::Model(
       d_vel_assembly(this, "Velocity", d_mesh, vel), d_ghosting_fv(d_mesh) {
 
   d_nut_id = d_nut_assembly.d_sys.number();
-  d_tum_id = d_tum_assembly.d_sys.number();
+  d_pro_id = d_pro_assembly.d_sys.number();
   d_hyp_id = d_hyp_assembly.d_sys.number();
   d_nec_id = d_nec_assembly.d_sys.number();
   d_taf_id = d_taf_assembly.d_sys.number();
@@ -245,7 +247,7 @@ netfvfe::Model::Model(
 
   d_sys_names.resize(d_vel_id + 3);
   d_sys_names[d_nut_id] = "Nutrient";
-  d_sys_names[d_tum_id] = "Tummor";
+  d_sys_names[d_pro_id] = "Prolific";
   d_sys_names[d_hyp_id] = "Hypoxic";
   d_sys_names[d_nec_id] = "Necrotic";
   d_sys_names[d_taf_id] = "TAF";
@@ -272,7 +274,7 @@ netfvfe::Model::Model(
   {
     // attach assembly objects to various systems
     nec.attach_assemble_object(d_nec_assembly);
-    tum.attach_assemble_object(d_tum_assembly);
+    pro.attach_assemble_object(d_pro_assembly);
     nut.attach_assemble_object(d_nut_assembly);
     hyp.attach_assemble_object(d_hyp_assembly);
     taf.attach_assemble_object(d_taf_assembly);
@@ -293,7 +295,7 @@ netfvfe::Model::Model(
       d_tum_sys.init();
 
     nut.time = d_input.d_init_time;
-    tum.time = d_input.d_init_time;
+    pro.time = d_input.d_init_time;
     hyp.time = d_input.d_init_time;
     nec.time = d_input.d_init_time;
     taf.time = d_input.d_init_time;
@@ -485,17 +487,18 @@ void netfvfe::Model::compute_qoi() {
     d_log.log_qoi_header(d_time, d_qoi.get_names());
   }
 
-  qoi[0] = d_tum_assembly.compute_qoi("mass");
+  qoi[0] = util::compute_tumor_qoi("mass", d_pro_assembly, d_hyp_assembly,
+                                      d_nec_assembly);
   qoi[1] = d_hyp_assembly.compute_qoi("mass");
   qoi[2] = d_nec_assembly.compute_qoi("mass");
-  qoi[3] = util::compute_prolific_qoi("mass", d_tum_assembly, d_hyp_assembly,
-                                      d_nec_assembly);
+  qoi[3] = d_pro_assembly.compute_qoi("mass");
   qoi[4] = d_nut_assembly.compute_qoi("mass");
-  qoi[5] = d_tum_assembly.compute_qoi("l2");
+
+  qoi[5] = util::compute_tumor_qoi("l2", d_pro_assembly, d_hyp_assembly,
+                                   d_nec_assembly);
   qoi[6] = d_hyp_assembly.compute_qoi("l2");
   qoi[7] = d_nec_assembly.compute_qoi("l2");
-  qoi[8] = util::compute_prolific_qoi("l2", d_tum_assembly, d_hyp_assembly,
-                                      d_nec_assembly);
+  qoi[8] = d_pro_assembly.compute_qoi("l2");
   qoi[9] = d_nut_assembly.compute_qoi("l2");
 
   // get other qoi such as radius mean, radius std dev,
@@ -536,7 +539,7 @@ void netfvfe::Model::solve_system() {
 
   // get systems
   auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
-  auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
+  auto &pro = d_tum_sys.get_system<TransientLinearImplicitSystem>("Prolific");
   auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
   auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
@@ -548,7 +551,7 @@ void netfvfe::Model::solve_system() {
 
   // update time
   nut.time = d_time;
-  tum.time = d_time;
+  pro.time = d_time;
   hyp.time = d_time;
   nec.time = d_time;
   taf.time = d_time;
@@ -561,7 +564,7 @@ void netfvfe::Model::solve_system() {
 
   // update old solution
   *nut.old_local_solution = *nut.current_local_solution;
-  *tum.old_local_solution = *tum.current_local_solution;
+  *pro.old_local_solution = *pro.current_local_solution;
   *hyp.old_local_solution = *hyp.current_local_solution;
   *nec.old_local_solution = *nec.current_local_solution;
   *taf.old_local_solution = *taf.current_local_solution;
@@ -591,8 +594,8 @@ void netfvfe::Model::solve_system() {
   }
 
   // to compute the nonlinear convergence
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_pro(
+      pro.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
@@ -626,13 +629,13 @@ void netfvfe::Model::solve_system() {
 
     // solve tumor
     reset_clock();
-    last_nonlinear_soln_tum->zero();
-    last_nonlinear_soln_tum->add(*tum.solution);
-    d_log("|tumor| -> ", "solve sys");
-    tum.solve();
-    last_nonlinear_soln_tum->add(-1., *tum.solution);
-    last_nonlinear_soln_tum->close();
-    d_log.add_sys_solve_time(clock_begin, d_tum_id);
+    last_nonlinear_soln_pro->zero();
+    last_nonlinear_soln_pro->add(*pro.solution);
+    d_log("|prolific| -> ", "solve sys");
+    pro.solve();
+    last_nonlinear_soln_pro->add(-1., *pro.solution);
+    last_nonlinear_soln_pro->close();
+    d_log.add_sys_solve_time(clock_begin, d_pro_id);
 
     // solve hypoxic
     reset_clock();
@@ -665,11 +668,11 @@ void netfvfe::Model::solve_system() {
     d_log.add_sys_solve_time(clock_begin, d_ecm_id);
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = last_nonlinear_soln_tum->linfty_norm();
+    double nonlinear_iter_error = last_nonlinear_soln_pro->linfty_norm();
     if (d_input.d_perform_output) {
 
-      const unsigned int n_linear_iterations = tum.n_linear_iterations();
-      const Real final_linear_residual = tum.final_linear_residual();
+      const unsigned int n_linear_iterations = pro.n_linear_iterations();
+      const Real final_linear_residual = pro.final_linear_residual();
 
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
@@ -1004,19 +1007,19 @@ void netfvfe::Model::test_tum() {
   }
 
   // get systems
-  auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
+  auto &pro = d_tum_sys.get_system<TransientLinearImplicitSystem>("Prolific");
   auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
   auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
 
   // update time
-  tum.time = d_time;
+  pro.time = d_time;
   hyp.time = d_time;
   nec.time = d_time;
 
   d_tum_sys.parameters.set<Real>("time") = d_time;
 
   // update old solution
-  *tum.old_local_solution = *tum.current_local_solution;
+  *pro.old_local_solution = *pro.current_local_solution;
   *hyp.old_local_solution = *hyp.current_local_solution;
   *nec.old_local_solution = *nec.current_local_solution;
 
@@ -1024,8 +1027,8 @@ void netfvfe::Model::test_tum() {
   d_nonlinear_step = 0;
 
   // to compute the nonlinear convergence
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_pro(
+      pro.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
@@ -1043,13 +1046,13 @@ void netfvfe::Model::test_tum() {
 
     // solve tumor
     reset_clock();
-    last_nonlinear_soln_tum->zero();
-    last_nonlinear_soln_tum->add(*tum.solution);
-    d_log("|tumor| -> ", "solve sys");
-    tum.solve();
-    last_nonlinear_soln_tum->add(-1., *tum.solution);
-    last_nonlinear_soln_tum->close();
-    d_log.add_sys_solve_time(clock_begin, d_tum_id);
+    last_nonlinear_soln_pro->zero();
+    last_nonlinear_soln_pro->add(*pro.solution);
+    d_log("|prolific| -> ", "solve sys");
+    pro.solve();
+    last_nonlinear_soln_pro->add(-1., *pro.solution);
+    last_nonlinear_soln_pro->close();
+    d_log.add_sys_solve_time(clock_begin, d_pro_id);
 
     // solve hypoxic
     reset_clock();
@@ -1064,11 +1067,11 @@ void netfvfe::Model::test_tum() {
     d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = last_nonlinear_soln_tum->linfty_norm();
+    double nonlinear_iter_error = last_nonlinear_soln_pro->linfty_norm();
     if (d_input.d_perform_output) {
 
-      const unsigned int n_linear_iterations = tum.n_linear_iterations();
-      const Real final_linear_residual = tum.final_linear_residual();
+      const unsigned int n_linear_iterations = pro.n_linear_iterations();
+      const Real final_linear_residual = pro.final_linear_residual();
 
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
@@ -1095,13 +1098,13 @@ void netfvfe::Model::test_tum_2() {
 
   // get systems
   auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
-  auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
+  auto &pro = d_tum_sys.get_system<TransientLinearImplicitSystem>("Prolific");
   auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
   auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
 
   // update time
   nut.time = d_time;
-  tum.time = d_time;
+  pro.time = d_time;
   hyp.time = d_time;
   nec.time = d_time;
 
@@ -1109,7 +1112,7 @@ void netfvfe::Model::test_tum_2() {
 
   // update old solution
   *nut.old_local_solution = *nut.current_local_solution;
-  *tum.old_local_solution = *tum.current_local_solution;
+  *pro.old_local_solution = *pro.current_local_solution;
   *hyp.old_local_solution = *hyp.current_local_solution;
   *nec.old_local_solution = *nec.current_local_solution;
 
@@ -1117,8 +1120,8 @@ void netfvfe::Model::test_tum_2() {
   d_nonlinear_step = 0;
 
   // to compute the nonlinear convergence
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_pro(
+      pro.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
@@ -1142,13 +1145,13 @@ void netfvfe::Model::test_tum_2() {
 
     // solve tumor
     reset_clock();
-    last_nonlinear_soln_tum->zero();
-    last_nonlinear_soln_tum->add(*tum.solution);
-    d_log("|tumor| -> ", "solve sys");
-    tum.solve();
-    last_nonlinear_soln_tum->add(-1., *tum.solution);
-    last_nonlinear_soln_tum->close();
-    d_log.add_sys_solve_time(clock_begin, d_tum_id);
+    last_nonlinear_soln_pro->zero();
+    last_nonlinear_soln_pro->add(*pro.solution);
+    d_log("|prolific| -> ", "solve sys");
+    pro.solve();
+    last_nonlinear_soln_pro->add(-1., *pro.solution);
+    last_nonlinear_soln_pro->close();
+    d_log.add_sys_solve_time(clock_begin, d_pro_id);
 
     // solve hypoxic
     reset_clock();
@@ -1163,11 +1166,11 @@ void netfvfe::Model::test_tum_2() {
     d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = last_nonlinear_soln_tum->linfty_norm();
+    double nonlinear_iter_error = last_nonlinear_soln_pro->linfty_norm();
     if (d_input.d_perform_output) {
 
-      const unsigned int n_linear_iterations = tum.n_linear_iterations();
-      const Real final_linear_residual = tum.final_linear_residual();
+      const unsigned int n_linear_iterations = pro.n_linear_iterations();
+      const Real final_linear_residual = pro.final_linear_residual();
 
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
@@ -1194,7 +1197,7 @@ void netfvfe::Model::test_net_tum() {
 
   // get systems
   auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
-  auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
+  auto &pro = d_tum_sys.get_system<TransientLinearImplicitSystem>("Prolific");
   auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
   auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
@@ -1203,7 +1206,7 @@ void netfvfe::Model::test_net_tum() {
 
   // update time
   nut.time = d_time;
-  tum.time = d_time;
+  pro.time = d_time;
   hyp.time = d_time;
   nec.time = d_time;
   taf.time = d_time;
@@ -1213,7 +1216,7 @@ void netfvfe::Model::test_net_tum() {
 
   // update old solution
   *nut.old_local_solution = *nut.current_local_solution;
-  *tum.old_local_solution = *tum.current_local_solution;
+  *pro.old_local_solution = *pro.current_local_solution;
   *hyp.old_local_solution = *hyp.current_local_solution;
   *nec.old_local_solution = *nec.current_local_solution;
 
@@ -1238,8 +1241,8 @@ void netfvfe::Model::test_net_tum() {
   }
 
   // to compute the nonlinear convergence
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_pro(
+      pro.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
@@ -1273,13 +1276,13 @@ void netfvfe::Model::test_net_tum() {
 
     // solve tumor
     reset_clock();
-    last_nonlinear_soln_tum->zero();
-    last_nonlinear_soln_tum->add(*tum.solution);
-    d_log("|tumor| -> ", "solve sys");
-    tum.solve();
-    last_nonlinear_soln_tum->add(-1., *tum.solution);
-    last_nonlinear_soln_tum->close();
-    d_log.add_sys_solve_time(clock_begin, d_tum_id);
+    last_nonlinear_soln_pro->zero();
+    last_nonlinear_soln_pro->add(*pro.solution);
+    d_log("|prolific| -> ", "solve sys");
+    pro.solve();
+    last_nonlinear_soln_pro->add(-1., *pro.solution);
+    last_nonlinear_soln_pro->close();
+    d_log.add_sys_solve_time(clock_begin, d_pro_id);
 
     // solve hypoxic
     reset_clock();
@@ -1294,11 +1297,11 @@ void netfvfe::Model::test_net_tum() {
     d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = last_nonlinear_soln_tum->linfty_norm();
+    double nonlinear_iter_error = last_nonlinear_soln_pro->linfty_norm();
     if (d_input.d_perform_output) {
 
-      const unsigned int n_linear_iterations = tum.n_linear_iterations();
-      const Real final_linear_residual = tum.final_linear_residual();
+      const unsigned int n_linear_iterations = pro.n_linear_iterations();
+      const Real final_linear_residual = pro.final_linear_residual();
 
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
@@ -1345,7 +1348,7 @@ void netfvfe::Model::test_net_tum_2() {
 
   // get systems
   auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
-  auto &tum = d_tum_sys.get_system<TransientLinearImplicitSystem>("Tumor");
+  auto &pro = d_tum_sys.get_system<TransientLinearImplicitSystem>("Prolific");
   auto &hyp = d_tum_sys.get_system<TransientLinearImplicitSystem>("Hypoxic");
   auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
@@ -1354,7 +1357,7 @@ void netfvfe::Model::test_net_tum_2() {
 
   // update time
   nut.time = d_time;
-  tum.time = d_time;
+  pro.time = d_time;
   hyp.time = d_time;
   nec.time = d_time;
   taf.time = d_time;
@@ -1364,7 +1367,7 @@ void netfvfe::Model::test_net_tum_2() {
 
   // update old solution
   *nut.old_local_solution = *nut.current_local_solution;
-  *tum.old_local_solution = *tum.current_local_solution;
+  *pro.old_local_solution = *pro.current_local_solution;
   *hyp.old_local_solution = *hyp.current_local_solution;
   *nec.old_local_solution = *nec.current_local_solution;
 
@@ -1386,8 +1389,8 @@ void netfvfe::Model::test_net_tum_2() {
   }
 
   // to compute the nonlinear convergence
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_pro(
+      pro.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
@@ -1421,13 +1424,13 @@ void netfvfe::Model::test_net_tum_2() {
 
     // solve tumor
     reset_clock();
-    last_nonlinear_soln_tum->zero();
-    last_nonlinear_soln_tum->add(*tum.solution);
-    d_log("|tumor| -> ", "solve sys");
-    tum.solve();
-    last_nonlinear_soln_tum->add(-1., *tum.solution);
-    last_nonlinear_soln_tum->close();
-    d_log.add_sys_solve_time(clock_begin, d_tum_id);
+    last_nonlinear_soln_pro->zero();
+    last_nonlinear_soln_pro->add(*pro.solution);
+    d_log("|prolific| -> ", "solve sys");
+    pro.solve();
+    last_nonlinear_soln_pro->add(-1., *pro.solution);
+    last_nonlinear_soln_pro->close();
+    d_log.add_sys_solve_time(clock_begin, d_pro_id);
 
     // solve hypoxic
     reset_clock();
@@ -1442,11 +1445,11 @@ void netfvfe::Model::test_net_tum_2() {
     d_log.add_sys_solve_time(clock_begin, d_nec_id);
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = last_nonlinear_soln_tum->linfty_norm();
+    double nonlinear_iter_error = last_nonlinear_soln_pro->linfty_norm();
     if (d_input.d_perform_output) {
 
-      const unsigned int n_linear_iterations = tum.n_linear_iterations();
-      const Real final_linear_residual = tum.final_linear_residual();
+      const unsigned int n_linear_iterations = pro.n_linear_iterations();
+      const Real final_linear_residual = pro.final_linear_residual();
 
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual

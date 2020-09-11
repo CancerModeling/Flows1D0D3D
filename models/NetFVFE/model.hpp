@@ -43,7 +43,7 @@ public:
         ReplicatedMesh &mesh,
         EquationSystems &tum_sys,
         TransientLinearImplicitSystem &nec,
-        TransientLinearImplicitSystem &tum,
+        TransientLinearImplicitSystem &pro,
         TransientLinearImplicitSystem &nut,
         TransientLinearImplicitSystem &hyp,
         TransientLinearImplicitSystem &taf,
@@ -67,8 +67,8 @@ public:
       return d_pres_assembly;
     else if (system == "Nutrient")
       return d_nut_assembly;
-    else if (system == "Tumor")
-      return d_tum_assembly;
+    else if (system == "Prolific")
+      return d_pro_assembly;
     else if (system == "Hypoxic")
       return d_hyp_assembly;
     else if (system == "Necrotic")
@@ -83,10 +83,12 @@ public:
       return d_mde_assembly;
     else if (system == "Velocity")
       return d_vel_assembly;
+    else
+      libmesh_error_msg("Invalid system = " + system + " name");
   }
   PressureAssembly &get_pres_assembly() {return d_pres_assembly;}
   NutAssembly &get_nut_assembly() {return d_nut_assembly;}
-  TumAssembly &get_tum_assembly() {return d_tum_assembly;}
+  ProAssembly &get_pro_assembly() {return d_pro_assembly;}
   HypAssembly &get_hyp_assembly() {return d_hyp_assembly;}
   NecAssembly &get_nec_assembly() {return d_nec_assembly;}
   TafAssembly &get_taf_assembly() {return d_taf_assembly;}
@@ -204,7 +206,7 @@ private:
 
   /*! @brief Assembly objects */
   NecAssembly d_nec_assembly;
-  TumAssembly d_tum_assembly;
+  ProAssembly d_pro_assembly;
   NutAssembly d_nut_assembly;
   HypAssembly d_hyp_assembly;
   TafAssembly d_taf_assembly;
@@ -216,7 +218,7 @@ private:
 
   /*! @brief Ids of system to be used in logger */
   int d_nec_id;
-  int d_tum_id;
+  int d_pro_id;
   int d_nut_id;
   int d_hyp_id;
   int d_taf_id;

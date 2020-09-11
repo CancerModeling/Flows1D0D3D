@@ -19,14 +19,6 @@ class Model;
 Number initial_condition_hyp(const Point &p, const Parameters &es,
                              const std::string &system_name, const std::string &var_name);
 
-/*! @brief A kernel function for initial condition */
-Number initial_condition_hyp_kernel(const Point &p,
-                                    const unsigned int &dim,
-                                    const std::string &ic_type,
-                                    const std::vector<double> &ic_center,
-                                    const std::vector<double> &tum_ic_radius,
-                                    const std::vector<double> &hyp_ic_radius);
-
 /*! @brief Class to perform assembly of hypoxic species */
 class HypAssembly : public util::BaseAssembly {
 
@@ -34,8 +26,9 @@ public:
   /*! @brief Constructor */
   HypAssembly(Model *model, const std::string system_name, MeshBase &mesh,
               TransientLinearImplicitSystem &sys)
-      : util::BaseAssembly(system_name, mesh, sys, 1,
-                           {sys.variable_number("hypoxic")}),
+      : util::BaseAssembly(system_name, mesh, sys, 2,
+                           {sys.variable_number("hypoxic"),
+                            sys.variable_number("chemical_hypoxic")}),
         d_model_p(model) {}
 
   /*! @brief Assembly function. Overrides the default assembly function */
