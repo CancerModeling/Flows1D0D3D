@@ -16,19 +16,19 @@ namespace netfvfe {
 class Model;
 
 /*! @brief Initial condition for tumor species */
-Number initial_condition_tum(const Point &p, const Parameters &es,
+Number initial_condition_pro(const Point &p, const Parameters &es,
                              const std::string &system_name, const std::string &var_name);
 
 /*! @brief Class to perform assembly of tumor species */
-class TumAssembly : public util::BaseAssembly {
+class ProAssembly : public util::BaseAssembly {
 
 public:
   /*! @brief Constructor */
-  TumAssembly(Model *model, const std::string system_name, MeshBase &mesh,
+  ProAssembly(Model *model, const std::string system_name, MeshBase &mesh,
               TransientLinearImplicitSystem &sys)
       : util::BaseAssembly(system_name, mesh, sys, 2,
-                           {sys.variable_number("tumor"),
-                            sys.variable_number("chemical_tumor")}),
+                           {sys.variable_number("prolific"),
+                            sys.variable_number("chemical_prolific")}),
         d_model_p(model) {}
 
   /*! @brief Assembly function. Overrides the default assembly function */

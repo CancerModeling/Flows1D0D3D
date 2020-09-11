@@ -7,12 +7,12 @@
 
 #include "../model.hpp"
 
-Number netfvfe::initial_condition_tum(const Point &p, const Parameters &es,
+Number netfvfe::initial_condition_pro(const Point &p, const Parameters &es,
                               const std::string &system_name, const std::string &var_name){
 
-  libmesh_assert_equal_to(system_name,"Tumor");
+  libmesh_assert_equal_to(system_name,"Prolific");
 
-  if (var_name == "tumor") {
+  if (var_name == "prolific") {
 
     const auto *deck = es.get<InpDeck *>("input_deck");
 
@@ -30,7 +30,7 @@ Number netfvfe::initial_condition_tum(const Point &p, const Parameters &es,
                              data.d_ic_center[2]);
       const Point dx = p - xc;
 
-      if (type == "tumor_spherical" or type == "tumor_hypoxic_spherical" or
+      if (type == "tumor_spherical" or
           type == "tumor_spherical_sharp") {
         if (dx.norm() < data.d_tum_ic_radius[0] - 1.0E-12) {
 
@@ -42,8 +42,7 @@ Number netfvfe::initial_condition_tum(const Point &p, const Parameters &es,
             return util::exp_decay_function(dx.norm() / data.d_tum_ic_radius[0],
                                           4.);
         }
-      } else if (type == "tumor_elliptical" or
-                 type == "tumor_hypoxic_elliptical") {
+      } else if (type == "tumor_elliptical") {
 
         if (util::is_inside_ellipse(p, xc, data.d_tum_ic_radius, deck->d_dim))
           return 1.;
@@ -59,42 +58,48 @@ Number netfvfe::initial_condition_tum(const Point &p, const Parameters &es,
 }
 
 // Assembly class
-void netfvfe::TumAssembly::assemble() {
+void netfvfe::ProAssembly::assemble() {
 
   assemble_1();
 }
 
-void netfvfe::TumAssembly::assemble_1() {
+void netfvfe::ProAssembly::assemble_1() {
 
   // Get required system alias
   // auto &tum = d_model_p->get_tum_assembly();
   auto &nut = d_model_p->get_nut_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
   auto &nec = d_model_p->get_nec_assembly();
+  auto &ecm = d_model_p->get_ecm_assembly();
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
   const Real dt = d_model_p->d_dt;
 
   // Store current and old solution
-  Real tum_old = 0.;
   Real tum_cur = 0.;
   Real nut_cur = 0.;
   Real hyp_cur = 0.;
   Real nec_cur = 0.;
   Real pro_cur = 0.;
+  Real pro_old = 0.;
+  Real tum_old = 0.;
+  Real hyp_old = 0.;
+  Real nec_old = 0.;
+  Real ecm_cur = 0.;
 
   Real nut_proj = 0.;
   Real tum_proj = 0.;
   Real nec_proj = 0.;
   Real hyp_proj = 0.;
   Real pro_proj = 0.;
+  Real ecm_proj = 0.;
   
   Real mobility = 0.;
 
-  Real compute_rhs_tum = 0.;
+  Real compute_rhs_pro = 0.;
   Real compute_rhs_mu = 0.;
-  Real compute_mat_tum = 0.;
+  Real compute_mat_pro = 0.;
 
   // Looping through elements
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
@@ -103,6 +108,7 @@ void netfvfe::TumAssembly::assemble_1() {
     nut.init_dof(elem);
     hyp.init_dof(elem);
     nec.init_dof(elem);
+    ecm.init_dof(elem);
 
     // init fe and element matrix and vector
     init_fe(elem);
@@ -114,63 +120,79 @@ void netfvfe::TumAssembly::assemble_1() {
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
       // Computing solution
-      tum_old = 0.; tum_cur = 0.; hyp_cur = 0.; nec_cur = 0.;
+      pro_old = 0.; pro_cur = 0.; tum_cur = 0.; hyp_cur = 0.;
+      nec_cur = 0.; ecm_cur = 0.;
+      tum_old = 0.; hyp_old = 0.; nec_old = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
-        tum_old += d_phi[l][qp] * get_old_sol_var(l, 0);
-        tum_cur += d_phi[l][qp] * get_current_sol_var(l, 0);
-        hyp_cur += d_phi[l][qp] * hyp.get_current_sol(l);
+        pro_old += d_phi[l][qp] * get_old_sol_var(l, 0);
+        pro_cur += d_phi[l][qp] * get_current_sol_var(l, 0);
+        hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
+        hyp_old += d_phi[l][qp] * hyp.get_old_sol_var(l, 0);
         nec_cur += d_phi[l][qp] * nec.get_current_sol(l);
+        nec_old += d_phi[l][qp] * nec.get_old_sol(l);
+        ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
       }
 
-      pro_cur = tum_cur - hyp_cur - nec_cur;
+      tum_cur = pro_cur + hyp_cur + nec_cur;
+      tum_old = pro_old + hyp_old + nec_old;
 
       // get projected solution
       hyp_proj = util::project_concentration(hyp_cur);
-      tum_proj = util::project_concentration(tum_cur);
+      pro_proj = util::project_concentration(tum_cur);
       nec_proj = util::project_concentration(nec_cur);
-      pro_proj = tum_proj - hyp_proj - nec_proj;
+      ecm_proj = util::project_concentration(ecm_cur);
+      tum_proj = util::project_concentration(pro_proj + hyp_proj + nec_proj);
 
-      mobility = deck.d_bar_M_P * pow(pro_proj, 2) * pow(1. - pro_proj, 2) +
-                 deck.d_bar_M_H * pow(hyp_proj, 2) * pow(1. - hyp_proj, 2);
+      mobility = deck.d_bar_M_P * pow(pro_proj, 2) * pow(1. - pro_proj, 2);
 
       if (deck.d_assembly_method == 1) {
 
         // compute quantities independent of dof loop
-        compute_rhs_tum =
-            d_JxW[qp] * (tum_old + dt * deck.d_lambda_P * nut_cur * pro_cur +
-                         dt * deck.d_lambda_A * nec_cur);
+        compute_rhs_pro =
+            d_JxW[qp] * (pro_old + dt * deck.d_lambda_HP * util::heaviside
+                                       (nut_cur - deck.d_sigma_HP) * hyp_cur);
 
+        // keep the prefactor d_bar_E_phi_T in double well same for
+        // prolific and hypoxic
         compute_rhs_mu =
             d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
-                             (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) -
-                         deck.d_chi_c * nut_cur);
+                             (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) +
+                         3. * deck.d_bar_E_phi_T * (hyp_cur + nec_cur) -
+                         deck.d_chi_c * nut_cur - deck.d_chi_h * ecm_cur);
 
-        compute_mat_tum =
-            d_JxW[qp] * (1. + dt * deck.d_lambda_A +
-                         dt * deck.d_lambda_P * nut_cur * pro_cur);
+        compute_mat_pro =
+            d_JxW[qp] * (1. + dt * deck.d_lambda_A -
+                         dt * deck.d_lambda_P * nut_cur * (1. - pro_cur) +
+                         dt * deck.d_lambda_PH *
+                             util::heaviside(deck.d_sigma_PH - nut_cur));
       } else {
 
         // compute quantities independent of dof loop
-        compute_rhs_tum =
-            d_JxW[qp] * (tum_old + dt * deck.d_lambda_P * nut_proj * pro_proj +
-                         dt * deck.d_lambda_A * nec_proj);
+        compute_rhs_pro =
+            d_JxW[qp] * (pro_old + dt * deck.d_lambda_HP * util::heaviside
+                (nut_cur - deck.d_sigma_HP) * hyp_proj);
 
+        // keep the prefactor d_bar_E_phi_T in double well same for
+        // prolific and hypoxic
         compute_rhs_mu =
             d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
-                         (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) -
-                         deck.d_chi_c * nut_proj);
+                         (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) +
+                         3. * deck.d_bar_E_phi_T * (hyp_proj + nec_proj) -
+                         deck.d_chi_c * nut_proj - deck.d_chi_h * ecm_proj);
 
-        compute_mat_tum =
-            d_JxW[qp] * (1. + dt * deck.d_lambda_A +
-                         dt * deck.d_lambda_P * nut_proj * pro_proj);
+        compute_mat_pro =
+            d_JxW[qp] * (1. + dt * deck.d_lambda_A -
+                         dt * deck.d_lambda_P * nut_proj * (1. - pro_proj) +
+                         dt * deck.d_lambda_PH *
+                         util::heaviside(deck.d_sigma_PH - nut_proj));
       }
 
       // Assembling matrix
       for (unsigned int i = 0; i < d_phi.size(); i++) {
 
         //-- Tumor --//
-        d_Fe_var[0](i) += compute_rhs_tum * d_phi[i][qp];
+        d_Fe_var[0](i) += compute_rhs_pro * d_phi[i][qp];
 
         //-- Chemical Potential --//
         d_Fe_var[1](i) += compute_rhs_mu * d_phi[i][qp];
@@ -178,7 +200,8 @@ void netfvfe::TumAssembly::assemble_1() {
         for (unsigned int j = 0; j < d_phi.size(); j++) {
 
           //-- Tumor --//
-          d_Ke_var[0][0](i, j) += compute_mat_tum * d_phi[j][qp] * d_phi[i][qp];
+          d_Ke_var[0][0](i, j) += compute_mat_pro * d_phi[j][qp] *
+                                  d_phi[i][qp];
 
           // coupling with chemical potential
           d_Ke_var[0][1](i, j) +=
@@ -190,6 +213,8 @@ void netfvfe::TumAssembly::assemble_1() {
           // coupling with tumor
           d_Ke_var[1][0](i, j) -= d_JxW[qp] * 3.0 * deck.d_bar_E_phi_T * d_phi[j][qp] * d_phi[i][qp];
 
+          // keep the prefactor epsilon_T in interfacial energy same for
+          // prolific and hypoxic
           d_Ke_var[1][0](i, j) -=
               d_JxW[qp] * pow(deck.d_epsilon_T, 2) * d_dphi[j][qp] * d_dphi[i][qp];
         }
