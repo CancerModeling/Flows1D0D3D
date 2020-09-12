@@ -79,7 +79,6 @@ void netfvfe::EcmAssembly::assemble() {
 void netfvfe::EcmAssembly::assemble_1() {
 
   // Get required system alias
-  // auto &ecm = d_model_p->get_ecm_assembly();
   auto &nut = d_model_p->get_nut_assembly();  
   auto &mde = d_model_p->get_mde_assembly();
 

@@ -26,10 +26,9 @@ void netfvfe::MdeAssembly::assemble() {
 void netfvfe::MdeAssembly::assemble_1() {
 
   // Get required system alias
-  // auto &mde = d_model_p->get_mde_assembly();
   auto &nut = d_model_p->get_nut_assembly();
-  auto &tum = d_model_p->get_tum_assembly();
-  auto &nec = d_model_p->get_nec_assembly();
+  auto &pro = d_model_p->get_pro_assembly();
+  auto &hyp = d_model_p->get_hyp_assembly();
   auto &ecm = d_model_p->get_ecm_assembly();
 
   // Model parameters
@@ -39,13 +38,13 @@ void netfvfe::MdeAssembly::assemble_1() {
   // Store current and old solution
   Real mde_old = 0.;
   Real nut_cur = 0.;
-  Real tum_cur = 0.;
-  Real nec_cur = 0.;
+  Real pro_cur = 0.;
+  Real hyp_cur = 0.;
   Real ecm_cur = 0.;
 
   Real nut_proj = 0.;
-  Real tum_proj = 0.;
-  Real nec_proj = 0.;
+  Real pro_proj = 0.;
+  Real hyp_proj = 0.;
   Real ecm_proj = 0.;
 
   Real compute_rhs = 0.;
@@ -56,8 +55,8 @@ void netfvfe::MdeAssembly::assemble_1() {
 
     init_dof(elem);
     nut.init_dof(elem);
-    tum.init_dof(elem);
-    nec.init_dof(elem);
+    pro.init_dof(elem);
+    hyp.init_dof(elem);
     ecm.init_dof(elem);
 
     // init fe and element matrix and vector
@@ -70,18 +69,18 @@ void netfvfe::MdeAssembly::assemble_1() {
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
       // Computing solution
-      mde_old = 0.; tum_cur = 0.; nec_cur = 0.; ecm_cur = 0.;
+      mde_old = 0.; pro_cur = 0.; hyp_cur = 0.; ecm_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         mde_old += d_phi[l][qp] * get_old_sol(l);
-        tum_cur += d_phi[l][qp] * tum.get_current_sol_var(l, 0);
-        nec_cur += d_phi[l][qp] * nec.get_current_sol(l);
+        pro_cur += d_phi[l][qp] * pro.get_current_sol_var(l, 0);
+        hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
         ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
       }
 
       if (deck.d_assembly_method == 1) {
 
-        Real aux_1 = deck.d_lambda_MDE_P * (tum_cur - nec_cur) * ecm_cur *
+        Real aux_1 = deck.d_lambda_MDE_P * (pro_cur + hyp_cur) * ecm_cur *
                      deck.d_sigma_HP / (1. + nut_cur);
 
         compute_rhs = d_JxW[qp] * (mde_old + dt * aux_1);
@@ -90,11 +89,11 @@ void netfvfe::MdeAssembly::assemble_1() {
                                    dt * deck.d_lambda_ECM_D * ecm_cur);
       } else {
 
-        tum_proj = util::project_concentration(tum_cur);
-        nec_proj = util::project_concentration(nec_cur);
+        pro_proj = util::project_concentration(pro_cur);
+        hyp_proj = util::project_concentration(hyp_cur);
         ecm_proj = util::project_concentration(ecm_cur);
 
-        Real aux_1 = deck.d_lambda_MDE_P * (tum_proj - nec_proj) *
+        Real aux_1 = deck.d_lambda_MDE_P * (pro_proj + hyp_proj) *
                      ecm_proj * deck.d_sigma_HP / (1. + nut_proj);
 
         compute_rhs = d_JxW[qp] * (mde_old + dt * aux_1);

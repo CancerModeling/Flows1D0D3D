@@ -19,5 +19,6 @@
 #include "prolific.hpp"
 #include "taf.hpp"
 #include "velocity.hpp"
+#include "tumor.hpp"
 
 #endif // NETFVFE_SYSTEMS_H
