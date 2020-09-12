@@ -271,6 +271,7 @@ void netfvfe::NutAssembly::assemble_face() {
     init_dof(elem);
     pro.init_dof(elem);
     hyp.init_dof(elem);
+    nec.init_dof(elem);
     pres.init_dof(elem);
     nut.init_dof(elem);
     ecm.init_dof(elem);
@@ -283,7 +284,7 @@ void netfvfe::NutAssembly::assemble_face() {
     Fe(0) = 0.;
 
     // get finite-volume quantities
-    nut_old = nut.get_current_sol(0);
+    nut_old = nut.get_old_sol(0);
     nut_old_proj = util::project_concentration(nut_old);
     pres_cur = pres.get_current_sol(0);
 
@@ -423,13 +424,11 @@ void netfvfe::NutAssembly::assemble_1() {
   Real nut_old = 0.;
   Real pro_cur = 0.;
   Real hyp_cur = 0.;
-  Real nec_cur = 0.;
   Real ecm_cur = 0.;
   Real mde_cur = 0.;
 
   Real pro_proj = 0.;
   Real hyp_proj = 0.;
-  Real nec_proj = 0.;
   Real ecm_proj = 0.;
   Real mde_proj = 0.;
 
@@ -464,7 +463,6 @@ void netfvfe::NutAssembly::assemble_1() {
       // Computing solution
       pro_cur = 0.;
       hyp_cur = 0.;
-      nec_cur = 0.;
       ecm_cur = 0.;
       mde_cur = 0.;
 
@@ -473,7 +471,6 @@ void netfvfe::NutAssembly::assemble_1() {
 
         pro_cur += hyp.d_phi[l][qp] * pro.get_current_sol_var(l, 0);
         hyp_cur += hyp.d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
-        nec_cur += hyp.d_phi[l][qp] * nec.get_current_sol(l);
         ecm_cur += hyp.d_phi[l][qp] * ecm.get_current_sol(l);
         mde_cur += hyp.d_phi[l][qp] * mde.get_current_sol(l);
       }
@@ -496,7 +493,6 @@ void netfvfe::NutAssembly::assemble_1() {
         ecm_proj = util::project_concentration(ecm_cur);
         pro_proj = util::project_concentration(pro_cur);
         hyp_proj = util::project_concentration(hyp_cur);
-        nec_proj = util::project_concentration(nec_cur);
 
         compute_rhs =
             hyp.d_JxW[qp] * dt * (deck.d_lambda_A * (pro_proj + hyp_proj) +

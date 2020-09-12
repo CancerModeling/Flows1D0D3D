@@ -30,6 +30,7 @@ void netfvfe::HypAssembly::assemble_1() {
   auto &pro = d_model_p->get_pro_assembly();
   auto &nec = d_model_p->get_nec_assembly();
   auto &ecm = d_model_p->get_ecm_assembly();
+  auto &vel = d_model_p->get_vel_assembly();
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
@@ -56,6 +57,8 @@ void netfvfe::HypAssembly::assemble_1() {
 
   Real mobility = 0.;
 
+  Gradient vel_cur = 0.;
+
   Real compute_rhs_hyp = 0.;
   Real compute_rhs_mu = 0.;
   Real compute_mat_hyp = 0.;
@@ -68,6 +71,7 @@ void netfvfe::HypAssembly::assemble_1() {
     pro.init_dof(elem);
     nec.init_dof(elem);
     ecm.init_dof(elem);
+    vel.init_dof(elem);
 
     // init fe and element matrix and vector
     init_fe(elem);
@@ -82,6 +86,7 @@ void netfvfe::HypAssembly::assemble_1() {
       pro_old = 0.; pro_cur = 0.; tum_cur = 0.; hyp_cur = 0.;
       nec_cur = 0.; ecm_cur = 0.;
       tum_old = 0.; hyp_old = 0.; nec_old = 0.;
+      vel_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         hyp_old += d_phi[l][qp] * get_old_sol_var(l, 0);
@@ -91,6 +96,9 @@ void netfvfe::HypAssembly::assemble_1() {
         nec_cur += d_phi[l][qp] * nec.get_current_sol(l);
         nec_old += d_phi[l][qp] * nec.get_old_sol(l);
         ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
+
+        for (unsigned int ll=0; ll<d_mesh.mesh_dimension(); ll++)
+          vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
       }
 
       tum_cur = pro_cur + hyp_cur + nec_cur;
@@ -98,7 +106,7 @@ void netfvfe::HypAssembly::assemble_1() {
 
       // get projected solution
       hyp_proj = util::project_concentration(hyp_cur);
-      pro_proj = util::project_concentration(tum_cur);
+      pro_proj = util::project_concentration(pro_cur);
       nec_proj = util::project_concentration(nec_cur);
       ecm_proj = util::project_concentration(ecm_cur);
       tum_proj = util::project_concentration(pro_proj + hyp_proj + nec_proj);
@@ -154,23 +162,27 @@ void netfvfe::HypAssembly::assemble_1() {
       // Assembling matrix
       for (unsigned int i = 0; i < d_phi.size(); i++) {
 
-        //-- Tumor --//
+        // hypoxic
         d_Fe_var[0](i) += compute_rhs_hyp * d_phi[i][qp];
 
-        //-- Chemical Potential --//
+        // chemical
         d_Fe_var[1](i) += compute_rhs_mu * d_phi[i][qp];
 
         for (unsigned int j = 0; j < d_phi.size(); j++) {
 
-          //-- Tumor --//
+          // hypoxic
           d_Ke_var[0][0](i, j) += compute_mat_hyp * d_phi[j][qp] *
                                   d_phi[i][qp];
+
+          // advection of hypoxic
+          d_Ke_var[0][0](i, j) -=
+              d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
 
           // coupling with chemical potential
           d_Ke_var[0][1](i, j) +=
               d_JxW[qp] * dt * mobility * d_dphi[j][qp] * d_dphi[i][qp];
 
-          //-- Chemical_tumor --//
+          // chemical
           d_Ke_var[1][1](i, j) += d_JxW[qp] * d_phi[j][qp] * d_phi[i][qp];
 
           // coupling with tumor

@@ -493,6 +493,13 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
         // Libmesh element
         auto elem = mesh.elem_ptr(index);
+        pro.init_dof(elem);
+        hyp.init_dof(elem);
+        nec.init_dof(elem);
+        ecm.init_dof(elem);
+        nut.init_dof(elem);
+        taf.init_dof(elem);
+        mde.init_dof(elem);
 
         // loop over sides of the element
         for (auto side : elem->side_index_range()) {
@@ -575,13 +582,6 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
         //
         // compute source terms
         //
-        nut.init_dof(elem);
-        pro.init_dof(elem);
-        hyp.init_dof(elem);
-        nec.init_dof(elem);
-        taf.init_dof(elem);
-        ecm.init_dof(elem);
-        mde.init_dof(elem);
 
         // init fe and element matrix and vector
         hyp.init_fe(elem);

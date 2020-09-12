@@ -30,6 +30,7 @@ void netfvfe::MdeAssembly::assemble_1() {
   auto &pro = d_model_p->get_pro_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
   auto &ecm = d_model_p->get_ecm_assembly();
+  auto &vel = d_model_p->get_vel_assembly();
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
@@ -47,6 +48,8 @@ void netfvfe::MdeAssembly::assemble_1() {
   Real hyp_proj = 0.;
   Real ecm_proj = 0.;
 
+  Gradient vel_cur = 0.;
+
   Real compute_rhs = 0.;
   Real compute_mat = 0.;
 
@@ -58,6 +61,7 @@ void netfvfe::MdeAssembly::assemble_1() {
     pro.init_dof(elem);
     hyp.init_dof(elem);
     ecm.init_dof(elem);
+    vel.init_dof(elem);
 
     // init fe and element matrix and vector
     init_fe(elem);
@@ -70,12 +74,16 @@ void netfvfe::MdeAssembly::assemble_1() {
 
       // Computing solution
       mde_old = 0.; pro_cur = 0.; hyp_cur = 0.; ecm_cur = 0.;
+      vel_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         mde_old += d_phi[l][qp] * get_old_sol(l);
         pro_cur += d_phi[l][qp] * pro.get_current_sol_var(l, 0);
         hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
         ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
+
+        for (unsigned int ll=0; ll<d_mesh.mesh_dimension(); ll++)
+          vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
       }
 
       if (deck.d_assembly_method == 1) {
@@ -114,6 +122,10 @@ void netfvfe::MdeAssembly::assemble_1() {
           // gradient term
           d_Ke(i, j) +=
               d_JxW[qp] * dt * deck.d_D_MDE * d_dphi[j][qp] * d_dphi[i][qp];
+
+          // advection of mde
+          d_Ke(i, j) -=
+              d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
         }
       }
     } // loop over quadrature points
