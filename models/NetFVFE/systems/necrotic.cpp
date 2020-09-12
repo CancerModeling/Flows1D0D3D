@@ -23,7 +23,6 @@ void netfvfe::NecAssembly::assemble() {
 void netfvfe::NecAssembly::assemble_1() {
 
   // Get required system alias
-  // auto &nec = d_model_p->get_nec_assembly();
   auto &nut = d_model_p->get_nut_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
   

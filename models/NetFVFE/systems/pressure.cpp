@@ -245,8 +245,6 @@ void netfvfe::PressureAssembly::assemble_face() {
         util::add_unique(dof_indices_pres_neigh[0], -a_diff, Ke_dof_col,
                          Ke_val_col);
 
-        exit(0);
-
         // div(chem_tum * grad(tum)) term
         // requires integration over face of an element
         pro.d_fe_face->reinit(elem, side);
