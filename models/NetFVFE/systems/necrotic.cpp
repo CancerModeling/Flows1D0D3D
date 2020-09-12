@@ -62,7 +62,7 @@ void netfvfe::NecAssembly::assemble_1() {
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         nec_old += d_phi[l][qp] * get_old_sol(l);
-        hyp_cur += d_phi[l][qp] * hyp.get_current_sol(l);
+        hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
       }
 
       if (deck.d_assembly_method == 1) {

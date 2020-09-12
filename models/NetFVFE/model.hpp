@@ -52,6 +52,7 @@ public:
         TransientLinearImplicitSystem &pres,
         TransientLinearImplicitSystem &grad_taf,
         TransientLinearImplicitSystem &vel,
+        TransientLinearImplicitSystem &tum,
         util::Logger &log);
 
   const Net &get_network() const {
@@ -83,6 +84,8 @@ public:
       return d_mde_assembly;
     else if (system == "Velocity")
       return d_vel_assembly;
+    else if (system == "Tumor")
+      return d_tum_assembly;
     else
       libmesh_error_msg("Invalid system = " + system + " name");
   }
@@ -96,6 +99,7 @@ public:
   EcmAssembly &get_ecm_assembly() {return d_ecm_assembly;}
   MdeAssembly &get_mde_assembly() {return d_mde_assembly;}
   VelAssembly &get_vel_assembly() {return d_vel_assembly;}
+  TumAssembly &get_tum_assembly() {return d_tum_assembly;}
 
   /*! @brief Run model */
   void run() override ;
@@ -117,90 +121,6 @@ private:
    */
   void solve_pressure();
 
-  /*! @brief Solving sub-systems
-   *
-   * Description of subsystems
-   *
-   * ## test_nut
-   *
-   * - Nonlinear iterations to solve 1D and 3D nutrients
-   * - Good to test the coupling of nutrient
-   * - Maybe it is good to specify d_decouple_nutrients = false in input file
-   *
-   * - Good to test 1D/3D nutrient coupling
-   *
-   * ## test_nut_2
-   *
-   * - Solves 1D nutrient and then solves 3D nutrient
-   * - This is recommended when d_decouple_nutrients = false
-   *
-   * - Good to test 1D/3D nutrient coupling
-   *
-   * ## test_taf
-   *
-   * - Solves only TAF equations
-   * - Adds artificial cylindrical TAF source (along z axis)
-   *    - specify center and radius of cylindrical source in input file
-   *
-   * - Good to test TAF equation and also growth of network
-   *
-   * ## test_taf_2
-   *
-   * - Solves pressure and TAF equations
-   * - Adds artificial cylindrical TAF source (along z axis)
-   *    - specify center and radius of cylindrical source in input file
-   *
-   * - Good to test TAF equation and also growth of network
-   *
-   * - Also test the pressure in growing network
-   *
-   * ## test_tum
-   *
-   * - Only solves tumor species
-   * - Nutrient is constant
-   * - Artificial source is added on cylinder along z-axis with
-   *    - center = (L - 2R, L - 2R, 0)
-   *    - Radius = 0.05 * L
-   *    - L = size of domain
-   *
-   * - Good to test tumor species
-   *
-   * ## test_tum_2
-   *
-   * - Solves nutrient and tumor species
-   * - Adds artificial cylindrical nutrient source (along z axis)
-   *    - specify center and radius of cylindrical source in input file
-   *
-   * - Good to test coupling between nutrient and tumor species
-   *
-   * ## test_net_tum
-   *
-   * - Solves for 1D-3D pressure, 1D-3D nutrients, and all tumor species
-   *
-   * - Also solves for TAF at certain steps such as when we are producing
-   * output or when we are growing the network
-   *
-   * - Good to test full model with/without network growth in which we do not
-   * solve for MDE and ECM and avoid solving for TAF every time step
-   *
-   * ## test_net_tum_2
-   *
-   * - Same as test_net_tum, except that it solves for pressure at the
-   * beginning and after that the pressure in tissue domain and network is fixed
-   *
-   * - Good to test the couling of 1D-3D nutrient coupling and coupling of
-   * network and nutrient with tumor species
-   *
-   */
-  void test_nut();
-  void test_nut_2();
-  void test_taf();
-  void test_taf_2();
-  void test_tum();
-  void test_tum_2();
-  void test_net_tum();
-  void test_net_tum_2();
-
   /*! @brief Network class */
   Net d_network;
 
@@ -215,8 +135,10 @@ private:
   PressureAssembly d_pres_assembly;
   GradTafAssembly d_grad_taf_assembly;
   VelAssembly d_vel_assembly;
+  TumAssembly d_tum_assembly;
 
   /*! @brief Ids of system to be used in logger */
+  int d_tum_id;
   int d_nec_id;
   int d_pro_id;
   int d_nut_id;

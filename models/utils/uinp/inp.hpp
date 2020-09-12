@@ -200,10 +200,13 @@ struct TumorDeck {
 
   double d_bar_M_P;
   double d_bar_E_phi_T;
+  double d_bar_E_phi_P;
   double d_epsilon_T;
+  double d_epsilon_P;
 
   explicit TumorDeck(const std::string &filename = "")
-      : d_bar_M_P(0.), d_bar_E_phi_T(0.), d_epsilon_T(0.) {
+      : d_bar_M_P(0.), d_bar_E_phi_T(0.), d_epsilon_T(0.)
+      , d_bar_E_phi_P(0.), d_epsilon_P(0.){
 
     if (!filename.empty())
       read_parameters(filename);
@@ -225,9 +228,13 @@ struct HypoxicDeck {
   double d_sigma_HP;
   double d_sigma_HN;
 
+  double d_bar_E_phi_H;
+  double d_epsilon_H;
+
   explicit HypoxicDeck(const std::string &filename = "")
       : d_bar_M_H(0.), d_lambda_HP(0.), d_lambda_PH(0.), d_lambda_HN(0.),
-        d_sigma_PH(0.), d_sigma_HP(0.), d_sigma_HN(0.) {
+        d_sigma_PH(0.), d_sigma_HP(0.), d_sigma_HN(0.),
+  d_bar_E_phi_H(0.), d_epsilon_H(0.){
 
     if (!filename.empty())
       read_parameters(filename);

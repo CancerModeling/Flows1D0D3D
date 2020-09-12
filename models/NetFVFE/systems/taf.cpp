@@ -47,7 +47,6 @@ void netfvfe::TafAssembly::assemble() {
 void netfvfe::TafAssembly::assemble_1() {
 
   // Get required system alias
-  // auto &taf = d_model_p->get_ecm_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();  
 
   // Model parameters
@@ -78,7 +77,7 @@ void netfvfe::TafAssembly::assemble_1() {
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         taf_old += d_phi[l][qp] * get_old_sol(l);
-        hyp_cur += d_phi[l][qp] * hyp.get_current_sol(l);
+        hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
       }
 
       if (deck.d_assembly_method == 1) {

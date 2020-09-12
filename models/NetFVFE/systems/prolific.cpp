@@ -66,7 +66,6 @@ void netfvfe::ProAssembly::assemble() {
 void netfvfe::ProAssembly::assemble_1() {
 
   // Get required system alias
-  // auto &tum = d_model_p->get_tum_assembly();
   auto &nut = d_model_p->get_nut_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
   auto &nec = d_model_p->get_nec_assembly();
@@ -153,7 +152,7 @@ void netfvfe::ProAssembly::assemble_1() {
             d_JxW[qp] * (pro_old + dt * deck.d_lambda_HP * util::heaviside
                                        (nut_cur - deck.d_sigma_HP) * hyp_cur);
 
-        // keep the prefactor d_bar_E_phi_T in double well same for
+        // keep the factor d_bar_E_phi_T in double well same for
         // prolific and hypoxic
         compute_rhs_mu =
             d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
@@ -173,7 +172,7 @@ void netfvfe::ProAssembly::assemble_1() {
             d_JxW[qp] * (pro_old + dt * deck.d_lambda_HP * util::heaviside
                 (nut_cur - deck.d_sigma_HP) * hyp_proj);
 
-        // keep the prefactor d_bar_E_phi_T in double well same for
+        // keep the factor d_bar_E_phi_T in double well same for
         // prolific and hypoxic
         compute_rhs_mu =
             d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
@@ -213,10 +212,8 @@ void netfvfe::ProAssembly::assemble_1() {
           // coupling with tumor
           d_Ke_var[1][0](i, j) -= d_JxW[qp] * 3.0 * deck.d_bar_E_phi_T * d_phi[j][qp] * d_phi[i][qp];
 
-          // keep the prefactor epsilon_T in interfacial energy same for
-          // prolific and hypoxic
-          d_Ke_var[1][0](i, j) -=
-              d_JxW[qp] * pow(deck.d_epsilon_T, 2) * d_dphi[j][qp] * d_dphi[i][qp];
+          d_Ke_var[1][0](i, j) -= d_JxW[qp] * pow(deck.d_epsilon_P, 2) *
+                                  d_dphi[j][qp] * d_dphi[i][qp];
         }
       }
     } // loop over quadrature points

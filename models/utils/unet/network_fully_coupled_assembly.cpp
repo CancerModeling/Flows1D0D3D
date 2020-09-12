@@ -11,6 +11,12 @@
 void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
                                                         BaseAssembly &tum_sys) {
 
+  // get some new 3D systems
+  auto &pro = d_model_p->get_assembly("Prolific");
+  auto &hyp = d_model_p->get_assembly("Hypoxic");
+  auto &ecm = d_model_p->get_assembly("ECM");
+  auto &nut = d_model_p->get_assembly("Nutrient");
+
   const auto &input = d_model_p->get_input_deck();
   const auto &mesh = d_model_p->get_mesh();
 
@@ -41,8 +47,6 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
   auto center = std::vector<double>(3, 0.);
   auto center_neighbor = std::vector<double>(3, 0.);
   bool isInnerFace = false;
-  Number chem_tum_cur = 0.;
-  Gradient tum_grad = 0.;
 
   int indexOfNode = 0;
   int numberOfNeighbors = 0;
@@ -58,6 +62,18 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
   std::vector<int> id_3D_elements;
   unsigned int assembly_cases;
   bool dirichlet_fixed = false;
+
+  Real nut_cur = 0.;
+  Real ecm_cur = 0.;
+  Real nut_proj = 0.;
+  Real ecm_proj = 0.;
+  Real chem_pro_cur = 0.;
+  Real chem_hyp_cur = 0.;
+
+  Gradient pro_grad = 0.;
+  Gradient hyp_grad = 0.;
+
+  Gradient Sp = 0.;
 
   double row_sum = 0.;
 
@@ -105,7 +121,14 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
 
         // Libmesh element
         auto elem = mesh.elem_ptr(index);
-        tum_sys.init_dof(elem);
+        pro.init_dof(elem);
+        hyp.init_dof(elem);
+        nut.init_dof(elem);
+        ecm.init_dof(elem);
+
+        // get finite-volume quantities
+        nut_cur = nut.get_current_sol(0);
+        nut_proj = util::project_concentration(nut_cur);
 
         // loop over sides of the element
         for (auto side : elem->side_index_range()) {
@@ -114,27 +137,55 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
 
             // div(chem_tum * grad(tum)) term
             // requires integration over face of an element
-            tum_sys.d_fe_face->reinit(elem, side);
+            pro.d_fe_face->reinit(elem, side);
 
             // loop over quadrature points
-            for (unsigned int qp = 0; qp < tum_sys.d_qrule_face.n_points();
+            for (unsigned int qp = 0; qp < pro.d_qrule_face.n_points();
                  qp++) {
 
-              chem_tum_cur = 0.;
-              tum_grad = 0.;
+              chem_pro_cur = 0.; chem_hyp_cur = 0.;
+              pro_grad = 0.; hyp_grad = 0.;
+              ecm_cur = 0.; ecm_proj = 0.;
               for (unsigned int l = 0; l < tum_sys.d_phi_face.size(); l++) {
 
-                chem_tum_cur += tum_sys.d_phi_face[l][qp] *
-                                tum_sys.get_current_sol_var(l, 1);
+                chem_pro_cur +=
+                    pro.d_phi_face[l][qp] * pro.get_current_sol_var(l, 1);
 
-                tum_grad.add_scaled(tum_sys.d_dphi_face[l][qp],
-                                    tum_sys.get_current_sol_var(l, 0));
+                pro_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                    pro.get_current_sol_var(l, 0));
+
+                chem_hyp_cur +=
+                    pro.d_phi_face[l][qp] * hyp.get_current_sol_var(l, 1);
+
+                hyp_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                    hyp.get_current_sol_var(l, 0));
+
+                ecm_cur +=
+                    pro.d_phi_face[l][qp] * ecm.get_current_sol(l);
+              }
+
+              ecm_proj = util::project_concentration(ecm_cur);
+
+              if (input.d_assembly_method == 1) {
+                Sp = (chem_pro_cur + input.d_chi_c * nut_cur +
+                    input.d_chi_h * ecm_cur) *
+                     pro_grad +
+                     (chem_hyp_cur + input.d_chi_c * nut_cur +
+                         input.d_chi_h * ecm_cur) *
+                     hyp_grad;
+              } else {
+                Sp = (chem_pro_cur + input.d_chi_c * nut_proj +
+                    input.d_chi_h * ecm_proj) *
+                     pro_grad +
+                     (chem_hyp_cur + input.d_chi_c * nut_proj +
+                         input.d_chi_h * ecm_proj) *
+                     hyp_grad;
               }
 
               // add to force
-              b_flow_3D1D[index] += -tum_sys.d_JxW_face[qp] *
-                                    input.d_tissue_flow_coeff * chem_tum_cur *
-                                    tum_grad * tum_sys.d_qface_normals[qp];
+              b_flow_3D1D[index] += -pro.d_JxW_face[qp] *
+                                    input.d_tissue_flow_coeff * Sp *
+                                    pro.d_qface_normals[qp];
             } // loop over quadrature points on face
 
           } // elem neighbor is not null
@@ -300,6 +351,15 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys,
 void util::unet::Network::assemble3D1DSystemForNutrients(
     BaseAssembly &nut_sys, BaseAssembly &tum_sys) {
 
+  // get some new 3D systems
+  auto &pro = d_model_p->get_assembly("Prolific");
+  auto &hyp = d_model_p->get_assembly("Hypoxic");
+  auto &nec = d_model_p->get_assembly("Necrotic");
+  auto &ecm = d_model_p->get_assembly("ECM");
+  auto &nut = d_model_p->get_assembly("Nutrient");
+  auto &taf = d_model_p->get_assembly("TAF");
+  auto &mde = d_model_p->get_assembly("MDE");
+
   const auto &input = d_model_p->get_input_deck();
   const auto &mesh = d_model_p->get_mesh();
 
@@ -317,25 +377,36 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
   for (int i = 0; i < b_nut_3D1D.size(); i++)
     b_nut_3D1D[i] = 0.0;
 
-  // Get required system alias
-  auto &hyp_sys = d_model_p->get_assembly("Hypoxic");
-  auto &nec_sys = d_model_p->get_assembly("Necrotic");
-  auto &taf_sys = d_model_p->get_assembly("TAF");
-  auto &ecm_sys = d_model_p->get_assembly("ECM");
-  auto &mde_sys = d_model_p->get_assembly("MDE");
-
   // Store current and old solution
-  Real tum_cur = 0.;
+  Real pro_cur = 0.;
   Real hyp_cur = 0.;
   Real nec_cur = 0.;
   Real ecm_cur = 0.;
   Real mde_cur = 0.;
 
-  Real tum_proj = 0.;
+  Real pro_proj = 0.;
   Real hyp_proj = 0.;
   Real nec_proj = 0.;
   Real ecm_proj = 0.;
   Real mde_proj = 0.;
+
+  Real pres_cur = 0.;
+  Real nut_old = 0.;
+  Real ecm_old = 0.;
+  Real chem_pro_old = 0.;
+  Real chem_hyp_old = 0.;
+
+  Real nut_old_proj = 0.;
+  Real ecm_old_proj = 0.;
+
+  Gradient pro_grad = 0.;
+  Gradient hyp_grad = 0.;
+  Gradient nec_grad = 0.;
+
+  Gradient pro_old_grad = 0.;
+  Gradient hyp_old_grad = 0.;
+
+  Gradient Sp_old = 0.;
 
   Real compute_rhs = 0.;
   Real compute_mat = 0.;
@@ -430,31 +501,69 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
             // grad(tum) term
             // requires integration over face of an element
-            tum_sys.d_fe_face->reinit(elem, side);
+            pro.d_fe_face->reinit(elem, side);
 
             // loop over quadrature points
-            for (unsigned int qp = 0; qp < tum_sys.d_qrule_face.n_points();
+            for (unsigned int qp = 0; qp < pro.d_qrule_face.n_points();
                  qp++) {
 
-              chem_tum_cur = 0.;
-              tum_grad = 0.;
-              for (unsigned int l = 0; l < tum_sys.d_phi_face.size(); l++) {
+              chem_pro_old = 0.; chem_hyp_old = 0.;
+              pro_grad = 0.; hyp_grad = 0.; nec_grad = 0.;
+              pro_old_grad = 0.; hyp_old_grad = 0.;
+              ecm_old = 0.; ecm_old_proj = 0.;
+              for (unsigned int l = 0; l < pro.d_phi_face.size(); l++) {
 
-                chem_tum_cur += tum_sys.d_phi_face[l][qp] *
-                                tum_sys.get_current_sol_var(l, 1);
+                chem_pro_old +=
+                    pro.d_phi_face[l][qp] * pro.get_old_sol_var(l, 1);
 
-                tum_grad.add_scaled(tum_sys.d_dphi_face[l][qp],
-                                    tum_sys.get_current_sol_var(l, 0));
+                pro_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                    pro.get_current_sol_var(l, 0));
+
+                pro_old_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                        pro.get_old_sol_var(l, 0));
+
+                chem_hyp_old +=
+                    pro.d_phi_face[l][qp] * hyp.get_old_sol_var(l, 1);
+
+                hyp_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                    hyp.get_current_sol_var(l, 0));
+
+                hyp_old_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                        hyp.get_old_sol_var(l, 0));
+
+                nec_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                    nec.get_current_sol(l));
+
+                ecm_old +=
+                    pro.d_phi_face[l][qp] * ecm.get_old_sol(l);
+              }
+
+              ecm_old_proj = util::project_concentration(ecm_old);
+
+              if (input.d_assembly_method == 1) {
+                Sp_old = (chem_pro_old + input.d_chi_c * nut_old +
+                    input.d_chi_h * ecm_old) *
+                         pro_old_grad +
+                         (chem_hyp_old + input.d_chi_c * nut_old +
+                             input.d_chi_h * ecm_old) *
+                         hyp_old_grad;
+              } else {
+                Sp_old = (chem_pro_old + input.d_chi_c * nut_old_proj +
+                    input.d_chi_h * ecm_old_proj) *
+                         pro_old_grad +
+                         (chem_hyp_old + input.d_chi_c * nut_old_proj +
+                             input.d_chi_h * ecm_old_proj) *
+                         hyp_old_grad;
               }
 
               // chemotactic term
-              b_nut_3D1D[index] += -tum_sys.d_JxW_face[qp] * dt * D_v_3D *
-                                   input.d_chi_c *
-                                   (tum_grad * tum_sys.d_qface_normals[qp]);
+              b_nut_3D1D[index] += -pro.d_JxW_face[qp] * dt * input.d_chi_c *
+                                   (pro_grad + hyp_grad + nec_grad) *
+                                   pro.d_qface_normals[qp];
 
               // advection term
-              v_mu = tum_sys.d_JxW_face[qp] * dt * K_3D * chem_tum_cur *
-                     (tum_grad * tum_sys.d_qface_normals[qp]);
+              v_mu = pro.d_JxW_face[qp] * dt * K_3D * Sp_old *
+                     pro.d_qface_normals[qp];
 
               // goes to the dof of element (not the neighbor)
               A_flow_3D1D(index, index) += v_mu;
@@ -466,43 +575,44 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
         //
         // compute source terms
         //
-        nut_sys.init_dof(elem);
-        tum_sys.init_dof(elem);
-        hyp_sys.init_dof(elem);
-        nec_sys.init_dof(elem);
-        taf_sys.init_dof(elem);
-        ecm_sys.init_dof(elem);
-        mde_sys.init_dof(elem);
+        nut.init_dof(elem);
+        pro.init_dof(elem);
+        hyp.init_dof(elem);
+        nec.init_dof(elem);
+        taf.init_dof(elem);
+        ecm.init_dof(elem);
+        mde.init_dof(elem);
 
         // init fe and element matrix and vector
-        hyp_sys.init_fe(elem);
+        hyp.init_fe(elem);
 
         // loop over quadrature points
-        for (unsigned int qp = 0; qp < hyp_sys.d_qrule.n_points(); qp++) {
+        for (unsigned int qp = 0; qp < hyp.d_qrule.n_points(); qp++) {
           // Computing solution
-          tum_cur = 0.;
+          pro_cur = 0.;
           hyp_cur = 0.;
           nec_cur = 0.;
           ecm_cur = 0.;
           mde_cur = 0.;
 
-          for (unsigned int l = 0; l < hyp_sys.d_phi.size(); l++) {
+          for (unsigned int l = 0; l < hyp.d_phi.size(); l++) {
 
-            tum_cur += hyp_sys.d_phi[l][qp] * tum_sys.get_current_sol_var(l, 0);
-            hyp_cur += hyp_sys.d_phi[l][qp] * hyp_sys.get_current_sol(l);
-            nec_cur += hyp_sys.d_phi[l][qp] * nec_sys.get_current_sol(l);
-            ecm_cur += hyp_sys.d_phi[l][qp] * ecm_sys.get_current_sol(l);
-            mde_cur += hyp_sys.d_phi[l][qp] * mde_sys.get_current_sol(l);
+            pro_cur += hyp.d_phi[l][qp] * pro.get_current_sol_var(l, 0);
+            hyp_cur += hyp.d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
+            nec_cur += hyp.d_phi[l][qp] * nec.get_current_sol(l);
+            ecm_cur += hyp.d_phi[l][qp] * ecm.get_current_sol(l);
+            mde_cur += hyp.d_phi[l][qp] * mde.get_current_sol(l);
           }
 
           if (input.d_assembly_method == 1) {
 
-            compute_rhs = hyp_sys.d_JxW[qp] * dt * input.d_lambda_ECM_D *
-                          ecm_cur * mde_cur;
+            compute_rhs = hyp.d_JxW[qp] * dt *
+                          (input.d_lambda_A * (pro_cur + hyp_cur) +
+                           input.d_lambda_ECM_D * ecm_cur * mde_cur);
 
             compute_mat =
-                hyp_sys.d_JxW[qp] * dt *
-                (input.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
+                hyp.d_JxW[qp] * dt *
+                (input.d_lambda_P * pro_cur +
                  input.d_lambda_Ph * hyp_cur +
                  input.d_lambda_ECM_P * (1. - ecm_cur) *
                      util::heaviside(ecm_cur - input.d_bar_phi_ECM_P));
@@ -511,19 +621,20 @@ void util::unet::Network::assemble3D1DSystemForNutrients(
 
             mde_proj = util::project_concentration(mde_cur);
             ecm_proj = util::project_concentration(ecm_cur);
-            tum_proj = util::project_concentration(tum_cur);
+            pro_proj = util::project_concentration(pro_cur);
             hyp_proj = util::project_concentration(hyp_cur);
             nec_proj = util::project_concentration(nec_cur);
 
-            compute_rhs = hyp_sys.d_JxW[qp] * dt * input.d_lambda_ECM_D *
-                          ecm_proj * mde_proj;
+            compute_rhs = hyp.d_JxW[qp] * dt *
+                          (input.d_lambda_A * (pro_proj + hyp_proj) +
+                           input.d_lambda_ECM_D * ecm_proj * mde_proj);
 
             compute_mat =
-                hyp_sys.d_JxW[qp] * dt *
-                (input.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
+                hyp.d_JxW[qp] * dt *
+                (input.d_lambda_P * pro_proj +
                  input.d_lambda_Ph * hyp_proj +
                  input.d_lambda_ECM_P * (1. - ecm_proj) *
-                     util::heaviside(ecm_proj - input.d_bar_phi_ECM_P));
+                 util::heaviside(ecm_proj - input.d_bar_phi_ECM_P));
           }
 
           // add rhs
