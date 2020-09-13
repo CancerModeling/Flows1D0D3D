@@ -305,7 +305,7 @@ void util::ECMDeck::read_parameters(const std::string &filename) {
   d_lambda_ECM_D = input("lambda_ECM_D", 1.);
   d_lambda_ECM_P = input("lambda_ECM_P", 1.);
   d_bar_phi_ECM_P = input("bar_phi_ECM_P", 0.5);
-  d_chi_h = input("chi_h", 0.035);
+  d_chi_h = input("chi_h", 0.);
 
   // read ic information for ecm
 
@@ -338,7 +338,7 @@ void util::MDEDeck::read_parameters(const std::string &filename) {
   d_lambda_MDE_D = input("lambda_MDE_D", 1.);
   d_lambda_MDE_P = input("lambda_MDE_P", 1.);
 
-  d_mde_ic_val = input("MDE_ic_val", 0.5);
+  d_mde_ic_val = input("MDE_ic_val", 0.);
 }
 
 void util::MDEDeck::print(unsigned int level) {}

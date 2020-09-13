@@ -89,7 +89,7 @@ void netfcfvfe::MdeAssembly::assemble_1() {
       if (deck.d_assembly_method == 1) {
 
         Real aux_1 = deck.d_lambda_MDE_P * (pro_cur + hyp_cur) * ecm_cur *
-                     deck.d_sigma_HP / (1. + nut_cur);
+                     deck.d_sigma_HP / (deck.d_sigma_HP + nut_cur);
 
         compute_rhs = d_JxW[qp] * (mde_old + dt * aux_1);
 
@@ -102,7 +102,7 @@ void netfcfvfe::MdeAssembly::assemble_1() {
         ecm_proj = util::project_concentration(ecm_cur);
 
         Real aux_1 = deck.d_lambda_MDE_P * (pro_proj + hyp_proj) *
-                     ecm_proj * deck.d_sigma_HP / (1. + nut_proj);
+                     ecm_proj * deck.d_sigma_HP / (deck.d_sigma_HP + nut_proj);
 
         compute_rhs = d_JxW[qp] * (mde_old + dt * aux_1);
 
