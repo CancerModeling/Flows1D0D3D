@@ -182,7 +182,7 @@ avafv::Model::Model(
     taf.attach_assemble_object(d_taf_assembly);
     // Note: For grad taf, we do not need to perform assembly
     // simply compute grad of taf at center of each element and update grad_taf
-    // grad_taf.attach_assemble_object(d_grad_taf_assembly);
+    // grad_taf.attach_assemble_object(d_grad_taf);
 
     //
     // Initialize and print system

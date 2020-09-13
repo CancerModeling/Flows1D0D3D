@@ -23,6 +23,8 @@ double util::BaseAssembly::compute_qoi(const std::string &type, unsigned int loc
 
     init_dof(elem);
 
+    init_fe(elem);
+
     if (d_sys_name == "Pressure" or d_sys_name == "Nutrient") {
       cur_sol = get_current_sol(0);
       if (type == "mass" and cur_sol < 0.)

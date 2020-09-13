@@ -20,13 +20,20 @@ class TumAssembly : public util::BaseAssembly {
 
 public:
   /*! @brief Constructor */
-  TumAssembly(Model * model, const std::string system_name, MeshBase &mesh,
-      TransientLinearImplicitSystem & sys)
-      : util::BaseAssembly(system_name, mesh, sys, 1,
-                     {sys.variable_number("tumor")}), d_model_p(model) {}
+  TumAssembly(Model *model, const std::string system_name, MeshBase &mesh,
+              TransientLinearImplicitSystem &sys)
+      : util::BaseAssembly(system_name, mesh, sys, 2,
+                           {sys.variable_number("tumor"),
+                            sys.variable_number("chemical_tumor")}),
+        d_model_p(model) {}
 
   /*! @brief Assembly function. Overrides the default assembly function */
   void assemble() override;
+
+  /*!
+   * @brief Calls custom solver
+   */
+  void solve_custom() override;
 
 public:
 
