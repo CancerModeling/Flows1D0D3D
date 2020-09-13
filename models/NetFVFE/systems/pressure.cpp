@@ -269,6 +269,7 @@ void netfvfe::PressureAssembly::assemble_face() {
             hyp_grad.add_scaled(pro.d_dphi_face[l][qp],
                                 hyp.get_current_sol_var(l, 0));
 
+
             ecm_cur +=
                 pro.d_phi_face[l][qp] * ecm.get_current_sol(l);
           }

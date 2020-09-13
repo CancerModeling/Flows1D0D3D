@@ -451,18 +451,6 @@ void netfvfe::Model::solve_system() {
   // reset nonlinear step
   d_nonlinear_step = 0;
 
-  // check if we are decoupling the nutrients
-  if (d_input.d_decouple_nutrients) {
-
-    reset_clock();
-
-    d_log("      Solving |1D nutrient|\n", "solve sys");
-    d_log( " \n", "solve sys");
-    d_network.solveVGMforNutrient(d_pres, d_nut);
-
-    d_log.add_sys_solve_time(clock_begin, 1);
-  }
-
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_pro(
       d_pro.d_sys.solution->clone());
@@ -482,14 +470,10 @@ void netfvfe::Model::solve_system() {
     d_log(oss, "solve sys");
 
     // solver for 1D nutrient
-    if (!d_input.d_decouple_nutrients) {
-      reset_clock();
-
-      d_log("|Nutrient_1D| -> ", "solve sys");
-      d_network.solveVGMforNutrient(d_pres, d_nut);
-
-      d_log.add_sys_solve_time(clock_begin, 1);
-    }
+    reset_clock();
+    d_log("|Nutrient_1D| -> ", "solve sys");
+    d_network.solveVGMforNutrient(d_pres, d_nut);
+    d_log.add_sys_solve_time(clock_begin, 1);
 
     int counter = 0;
     for (auto &s : get_nl_solve_assembly()) {
@@ -573,15 +557,6 @@ void netfvfe::Model::solve_pressure() {
 
   auto solve_clock = steady_clock::now();
   reset_clock();
-
-  // update time
-  d_pres.d_sys.time = d_time;
-  d_vel.d_sys.time = d_time;
-
-  d_tum_sys.parameters.set<Real>("time") = d_time;
-
-  // update old solution
-  *d_pres.d_sys.old_local_solution = *d_pres.d_sys.current_local_solution;
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_pres(
