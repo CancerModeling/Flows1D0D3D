@@ -10,9 +10,11 @@
 void netfcfvfe::VelAssembly::assemble() {
 
   // Get required system alias
-  // auto &vel = d_model_p->get_vel_assembly();
   auto &pres = d_model_p->get_pres_assembly();
-  auto &tum = d_model_p->get_tum_assembly();
+  auto &pro = d_model_p->get_pro_assembly();
+  auto &hyp = d_model_p->get_hyp_assembly();
+  auto &nut = d_model_p->get_nut_assembly();
+  auto &ecm = d_model_p->get_ecm_assembly();
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
@@ -22,11 +24,20 @@ void netfcfvfe::VelAssembly::assemble() {
   std::vector<unsigned int> dof_indices_pres_neigh;
 
   // Store current and old solution
-  Real chem_tum_cur = 0.;
   Real pres_cur = 0.;
+  Real nut_cur = 0.;
+  Real ecm_cur = 0.;
+  Real chem_pro_cur = 0.;
+  Real chem_hyp_cur = 0.;
+
+  Real nut_proj = 0.;
+  Real ecm_proj = 0.;
 
   Gradient pres_grad;
-  Gradient tum_grad;
+  Gradient pro_grad = 0.;
+  Gradient hyp_grad = 0.;
+
+  Gradient Sp = 0.;
 
   // Store current and old solution of neighboring element
   Real pres_neigh_cur = 0.;
@@ -39,8 +50,11 @@ void netfcfvfe::VelAssembly::assemble() {
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
-    tum.init_dof(elem);
     pres.init_dof(elem);
+    pro.init_dof(elem);
+    hyp.init_dof(elem);
+    nut.init_dof(elem);
+    ecm.init_dof(elem);
 
     // init fe and element matrix and vector
     init_fe(elem);
@@ -93,18 +107,48 @@ void netfcfvfe::VelAssembly::assemble() {
     // loop over quadrature points
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
-      // Computing solution
-      chem_tum_cur = 0.;
-      tum_grad = 0.;
-      for (unsigned int l = 0; l < d_phi.size(); l++) {
+      chem_pro_cur = 0.; chem_hyp_cur = 0.;
+      pro_grad = 0.; hyp_grad = 0.;
+      ecm_cur = 0.; ecm_proj = 0.;
+      for (unsigned int l = 0; l < d_phi_face.size(); l++) {
 
-        chem_tum_cur += d_phi[l][qp] * tum.get_current_sol_var(l, 1);
-        tum_grad.add_scaled(d_dphi[l][qp], tum.get_current_sol_var(l, 0));
+        chem_pro_cur +=
+            d_phi_face[l][qp] * pro.get_current_sol_var(l, 1);
+
+        pro_grad.add_scaled(d_dphi_face[l][qp],
+                            pro.get_current_sol_var(l, 0));
+
+        chem_hyp_cur +=
+            d_phi_face[l][qp] * hyp.get_current_sol_var(l, 1);
+
+        hyp_grad.add_scaled(d_dphi_face[l][qp],
+                            hyp.get_current_sol_var(l, 0));
+
+        ecm_cur +=
+            d_phi_face[l][qp] * ecm.get_current_sol(l);
+      }
+
+      ecm_proj = util::project_concentration(ecm_cur);
+
+      if (deck.d_assembly_method == 1) {
+        Sp = (chem_pro_cur + deck.d_chi_c * nut_cur +
+              deck.d_chi_h * ecm_cur) *
+             pro_grad +
+             (chem_hyp_cur + deck.d_chi_c * nut_cur +
+              deck.d_chi_h * ecm_cur) *
+             hyp_grad;
+      } else {
+        Sp = (chem_pro_cur + deck.d_chi_c * nut_proj +
+              deck.d_chi_h * ecm_proj) *
+             pro_grad +
+             (chem_hyp_cur + deck.d_chi_c * nut_proj +
+              deck.d_chi_h * ecm_proj) *
+             hyp_grad;
       }
 
       compute_rhs =
           d_JxW[qp] * factor_p *
-          (-deck.d_tissue_flow_coeff * (pres_grad - chem_tum_cur * tum_grad));
+          (-deck.d_tissue_flow_coeff * (pres_grad - Sp));
 
       // Assembling matrix
       for (unsigned int i = 0; i < d_phi.size(); i++) {

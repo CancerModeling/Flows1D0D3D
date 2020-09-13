@@ -18,7 +18,7 @@ Number netfcfvfe::initial_condition_ecm(const Point &p, const Parameters &es,
     const auto &ic_data = deck->d_ecm_ic_data;
 
     if (ic_data.d_type.empty())
-      return 0.;
+      return ic_data.d_val;
     else if (ic_data.d_type == "spherical") {
 
       Point dx = p - Point(ic_data.d_geom_params[0],ic_data.d_geom_params[1],
@@ -79,7 +79,6 @@ void netfcfvfe::EcmAssembly::assemble() {
 void netfcfvfe::EcmAssembly::assemble_1() {
 
   // Get required system alias
-  // auto &ecm = d_model_p->get_ecm_assembly();
   auto &nut = d_model_p->get_nut_assembly();  
   auto &mde = d_model_p->get_mde_assembly();
 

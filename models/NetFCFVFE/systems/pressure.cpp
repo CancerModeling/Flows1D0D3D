@@ -12,13 +12,13 @@ namespace {
 double get_exact_source(const Point &p) {
 
   return std::sin(2. * M_PI * p(0)) * std::sin(2. * M_PI * p(1)) *
-         std::sin(2.* M_PI * p(2));
+         std::sin(2. * M_PI * p(2));
 }
-}
+} // namespace
 
 Number netfcfvfe::initial_condition_pres(const Point &p, const Parameters &es,
-                                      const std::string &system_name,
-                                      const std::string &var_name) {
+                                       const std::string &system_name,
+                                       const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Pressure");
 
@@ -77,62 +77,100 @@ void netfcfvfe::PressureAssembly::assemble_1d_coupling() {
   // coupling between tissue pressure and vessel pressure
   {
     const auto &network = d_model_p->get_network();
-    auto pointer = network.get_mesh().getHead();
 
-    DenseMatrix<Number> Ke(1,1);
+    DenseMatrix<Number> Ke(1, 1);
     DenseVector<Number> Fe(1);
 
-    while (pointer) {
+    double h_3D = network.h_3D;
+    int N_3D = network.N_3D;
+    double L_p = network.L_p;
 
-      int numberOfNeighbors = pointer->neighbors.size();
+    int node_proc = 0;
+    int node_neigh = 1;
+    std::vector<unsigned int> nodes(2, 0);
+    std::vector<std::vector<double>> coords;
+    coords.emplace_back(3, 0.);
+    coords.emplace_back(3, 0.);
+    double radius = 0.;
+    double length = 0.;
+    double surface_area = 0.;
+    std::vector<double> weights;
+    std::vector<int> id_3D_elements;
+    int numberOfElements = 0;
+    double p_v = 0.;
+    unsigned int assembly_cases;
 
-      double p_v_k = pointer->p_v;
+    for (unsigned int i=0; i<network.d_numSegments; i++) {
 
-      for (int i = 0; i < numberOfNeighbors; i++) {
+      nodes[0] = network.d_segments[2*i + 0];
+      nodes[1] = network.d_segments[2*i + 1];
+      radius = network.d_segmentData[i];
+      for (unsigned int j=0; j<3; j++) {
+        coords[0][j] = network.d_vertices[3*nodes[0] + j];
+        coords[1][j] = network.d_vertices[3*nodes[1] + j];
+      }
+      length = util::dist_between_points(coords[0], coords[1]);
 
-        const auto &J_b_data = pointer->J_b_points[i];
+      for (unsigned int j=0; j<2; j++) {
 
-        // loop over 3d elements
-        for (unsigned int e = 0; e < J_b_data.elem_id.size(); e++) {
-
-          auto e_id = J_b_data.elem_id[e];
-          auto e_w = J_b_data.elem_weight[e];
-
-          // get 3d pressure
-          const auto *elem = d_mesh.elem_ptr(e_id);
-          init_dof(elem);
-          auto p_t_k = get_current_sol(0);
-
-          // implicit for p_t in source
-          Ke(0,0) = factor_p * deck.d_coupling_method_theta * pointer->L_p[i] *
-                     J_b_data.half_cyl_surf *
-                     e_w;
-
-          // explicit for p_v in source
-          Fe(0) = factor_p * pointer->L_p[i] * J_b_data.half_cyl_surf * e_w *
-                   (p_v_k - (1. - deck.d_coupling_method_theta) * p_t_k);
-
-          //          if (pointer->index < 10 and i == 0 and e < 5)
-          //            out << "index: " << pointer->index << ", p_v: " << p_v_k
-          //                << ", p_t: " << p_t_k << ", Ke: " << Ke(0, 0)
-          //                << ", Fe: " << Fe(0) << "\n";
-
-          // update matrix
-          d_sys.matrix->add_matrix(Ke, d_dof_indices_sys, d_dof_indices_sys);
-          d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
+        node_proc = 0;
+        node_neigh = 1;
+        if (j==1) {
+          node_proc = 1;
+          node_neigh = 0;
         }
-      } // loop over neighbor segments
 
-      pointer = pointer->global_successor;
-    } // loop over vertex in 1-d
+        p_v = network.P_v[nodes[node_proc]];
+        assembly_cases = network.d_vertexBdFlag[nodes[node_proc]];
+
+        if (!(assembly_cases & UNET_PRES_BDRY_DIRIC)) {
+
+          // Surface area of cylinder
+          surface_area = 2.0 * M_PI * (0.5 * length) * radius;
+          util::unet::determineWeightsAndIds(
+              deck.d_num_points_length, deck.d_num_points_angle, N_3D, coords[node_proc],
+              coords[node_neigh], radius, h_3D, 0.5 * length, weights,
+              id_3D_elements,
+              deck.d_coupling_3d1d_integration_method, d_mesh, true);
+
+          // Add coupling entry
+          numberOfElements = id_3D_elements.size();
+
+          for (int j = 0; j < numberOfElements; j++) {
+
+            if (id_3D_elements[j] > -1) {
+
+              const auto *elem = d_mesh.elem_ptr(id_3D_elements[j]);
+              if (elem->processor_id() == d_model_p->get_comm()->rank()) {
+                init_dof(elem);
+
+                // implicit for p_t in source
+                Ke(0, 0) = factor_p * L_p * surface_area * weights[j];
+
+                // explicit for p_v in source
+                Fe(0) = factor_p * L_p * surface_area * weights[j] * p_v;
+
+                // update matrix
+                d_sys.matrix->add_matrix(Ke, d_dof_indices_sys,
+                                         d_dof_indices_sys);
+                d_sys.rhs->add_vector(Fe, d_dof_indices_sys);
+              }
+            }
+          } // loop over 3D elements
+        } // if not dirichlet
+      } // segment's node loop
+
+    } // loop over segments
   }
 }
 
 void netfcfvfe::PressureAssembly::assemble_face() {
 
   // Get required system alias
-  // auto &pres = d_model_p->get_pres_assembly();
-  auto &tum = d_model_p->get_tum_assembly();
+  auto &pro = d_model_p->get_pro_assembly();
+  auto &hyp = d_model_p->get_hyp_assembly();
+  auto &nut = d_model_p->get_nut_assembly();
+  auto &ecm = d_model_p->get_ecm_assembly();
 
   // Parameters
   const auto &deck = d_model_p->get_input_deck();
@@ -155,16 +193,27 @@ void netfcfvfe::PressureAssembly::assemble_face() {
   std::vector<unsigned int> dof_indices_pres_neigh;
 
   // Store current and old solution
-  Real tum_cur = 0.;
-  Real chem_tum_cur = 0.;
+  Real nut_cur = 0.;
+  Real ecm_cur = 0.;
+  Real chem_pro_cur = 0.;
+  Real chem_hyp_cur = 0.;
 
-  Gradient tum_grad = 0.;
+  Real nut_proj = 0.;
+  Real ecm_proj = 0.;
+
+  Gradient pro_grad = 0.;
+  Gradient hyp_grad = 0.;
+
+  Gradient Sp = 0.;
 
   // Looping through elements
-  for (const auto & elem : d_mesh.active_local_element_ptr_range()) {
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
-    tum.init_dof(elem);
+    pro.init_dof(elem);
+    hyp.init_dof(elem);
+    nut.init_dof(elem);
+    ecm.init_dof(elem);
 
     // reset matrix anf force
     Ke_dof_col.clear();
@@ -173,9 +222,9 @@ void netfcfvfe::PressureAssembly::assemble_face() {
     Ke_dof_row[0] = get_global_dof_id(0);
     Fe(0) = 0.;
 
-    // get solution at this element
-    tum_cur = tum.get_current_sol_var(0, 0);
-    chem_tum_cur = tum.get_current_sol_var(0, 1);
+    // get finite-volume quantities
+    nut_cur = nut.get_current_sol(0);
+    nut_proj = util::project_concentration(nut_cur);
 
     // loop over sides of the element
     for (auto side : elem->side_index_range()) {
@@ -189,36 +238,61 @@ void netfcfvfe::PressureAssembly::assemble_face() {
         init_dof(neighbor, dof_indices_pres_neigh);
 
         // get coefficient
-        const Real a_diff = factor_p * deck.d_tissue_flow_rho *
-                            deck.d_tissue_flow_coeff * deck.d_face_by_h;
+        const Real a_diff = factor_p * deck.d_tissue_flow_coeff * deck.d_face_by_h;
 
         // diffusion
-        util::add_unique(get_global_dof_id(0), a_diff, Ke_dof_col,
-                         Ke_val_col);
+        util::add_unique(get_global_dof_id(0), a_diff, Ke_dof_col, Ke_val_col);
         util::add_unique(dof_indices_pres_neigh[0], -a_diff, Ke_dof_col,
                          Ke_val_col);
 
         // div(chem_tum * grad(tum)) term
         // requires integration over face of an element
-        tum.d_fe_face->reinit(elem, side);
+        pro.d_fe_face->reinit(elem, side);
 
         // loop over quadrature points
-        for (unsigned int qp = 0; qp < tum.d_qrule_face.n_points(); qp++) {
+        for (unsigned int qp = 0; qp < pro.d_qrule_face.n_points(); qp++) {
 
-          chem_tum_cur = 0.;
-          tum_grad = 0.;
-          for (unsigned int l = 0; l < tum.d_phi_face.size(); l++) {
+          chem_pro_cur = 0.; chem_hyp_cur = 0.;
+          pro_grad = 0.; hyp_grad = 0.;
+          ecm_cur = 0.; ecm_proj = 0.;
+          for (unsigned int l = 0; l < pro.d_phi_face.size(); l++) {
 
-            chem_tum_cur +=
-                tum.d_phi_face[l][qp] * tum.get_current_sol_var(l, 1);
+            chem_pro_cur +=
+                pro.d_phi_face[l][qp] * pro.get_current_sol_var(l, 1);
 
-            tum_grad.add_scaled(tum.d_dphi_face[l][qp],
-                                tum.get_current_sol_var(l, 0));
+            pro_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                pro.get_current_sol_var(l, 0));
+
+            chem_hyp_cur +=
+                pro.d_phi_face[l][qp] * hyp.get_current_sol_var(l, 1);
+
+            hyp_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                hyp.get_current_sol_var(l, 0));
+
+            ecm_cur +=
+                pro.d_phi_face[l][qp] * ecm.get_current_sol(l);
+          }
+
+          ecm_proj = util::project_concentration(ecm_cur);
+
+          if (deck.d_assembly_method == 1) {
+            Sp = (chem_pro_cur + deck.d_chi_c * nut_cur +
+                  deck.d_chi_h * ecm_cur) *
+                     pro_grad +
+                 (chem_hyp_cur + deck.d_chi_c * nut_cur +
+                  deck.d_chi_h * ecm_cur) *
+                     hyp_grad;
+          } else {
+            Sp = (chem_pro_cur + deck.d_chi_c * nut_proj +
+                  deck.d_chi_h * ecm_proj) *
+                 pro_grad +
+                 (chem_hyp_cur + deck.d_chi_c * nut_proj +
+                  deck.d_chi_h * ecm_proj) *
+                 hyp_grad;
           }
 
           // add to force
-          Fe(0) += -factor_p * tum.d_JxW_face[qp] * deck.d_tissue_flow_coeff *
-                   chem_tum_cur * tum_grad * tum.d_qface_normals[qp];
+          Fe(0) += -factor_p * pro.d_JxW_face[qp] * deck.d_tissue_flow_coeff * Sp * pro.d_qface_normals[qp];
         } // loop over quadrature points on face
 
       } // elem neighbor is not null
