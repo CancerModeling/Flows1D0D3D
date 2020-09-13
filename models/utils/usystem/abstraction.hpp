@@ -69,6 +69,13 @@ public:
   virtual void solve() { d_sys.solve(); };
 
   /*!
+   * @brief Calls custom solver
+   *
+   * This function is virtual for flexibility. Default method should work.
+   */
+  virtual void solve_custom() {};
+
+  /*!
    * @brief compute norm of the system
    */
   double compute_qoi(const std::string &type, unsigned int local_var_id = 0);

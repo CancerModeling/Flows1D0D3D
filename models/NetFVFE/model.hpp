@@ -65,41 +65,51 @@ public:
   /*! @brief Get various system classes */
   util::BaseAssembly &get_assembly(const std::string &system) override {
     if (system == "Pressure")
-      return d_pres_assembly;
+      return d_pres;
     else if (system == "Nutrient")
-      return d_nut_assembly;
+      return d_nut;
     else if (system == "Prolific")
-      return d_pro_assembly;
+      return d_pro;
     else if (system == "Hypoxic")
-      return d_hyp_assembly;
+      return d_hyp;
     else if (system == "Necrotic")
-      return d_nec_assembly;
+      return d_nec;
     else if (system == "TAF")
-      return d_taf_assembly;
+      return d_taf;
     else if (system == "TAF_Gradient")
-      return d_grad_taf_assembly;
+      return d_grad_taf;
     else if (system == "ECM")
-      return d_ecm_assembly;
+      return d_ecm;
     else if (system == "MDE")
-      return d_mde_assembly;
+      return d_mde;
     else if (system == "Velocity")
-      return d_vel_assembly;
+      return d_vel;
     else if (system == "Tumor")
-      return d_tum_assembly;
+      return d_tum;
     else
       libmesh_error_msg("Invalid system = " + system + " name");
   }
-  PressureAssembly &get_pres_assembly() {return d_pres_assembly;}
-  NutAssembly &get_nut_assembly() {return d_nut_assembly;}
-  ProAssembly &get_pro_assembly() {return d_pro_assembly;}
-  HypAssembly &get_hyp_assembly() {return d_hyp_assembly;}
-  NecAssembly &get_nec_assembly() {return d_nec_assembly;}
-  TafAssembly &get_taf_assembly() {return d_taf_assembly;}
-  GradTafAssembly &get_grad_taf_assembly() {return d_grad_taf_assembly;}
-  EcmAssembly &get_ecm_assembly() {return d_ecm_assembly;}
-  MdeAssembly &get_mde_assembly() {return d_mde_assembly;}
-  VelAssembly &get_vel_assembly() {return d_vel_assembly;}
-  TumAssembly &get_tum_assembly() {return d_tum_assembly;}
+  PressureAssembly &get_pres_assembly() {return d_pres;}
+  NutAssembly &get_nut_assembly() {return d_nut;}
+  ProAssembly &get_pro_assembly() {return d_pro;}
+  HypAssembly &get_hyp_assembly() {return d_hyp;}
+  NecAssembly &get_nec_assembly() {return d_nec;}
+  TafAssembly &get_taf_assembly() {return d_taf;}
+  GradTafAssembly &get_grad_taf_assembly() {return d_grad_taf;}
+  EcmAssembly &get_ecm_assembly() {return d_ecm;}
+  MdeAssembly &get_mde_assembly() {return d_mde;}
+  VelAssembly &get_vel_assembly() {return d_vel;}
+  TumAssembly &get_tum_assembly() {return d_tum;}
+
+  std::vector<util::BaseAssembly *> get_all_assembly() override {
+    return {&d_tum, &d_nut, &d_pro, &d_hyp, &d_nec, &d_taf,
+            &d_ecm, &d_mde, &d_pres, &d_grad_taf, &d_vel};
+  }
+
+  // list of systems to be solved inside nonlinear iteration loop
+  std::vector<util::BaseAssembly *> get_nl_solve_assembly() {
+    return {&d_nut, &d_pro, &d_hyp, &d_nec, &d_mde, &d_ecm};
+  }
 
   /*! @brief Run model */
   void run() override ;
@@ -125,32 +135,17 @@ private:
   Net d_network;
 
   /*! @brief Assembly objects */
-  NecAssembly d_nec_assembly;
-  ProAssembly d_pro_assembly;
-  NutAssembly d_nut_assembly;
-  HypAssembly d_hyp_assembly;
-  TafAssembly d_taf_assembly;
-  EcmAssembly d_ecm_assembly;
-  MdeAssembly d_mde_assembly;
-  PressureAssembly d_pres_assembly;
-  GradTafAssembly d_grad_taf_assembly;
-  VelAssembly d_vel_assembly;
-  TumAssembly d_tum_assembly;
-
-  /*! @brief Ids of system to be used in logger */
-  int d_tum_id;
-  int d_nec_id;
-  int d_pro_id;
-  int d_nut_id;
-  int d_hyp_id;
-  int d_taf_id;
-  int d_ecm_id;
-  int d_mde_id;
-  int d_pres_id;
-  int d_grad_taf_id;
-  int d_vel_id;
-  int d_pres_1d_id;
-  int d_nut_1d_id;
+  TumAssembly d_tum;
+  NutAssembly d_nut;
+  ProAssembly d_pro;
+  HypAssembly d_hyp;
+  NecAssembly d_nec;
+  TafAssembly d_taf;
+  EcmAssembly d_ecm;
+  MdeAssembly d_mde;
+  PressureAssembly d_pres;
+  GradTafAssembly d_grad_taf;
+  VelAssembly d_vel;
 
   /*! Ghosting functor so that PetSc does not give error when coupling dofs
    * of element with neighboring elements */
