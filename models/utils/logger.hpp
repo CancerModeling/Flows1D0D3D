@@ -312,7 +312,8 @@ public:
     }
 
     // log to file
-    d_qoi_file << oss.str() << std::flush;
+    if (d_comm_p->rank() == 0)
+      d_qoi_file << oss.str() << std::flush;
 
     // log to screen
     std::string str = "\n  QoI log header\n  " + oss.str();
@@ -334,7 +335,8 @@ public:
     }
 
     // log to file
-    d_qoi_file << oss.str() << std::flush;
+    if (d_comm_p->rank() == 0)
+      d_qoi_file << oss.str() << std::flush;
 
     // log to screen
     std::string str = "  " + oss.str();
