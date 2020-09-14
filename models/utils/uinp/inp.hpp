@@ -461,6 +461,7 @@ struct NetworkDeck {
   double d_min_length_for_sprouting;
 
   // growth related params
+  bool d_network_update;
   unsigned int d_network_update_interval;
   double d_network_update_taf_threshold;
   double d_log_normal_mean;
@@ -484,7 +485,9 @@ struct NetworkDeck {
 
   explicit NetworkDeck(const std::string &filename = "")
       : network_active(false), d_net_direction_lambda_g(0.),
-        d_net_length_R_factor(0.), d_network_update_interval(1),
+        d_net_length_R_factor(0.), 
+        d_network_update(true),
+        d_network_update_interval(1),
         d_log_normal_mean(0.), d_log_normal_std_dev(0.),
         d_net_radius_exponent_gamma(1.), d_no_branch_dist(1),
         d_new_vessel_max_angle(0.), d_branch_angle(0.),

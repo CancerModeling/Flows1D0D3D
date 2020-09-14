@@ -334,7 +334,7 @@ void netfcfvfe::Model::run() {
       d_is_output_step = true;
 
     d_is_growth_step = false;
-    if (d_step % d_input.d_network_update_interval == 0)
+    if (d_step % d_input.d_network_update_interval == 0 and d_input.d_network_update)
       d_is_growth_step = true;
 
     // init ts log
