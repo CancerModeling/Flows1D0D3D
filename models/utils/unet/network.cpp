@@ -145,8 +145,8 @@ void util::unet::Network::create_initial_network() {
 
     P_3D1D = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
 
-    A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D + numberOfNodes,
-                                                        N_tot_3D + numberOfNodes);
+    A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D + d_numVertices,
+                                                        N_tot_3D + d_numVertices);
     b_nut_3D1D = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
 
     phi_sigma = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
