@@ -423,6 +423,17 @@ void netfcfvfe::Model::compute_qoi() {
     qoi[i++] = q;
 
   d_qoi.add(qoi);
+
+  // write to files for Tobias analysis
+  {
+    auto file_tags = d_qoi.get_names();
+
+    for (int i =0; i<file_tags.size(); i++) {
+      std::fstream file_qoi;
+      file_qoi.open("two_vessels_total_" + file_tags[i] + ".txt", std::ios::out|ios::app);
+      file_qoi << qoi[i] << std::endl;
+    }
+  }
 }
 
 void netfcfvfe::Model::solve_system() {

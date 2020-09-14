@@ -245,11 +245,11 @@ void util::unet::Network::rescaleSecombData(
 
     if (pressures[i] < 21.0 && pressures[i] > 0.0) {
 
-      pressures[i] = 5.0;
+      pressures[i] = 1000.0;
 
     } else if (pressures[i] > 21.0) {
 
-      pressures[i] = 1200.0;
+      pressures[i] = 8000.0;
     }
   }
 
@@ -367,7 +367,9 @@ void util::unet::Network::refine1DMesh() {
 
         pointer_new_node->neighbors.push_back(pointer_former_neighbor);
 
-        pointer_former_neighbor->replacePointerWithIndex(pointer->index, pointer_new_node);
+        int index_to_be_replaced = pointer_former_neighbor->getLocalIndexOfNeighbor( pointer );
+
+        pointer_former_neighbor->replacePointerWithGlobalIndex(pointer->index, pointer_new_node);
 
         pointer->edge_touched[i] = true;
 
