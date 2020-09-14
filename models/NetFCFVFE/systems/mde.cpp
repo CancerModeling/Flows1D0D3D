@@ -35,6 +35,7 @@ void netfcfvfe::MdeAssembly::assemble_1() {
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
   const Real dt = d_model_p->d_dt;
+  const Real advection_factor = deck.d_advection_active ? 1. : 0.;
 
   // Store current and old solution
   Real mde_old = 0.;
@@ -125,7 +126,7 @@ void netfcfvfe::MdeAssembly::assemble_1() {
 
           // advection of mde
           d_Ke(i, j) -=
-              d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
+              advection_factor * d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
         }
       }
     } // loop over quadrature points

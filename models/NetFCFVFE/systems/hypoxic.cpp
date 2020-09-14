@@ -35,6 +35,7 @@ void netfcfvfe::HypAssembly::assemble_1() {
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
   const Real dt = d_model_p->d_dt;
+  const Real advection_factor = deck.d_advection_active ? 1. : 0.;
 
   // Store current and old solution
   Real tum_cur = 0.;
@@ -176,7 +177,7 @@ void netfcfvfe::HypAssembly::assemble_1() {
 
           // advection of hypoxic
           d_Ke_var[0][0](i, j) -=
-              d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
+              advection_factor * d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
 
           // coupling with chemical potential
           d_Ke_var[0][1](i, j) +=
