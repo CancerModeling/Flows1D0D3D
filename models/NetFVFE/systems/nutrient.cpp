@@ -379,7 +379,7 @@ void netfvfe::NutAssembly::assemble_face() {
 
           // chemotactic term
           Fe(0) += -factor_nut * pro.d_JxW_face[qp] * dt * deck.d_chi_c *
-                   (pro_grad + hyp_grad + nec_grad) * pro.d_qface_normals[qp];
+                   (pro_grad + hyp_grad) * pro.d_qface_normals[qp];
 
           // advection term
           Real v_mu = factor_nut * pro.d_JxW_face[qp] * dt *
