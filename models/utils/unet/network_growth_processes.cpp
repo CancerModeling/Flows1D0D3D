@@ -230,7 +230,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
   }   // if network update step
 
   // adopt radius
-  if ((d_update_number + 1) % d_update_interval == 0) {
+  if (d_update_number % d_update_interval == 0) {
 
     if (d_procRank == 0) {
       d_model_p->d_log("Adapt radius \n", "net update");
@@ -272,197 +272,210 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
     check_vessel_length();
     prepare_and_communicate_network();
   }
+
 }
 
 void util::unet::Network::linkTerminalVessels() {
 
-  const auto &input = d_model_p->get_input_deck();
+     const auto &input = d_model_p->get_input_deck();
 
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
+     double L_x = input.d_domain_params[1];
 
-  while (pointer) {
+     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
-    if (pointer->neighbors.size() == 1) {
+     while( pointer ) {
 
-      std::vector<double> coord = pointer->coord;
+            if( pointer->neighbors.size() == 1 ){
 
-      std::shared_ptr<VGNode> pointer_1 = VGM.getHead();
+                std::vector<double> coord = pointer->coord;
 
-      double radius = pointer->radii[0];
+                std::shared_ptr<VGNode> pointer_1 = VGM.getHead();  
 
-      int index = pointer->index;
+                double radius = pointer->radii[ 0 ];    
 
-      std::vector<double> dir_term_vessel = std::vector<double>(3, 0.0);
+                int index = pointer->index;   
 
-      for (int i = 0; i < 3; i++) {
+                std::vector<double> dir_term_vessel = std::vector<double>(3,0.0);  
+   
+                for(int i=0;i<3;i++){
 
-        dir_term_vessel[i] = coord[i] - pointer->neighbors[0]->coord[i];
-      }
+                    dir_term_vessel[ i ] = coord[ i ] - pointer->neighbors[ 0 ]->coord[ i ];
+          
+                } 
 
-      double length_dir = gmm::vect_norm2(dir_term_vessel);
+                double length_dir = gmm::vect_norm2( dir_term_vessel );
 
-      std::vector<double> normal_plane = std::vector<double>(3, 0.0);
+                std::vector<double> normal_plane = std::vector<double>(3,0.0); 
 
-      for (int i = 0; i < 3; i++) {
+                for(int i=0;i<3;i++){
 
-        normal_plane[i] = dir_term_vessel[i] / length_dir;
-      }
+                    normal_plane[ i ] = dir_term_vessel[ i ]/length_dir;
+                   
+                }
 
-      double p_v = pointer->p_v;
+                double p_v = pointer->p_v;
 
-      int numberOfNeighbors = pointer->neighbors.size();
+                int numberOfNeighbors = pointer->neighbors.size();
 
-      while (pointer_1) {
+                while( pointer_1 ) {
 
-        std::vector<double> coord_1 = pointer_1->coord;
+                       std::vector<double> coord_1 = pointer_1->coord;
 
-        int index_1 = pointer_1->index;
+                       int index_1 = pointer_1->index; 
 
-        double dist = util::dist_between_points(coord, coord_1);
+                       double dist = util::dist_between_points( coord, coord_1 );
 
-        std::vector<double> diff = std::vector<double>(3, 0.0);
+                       std::vector<double> diff = std::vector<double>(3,0.0);
 
-        for (int i = 0; i < 3; i++) {
+                       for(int i=0;i<3;i++){
 
-          diff[i] = coord_1[i] - coord[i];
-        }
+                           diff[ i ] = coord_1[ i ] - coord[ i ];
+          
+                       } 
 
-        double dist_plane = 0.0;
+                       double dist_plane  = 0.0;
 
-        for (int i = 0; i < 3; i++) {
+                       for(int i=0;i<3;i++){
 
-          dist_plane += normal_plane[i] * diff[i];
-        }
+                           dist_plane += normal_plane[ i ]*diff[ i ];
 
-        double pv_1 = pointer_1->p_v;
+                       }
 
-        int numberOfNeighbors_1 = pointer_1->neighbors.size();
+                       double pv_1 = pointer_1->p_v;
 
-        if (dist_plane > 0.05 && index != index_1 && dist < h_3D &&
-            dist > 0.0 && length_dir > 0.0) {
+                       int numberOfNeighbors_1 = pointer_1->neighbors.size();
 
-          if (numberOfNeighbors_1 < 3) {
+                       if( dist_plane>0.05 && index != index_1 && dist<0.05 && dist>0.0 && length_dir>0.0 ){
 
-            oss << " " << std::endl;
-            oss << "dist: " << dist << "\n";
-            oss << "index: " << index << "\n";
-            oss << "index_1: " << index_1 << "\n";
-            oss << "Update pointer"
-                << "\n";
-            d_model_p->d_log(oss, "net update");
+                           if( numberOfNeighbors_1<3 ){
 
-            pointer->p_boundary = 0.0;
-            pointer->c_boundary = 0.0;
-            pointer->typeOfVGNode = TypeOfNode::InnerNode;
+                               std::cout << " " << std::endl;
+                               std::cout << "dist: " << dist << "\n";
+                               std::cout << "index: " << index << "\n";
+                               std::cout << "index_1: " << index_1 << "\n";
+                               std::cout << "Update pointer" << "\n";
+
+                               pointer->p_boundary = 0.0;
+                               pointer->c_boundary = 0.0;
+                               pointer->typeOfVGNode = TypeOfNode::InnerNode;
+                               pointer->apicalGrowth = false;
+                               pointer->radii.push_back( radius );
+                               pointer->radii_initial.push_back( radius );
+                               pointer->L_p.push_back(input.d_tissue_flow_L_p);
+                               pointer->L_s.push_back(input.d_tissue_nut_L_s);
+                               pointer->edge_touched.push_back( true );
+                               pointer->sprouting_edge.push_back( false );
+                               pointer->neighbors.push_back( pointer_1 );
+ 
+                               double length = util::dist_between_points( pointer->coord, pointer_1->coord ); 
+                               double p_node = pointer->p_v;              
+                               double p_neighbor = pointer_1->p_v; 
+                               double delta_p = p_neighbor-p_node;
+                               double tau_w_ini = ( radius * std::abs( delta_p ) )/( 2.0*length ); 
+
+                               pointer->tau_w_initial.push_back( tau_w_ini );
+
+                               std::cout << "Update pointer 1" << "\n";
+
+                               pointer_1->p_boundary = 0.0;
+                               pointer_1->c_boundary = 0.0;
+                               pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
+                               pointer_1->apicalGrowth = false;
+                               pointer_1->radii.push_back( radius );
+                               pointer_1->radii_initial.push_back( radius );
+                               pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
+                               pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
+                               pointer_1->edge_touched.push_back( true );
+                               pointer_1->sprouting_edge.push_back( false );
+                               pointer_1->neighbors.push_back( pointer ); 
+                               pointer_1->tau_w_initial.push_back( tau_w_ini );
+
+                           }
+
+                           break;
+
+                       }
+
+                       pointer_1 = pointer_1->global_successor;
+
+                }
+
+            }
+
+            pointer = pointer->global_successor;
+
+     }
+
+     //Reset values
+     pointer = VGM.getHead();
+
+     while( pointer ){
+
+            int numberOfNeighbors = pointer->neighbors.size();
+
             pointer->apicalGrowth = false;
-            pointer->radii.push_back(radius);
-            pointer->radii_initial.push_back(radius);
-            pointer->L_p.push_back(input.d_tissue_flow_L_p);
-            pointer->L_s.push_back(input.d_tissue_nut_L_s);
-            pointer->edge_touched.push_back(true);
-            pointer->sprouting_edge.push_back(false);
-            pointer->neighbors.push_back(pointer_1);
 
-            double length =
-                util::dist_between_points(pointer->coord, pointer_1->coord);
-            double p_node = pointer->p_v;
-            double p_neighbor = pointer_1->p_v;
-            double delta_p = p_neighbor - p_node;
-            double tau_w_ini = (radius * std::abs(delta_p)) / (2.0 * length);
+            for( int i=0; i<numberOfNeighbors; i++){
 
-            pointer->tau_w_initial.push_back(tau_w_ini);
+                 pointer->sprouting_edge[i] = false;
+                 pointer->edge_touched[i] = false;
 
-            oss << "Update pointer 1 \n";
-            d_model_p->d_log(oss, "net update");
+            }
 
-            pointer_1->p_boundary = 0.0;
-            pointer_1->c_boundary = 0.0;
-            pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
-            pointer_1->apicalGrowth = false;
-            pointer_1->radii.push_back(radius);
-            pointer_1->radii_initial.push_back(radius);
-            pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
-            pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
-            pointer_1->edge_touched.push_back(true);
-            pointer_1->sprouting_edge.push_back(false);
-            pointer_1->neighbors.push_back(pointer);
-            pointer_1->tau_w_initial.push_back(tau_w_ini);
-          }
-
-          break;
-        }
-
-        pointer_1 = pointer_1->global_successor;
+            pointer = pointer->global_successor;
+ 
       }
-    }
 
-    pointer = pointer->global_successor;
-  }
-
-  // Reset values
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    pointer->apicalGrowth = false;
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      pointer->sprouting_edge[i] = false;
-      pointer->edge_touched[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
 }
 
 void util::unet::Network::markApicalGrowth() {
 
-  const auto &input = d_model_p->get_input_deck();
+     const auto &input = d_model_p->get_input_deck();
 
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
+     double L_x = input.d_domain_params[1];
 
-  while (pointer) {
+     std::shared_ptr<VGNode> pointer = VGM.getHead();
+ 
+     std::cout << " " << std::endl;
 
-    int numberOfNeighbors = pointer->neighbors.size();
+     while( pointer ) {
 
-    if (numberOfNeighbors == 1 && !pointer->is_initial_node) {
+            int numberOfNeighbors = pointer->neighbors.size();
 
-      const auto &coord = pointer->coord;
+            if( numberOfNeighbors == 1 ) {
 
-      // if node is near the boundary, we do not process Omega = (0,L)^3
-      // and if it is part of initial network
-      if (0.00001 < coord[0] && coord[0] < L_x - 0.00001 &&
-          0.00001 < coord[1] && coord[1] < L_x - 0.00001 &&
-          0.00001 < coord[2] && coord[2] < L_x - 0.00001) {
+                const auto &coord = pointer->coord;
 
-        int index = getElementIndex(coord, h_3D, N_3D);
+                // if node is a Dirichlet node, we do not mark the node
+                if( pointer->typeOfVGNode != TypeOfNode::DirichletNode && pointer->typeOfVGNode != TypeOfNode::InnerNode ){
 
-        double taf_node = phi_TAF_3D[index];
+                    int index = getElementIndex( coord, h_3D, N_3D );
 
-        // std::cout << "taf_node: " << taf_node << std::endl;
+                    double taf_node = phi_TAF_3D[ index ];
 
-        if (taf_node > input.d_network_update_taf_threshold) {
+                    if( taf_node > input.d_network_update_taf_threshold ){
+                      
+                        pointer->apicalGrowth = true;
+                     
+                    }
 
-          // std::cout << "index: " << pointer->index << std::endl;
+                }
+                else{ // fix Dirichlet boundaries
 
-          pointer->apicalGrowth = true;
-        }
-      } else { // fix Dirichlet boundaries
+                   std::cout << "index: " << pointer->index << std::endl;
+                   std::cout << "coord: " << pointer->coord << std::endl;
+                   std::cout << " " << std::endl;
+                  
+                   pointer->typeOfVGNode = TypeOfNode::DirichletNode;
 
-        oss << "index: " << pointer->index << std::endl;
-        oss << "coord: " << pointer->coord << std::endl;
-        oss << " " << std::endl;
-        d_model_p->d_log(oss, "net update");
+                }
+ 
+            }
 
-        pointer->typeOfVGNode = TypeOfNode::DirichletNode;
-      }
-    }
+            pointer = pointer->global_successor;
 
-    pointer = pointer->global_successor;
-  }
+     }
+
 }
 
 void util::unet::Network::processApicalGrowth() {
@@ -1433,436 +1446,426 @@ void util::unet::Network::markSproutingGrowth() {
   }
 }
 
+
 void util::unet::Network::processSproutingGrowth() {
 
-  const auto &input = d_model_p->get_input_deck();
+     const auto &input = d_model_p->get_input_deck();
 
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
+     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
-  double gamma = input.d_net_radius_exponent_gamma;
+     double gamma = input.d_net_radius_exponent_gamma;
 
-  // std::cout << " " << std::endl;
+     std::lognormal_distribution<> log_normal_distribution( input.d_log_normal_mean, input.d_log_normal_std_dev );
+     std::random_device rd;
+     std::mt19937 generator_log(rd());
+      if (input.d_seed >= 0)
+        generator_log.seed(input.d_seed);
 
-  while (pointer) {
+     std::default_random_engine generator;
+      if (input.d_seed >= 0)
+        generator.seed(input.d_seed);
 
-    int numberOfEdges = pointer->neighbors.size();
+     double L_x = input.d_domain_params[1];
 
-    std::vector<double> coord = pointer->coord;
+     std::cout<< " " << std::endl;
 
-    for (int i = 0; i < numberOfEdges; i++) {
+     while( pointer ){
 
-      if (pointer->sprouting_edge[i] == true &&
-          pointer->edge_touched[i] == false && numberOfEdges > 1) {
+            int numberOfEdges = pointer->neighbors.size();
 
-        std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
+            std::vector<double> coord = pointer->coord;
 
-        std::vector<double> mid_point = std::vector<double>(3, 0.0);
+            for(int i=0;i<numberOfEdges;i++){
 
-        double radius = pointer->radii[i];
+                if( pointer->sprouting_edge[ i ] == true && pointer->edge_touched[ i ] == false ){
 
-        double PSI = 1.05;
+                    std::vector<double> coord_neighbor = pointer->neighbors[ i ]->coord;
 
-        double radius_prime =
-            std::pow((std::pow(PSI, gamma) - 1.0), 1.0 / gamma) * radius;
+                    std::vector<double> mid_point = std::vector<double>(3,0.0);
 
-        double radius_min = input.d_min_radius;
+                    double radius = pointer->radii[ i ];
 
-        double p_v_neighbor = pointer->neighbors[i]->p_v;
+                    double PSI = 1.05;
 
-        double radius_new = 1.25 * radius_min;
+                    double radius_prime = std::pow( ( std::pow( PSI,gamma )-1.0 ), 1.0/gamma ) * radius;
 
-        if (1.25 * radius_min < radius_prime) {
+                    double radius_min = input.d_min_radius;
 
-          // TAG: Random
-          radius_new = util::transform_to_uniform_dist(
-              1.25 * radius_min, radius_prime, d_uniformDist());
-        }
+                    double p_v_neighbor = pointer->neighbors[ i ]->p_v;
 
-        if (radius_new > 0.035) {
+                    std::uniform_real_distribution<double> distribution_uniform(1.25*radius_min,radius_prime);
 
-          radius_new = 0.035;
-        }
+                    double radius_new = 1.25*radius_min;
 
-        std::vector<double> dir_vessel = std::vector<double>(3, 0.0);
-        std::vector<double> max_vec = std::vector<double>(3, 0.0);
+                    if( 1.25*radius_min<radius_prime ){
 
-        for (int j = 0; j < 3; j++) {
+                        radius_new = distribution_uniform(generator);
 
-          mid_point[j] = 0.5 * (coord_neighbor[j] + coord[j]);
-          dir_vessel[j] = coord_neighbor[j] - coord[j];
-        }
+                    }
 
-        // std::cout<< "mid_point: " << mid_point << std::endl;
+                    if( radius_new > 0.035 ){
 
-        double length_vessel = normVector(dir_vessel);
+                        radius_new = 0.035;
 
-        std::vector<double> normed_dir_vessel = std::vector<double>(3, 0.0);
+                    }
 
-        for (int j = 0; j < 3; j++) {
+                    std::vector<double> dir_vessel = std::vector<double>(3,0.0);
+                    std::vector<double> max_vec = std::vector<double>(3,0.0);
 
-          normed_dir_vessel[j] = dir_vessel[j] / length_vessel;
-        }
+                    for(int j=0;j<3;j++){
 
-        std::vector<double> rotator = determineRotator(dir_vessel);
+                        mid_point[ j ]  = 0.5*( coord_neighbor[ j ] + coord[ j ] );
+                        dir_vessel[ j ] = coord_neighbor[ j ] - coord[ j ];
 
-        double length_rotator = normVector(rotator);
+                    }
 
-        int N_s = 10;
-        int N_theta = 35;
+                    double length_vessel = normVector( dir_vessel );
 
-        std::vector<double> vessel_point(3, 0.0);
-        std::vector<double> max_vessel_point(3, 0.0);
+                    std::vector<double> normed_dir_vessel = std::vector<double>(3,0.0);
 
-        double theta = 0.0;
+                    for(int j=0;j<3;j++){
 
-        double TAF_vessel_surf = 0.0;
-        double Max_TAF_vessel_surf = 0.0;
+                        normed_dir_vessel[ j ] = dir_vessel[ j ]/length_vessel;
 
-        double counter = 0.0;
+                    }
 
-        for (int i_s = 0; i_s < N_s + 1; i_s++) {
+                    std::vector<double> rotator = determineRotator( dir_vessel );
 
-          for (int j = 0; j < 3; j++) {
+                    double length_rotator = normVector( rotator ); 
 
-            vessel_point[j] =
-                (double)i_s / (double)N_s * (0.75 - 0.25) * length_vessel *
-                    normed_dir_vessel[j] +
-                (0.25 * length_vessel * normed_dir_vessel[j] + coord[j]);
-          }
+                    int N_s = 10;
+                    int N_theta = 35;
 
-          double TAF_vessel_surf = 0.0;
+                    std::vector<double> vessel_point(3,0.0);
+                    std::vector<double> max_vessel_point(3,0.0);
 
-          for (int i_theta = 0; i_theta < N_theta; i_theta++) {
+                    double theta = 0.0;
 
-            theta = ((double)i_theta) / ((double)N_theta) * 2.0 * M_PI;
+                    double TAF_vessel_surf = 0.0;
+                    double Max_TAF_vessel_surf = 0.0;
 
-            std::vector<double> cylinder_node = computeNodesOnCylinders(
-                normed_dir_vessel, rotator, vessel_point, radius, theta);
+                    std::vector<double> start_point(3,0.0);
+                    std::vector<double> end_point(3,0.0);
 
-            if (isCenterInDomain(cylinder_node, L_x) &&
-                util::definitelyGreaterThan(length_rotator, 0.)) {
+                    for(int j=0;j<3;j++){
 
-              int index = getElementIndex(cylinder_node, h_3D, N_3D);
+                        start_point[ j ] =  0.25 * ( coord_neighbor[ j ] - coord[ j ] ) + coord[ j ];
+                        end_point[ j ]   =  0.75 * ( coord_neighbor[ j ] - coord[ j ] ) + coord[ j ];
 
-              double TAF = phi_TAF_3D[index];
+                    }
 
-              TAF_vessel_surf = TAF_vessel_surf + TAF;
+                    for(int i_s = 0;i_s<N_s+1;i_s++){
 
-              counter = counter + 1.0;
+                        for(int j=0;j<3;j++){
+
+                            vessel_point[ j ] =  (double) i_s/(double) N_s * ( end_point[ j ] - start_point[ j ] )  + start_point[ j ];
+
+                        }
+
+                        double TAF_vessel_surf = 0.0;
+
+                        double counter = 0.0;
+
+                        for(int i_theta=0;i_theta<N_theta;i_theta++){
+
+                            theta = ((double) i_theta)/((double) N_theta)*2.0*M_PI;
+
+                            std::vector<double> cylinder_node = computeNodesOnCylinders( normed_dir_vessel,  rotator, vessel_point,  radius, theta );
+
+                            if( isCenterInDomain( cylinder_node, L_x) && length_rotator>0.0 ){
+
+                                int index = getElementIndex( cylinder_node, h_3D, N_3D );
+
+                                double TAF = phi_TAF_3D[ index ];
+
+                                TAF_vessel_surf = TAF_vessel_surf + TAF;
+
+                                counter = counter + 1.0;
+
+                            }
+
+                        }
+
+                        if( counter> 0.0 ){
+
+                            TAF_vessel_surf = TAF_vessel_surf/counter;
+
+                        }
+
+                        if( TAF_vessel_surf>Max_TAF_vessel_surf ){
+
+                            Max_TAF_vessel_surf = TAF_vessel_surf;
+
+                            max_vessel_point = vessel_point;
+
+                        }
+
+                        if( Max_TAF_vessel_surf < 1.0e-16 ){
+
+                            Max_TAF_vessel_surf = TAF_vessel_surf;
+
+                            max_vessel_point = vessel_point;
+                         
+                        }
+
+                    }
+
+                    theta = 0.0;
+
+                    double TAF_max = 0.0;
+
+                    for(int i_theta=0;i_theta<N_theta;i_theta++){
+
+                        theta = ((double) i_theta)/((double) N_theta)*2.0*M_PI;
+
+                        std::vector<double> cylinder_node = computeNodesOnCylinders( normed_dir_vessel,  rotator, max_vessel_point,  2.0*radius, theta );
+
+                        if( isCenterInDomain( cylinder_node, L_x) && length_rotator>0.0 ){
+
+                            int index_cone = getElementIndex( cylinder_node, h_3D, N_3D );
+
+                            double TAF = phi_TAF_3D[ index_cone ]; 
+
+                            if( TAF_max < 1.0e-16 ){
+
+                                TAF_max = TAF;
+                         
+                            }
+
+                            if( TAF > TAF_max-1.0e-8 ){
+
+                                TAF_max = TAF;
+
+                                max_vec = cylinder_node;
+
+                            }
+
+                        }
+
+                    }
+
+                    std::cout<< " " << std::endl;
+                    std::cout<< "max_vessel_point: " <<  max_vessel_point << std::endl;
+                    std::cout<< "coord: " << coord << std::endl;
+                    std::cout<< "start_point: " << start_point << std::endl;
+                    std::cout<< "mid_point: " << mid_point << std::endl;
+                    std::cout<< "end_point: " << end_point << std::endl;
+                    std::cout<< "coord_neighbor: " << coord_neighbor << std::endl;
+
+                    std::vector<double> dir_new_vessel = std::vector<double>(3,0.0);
+                    std::vector<double> new_point = std::vector<double>(3,0.0);
+
+                    for(int j=0;j<3;j++){
+
+                        dir_new_vessel[ j ] =  max_vec[ j ] - max_vessel_point[ j ];
+
+                    }
+
+                    double norm_dir_new_vessel = gmm::vect_norm2( dir_new_vessel );
+                    double norm_dir_vessel = gmm::vect_norm2( dir_vessel );
+
+                    for(int j=0;j<3;j++){
+
+                        dir_new_vessel[ j ] = dir_new_vessel[ j ]/norm_dir_new_vessel;
+                        dir_vessel[ j ] = dir_vessel[ j ]/norm_dir_vessel;
+                                
+                    }
+
+                    double prod_angle = 0.0;
+
+                    for(int j=0;j<3;j++){
+
+                        prod_angle += dir_new_vessel[ j ]*dir_vessel[ j ];
+                                
+                    }
+
+                    double angle = std::acos( prod_angle );
+            
+                    // lognormal distribution
+                    double log_dist = log_normal_distribution(generator_log);
+
+                    // get length
+                    double length_new = log_dist * radius_new;
+
+                    if( length_new<2.0*radius ){
+
+                        length_new = 2.0*radius;
+
+                    }
+
+                    if( length_new>3.0*0.08 ){
+
+                        length_new = 3.0*0.08;
+
+                    }
+
+                    for(int j=0;j<3;j++){
+
+                        new_point[ j ] =  max_vessel_point[ j ] + length_new*dir_new_vessel[ j ]; 
+                                
+                    }
+
+
+                    bool isColliding = testCollision( new_point );
+
+                    if( angle*180.0/M_PI>10.0 && angle*180.0/M_PI<170.0 && !isColliding && length_vessel>input.d_min_sprouting_length ){
+
+                        std::cout<< "Create new node_1" << std::endl;
+                        VGNode new_node_1;
+
+                        new_node_1.index = VGM.getNumberOfNodes();
+                        new_node_1.coord = max_vessel_point; 
+                        new_node_1.p_boundary = 0.0;
+                        new_node_1.p_v = pointer->p_v;
+                        new_node_1.c_boundary = 0.0;
+                        new_node_1.c_v = pointer->c_v;
+                        new_node_1.typeOfVGNode = TypeOfNode::InnerNode;
+                        new_node_1.apicalGrowth = false;
+
+                        new_node_1.radii_initial.push_back( radius );
+                        new_node_1.radii_initial.push_back( radius );
+                        new_node_1.radii_initial.push_back( radius_new );
+
+                        new_node_1.radii.push_back( radius );
+                        new_node_1.radii.push_back( radius );
+                        new_node_1.radii.push_back( radius_new );
+
+                        new_node_1.L_p.push_back( input.d_tissue_flow_L_p ); 
+                        new_node_1.L_p.push_back( input.d_tissue_flow_L_p ); 
+                        new_node_1.L_p.push_back( input.d_tissue_flow_L_p ); 
+
+                        new_node_1.L_s.push_back( input.d_tissue_nut_L_s );
+                        new_node_1.L_s.push_back( input.d_tissue_nut_L_s );
+                        new_node_1.L_s.push_back( input.d_tissue_nut_L_s );
+
+                        new_node_1.edge_touched.push_back( true );
+                        new_node_1.edge_touched.push_back( true );
+                        new_node_1.edge_touched.push_back( true );
+                   
+                        new_node_1.sprouting_edge.push_back( false );
+                        new_node_1.sprouting_edge.push_back( false );
+                        new_node_1.sprouting_edge.push_back( false );
+
+                        new_node_1.neighbors.push_back( pointer );
+                        new_node_1.neighbors.push_back( pointer->neighbors[ i ] );
+                        new_node_1.notUpdated = 0;
+
+                        double length_old = util::dist_between_points( mid_point, coord_neighbor );
+                        double length_new = util::dist_between_points( mid_point, coord_neighbor );
+
+                        double delta_p_old = p_v_neighbor - pointer->p_v;
+                        double delta_p_new = 0.95*pointer->p_v-pointer->p_v;
+
+                        double tau_w_ini_old = ( radius * std::abs( delta_p_old  ) )/( 2.0*length_old  );
+                        double tau_w_ini_new = ( radius * std::abs( delta_p_new  ) )/( 2.0*length_new  );
+
+                        new_node_1.tau_w_initial.push_back( tau_w_ini_old );
+                        new_node_1.tau_w_initial.push_back( tau_w_ini_old );
+                        new_node_1.tau_w_initial.push_back( tau_w_ini_new );
+
+                        auto sp_newNode_1 = std::make_shared<VGNode>( new_node_1 );
+
+                        std::cout<< "Create new node_2" << std::endl;
+                        VGNode new_node_2;
+
+                        new_node_2.index = VGM.getNumberOfNodes()+1;
+                        new_node_2.coord = new_point;
+                        new_node_2.p_boundary = 0.95*pointer->p_v;
+                        new_node_2.p_v = 0.95*pointer->p_v;
+                        new_node_2.c_boundary = 0.0;
+                        new_node_2.c_v = pointer->c_v;
+                        new_node_2.apicalGrowth = false;
+                        new_node_2.radii.push_back( radius_new );
+                        new_node_2.radii_initial.push_back( radius_new );
+                        new_node_2.L_p.push_back( input.d_tissue_flow_L_p );
+                        new_node_2.L_s.push_back( input.d_tissue_nut_L_s );
+                        new_node_2.edge_touched.push_back( true );
+                        new_node_2.sprouting_edge.push_back( false );
+                        new_node_2.typeOfVGNode = TypeOfNode::NeumannNode;
+                        new_node_2.notUpdated = 0;
+                        new_node_2.tau_w_initial.push_back( tau_w_ini_new );
+                        new_node_2.neighbors.push_back( sp_newNode_1 );
+
+                        auto sp_newNode_2 = std::make_shared<VGNode>( new_node_2 );
+
+                        sp_newNode_1->neighbors.push_back( sp_newNode_2 );
+
+                        std::cout << "Update connectivity" << "\n";
+
+                        std::cout << "i: " << i << "\n";
+
+                        pointer->replacePointerWithLocalIndex( i, sp_newNode_1 );
+
+                        int index_to_be_replaced = pointer->neighbors[ i ]->getLocalIndexOfNeighbor( pointer );
+
+                        std::cout << "index_to_be_replaced: " << index_to_be_replaced << "\n";
+
+                        pointer->neighbors[ i ]->replacePointerWithLocalIndex( index_to_be_replaced, sp_newNode_1 );
+
+                        pointer->sprouting_edge[ i ] = false;
+                        pointer->edge_touched[ i ] = true;
+
+                        pointer->neighbors[ i ]->sprouting_edge[ index_to_be_replaced ] = false;
+                        pointer->neighbors[ i ]->edge_touched[ index_to_be_replaced ] = true;
+
+                        std::cout << "Attach new node_1 as pointer" << "\n";
+                        VGM.attachPointerToNode( sp_newNode_1 );
+
+                        std::cout << "Attach new node_2 as pointer" << "\n";
+                        VGM.attachPointerToNode( sp_newNode_2 );
+
+                    }
+                    else{
+
+                       int localIndex = pointer->neighbors[i]->getLocalIndexOfNeighbor( pointer );                         
+
+                       pointer->edge_touched[ i ] = true;
+                       pointer->sprouting_edge[ i ] = false;
+
+                       pointer->neighbors[i]->edge_touched[ localIndex ] = true;
+                       pointer->neighbors[i]->sprouting_edge[ localIndex ] = false;
+
+                    }
+
+                }
+                else{
+
+                       int localIndex = pointer->neighbors[i]->getLocalIndexOfNeighbor( pointer );                         
+
+                       pointer->edge_touched[ i ] = true;
+                       pointer->sprouting_edge[ i ] = false;
+
+                       pointer->neighbors[i]->edge_touched[ localIndex ] = true;
+                       pointer->neighbors[i]->sprouting_edge[ localIndex ] = false;
+
+                }
+
             }
-          }
 
-          if (counter > 0.0) {
+            pointer = pointer->global_successor;
 
-            TAF_vessel_surf = TAF_vessel_surf / counter;
-          }
+     }
 
-          if (TAF_vessel_surf > Max_TAF_vessel_surf) {
+     pointer = VGM.getHead();
 
-            Max_TAF_vessel_surf = TAF_vessel_surf;
+     while( pointer ){
 
-            max_vessel_point = vessel_point;
-          }
+            int numberOfEdges = pointer->neighbors.size();
 
-          if (Max_TAF_vessel_surf < 1.0e-16) {
+            for(int i=0;i<numberOfEdges;i++){
 
-            Max_TAF_vessel_surf = TAF_vessel_surf;
+                pointer->edge_touched[ i ] = false;
+                pointer->sprouting_edge[ i ] = false;
 
-            max_vessel_point = vessel_point;
-          }
-        }
-
-        // std::cout<< "max_vessel_point: " << max_vessel_point << std::endl;
-
-        theta = 0.0;
-
-        double TAF_max = 0.0;
-
-        for (int i_theta = 0; i_theta < N_theta; i_theta++) {
-
-          theta = ((double)i_theta) / ((double)N_theta) * 2.0 * M_PI;
-
-          std::vector<double> cylinder_node =
-              computeNodesOnCylinders(normed_dir_vessel, rotator,
-                                      max_vessel_point, 2.0 * radius, theta);
-
-          if (isCenterInDomain(cylinder_node, L_x) &&
-              util::definitelyGreaterThan(length_rotator, 0.)) {
-
-            int index_cone = getElementIndex(cylinder_node, h_3D, N_3D);
-
-            double TAF = phi_TAF_3D[index_cone];
-
-            if (TAF_max < 1.0e-16) {
-
-              TAF_max = TAF;
             }
 
-            if (TAF > TAF_max - 1.0e-8) {
+            pointer = pointer->global_successor;
 
-              TAF_max = TAF;
+     }
 
-              max_vec = cylinder_node;
-            }
-          }
-        }
-
-        std::vector<double> dir_new_vessel = std::vector<double>(3, 0.0);
-        std::vector<double> new_point = std::vector<double>(3, 0.0);
-
-        for (int j = 0; j < 3; j++) {
-
-          dir_new_vessel[j] = max_vec[j] - max_vessel_point[j];
-        }
-
-        double norm_dir_new_vessel = gmm::vect_norm2(dir_new_vessel);
-        double norm_dir_vessel = gmm::vect_norm2(dir_vessel);
-
-        for (int j = 0; j < 3; j++) {
-
-          dir_new_vessel[j] = dir_new_vessel[j] / norm_dir_new_vessel;
-          dir_vessel[j] = dir_vessel[j] / norm_dir_vessel;
-        }
-
-        double prod_angle = 0.0;
-
-        for (int j = 0; j < 3; j++) {
-
-          prod_angle += dir_new_vessel[j] * dir_vessel[j];
-        }
-
-        double angle = std::acos(prod_angle);
-        double angle_deg = angle * 180. / M_PI;
-
-        // TAG: Random
-        double log_dist = d_logNormalDist();
-
-        // get length
-        double length_new = log_dist * radius_new;
-
-        if (length_new < 2.0 * radius) {
-
-          length_new = 2.0 * radius;
-        }
-
-        if (length_new > 3.0 * h_3D) {
-
-          length_new = 3.0 * h_3D;
-        }
-
-        for (int j = 0; j < 3; j++) {
-
-          new_point[j] = mid_point[j] + length_new * dir_new_vessel[j];
-        }
-
-        if (util::definitelyGreaterThan(
-                util::dist_between_points(new_point, mid_point), 3.0 * h_3D))
-          libmesh_error_msg(
-              "Error new vessel length " +
-              std::to_string(util::dist_between_points(new_point, mid_point)) +
-              " is larger than permissible value " + std::to_string(3. * h_3D));
-        if (util::definitelyLessThan(
-                util::dist_between_points(new_point, mid_point), 1.e-8))
-          libmesh_error_msg(
-              "Error new vessel length " +
-              std::to_string(util::dist_between_points(new_point, mid_point)) +
-              " is too small");
-
-        bool isColliding = testCollision(new_point);
-
-        if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 &&
-            length_vessel > 0.0 && !isColliding && length_vessel > 0.13) {
-
-          d_model_p->d_log("New vessel with length = " +
-                               std::to_string(util::dist_between_points(
-                                   new_point, mid_point)) +
-                               "\n",
-                           "net update");
-          d_model_p->d_log("Create new node_1\n", "net update");
-          VGNode new_node_1;
-
-          new_node_1.index = VGM.getNumberOfNodes();
-          new_node_1.coord = mid_point;
-          new_node_1.p_boundary = 0.0;
-          new_node_1.p_v = pointer->p_v;
-          new_node_1.c_boundary = 0.0;   // input.d_in_nutrient;
-          new_node_1.c_v = pointer->c_v; // 0.0;
-          new_node_1.typeOfVGNode = TypeOfNode::InnerNode;
-          new_node_1.apicalGrowth = false;
-          new_node_1.radii_initial.push_back(radius);
-          new_node_1.radii_initial.push_back(radius);
-          new_node_1.radii.push_back(radius);
-          new_node_1.radii.push_back(radius);
-          /*
-                                  if( std::pow( ( std::pow( radius,gamma
-             )-std::pow( radius_new,gamma ) ), 1.0/gamma )>radius ){
-
-                                      new_node_1.radii.push_back( std::pow( (
-             std::pow( radius,gamma )-std::pow( radius_new,gamma ) ), 1.0/gamma
-             ) ); new_node_1.radii.push_back( radius );
-
-                                      new_node_1.radii_initial.push_back(
-             std::pow( ( std::pow( radius,gamma )-std::pow( radius_new,gamma )
-             ), 1.0/gamma ) ); new_node_1.radii_initial.push_back( radius );
-
-                                  }
-                                  else{
-
-                                      new_node_1.radii.push_back( radius );
-                                      new_node_1.radii.push_back( std::pow( (
-             std::pow( radius,gamma )-std::pow( radius_new,gamma ) ), 1.0/gamma
-             ) );
-
-                                      new_node_1.radii_initial.push_back( radius
-             ); new_node_1.radii_initial.push_back( std::pow( ( std::pow(
-             radius,gamma )-std::pow( radius_new,gamma ) ), 1.0/gamma ) );
-
-                                  }
-          */
-          new_node_1.radii.push_back(radius_new);
-
-          new_node_1.radii_initial.push_back(radius_new);
-
-          new_node_1.L_p.push_back(input.d_tissue_flow_L_p);
-          new_node_1.L_p.push_back(input.d_tissue_flow_L_p);
-          new_node_1.L_p.push_back(input.d_tissue_flow_L_p);
-
-          new_node_1.L_s.push_back(input.d_tissue_nut_L_s);
-          new_node_1.L_s.push_back(input.d_tissue_nut_L_s);
-          new_node_1.L_s.push_back(input.d_tissue_nut_L_s);
-
-          new_node_1.edge_touched.push_back(true);
-          new_node_1.edge_touched.push_back(true);
-          new_node_1.edge_touched.push_back(true);
-
-          new_node_1.sprouting_edge.push_back(false);
-          new_node_1.sprouting_edge.push_back(false);
-          new_node_1.sprouting_edge.push_back(false);
-
-          new_node_1.neighbors.push_back(pointer);
-          new_node_1.neighbors.push_back(pointer->neighbors[i]);
-          new_node_1.notUpdated = 0;
-
-          // TODO Both lengths are same. Bug here??
-          double length_old =
-              util::dist_between_points(mid_point, coord_neighbor);
-          double length_new =
-              util::dist_between_points(mid_point, coord_neighbor);
-
-          double delta_p_old = p_v_neighbor - pointer->p_v;
-          double delta_p_new = 0.95 * pointer->p_v - pointer->p_v;
-
-          double tau_w_ini_old =
-              (radius * std::abs(delta_p_old)) / (2.0 * length_old);
-          double tau_w_ini_new =
-              (radius * std::abs(delta_p_new)) / (2.0 * length_new);
-
-          new_node_1.tau_w_initial.push_back(tau_w_ini_old);
-          new_node_1.tau_w_initial.push_back(tau_w_ini_old);
-          new_node_1.tau_w_initial.push_back(tau_w_ini_new);
-
-          auto sp_newNode_1 = std::make_shared<VGNode>(new_node_1);
-
-          d_model_p->d_log("Create new node_2\n", "net update");
-          VGNode new_node_2;
-
-          new_node_2.index = VGM.getNumberOfNodes() + 1;
-          new_node_2.coord = new_point;
-          new_node_2.p_boundary = 0.95 * pointer->p_v;
-          new_node_2.p_v = 0.95 * pointer->p_v;
-          new_node_2.c_boundary = 0.0;   // pointer->c_v;
-          new_node_2.c_v = pointer->c_v; // 0.0;
-          new_node_2.apicalGrowth = false;
-          new_node_2.radii.push_back(radius_new);
-          new_node_2.radii_initial.push_back(radius_new);
-          new_node_2.L_p.push_back(input.d_tissue_flow_L_p);
-          new_node_2.L_s.push_back(input.d_tissue_nut_L_s);
-          new_node_2.edge_touched.push_back(true);
-          new_node_2.sprouting_edge.push_back(false);
-          new_node_2.typeOfVGNode = TypeOfNode::NeumannNode;
-          // new_node_2.typeOfVGNode = TypeOfNode::DirichletNode;
-          new_node_2.notUpdated = 0;
-          new_node_2.tau_w_initial.push_back(tau_w_ini_new);
-          new_node_2.neighbors.push_back(sp_newNode_1);
-
-          auto sp_newNode_2 = std::make_shared<VGNode>(new_node_2);
-
-          new_node_1.neighbors.push_back(sp_newNode_2);
-
-          oss << "Update connectivity"
-              << "\n";
-          d_model_p->d_log(oss, "net update");
-
-          pointer->replacePointerWithIndex(i, sp_newNode_1);
-
-          int index_to_be_replaced =
-              pointer->neighbors[i]->getLocalIndexOfNeighbor(pointer);
-
-          pointer->neighbors[i]->replacePointerWithIndex(index_to_be_replaced,
-                                                         sp_newNode_1);
-
-          pointer->sprouting_edge[i] = false;
-          pointer->edge_touched[i] = true;
-
-          pointer->neighbors[i]->sprouting_edge[index_to_be_replaced] = false;
-          pointer->neighbors[i]->edge_touched[index_to_be_replaced] = true;
-
-          oss << "Attach new node_1 as pointer"
-              << "\n";
-          VGM.attachPointerToNode(sp_newNode_1);
-
-          oss << "Attach new node_2 as pointer"
-              << "\n";
-          d_model_p->d_log(oss, "net update");
-          VGM.attachPointerToNode(sp_newNode_2);
-
-        } else {
-
-          int localIndex =
-              pointer->neighbors[i]->getLocalIndexOfNeighbor(pointer);
-
-          pointer->edge_touched[i] = true;
-          pointer->sprouting_edge[i] = false;
-
-          pointer->neighbors[i]->edge_touched[localIndex] = true;
-          pointer->neighbors[i]->sprouting_edge[localIndex] = false;
-        }
-
-      } else {
-
-        int localIndex =
-            pointer->neighbors[i]->getLocalIndexOfNeighbor(pointer);
-
-        pointer->edge_touched[i] = true;
-        pointer->sprouting_edge[i] = false;
-
-        pointer->neighbors[i]->edge_touched[localIndex] = true;
-        pointer->neighbors[i]->sprouting_edge[localIndex] = false;
-      }
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfEdges = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfEdges; i++) {
-
-      pointer->edge_touched[i] = false;
-      pointer->sprouting_edge[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
 }
 
-std::vector<double>
-util::unet::Network::findNearNetworkNode(std::vector<double> coord,
-                                         std::vector<double> normal_plane) {
+std::vector<double> util::unet::Network::findNearNetworkNode(std::vector<double> coord, std::vector<double> normal_plane) {
 
   std::vector<double> coord_near_node(3, 0.0);
   std::vector<double> coord_min_node(3, 0.0);
@@ -1921,237 +1924,126 @@ util::unet::Network::findNearNetworkNode(std::vector<double> coord,
 
 void util::unet::Network::adaptRadius() {
 
-  const auto &input = d_model_p->get_input_deck();
 
-  double dt = d_model_p->d_dt;
+     const auto &input = d_model_p->get_input_deck();
 
-  double L_x = input.d_domain_params[1];
+     double dt = d_model_p->d_dt;
 
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
+     double L_x = input.d_domain_params[1];
 
-  while (pointer) {
+     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
-    int numberOfEdges = pointer->neighbors.size();
+     while( pointer ){
 
-    for (int i = 0; i < numberOfEdges; i++) {
+            int numberOfEdges = pointer->neighbors.size();
 
-      pointer->edge_touched[i] = false;
-      pointer->sprouting_edge[i] = false;
-    }
+            for(int i=0;i<numberOfEdges;i++){
 
-    pointer = pointer->global_successor;
-  }
+                pointer->edge_touched[ i ] = false;
+                pointer->sprouting_edge[ i ] = false;
 
-  pointer = VGM.getHead();
+            }
 
-  while (pointer) {
+            pointer = pointer->global_successor;
 
-    int numberOfNeighbors = pointer->neighbors.size();
+     }
 
-    std::vector<bool> remove_edge(numberOfNeighbors, false);
-    std::vector<int> edgesToBeRemoved;
+     pointer = VGM.getHead();
 
-    for (int i = 0; i < numberOfNeighbors; i++) {
+     while( pointer ){
 
-      if (pointer->edge_touched[i] == false) {
+            int numberOfNeighbors = pointer->neighbors.size();
 
-        int local_index =
-            pointer->neighbors[i]->getLocalIndexOfNeighbor(pointer);
+            std::vector< bool > remove_edge( numberOfNeighbors, false );
+            std::vector< int > edgesToBeRemoved;
 
-        double radius = pointer->radii[i];
+            for(int i=0;i<numberOfNeighbors;i++){
 
-        double radius_initial = pointer->radii_initial[i];
+                if( pointer->edge_touched[ i ] == false ){
 
-        std::vector<double> coord_node = pointer->coord;
-        std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
+                    int local_index = pointer->neighbors[ i ]->getLocalIndexOfNeighbor( pointer );
 
-        double length = util::dist_between_points(coord_node, coord_neighbor);
+                    double radius = pointer->radii[ i ];
 
-        double p_node = pointer->p_v;
-        double p_neighbor = pointer->neighbors[i]->p_v;
-        double delta_p = p_neighbor - p_node;
+                    double radius_initial = pointer->radii_initial[ i ];
 
-        double tau_w = (radius * std::abs(delta_p)) / (2.0 * length);
+                    std::vector<double> coord_node = pointer->coord;
+                    std::vector<double> coord_neighbor = pointer->neighbors[ i ]->coord;    
 
-        double k_WSS = 0.05;
+                    double length = util::dist_between_points( coord_node, coord_neighbor );  
 
-        double S_WSS = 0.0;
+                    double p_node = pointer->p_v;              
+                    double p_neighbor = pointer->neighbors[ i ]->p_v; 
+                    double delta_p = p_neighbor-p_node;
 
-        if (1.0 + tau_w > 0.0) {
+                    double tau_w = ( radius * std::abs( delta_p ) )/( 2.0*length );
 
-          S_WSS = std::log(1.0 + tau_w);
-        }
+                    double k_WSS = 0.05;
 
-        double S_tot = k_WSS * S_WSS;
-        double delta_r = dt * radius * S_tot;
+                    double S_WSS = 0.0;
 
-        double radius_new = radius + delta_r;
+                    if( 1.0 + tau_w > 0.0 ){
 
-        int numberOfNeighbors_Neighbor =
-            pointer->neighbors[i]->neighbors.size();
+                        S_WSS = std::log( 1.0 + tau_w );
 
-        if ((radius < input.d_min_radius && numberOfNeighbors < 2) ||
-            (numberOfNeighbors_Neighbor == 1 && numberOfNeighbors == 1)) {
+                    }
 
-          radius_new = input.d_min_radius;
+                    double S_tot = k_WSS * S_WSS; 
+                    double delta_r = dt * radius * S_tot;
 
-          oss << "Remove vessel with index: " << i << std::endl;
-          d_model_p->d_log(oss, "net update");
+                    double radius_new = radius + delta_r;
 
-          edgesToBeRemoved.push_back(i);
+                    int numberOfNeighbors_Neighbor = pointer->neighbors[i]->neighbors.size();
 
-          remove_edge[i] = true;
-        }
+                    if( ( radius<input.d_min_radius && numberOfNeighbors<2 ) || ( numberOfNeighbors_Neighbor == 1 && numberOfNeighbors == 1 ) ){
 
-        if (radius_new < 1.2 * radius && radius_new > 0.9 * radius) {
+                        radius_new = input.d_min_radius;
 
-          oss << " " << std::endl;
-          oss << "tau_w: " << tau_w << std::endl;
-          oss << "S_WSS: " << S_WSS << std::endl;
-          oss << "S_tot: " << S_tot << std::endl;
-          oss << "radius_initial: " << radius_initial << std::endl;
-          oss << "radius: " << radius << std::endl;
-          oss << "radius_new: " << radius_new << std::endl;
-          oss << "coord_node: " << coord_node << std::endl;
-          d_model_p->d_log(oss, "net update");
+                        std::cout << "Remove vessel with index: " << i << std::endl;
 
-          // pointer->neighbors[ i ]->radii[ local_index ] = radius_new;
-          pointer->radii[i] = radius_new;
-        }
+                        edgesToBeRemoved.push_back( i );
 
-        // pointer->neighbors[ i ]->edge_touched[ local_index ] = true;
-        pointer->edge_touched[i] = true;
-      }
-    }
-    /*
-                // Remove redundant vessels
-                for(int i=0;i<numberOfNeighbors;i++){
+                        remove_edge[ i ] = true;
 
-                    if( remove_edge[ i ] == true ){
+                    }
 
-                        int index_neighbor = pointer->neighbors[ i
-       ]->getLocalIndexOfNeighbor( pointer );
+                    if( radius_new < 1.2 * radius && radius_new > 0.9 * radius){
 
-                        pointer->neighbors[ i ]->removeComponent( index_neighbor
-       );
+                        pointer->radii[ i ] = radius_new;
 
                     }
 
                 }
 
-                if( edgesToBeRemoved.size()>0 ){
+            }
 
-                    pointer->removeComponents( edgesToBeRemoved );
+            pointer = pointer->global_successor;
 
-                }
-    */
-    pointer = pointer->global_successor;
-  }
+     }
 
-  // std::cout << " " << std::endl;
-  /*
-       // Remove nodes without neighbor
-       pointer = VGM.getHead();
+     std::cout << " " << std::endl;
 
-       while( pointer ){
+     VGM.determineNumberOfNodes();
 
-              int numberOfEdges = pointer->neighbors.size();
+     // Reset
+     std::cout << " " << std::endl;
+     std::cout << "Reset nodes" << std::endl;
 
-              if( numberOfEdges == 0 ){
+     pointer = VGM.getHead();
 
-                  std::cout << "Remove node" << std::endl;
+     while( pointer ){
 
-                  std::shared_ptr<VGNode> old_pointer = pointer;
+            int numberOfEdges = pointer->neighbors.size();
 
-                  if( pointer->global_predecessor ){
+            for(int i=0;i<numberOfEdges;i++){
 
-                      pointer->global_predecessor->global_successor =
-     pointer->global_successor;
+                pointer->edge_touched[ i ] = false;
+                pointer->sprouting_edge[ i ] = false;
 
-                  }
-                  else{
+            }
 
-                      pointer->global_successor->global_predecessor = NULL;
+            pointer = pointer->global_successor;
 
-                  }
+     }
 
-                  if( pointer->global_successor ){
-
-                      pointer->global_successor->global_predecessor =
-     pointer->global_predecessor;
-
-                  }
-                  else{
-
-                      pointer->global_predecessor->global_successor = NULL;
-
-                  }
-
-                  pointer = pointer->global_successor;
-
-                  old_pointer.reset();
-
-              }
-              else if( numberOfEdges == 1 ){
-
-                  std::vector<double> coord = pointer->coord;
-
-                  // if node is near the boundary, we do not process Omega =
-     (0,L)^3 if( 0.0001<coord[0] && coord[0]<L_x-0.0001 && 0.0001<coord[1] &&
-     coord[1]<L_x-0.0001 && 0.0001<coord[2] && coord[2]<L_x-0.0001 ){
-
-                      pointer->typeOfVGNode = TypeOfNode::NeumannNode;
-
-                  }
-
-              }
-              else{
-
-                  pointer->typeOfVGNode = TypeOfNode::InnerNode;
-
-              }
-
-              pointer = pointer->global_successor;
-
-       }
-
-       // Renumber nodes
-       std::cout << " " << std::endl;
-       std::cout << "Renumber nodes" << std::endl;
-
-       pointer = VGM.getHead();
-
-       int counter = 0;
-
-       while( pointer ){
-
-              pointer->index = counter;
-
-              counter = counter + 1;
-
-              pointer = pointer->global_successor;
-
-       }
-  */
-  VGM.determineNumberOfNodes();
-
-  // Reset
-  oss << " " << std::endl;
-  oss << "Reset nodes" << std::endl;
-  d_model_p->d_log(oss, "net update");
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfEdges = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfEdges; i++) {
-
-      pointer->edge_touched[i] = false;
-      pointer->sprouting_edge[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
 }

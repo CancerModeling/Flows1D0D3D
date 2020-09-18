@@ -366,6 +366,30 @@ public:
 
   }
 
+  void replacePointerWithLocalIndex( int index_new, std::shared_ptr<VGNode> new_pointer ){
+
+       neighbors[ index_new ] = new_pointer;
+
+  }
+
+  void replacePointerWithGlobalIndex( int index_new, std::shared_ptr<VGNode> new_pointer ){
+
+    int numberOfNeighbors = neighbors.size();
+
+    for(int i=0;i<numberOfNeighbors;i++){
+
+      if( index_new == neighbors[i]->index ){
+
+        neighbors[ i ] = new_pointer;
+
+        edge_touched[ i ] = true;
+
+      }
+
+    }
+
+  }
+
 };
 
 } // namespace unet
