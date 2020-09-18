@@ -137,13 +137,23 @@ void util::unet::Network::create_initial_network() {
       phi_sigma_3D[i] = input.d_nut_ic_value;
       phi_sigma_old[i] = input.d_nut_ic_value;
       phi_sigma[i] = input.d_nut_ic_value;
+
     }
+
+    for (int i = 0; i < d_numVertices; i++) {
+
+       phi_sigma_old[N_tot_3D + i] = 0.0;
+       phi_sigma[N_tot_3D + i] = 0.0;
+
+    }
+
   }
 
   // initialize nutrient as one in artery
   // Only on processor zero
   //if (d_procRank == 0) {
-  if (false) {
+  if (scenario == "two_vessels") {
+
     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
     while (pointer) {
@@ -173,8 +183,11 @@ void util::unet::Network::create_initial_network() {
       }
 
       pointer = pointer->global_successor;
+
     } // loop over vertices
+
   }   // if processor zero
+
 }
 
 void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,

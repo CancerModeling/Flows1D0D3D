@@ -245,11 +245,11 @@ void util::unet::Network::rescaleSecombData(
 
     if (pressures[i] < 21.0 && pressures[i] > 0.0) {
 
-      pressures[i] = 5.0;
+      pressures[i] = 1000.0;
 
     } else if (pressures[i] > 21.0) {
 
-      pressures[i] = 1200.0;
+      pressures[i] = 8000.0;
     }
   }
 
@@ -355,8 +355,7 @@ void util::unet::Network::refine1DMesh() {
 
         for (int j = 0; j < 3; j++) {
 
-          new_coord.push_back(0.5 *
-                              (coord_pointer[j] + coord_former_neighbor[j]));
+          new_coord.push_back(0.5 * (coord_pointer[j] + coord_former_neighbor[j]));
         }
 
         pointer_new_node->coord = new_coord;
@@ -367,7 +366,7 @@ void util::unet::Network::refine1DMesh() {
 
         pointer_new_node->neighbors.push_back(pointer_former_neighbor);
 
-        pointer_former_neighbor->replacePointerWithIndex(pointer->index, pointer_new_node);
+        pointer_former_neighbor->replacePointerWithGlobalIndex(pointer->index, pointer_new_node);
 
         pointer->edge_touched[i] = true;
 

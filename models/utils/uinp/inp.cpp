@@ -911,6 +911,8 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   if (d_identify_artery_radius < 0.)
     libmesh_error_msg("Error. Must specify radius to identify artery.");
 
+  d_min_sprouting_length = input("min_sprouting_length", 0.);
+
   d_coupling_3d1d_integration_method = input("coupling_3d1d_integration_method", 0);
   d_disable_remove_redundant_vessel = input("disable_remove_redundant_vessel", false);
 

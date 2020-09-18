@@ -445,6 +445,8 @@ struct NetworkDeck {
   double d_identify_vein_pres;
 
   double d_identify_artery_radius;
+  double d_min_sprouting_length;
+
 
   // 0 - surface coupling
   // 1 - line coupling
@@ -488,7 +490,7 @@ struct NetworkDeck {
         d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
         d_identify_vein_pres(0.), d_compute_elem_weights(false),
         d_network_bifurcate_prob(0.9), d_min_radius(8.5e-3), d_sprouting_prob(0.9),
-        d_identify_artery_radius(0.), d_coupling_3d1d_integration_method(0), d_disable_remove_redundant_vessel(false) {
+        d_identify_artery_radius(0.), d_min_sprouting_length(0.0), d_coupling_3d1d_integration_method(0), d_disable_remove_redundant_vessel(false) {
 
     if (!filename.empty())
       read_parameters(filename);
