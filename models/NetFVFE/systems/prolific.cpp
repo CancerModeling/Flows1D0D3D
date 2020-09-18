@@ -167,7 +167,7 @@ void netfvfe::ProAssembly::assemble_1() {
         compute_rhs_mu =
             d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
                              (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) +
-                         3. * deck.d_bar_E_phi_T * (hyp_cur + nec_cur) -
+                         3. * deck.d_bar_E_phi_T * (hyp_proj + nec_proj) -
                          deck.d_chi_c * nut_cur - deck.d_chi_h * ecm_cur);
 
         compute_mat_pro =
