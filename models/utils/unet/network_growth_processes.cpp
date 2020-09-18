@@ -345,7 +345,7 @@ void util::unet::Network::linkTerminalVessels() {
 
                        int numberOfNeighbors_1 = pointer_1->neighbors.size();
 
-                       if( dist_plane>0.05 && index != index_1 && dist<0.05 && dist>0.0 && length_dir>0.0 ){
+                       if( dist_plane>0.05 && index != index_1 && dist<0.08 && dist>0.0 && length_dir>0.0 ){
 
                            if( numberOfNeighbors_1<3 ){
 
@@ -1399,20 +1399,16 @@ void util::unet::Network::markSproutingGrowth() {
             0.5 * std::erf((std::log(log_dist) - input.d_log_normal_mean) /
                            std::sqrt(2.0 * input.d_log_normal_std_dev *
                                      input.d_log_normal_std_dev));
-
-        // double global_max_TAF = gmm::vect_norminf(phi_TAF_3D);
-        /*
-                            std::cout << "TAF: " << TAF << std::endl;
-                            std::cout << "TAF_th: " << TAF_th << std::endl;
-                            std::cout << "sproutingProbability: " <<
-           sproutingProbability << std::endl; std::cout << "coord: " << coord <<
-           std::endl;
-        */
-
+        
+        std::cout << "TAF: " << TAF << std::endl;
+        std::cout << "TAF_th: " << TAF_th << std::endl;
+        std::cout << "sproutingProbability: " << sproutingProbability << std::endl; std::cout << "coord: " << coord << std::endl;
+        
+/*
         oss << " " << std::endl;
         oss << "radius_initial: " << pointer->radii_initial[i] << std::endl;
         oss << "radius: " << radius << std::endl;
-        oss << "coord: " << coord << std::endl;
+        oss << "coord: " << coord << std::endl;*/
         d_model_p->d_log(oss, "net update");
 
         if (sproutingProbability > input.d_sprouting_prob && TAF > TAF_th) {
@@ -1707,6 +1703,9 @@ void util::unet::Network::processSproutingGrowth() {
 
 
                     bool isColliding = testCollision( new_point );
+
+                    std::cout<< "length_vessel: " << length_vessel << std::endl;
+                    std::cout<< "min_sprouting_length: " << input.d_min_sprouting_length << std::endl;
 
                     if( angle*180.0/M_PI>10.0 && angle*180.0/M_PI<170.0 && !isColliding && length_vessel>input.d_min_sprouting_length ){
 
