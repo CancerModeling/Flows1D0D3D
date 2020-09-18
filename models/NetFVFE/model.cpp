@@ -454,6 +454,16 @@ void netfvfe::Model::solve_system() {
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_pro(
       d_pro.d_sys.solution->clone());
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_hyp(
+      d_hyp.d_sys.solution->clone());
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_nec(
+      d_nec.d_sys.solution->clone());
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_nut(
+      d_nut.d_sys.solution->clone());
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_mde(
+      d_mde.d_sys.solution->clone());
+  UniquePtr<NumericVector<Number>> last_nonlinear_soln_ecm(
+      d_ecm.d_sys.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
@@ -475,39 +485,61 @@ void netfvfe::Model::solve_system() {
     d_network.solveVGMforNutrient(d_pres, d_nut);
     d_log.add_sys_solve_time(clock_begin, 1);
 
-    int counter = 0;
-    for (auto &s : get_nl_solve_assembly()) {
+    reset_clock();
+    d_log("|" + d_nut.d_sys_name + "| -> ", "solve sys");
+    last_nonlinear_soln_nut->zero();
+    last_nonlinear_soln_nut->add(*(d_nut.d_sys.solution));
+    d_nut.solve();
+    last_nonlinear_soln_nut->add(-1., *(d_nut.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
 
-      reset_clock();
+    reset_clock();
+    d_log("|" + d_pro.d_sys_name + "| -> ", "solve sys");
+    last_nonlinear_soln_pro->zero();
+    last_nonlinear_soln_pro->add(*(d_pro.d_sys.solution));
+    d_pro.solve();
+    last_nonlinear_soln_pro->add(-1., *(d_pro.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_pro.d_sys.number());
 
-      // log
-      d_log("|" + s->d_sys_name + "| ", "solve sys");
-      if (counter == get_nl_solve_assembly().size() - 1)
-        d_log(" \n", "solve sys");
-      else
-        d_log(" -> ", "solve sys");
+    reset_clock();
+    d_log("|" + d_hyp.d_sys_name + "| -> ", "solve sys");
+    last_nonlinear_soln_hyp->zero();
+    last_nonlinear_soln_hyp->add(*(d_hyp.d_sys.solution));
+    d_hyp.solve();
+    last_nonlinear_soln_hyp->add(-1., *(d_hyp.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_hyp.d_sys.number());
 
-      // error for convergence
-      if (s->d_sys_name == "Prolific") {
-        last_nonlinear_soln_pro->zero();
-        last_nonlinear_soln_pro->add(*(s->d_sys.solution));
-      }
+    reset_clock();
+    d_log("|" + d_nec.d_sys_name + "| -> ", "solve sys");
+    last_nonlinear_soln_nec->zero();
+    last_nonlinear_soln_nec->add(*(d_nec.d_sys.solution));
+    d_nec.solve();
+    last_nonlinear_soln_nec->add(-1., *(d_nec.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_nec.d_sys.number());
 
-      // solve
-      s->solve();
+    reset_clock();
+    d_log("|" + d_mde.d_sys_name + "| -> ", "solve sys");
+    last_nonlinear_soln_mde->zero();
+    last_nonlinear_soln_mde->add(*(d_mde.d_sys.solution));
+    d_mde.solve();
+    last_nonlinear_soln_mde->add(-1., *(d_mde.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_mde.d_sys.number());
 
-      // calculate error
-      if (s->d_sys_name == "Prolific")
-        last_nonlinear_soln_pro->add(-1., *(s->d_sys.solution));
-
-      // time log
-      d_log.add_sys_solve_time(clock_begin, s->d_sys.number());
-
-      counter++;
-    }
+    reset_clock();
+    d_log("|" + d_ecm.d_sys_name + "| \n", "solve sys");
+    last_nonlinear_soln_ecm->zero();
+    last_nonlinear_soln_ecm->add(*(d_ecm.d_sys.solution));
+    d_ecm.solve();
+    last_nonlinear_soln_ecm->add(-1., *(d_ecm.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = last_nonlinear_soln_pro->linfty_norm();
+    double nonlinear_iter_error = last_nonlinear_soln_pro->linfty_norm()
+        + last_nonlinear_soln_hyp->linfty_norm()
+        + last_nonlinear_soln_nec->linfty_norm()
+        + last_nonlinear_soln_nut->linfty_norm()
+        + last_nonlinear_soln_mde->linfty_norm()
+        + last_nonlinear_soln_ecm->linfty_norm();
     if (d_input.d_perform_output) {
 
       const unsigned int n_linear_iterations = d_pro.d_sys.n_linear_iterations();
