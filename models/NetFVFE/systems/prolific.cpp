@@ -180,7 +180,8 @@ void netfvfe::ProAssembly::assemble_1() {
         // compute quantities independent of dof loop
         compute_rhs_pro =
             d_JxW[qp] * (pro_old + dt * deck.d_lambda_HP * util::heaviside
-                (nut_cur - deck.d_sigma_HP) * hyp_proj);
+                (nut_cur - deck.d_sigma_HP) * hyp_proj +
+                         dt * deck.d_lambda_P * nut_proj * pro_proj);
 
         // keep the factor d_bar_E_phi_T in double well same for
         // prolific and hypoxic
@@ -191,8 +192,8 @@ void netfvfe::ProAssembly::assemble_1() {
                          deck.d_chi_c * nut_proj - deck.d_chi_h * ecm_proj);
 
         compute_mat_pro =
-            d_JxW[qp] * (1. + dt * deck.d_lambda_A -
-                         dt * deck.d_lambda_P * nut_proj * (1. - pro_proj) +
+            d_JxW[qp] * (1. + dt * deck.d_lambda_A +
+                         dt * deck.d_lambda_P * nut_proj * pro_proj +
                          dt * deck.d_lambda_PH *
                          util::heaviside(deck.d_sigma_PH - nut_proj));
       }

@@ -276,6 +276,14 @@ netfvfe::Model::Model(
       d_delayed_msg +=d_tum_sys.get_info();
       d_mesh.write("mesh_" + d_input.d_outfile_tag + ".e");
     }
+
+    // allocate memory to compute error for convergence
+    d_err_check_pro = d_pro.d_sys.solution->clone();
+    d_err_check_hyp = d_hyp.d_sys.solution->clone();
+    d_err_check_nec = d_nec.d_sys.solution->clone();
+    d_err_check_nut = d_nut.d_sys.solution->clone();
+    d_err_check_ecm = d_ecm.d_sys.solution->clone();
+    d_err_check_mde = d_mde.d_sys.solution->clone();
   }
 
   // 1-D network
@@ -451,20 +459,6 @@ void netfvfe::Model::solve_system() {
   // reset nonlinear step
   d_nonlinear_step = 0;
 
-  // to compute the nonlinear convergence
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_pro(
-      d_pro.d_sys.solution->clone());
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_hyp(
-      d_hyp.d_sys.solution->clone());
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_nec(
-      d_nec.d_sys.solution->clone());
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_nut(
-      d_nut.d_sys.solution->clone());
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_mde(
-      d_mde.d_sys.solution->clone());
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_ecm(
-      d_ecm.d_sys.solution->clone());
-
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
 
@@ -487,59 +481,60 @@ void netfvfe::Model::solve_system() {
 
     reset_clock();
     d_log("|" + d_nut.d_sys_name + "| -> ", "solve sys");
-    last_nonlinear_soln_nut->zero();
-    last_nonlinear_soln_nut->add(*(d_nut.d_sys.solution));
+    d_err_check_nut->zero();
+    d_err_check_nut->add(*(d_nut.d_sys.solution));
     d_nut.solve();
-    last_nonlinear_soln_nut->add(-1., *(d_nut.d_sys.solution));
+    d_err_check_nut->add(-1., *(d_nut.d_sys.solution));
     d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
 
     reset_clock();
-    d_log("|" + d_pro.d_sys_name + "| -> ", "solve sys");
-    last_nonlinear_soln_pro->zero();
-    last_nonlinear_soln_pro->add(*(d_pro.d_sys.solution));
+    d_log("|" + d_tum.d_sys_name + "| -> ", "solve sys");
+    d_err_check_pro->zero();
+    d_err_check_pro->add(*(d_pro.d_sys.solution));
     d_pro.solve();
-    last_nonlinear_soln_pro->add(-1., *(d_pro.d_sys.solution));
+    d_err_check_pro->add(-1., *(d_pro.d_sys.solution));
     d_log.add_sys_solve_time(clock_begin, d_pro.d_sys.number());
 
     reset_clock();
     d_log("|" + d_hyp.d_sys_name + "| -> ", "solve sys");
-    last_nonlinear_soln_hyp->zero();
-    last_nonlinear_soln_hyp->add(*(d_hyp.d_sys.solution));
+    d_err_check_hyp->zero();
+    d_err_check_hyp->add(*(d_hyp.d_sys.solution));
     d_hyp.solve();
-    last_nonlinear_soln_hyp->add(-1., *(d_hyp.d_sys.solution));
+    d_err_check_hyp->add(-1., *(d_hyp.d_sys.solution));
     d_log.add_sys_solve_time(clock_begin, d_hyp.d_sys.number());
 
     reset_clock();
     d_log("|" + d_nec.d_sys_name + "| -> ", "solve sys");
-    last_nonlinear_soln_nec->zero();
-    last_nonlinear_soln_nec->add(*(d_nec.d_sys.solution));
+    d_err_check_nec->zero();
+    d_err_check_nec->add(*(d_nec.d_sys.solution));
     d_nec.solve();
-    last_nonlinear_soln_nec->add(-1., *(d_nec.d_sys.solution));
+    d_err_check_nec->add(-1., *(d_nec.d_sys.solution));
     d_log.add_sys_solve_time(clock_begin, d_nec.d_sys.number());
 
     reset_clock();
     d_log("|" + d_mde.d_sys_name + "| -> ", "solve sys");
-    last_nonlinear_soln_mde->zero();
-    last_nonlinear_soln_mde->add(*(d_mde.d_sys.solution));
+    d_err_check_mde->zero();
+    d_err_check_mde->add(*(d_mde.d_sys.solution));
     d_mde.solve();
-    last_nonlinear_soln_mde->add(-1., *(d_mde.d_sys.solution));
+    d_err_check_mde->add(-1., *(d_mde.d_sys.solution));
     d_log.add_sys_solve_time(clock_begin, d_mde.d_sys.number());
 
     reset_clock();
     d_log("|" + d_ecm.d_sys_name + "| \n", "solve sys");
-    last_nonlinear_soln_ecm->zero();
-    last_nonlinear_soln_ecm->add(*(d_ecm.d_sys.solution));
+    d_err_check_ecm->zero();
+    d_err_check_ecm->add(*(d_ecm.d_sys.solution));
     d_ecm.solve();
-    last_nonlinear_soln_ecm->add(-1., *(d_ecm.d_sys.solution));
+    d_err_check_ecm->add(-1., *(d_ecm.d_sys.solution));
     d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = last_nonlinear_soln_pro->linfty_norm()
-        + last_nonlinear_soln_hyp->linfty_norm()
-        + last_nonlinear_soln_nec->linfty_norm()
-        + last_nonlinear_soln_nut->linfty_norm()
-        + last_nonlinear_soln_mde->linfty_norm()
-        + last_nonlinear_soln_ecm->linfty_norm();
+    double nonlinear_iter_error = d_err_check_pro->linfty_norm()
+        + d_err_check_hyp->linfty_norm()
+        + d_err_check_nec->linfty_norm()
+        + d_err_check_nut->linfty_norm()
+        + d_err_check_mde->linfty_norm()
+        + d_err_check_ecm->linfty_norm();
+
     if (d_input.d_perform_output) {
 
       const unsigned int n_linear_iterations = d_pro.d_sys.n_linear_iterations();
