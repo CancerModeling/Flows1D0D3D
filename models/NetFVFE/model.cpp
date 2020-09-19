@@ -276,6 +276,14 @@ netfvfe::Model::Model(
       d_delayed_msg +=d_tum_sys.get_info();
       d_mesh.write("mesh_" + d_input.d_outfile_tag + ".e");
     }
+
+    // allocate memory to compute error for convergence
+    d_err_check_pro = d_pro.d_sys.solution->clone();
+    d_err_check_hyp = d_hyp.d_sys.solution->clone();
+    d_err_check_nec = d_nec.d_sys.solution->clone();
+    d_err_check_nut = d_nut.d_sys.solution->clone();
+    d_err_check_ecm = d_ecm.d_sys.solution->clone();
+    d_err_check_mde = d_mde.d_sys.solution->clone();
   }
 
   // 1-D network
@@ -451,10 +459,6 @@ void netfvfe::Model::solve_system() {
   // reset nonlinear step
   d_nonlinear_step = 0;
 
-  // to compute the nonlinear convergence
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_pro(
-      d_pro.d_sys.solution->clone());
-
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
 
@@ -475,39 +479,62 @@ void netfvfe::Model::solve_system() {
     d_network.solveVGMforNutrient(d_pres, d_nut);
     d_log.add_sys_solve_time(clock_begin, 1);
 
-    int counter = 0;
-    for (auto &s : get_nl_solve_assembly()) {
+    reset_clock();
+    d_log("|" + d_nut.d_sys_name + "| -> ", "solve sys");
+    d_err_check_nut->zero();
+    d_err_check_nut->add(*(d_nut.d_sys.solution));
+    d_nut.solve();
+    d_err_check_nut->add(-1., *(d_nut.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
 
-      reset_clock();
+    reset_clock();
+    d_log("|" + d_tum.d_sys_name + "| -> ", "solve sys");
+    d_err_check_pro->zero();
+    d_err_check_pro->add(*(d_pro.d_sys.solution));
+    d_pro.solve();
+    d_err_check_pro->add(-1., *(d_pro.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_pro.d_sys.number());
 
-      // log
-      d_log("|" + s->d_sys_name + "| ", "solve sys");
-      if (counter == get_nl_solve_assembly().size() - 1)
-        d_log(" \n", "solve sys");
-      else
-        d_log(" -> ", "solve sys");
+    reset_clock();
+    d_log("|" + d_hyp.d_sys_name + "| -> ", "solve sys");
+    d_err_check_hyp->zero();
+    d_err_check_hyp->add(*(d_hyp.d_sys.solution));
+    d_hyp.solve();
+    d_err_check_hyp->add(-1., *(d_hyp.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_hyp.d_sys.number());
 
-      // error for convergence
-      if (s->d_sys_name == "Prolific") {
-        last_nonlinear_soln_pro->zero();
-        last_nonlinear_soln_pro->add(*(s->d_sys.solution));
-      }
+    reset_clock();
+    d_log("|" + d_nec.d_sys_name + "| -> ", "solve sys");
+    d_err_check_nec->zero();
+    d_err_check_nec->add(*(d_nec.d_sys.solution));
+    d_nec.solve();
+    d_err_check_nec->add(-1., *(d_nec.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_nec.d_sys.number());
 
-      // solve
-      s->solve();
+    reset_clock();
+    d_log("|" + d_mde.d_sys_name + "| -> ", "solve sys");
+    d_err_check_mde->zero();
+    d_err_check_mde->add(*(d_mde.d_sys.solution));
+    d_mde.solve();
+    d_err_check_mde->add(-1., *(d_mde.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_mde.d_sys.number());
 
-      // calculate error
-      if (s->d_sys_name == "Prolific")
-        last_nonlinear_soln_pro->add(-1., *(s->d_sys.solution));
-
-      // time log
-      d_log.add_sys_solve_time(clock_begin, s->d_sys.number());
-
-      counter++;
-    }
+    reset_clock();
+    d_log("|" + d_ecm.d_sys_name + "| \n", "solve sys");
+    d_err_check_ecm->zero();
+    d_err_check_ecm->add(*(d_ecm.d_sys.solution));
+    d_ecm.solve();
+    d_err_check_ecm->add(-1., *(d_ecm.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = last_nonlinear_soln_pro->linfty_norm();
+    double nonlinear_iter_error = d_err_check_pro->linfty_norm()
+        + d_err_check_hyp->linfty_norm()
+        + d_err_check_nec->linfty_norm()
+        + d_err_check_nut->linfty_norm()
+        + d_err_check_mde->linfty_norm()
+        + d_err_check_ecm->linfty_norm();
+
     if (d_input.d_perform_output) {
 
       const unsigned int n_linear_iterations = d_pro.d_sys.n_linear_iterations();
