@@ -150,6 +150,13 @@ private:
   /*! Ghosting functor so that PetSc does not give error when coupling dofs
    * of element with neighboring elements */
   util::GhostingFunctorFV d_ghosting_fv;
+
+  UniquePtr<NumericVector<Number>> d_err_check_pro;
+  UniquePtr<NumericVector<Number>> d_err_check_hyp;
+  UniquePtr<NumericVector<Number>> d_err_check_nec;
+  UniquePtr<NumericVector<Number>> d_err_check_nut;
+  UniquePtr<NumericVector<Number>> d_err_check_mde;
+  UniquePtr<NumericVector<Number>> d_err_check_ecm;
 };
 
 } // namespace netfcfvfe

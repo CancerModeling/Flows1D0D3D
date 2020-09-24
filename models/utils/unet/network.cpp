@@ -163,7 +163,8 @@ void util::unet::Network::create_initial_network() {
   // initialize nutrient as one in artery
   // Only on processor zero
   //if (d_procRank == 0) {
-  if (false) {
+  if (scenario == "two_vessels") {
+
     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
     while (pointer) {
