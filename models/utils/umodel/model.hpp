@@ -65,6 +65,11 @@ public:
     libmesh_error_msg("Error: get_assembly should be defined in inheriting class");
   };
 
+  virtual std::vector<util::BaseAssembly *> get_all_assembly() {
+    libmesh_error_msg("Error: get_all_assembly should be defined in inheriting "
+                      "class");
+  }
+
 public:
   /*! @brief To store input parameters */
   std::string d_name;

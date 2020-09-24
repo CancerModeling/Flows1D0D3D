@@ -245,7 +245,7 @@ public:
   gmm::row_matrix<gmm::wsvector<double>> A_flow_3D1D;
 
   /*! @brief System matrix for 3D1D nutrient model*/
-  //gmm::row_matrix<gmm::wsvector<double>> A_nut_3D1D;
+  gmm::row_matrix<gmm::wsvector<double>> A_nut_3D1D;
 
   /*! @brief System force for vessel pressure */
   std::vector<double> b;
@@ -284,7 +284,7 @@ public:
   std::vector<double> phi_sigma_3D;
 
   /*! @brief Current TAF concentration */
-  std::vector<double> phi_TAF_3D;;
+  std::vector<double> phi_TAF;
 
   double mu;
 

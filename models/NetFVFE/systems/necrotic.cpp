@@ -23,7 +23,6 @@ void netfvfe::NecAssembly::assemble() {
 void netfvfe::NecAssembly::assemble_1() {
 
   // Get required system alias
-  // auto &nec = d_model_p->get_nec_assembly();
   auto &nut = d_model_p->get_nut_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
   
@@ -62,7 +61,7 @@ void netfvfe::NecAssembly::assemble_1() {
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         nec_old += d_phi[l][qp] * get_old_sol(l);
-        hyp_cur += d_phi[l][qp] * hyp.get_current_sol(l);
+        hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
       }
 
       if (deck.d_assembly_method == 1) {

@@ -200,10 +200,13 @@ struct TumorDeck {
 
   double d_bar_M_P;
   double d_bar_E_phi_T;
+  double d_bar_E_phi_P;
   double d_epsilon_T;
+  double d_epsilon_P;
 
   explicit TumorDeck(const std::string &filename = "")
-      : d_bar_M_P(0.), d_bar_E_phi_T(0.), d_epsilon_T(0.) {
+      : d_bar_M_P(0.), d_bar_E_phi_T(0.), d_epsilon_T(0.)
+      , d_bar_E_phi_P(0.), d_epsilon_P(0.){
 
     if (!filename.empty())
       read_parameters(filename);
@@ -225,9 +228,13 @@ struct HypoxicDeck {
   double d_sigma_HP;
   double d_sigma_HN;
 
+  double d_bar_E_phi_H;
+  double d_epsilon_H;
+
   explicit HypoxicDeck(const std::string &filename = "")
       : d_bar_M_H(0.), d_lambda_HP(0.), d_lambda_PH(0.), d_lambda_HN(0.),
-        d_sigma_PH(0.), d_sigma_HP(0.), d_sigma_HN(0.) {
+        d_sigma_PH(0.), d_sigma_HP(0.), d_sigma_HN(0.),
+  d_bar_E_phi_H(0.), d_epsilon_H(0.){
 
     if (!filename.empty())
       read_parameters(filename);
@@ -445,16 +452,16 @@ struct NetworkDeck {
   double d_identify_vein_pres;
 
   double d_identify_artery_radius;
-  double d_min_sprouting_length;
-
 
   // 0 - surface coupling
   // 1 - line coupling
   // 2 - surface coupling for radius >= h/2, line coupling otherwise
   int d_coupling_3d1d_integration_method;
   bool d_disable_remove_redundant_vessel;
+  double d_min_length_for_sprouting;
 
   // growth related params
+  bool d_network_update;
   unsigned int d_network_update_interval;
   double d_network_update_taf_threshold;
   double d_log_normal_mean;
@@ -478,7 +485,9 @@ struct NetworkDeck {
 
   explicit NetworkDeck(const std::string &filename = "")
       : network_active(false), d_net_direction_lambda_g(0.),
-        d_net_length_R_factor(0.), d_network_update_interval(1),
+        d_net_length_R_factor(0.), 
+        d_network_update(true),
+        d_network_update_interval(1),
         d_log_normal_mean(0.), d_log_normal_std_dev(0.),
         d_net_radius_exponent_gamma(1.), d_no_branch_dist(1),
         d_new_vessel_max_angle(0.), d_branch_angle(0.),
@@ -490,7 +499,8 @@ struct NetworkDeck {
         d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
         d_identify_vein_pres(0.), d_compute_elem_weights(false),
         d_network_bifurcate_prob(0.9), d_min_radius(8.5e-3), d_sprouting_prob(0.9),
-        d_identify_artery_radius(0.), d_min_sprouting_length(0.0), d_coupling_3d1d_integration_method(0), d_disable_remove_redundant_vessel(false) {
+        d_identify_artery_radius(0.), d_coupling_3d1d_integration_method(0), d_disable_remove_redundant_vessel(false),
+        d_min_length_for_sprouting(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -516,10 +526,17 @@ struct Flow1DDeck {
 
   std::string d_scenario;
 
+  bool d_outlet_apply_neumann;
+  bool d_inlet_apply_neumann;
+  double d_outlet_neumann_val;
+  double d_inlet_neumann_val;
+
   explicit Flow1DDeck(const std::string &filename = "")
       : d_init_vessel_mu(0.), d_in_pressure(0.), d_in_nutrient(0.),
           d_blood_density(1.),
-      d_D_sigma_v(1.), d_in_nutrient_vein(0.), d_osmotic_sigma(0.) {
+      d_D_sigma_v(1.), d_in_nutrient_vein(0.), d_osmotic_sigma(0.),
+        d_outlet_apply_neumann(false), d_outlet_neumann_val(0.),
+        d_inlet_apply_neumann(false), d_inlet_neumann_val(0.){
 
     if (!filename.empty())
       read_parameters(filename);

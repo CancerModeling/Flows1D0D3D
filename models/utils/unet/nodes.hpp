@@ -168,8 +168,6 @@ public:
 
         local_index_neighbor = i;
 
-        return local_index_neighbor;
-
       }
 
     }
@@ -178,7 +176,14 @@ public:
 
   }
 
-  void replacePointerWithIndex( int index_new, std::shared_ptr<VGNode> new_pointer ){
+  void replacePointerWithLocalIndex( int index_new, std::shared_ptr<VGNode> new_pointer ){
+
+       neighbors[ index_new ] = new_pointer;
+
+  }
+
+
+  void replacePointerWithGlobalIndex( int index_new, std::shared_ptr<VGNode> new_pointer ){
 
     int numberOfNeighbors = neighbors.size();
 
@@ -363,30 +368,6 @@ public:
        edge_touched = edge_touched_new;
        sprouting_edge = sprouting_edge_new;
        neighbors = neighbors_new;
-
-  }
-
-  void replacePointerWithLocalIndex( int index_new, std::shared_ptr<VGNode> new_pointer ){
-
-       neighbors[ index_new ] = new_pointer;
-
-  }
-
-  void replacePointerWithGlobalIndex( int index_new, std::shared_ptr<VGNode> new_pointer ){
-
-    int numberOfNeighbors = neighbors.size();
-
-    for(int i=0;i<numberOfNeighbors;i++){
-
-      if( index_new == neighbors[i]->index ){
-
-        neighbors[ i ] = new_pointer;
-
-        edge_touched[ i ] = true;
-
-      }
-
-    }
 
   }
 
