@@ -17,6 +17,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys, BaseAssembly &gra
 
      int numberOfNodesOld = VGM.getNumberOfNodes();
 
+     // TODO currently we have fixed update interval
     d_update_interval = 3;
 
      if( d_update_number%3 == 0 ) {
