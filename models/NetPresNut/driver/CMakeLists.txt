@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 # ****************************************************************************
 # Project information
 # ****************************************************************************
-set(ProjectName "NetFCFVFE")
+set(ProjectName "NetPresNut")
 set(ProjectLib "Lib${ProjectName}")
 project(${ProjectName} CXX)
 

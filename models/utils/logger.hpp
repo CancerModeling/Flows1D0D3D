@@ -273,7 +273,7 @@ public:
 
     // print to file without any format
     if (d_comm_p->rank() == 0)
-      d_ts_file << log_ts_base(i, 0);
+      d_ts_file << log_ts_base(i, 0) << std::flush;
 
     // print to screen with format
     if (i > 0) {
@@ -286,7 +286,7 @@ public:
 
     // print to file without any format
     if (d_comm_p->rank() == 0)
-      d_ts_file << log_ts_base_final_avg(sim_time, 0);
+      d_ts_file << log_ts_base_final_avg(sim_time, 0) << std::flush;
 
     // print to screen with format
     log(log_ts_base_final_avg(sim_time, 2), "TS log");
@@ -295,31 +295,31 @@ public:
   void log_ts_all() {
     for (int i=0; i<d_solve_time.size(); i++) {
       if (d_comm_p->rank() == 0)
-        d_ts_file << log_ts_base(i, 0);
+        d_ts_file << log_ts_base(i, 0) << std::flush;
     }
   }
 
-  void log_qoi_header(const double &time, const std::vector<double> &qoi,
-      const std::vector<std::string> &qoi_names) {
+  void log_qoi_header(const double &time, const std::vector<std::string> &qoi_names) {
 
     std::ostringstream oss;
     oss << "time ";
-    for (unsigned int i =0; i< qoi.size(); i++) {
+    for (unsigned int i =0; i< qoi_names.size(); i++) {
       oss << qoi_names[i];
-      if (i < qoi.size() - 1)
+      if (i < qoi_names.size() - 1)
         oss << " ";
       else
         oss << "\n";
     }
 
     // log to file
-    d_qoi_file << oss.str();
+    if (d_comm_p->rank() == 0)
+      d_qoi_file << oss.str() << std::flush;
 
     // log to screen
     std::string str = "\n  QoI log header\n  " + oss.str();
     log(str, "debug");
 
-    log_qoi(time, qoi);
+    //log_qoi(time, qoi);
   }
 
   void log_qoi(const double &time, const std::vector<double> &qoi) {
@@ -335,7 +335,8 @@ public:
     }
 
     // log to file
-    d_qoi_file << oss.str();
+    if (d_comm_p->rank() == 0)
+      d_qoi_file << oss.str() << std::flush;
 
     // log to screen
     std::string str = "  " + oss.str();

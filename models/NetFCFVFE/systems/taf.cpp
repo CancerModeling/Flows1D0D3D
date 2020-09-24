@@ -47,17 +47,20 @@ void netfcfvfe::TafAssembly::assemble() {
 void netfcfvfe::TafAssembly::assemble_1() {
 
   // Get required system alias
-  // auto &taf = d_model_p->get_ecm_assembly();
-  auto &hyp = d_model_p->get_hyp_assembly();  
+  auto &hyp = d_model_p->get_hyp_assembly();
+  auto &vel = d_model_p->get_vel_assembly();
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
   const Real dt = d_model_p->d_dt;
+  const Real advection_factor = deck.d_advection_active ? 1. : 0.;
 
   // Store current and old solution
   Real taf_old = 0.;
   Real hyp_cur = 0.;
   Real hyp_proj = 0.;
+
+  Gradient vel_cur = 0.;
 
   Real compute_rhs = 0.;
   Real compute_mat = 0.;
@@ -67,6 +70,7 @@ void netfcfvfe::TafAssembly::assemble_1() {
 
     init_dof(elem);
     hyp.init_dof(elem);
+    vel.init_dof(elem);
 
     // init fe and element matrix and vector
     init_fe(elem);
@@ -75,10 +79,14 @@ void netfcfvfe::TafAssembly::assemble_1() {
 
       // Computing solution
       taf_old = 0.; hyp_cur = 0.;
+      vel_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         taf_old += d_phi[l][qp] * get_old_sol(l);
-        hyp_cur += d_phi[l][qp] * hyp.get_current_sol(l);
+        hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
+
+        for (unsigned int ll=0; ll<d_mesh.mesh_dimension(); ll++)
+          vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
       }
 
       if (deck.d_assembly_method == 1) {
@@ -113,6 +121,10 @@ void netfcfvfe::TafAssembly::assemble_1() {
           // gradient term
           d_Ke(i, j) +=
               d_JxW[qp] * dt * deck.d_D_TAF * d_dphi[j][qp] * d_dphi[i][qp];
+
+          // advection of taf
+          d_Ke(i, j) -=
+              advection_factor * d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
         }
       }
     } // loop over quadrature points

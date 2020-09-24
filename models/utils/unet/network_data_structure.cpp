@@ -243,6 +243,7 @@ void util::unet::Network::rescaleSecombData(
       }
     }
 
+    // TODO need to fix this
     if (pressures[i] < 21.0 && pressures[i] > 0.0) {
 
       pressures[i] = 1000.0;
@@ -355,7 +356,8 @@ void util::unet::Network::refine1DMesh() {
 
         for (int j = 0; j < 3; j++) {
 
-          new_coord.push_back(0.5 * (coord_pointer[j] + coord_former_neighbor[j]));
+          new_coord.push_back(0.5 *
+                              (coord_pointer[j] + coord_former_neighbor[j]));
         }
 
         pointer_new_node->coord = new_coord;

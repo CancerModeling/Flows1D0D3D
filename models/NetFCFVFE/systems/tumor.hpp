@@ -15,10 +15,6 @@ namespace netfcfvfe {
 // forward declare
 class Model;
 
-/*! @brief Initial condition for tumor species */
-Number initial_condition_tum(const Point &p, const Parameters &es,
-                             const std::string &system_name, const std::string &var_name);
-
 /*! @brief Class to perform assembly of tumor species */
 class TumAssembly : public util::BaseAssembly {
 
@@ -32,7 +28,12 @@ public:
         d_model_p(model) {}
 
   /*! @brief Assembly function. Overrides the default assembly function */
-  void assemble() override ;
+  void assemble() override;
+
+  /*!
+   * @brief Calls custom solver
+   */
+  void solve_custom() override;
 
 public:
 

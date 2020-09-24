@@ -99,6 +99,251 @@ inline void create_mesh(InpDeck &input, ReplicatedMesh &mesh) {
   }
 }
 
+inline double compute_diff_qoi(const std::string &type, BaseAssembly &a,
+    BaseAssembly &b, unsigned int local_var_id_a = 0,
+                        unsigned int local_var_id_b = 0) {
+
+  Real qoi = 0.;
+  if (type == "inf")
+    qoi = DBL_MAX;
+
+  Real cur_sol_a = 0.;
+  Real cur_sol_b = 0.;
+  Real cur_sol_a_l = 0.;
+  Real cur_sol_b_l = 0.;
+  for (const auto &elem : a.d_mesh.active_local_element_ptr_range()) {
+
+    a.init_dof(elem);
+    b.init_dof(elem);
+    for (unsigned int qp = 0; qp < a.d_qrule.n_points(); qp++) {
+      cur_sol_a = 0.;
+      cur_sol_b = 0.;
+      for (unsigned int l = 0; l < a.d_phi.size(); l++) {
+
+        if (a.d_num_vars == 1)
+          cur_sol_a_l = a.get_current_sol(l);
+        else
+          cur_sol_a_l = a.get_current_sol_var(l, local_var_id_a);
+
+        if (b.d_num_vars == 1)
+          cur_sol_b_l = b.get_current_sol(l);
+        else
+          cur_sol_b_l = b.get_current_sol_var(l, local_var_id_b);
+
+        if (type == "mass" and cur_sol_a_l < 0.)
+          cur_sol_a_l = 0.;
+        if (type == "mass" and cur_sol_b_l < 0.)
+          cur_sol_b_l = 0.;
+
+        cur_sol_a = a.d_phi[l][qp] * cur_sol_a_l;
+        cur_sol_b = a.d_phi[l][qp] * cur_sol_b_l;
+      }
+
+      if (type == "mass")
+        qoi += a.d_JxW[qp] * (cur_sol_a - cur_sol_b);
+      else if (type == "l1")
+        qoi += a.d_JxW[qp] * std::abs(cur_sol_a - cur_sol_b);
+      else if (type == "l2")
+        qoi += a.d_JxW[qp] * std::pow(cur_sol_a - cur_sol_b, 2);
+      else if (type == "linf") {
+        if (qoi > std::abs(cur_sol_a - cur_sol_b))
+          qoi = std::abs(cur_sol_a - cur_sol_b);
+      }
+      else {
+        libmesh_error_msg("Error: Invalid type = " + type + " for qoi calculation");
+      }
+    } // loop over quadrature points
+  } // loop over elements
+
+  // communicate qoi from other processors
+  Real total_qoi = 0.;
+  if (type == "linf")
+    MPI_Allreduce(&qoi, &total_qoi, 1, MPI_DOUBLE, MPI_MAX,
+                MPI_COMM_WORLD);
+  else
+    MPI_Allreduce(&qoi, &total_qoi, 1, MPI_DOUBLE, MPI_SUM,
+                  MPI_COMM_WORLD);
+
+  if (type == "l2")
+    total_qoi = std::sqrt(total_qoi);
+
+  return total_qoi;
+}
+
+inline double compute_prolific_qoi(const std::string &type, BaseAssembly &a,
+                            BaseAssembly &b, BaseAssembly &c,
+                            unsigned int local_var_id_a = 0,
+                            unsigned int local_var_id_b = 0,
+                            unsigned int local_var_id_c = 0) {
+
+  // a - tumor, b - hypoxic, c - necrotic
+
+  Real qoi = 0.;
+  if (type == "inf")
+    qoi = DBL_MAX;
+
+  Real cur_sol_a = 0.;
+  Real cur_sol_b = 0.;
+  Real cur_sol_c = 0.;
+  Real cur_sol_a_l = 0.;
+  Real cur_sol_b_l = 0.;
+  Real cur_sol_c_l = 0.;
+  for (const auto &elem : a.d_mesh.active_local_element_ptr_range()) {
+
+    a.init_dof(elem);
+    b.init_dof(elem);
+    c.init_dof(elem);
+    for (unsigned int qp = 0; qp < a.d_qrule.n_points(); qp++) {
+      cur_sol_a = 0.;
+      cur_sol_b = 0.;
+      cur_sol_c = 0.;
+      for (unsigned int l = 0; l < a.d_phi.size(); l++) {
+
+        if (a.d_num_vars == 1)
+          cur_sol_a_l = a.get_current_sol(l);
+        else
+          cur_sol_a_l = a.get_current_sol_var(l, local_var_id_a);
+
+        if (b.d_num_vars == 1)
+          cur_sol_b_l = b.get_current_sol(l);
+        else
+          cur_sol_b_l = b.get_current_sol_var(l, local_var_id_b);
+
+        if (c.d_num_vars == 1)
+          cur_sol_c_l = c.get_current_sol(l);
+        else
+          cur_sol_c_l = c.get_current_sol_var(l, local_var_id_c);
+
+        if (type == "mass" and cur_sol_a_l < 0.)
+          cur_sol_a_l = 0.;
+        if (type == "mass" and cur_sol_b_l < 0.)
+          cur_sol_b_l = 0.;
+        if (type == "mass" and cur_sol_c_l < 0.)
+          cur_sol_c_l = 0.;
+
+        cur_sol_a = a.d_phi[l][qp] * cur_sol_a_l;
+        cur_sol_b = a.d_phi[l][qp] * cur_sol_b_l;
+        cur_sol_c = a.d_phi[l][qp] * cur_sol_c_l;
+      }
+
+      if (type == "mass")
+        qoi += a.d_JxW[qp] * (cur_sol_a - cur_sol_b - cur_sol_c);
+      else if (type == "l1")
+        qoi += a.d_JxW[qp] * std::abs(cur_sol_a - cur_sol_b - cur_sol_c);
+      else if (type == "l2")
+        qoi += a.d_JxW[qp] * std::pow(cur_sol_a - cur_sol_b - cur_sol_c, 2);
+      else if (type == "linf") {
+        if (qoi > std::abs(cur_sol_a - cur_sol_b - cur_sol_c))
+          qoi = std::abs(cur_sol_a - cur_sol_b - cur_sol_c);
+      }
+      else {
+        libmesh_error_msg("Error: Invalid type = " + type + " for qoi calculation");
+      }
+    } // loop over quadrature points
+  } // loop over elements
+
+  // communicate qoi from other processors
+  Real total_qoi = 0.;
+  if (type == "linf")
+    MPI_Allreduce(&qoi, &total_qoi, 1, MPI_DOUBLE, MPI_MAX,
+                  MPI_COMM_WORLD);
+  else
+    MPI_Allreduce(&qoi, &total_qoi, 1, MPI_DOUBLE, MPI_SUM,
+                  MPI_COMM_WORLD);
+
+  if (type == "l2")
+    total_qoi = std::sqrt(total_qoi);
+
+  return total_qoi;
+}
+
+inline double compute_tumor_qoi(const std::string &type, BaseAssembly &a,
+                                   BaseAssembly &b, BaseAssembly &c,
+                                   unsigned int local_var_id_a = 0,
+                                   unsigned int local_var_id_b = 0,
+                                   unsigned int local_var_id_c = 0) {
+
+  // a - prolific, b - hypoxic, c - necrotic
+
+  Real qoi = 0.;
+  if (type == "inf")
+    qoi = DBL_MAX;
+
+  Real cur_sol_a = 0.;
+  Real cur_sol_b = 0.;
+  Real cur_sol_c = 0.;
+  Real cur_sol_a_l = 0.;
+  Real cur_sol_b_l = 0.;
+  Real cur_sol_c_l = 0.;
+  for (const auto &elem : a.d_mesh.active_local_element_ptr_range()) {
+
+    a.init_dof(elem);
+    b.init_dof(elem);
+    c.init_dof(elem);
+    for (unsigned int qp = 0; qp < a.d_qrule.n_points(); qp++) {
+      cur_sol_a = 0.;
+      cur_sol_b = 0.;
+      cur_sol_c = 0.;
+      for (unsigned int l = 0; l < a.d_phi.size(); l++) {
+
+        if (a.d_num_vars == 1)
+          cur_sol_a_l = a.get_current_sol(l);
+        else
+          cur_sol_a_l = a.get_current_sol_var(l, local_var_id_a);
+
+        if (b.d_num_vars == 1)
+          cur_sol_b_l = b.get_current_sol(l);
+        else
+          cur_sol_b_l = b.get_current_sol_var(l, local_var_id_b);
+
+        if (c.d_num_vars == 1)
+          cur_sol_c_l = c.get_current_sol(l);
+        else
+          cur_sol_c_l = c.get_current_sol_var(l, local_var_id_c);
+
+        if (type == "mass" and cur_sol_a_l < 0.)
+          cur_sol_a_l = 0.;
+        if (type == "mass" and cur_sol_b_l < 0.)
+          cur_sol_b_l = 0.;
+        if (type == "mass" and cur_sol_c_l < 0.)
+          cur_sol_c_l = 0.;
+
+        cur_sol_a = a.d_phi[l][qp] * cur_sol_a_l;
+        cur_sol_b = a.d_phi[l][qp] * cur_sol_b_l;
+        cur_sol_c = a.d_phi[l][qp] * cur_sol_c_l;
+      }
+
+      if (type == "mass")
+        qoi += a.d_JxW[qp] * (cur_sol_a + cur_sol_b + cur_sol_c);
+      else if (type == "l1")
+        qoi += a.d_JxW[qp] * std::abs(cur_sol_a + cur_sol_b + cur_sol_c);
+      else if (type == "l2")
+        qoi += a.d_JxW[qp] * std::pow(cur_sol_a + cur_sol_b + cur_sol_c, 2);
+      else if (type == "linf") {
+        if (qoi > std::abs(cur_sol_a + cur_sol_b + cur_sol_c))
+          qoi = std::abs(cur_sol_a + cur_sol_b + cur_sol_c);
+      }
+      else {
+        libmesh_error_msg("Error: Invalid type = " + type + " for qoi calculation");
+      }
+    } // loop over quadrature points
+  } // loop over elements
+
+  // communicate qoi from other processors
+  Real total_qoi = 0.;
+  if (type == "linf")
+    MPI_Allreduce(&qoi, &total_qoi, 1, MPI_DOUBLE, MPI_MAX,
+                  MPI_COMM_WORLD);
+  else
+    MPI_Allreduce(&qoi, &total_qoi, 1, MPI_DOUBLE, MPI_SUM,
+                  MPI_COMM_WORLD);
+
+  if (type == "l2")
+    total_qoi = std::sqrt(total_qoi);
+
+  return total_qoi;
+}
+
 inline void scale_pres(const ReplicatedMesh &mesh, util::BaseAssembly &pres,
                        const double &scale, std::vector<Number> &p_save,
                        std::vector<unsigned int> &p_dofs) {

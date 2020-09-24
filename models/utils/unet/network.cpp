@@ -30,9 +30,8 @@ void util::unet::Network::create_initial_network() {
   //  - Right hand side
   //
 
-  const auto &input = d_model_p->get_input_deck();
-  d_coupled_solver =
-      d_model_p->d_name == "NetFCFVFE" or d_model_p->d_name == "NetFV";
+  auto &input = d_model_p->get_input_deck();
+  d_coupled_solver = d_model_p->d_name == "NetFCFVFE";
 
   if (d_procSize > 1 and d_coupled_solver)
     libmesh_error_msg(
@@ -75,6 +74,25 @@ void util::unet::Network::create_initial_network() {
   // and communicate with other processors
   prepare_and_communicate_network();
 
+  // get minimum length of vessel segments and set it as minimum length
+  // for sprouting
+  if (d_procRank == 0) {
+    double min_vessel_length = 100. * input.d_domain_params[1];
+    std::shared_ptr<VGNode> pointer = VGM.getHead();
+    while (pointer) {
+      for (int i=0; i<pointer->neighbors.size(); i++) {
+        double length = util::dist_between_points(pointer->coord, pointer->neighbors[i]->coord);
+        if (min_vessel_length > length)
+          min_vessel_length = length;
+      }
+      pointer = pointer->global_successor;
+    } // loop over vertices
+
+    // if user did not specify min length, set now
+    if (input.d_min_length_for_sprouting < 1.e-12)
+      input.d_min_length_for_sprouting = 0.9 * min_vessel_length;
+  }
+
   // Initialize common data
   d_has_network_changed = true;
   d_update_interval = input.d_network_update_interval;
@@ -95,7 +113,7 @@ void util::unet::Network::create_initial_network() {
   if (d_procRank == 0) {
     P_3D = std::vector<double>(N_tot_3D, 0.0);
     phi_sigma_3D = std::vector<double>(N_tot_3D, 0.0);
-    phi_TAF_3D = std::vector<double>(N_tot_3D, 0.0);
+    phi_TAF = std::vector<double>(N_tot_3D, 0.0);
   }
 
   // initialize matrix and vector
@@ -127,6 +145,8 @@ void util::unet::Network::create_initial_network() {
 
     P_3D1D = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
 
+    A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D + d_numVertices,
+                                                        N_tot_3D + d_numVertices);
     b_nut_3D1D = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
 
     phi_sigma = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
@@ -137,16 +157,7 @@ void util::unet::Network::create_initial_network() {
       phi_sigma_3D[i] = input.d_nut_ic_value;
       phi_sigma_old[i] = input.d_nut_ic_value;
       phi_sigma[i] = input.d_nut_ic_value;
-
     }
-
-    for (int i = 0; i < d_numVertices; i++) {
-
-       phi_sigma_old[N_tot_3D + i] = 0.0;
-       phi_sigma[N_tot_3D + i] = 0.0;
-
-    }
-
   }
 
   // initialize nutrient as one in artery
@@ -183,11 +194,8 @@ void util::unet::Network::create_initial_network() {
       }
 
       pointer = pointer->global_successor;
-
     } // loop over vertices
-
   }   // if processor zero
-
 }
 
 void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
@@ -214,24 +222,19 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
     P_3D1D = b_flow_3D1D;
   }
 
-  gmm::iteration iter(1.0E-10, 2);
+  gmm::iteration iter(1.0E-10,2);
 
-  // gmm::identity_matrix PR;
+  gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50, 1e-8);
 
-  // gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D,
-  // 50,
-  //                                                             1e-8);
+  //gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50, 1e-4);
 
-  // gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D,
-  // 50, 1e-4);
+  //gmm::ildlt_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
 
-  // gmm::ildlt_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
-
-  gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
+  // gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
 
   gmm::gmres(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, restart, iter);
 
-  // gmm::bicgstab(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, iter);
+  //gmm::bicgstab(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, iter);
 
   auto pointer = VGM.getHead();
 
@@ -279,19 +282,9 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
 
   gmm::iteration iter(1.0E-10);
 
-  // gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D,
-  // 50, 1e-4);
+  gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D);
 
-  // gmm::identity_matrix PR;
-
-  // gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D,
-  // 70, 1e-8);
-
-  gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
-
-  gmm::gmres(A_flow_3D1D, phi_sigma, b_nut_3D1D, PR, restart, iter);
-
-  // gmm::bicgstab(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, iter);
+  gmm::gmres(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, restart, iter);
 
   auto pointer = VGM.getHead();
 
@@ -301,17 +294,8 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
 
     pointer->c_v = phi_sigma[N_tot_3D + indexOfNode];
 
-    if (phi_sigma[N_tot_3D + indexOfNode] > 1.0) {
-
-      pointer->c_v = 1.0;
-      phi_sigma[N_tot_3D + indexOfNode] = 1.0;
-    }
-    /*
-        std::cout << "index: " << pointer->index << " c_v: " << pointer->c_v
-                  << " p_v: " << pointer->p_v << " coord: " << pointer->coord
-                  << std::endl;
-    */
     pointer = pointer->global_successor;
+
   }
 
   // do not modify old with current concentration as this solver could be
@@ -502,6 +486,99 @@ std::vector<double> util::unet::Network::compute_qoi() {
 
   if (d_procRank > 0)
     return {};
+
+  // For Tobias analysis
+  // TODO remove in final merge
+  {
+    // report 1D data
+    auto pointer = VGM.getHead();
+
+    int numberOfBifurcations = 0;
+
+    int numberOfVessels = 0;
+
+    double total_length = 0.0;
+
+    double total_volume = 0.0;
+
+    while (pointer) {
+
+      int numberOfNeighbors = pointer->neighbors.size();
+
+      if( numberOfNeighbors > 2 ){
+
+        numberOfBifurcations++;
+
+      }
+
+      for(int i=0;i<numberOfNeighbors;i++){
+
+        if( pointer->edge_touched[ i ] == false ){
+
+          double length = util::dist_between_points(pointer->coord, pointer->neighbors[i]->coord);
+
+          total_length = total_length + length;
+
+          total_volume = total_volume + length * pointer->radii[ i ] * pointer->radii[ i ] * M_PI;
+
+          numberOfVessels++;
+
+          int localIndex = pointer->neighbors[i]->getLocalIndexOfNeighbor( pointer );
+
+          pointer->edge_touched[ i ] = true;
+
+          pointer->neighbors[i]->edge_touched[ localIndex ] = true;
+
+        }
+
+      }
+
+      pointer = pointer->global_successor;
+
+    }
+
+
+    pointer = VGM.getHead();
+
+    while( pointer ){
+
+      int numberOfEdges = pointer->neighbors.size();
+
+      for(int i=0;i<numberOfEdges;i++){
+
+        pointer->edge_touched[ i ] = false;
+        pointer->sprouting_edge[ i ] = false;
+
+      }
+
+      pointer = pointer->global_successor;
+
+    }
+
+    std::string path_number_bifurcations = "two_vessels_number_bifurcations.txt";
+
+    std::fstream file_number_bifurcations;
+    file_number_bifurcations.open(path_number_bifurcations, std::ios::out|std::ios::app);
+    file_number_bifurcations << numberOfBifurcations << std::endl;
+
+    std::string path_total_length = "two_vessels_total_length.txt";
+
+    std::fstream file_total_length;
+    file_total_length.open(path_total_length, std::ios::out|std::ios::app);
+    file_total_length << total_length << std::endl;
+
+    std::string path_number_of_vessels = "two_vessels_number_of_vessels.txt";
+
+    std::fstream file_number_of_vessels;
+    file_number_of_vessels.open(path_number_of_vessels, std::ios::out|std::ios::app);
+    file_number_of_vessels << numberOfVessels << std::endl;
+
+    std::string path_total_volume = "two_vessels_total_volume.txt";
+
+    std::fstream file_total_volume;
+    file_total_volume.open(path_total_volume, std::ios::out|std::ios::app);
+    file_total_volume << total_volume << std::endl;
+  }
 
   // 0 - r_v_mean             1 - r_v_std
   // 2 - l_v_mean             3 - l_v_std         4 - l_v_total

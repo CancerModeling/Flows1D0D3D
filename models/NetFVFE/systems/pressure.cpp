@@ -167,8 +167,10 @@ void netfvfe::PressureAssembly::assemble_1d_coupling() {
 void netfvfe::PressureAssembly::assemble_face() {
 
   // Get required system alias
-  // auto &pres = d_model_p->get_pres_assembly();
-  auto &tum = d_model_p->get_tum_assembly();
+  auto &pro = d_model_p->get_pro_assembly();
+  auto &hyp = d_model_p->get_hyp_assembly();
+  auto &nut = d_model_p->get_nut_assembly();
+  auto &ecm = d_model_p->get_ecm_assembly();
 
   // Parameters
   const auto &deck = d_model_p->get_input_deck();
@@ -191,16 +193,27 @@ void netfvfe::PressureAssembly::assemble_face() {
   std::vector<unsigned int> dof_indices_pres_neigh;
 
   // Store current and old solution
-  Real tum_cur = 0.;
-  Real chem_tum_cur = 0.;
+  Real nut_cur = 0.;
+  Real ecm_cur = 0.;
+  Real chem_pro_cur = 0.;
+  Real chem_hyp_cur = 0.;
 
-  Gradient tum_grad = 0.;
+  Real nut_proj = 0.;
+  Real ecm_proj = 0.;
+
+  Gradient pro_grad = 0.;
+  Gradient hyp_grad = 0.;
+
+  Gradient Sp = 0.;
 
   // Looping through elements
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
-    tum.init_dof(elem);
+    pro.init_dof(elem);
+    hyp.init_dof(elem);
+    nut.init_dof(elem);
+    ecm.init_dof(elem);
 
     // reset matrix anf force
     Ke_dof_col.clear();
@@ -209,9 +222,9 @@ void netfvfe::PressureAssembly::assemble_face() {
     Ke_dof_row[0] = get_global_dof_id(0);
     Fe(0) = 0.;
 
-    // get solution at this element
-    tum_cur = tum.get_current_sol_var(0, 0);
-    chem_tum_cur = tum.get_current_sol_var(0, 1);
+    // get finite-volume quantities
+    nut_cur = nut.get_current_sol(0);
+    nut_proj = util::project_concentration(nut_cur);
 
     // loop over sides of the element
     for (auto side : elem->side_index_range()) {
@@ -225,8 +238,7 @@ void netfvfe::PressureAssembly::assemble_face() {
         init_dof(neighbor, dof_indices_pres_neigh);
 
         // get coefficient
-        const Real a_diff = factor_p * deck.d_tissue_flow_rho *
-                            deck.d_tissue_flow_coeff * deck.d_face_by_h;
+        const Real a_diff = factor_p * deck.d_tissue_flow_coeff * deck.d_face_by_h;
 
         // diffusion
         util::add_unique(get_global_dof_id(0), a_diff, Ke_dof_col, Ke_val_col);
@@ -235,25 +247,53 @@ void netfvfe::PressureAssembly::assemble_face() {
 
         // div(chem_tum * grad(tum)) term
         // requires integration over face of an element
-        tum.d_fe_face->reinit(elem, side);
+        pro.d_fe_face->reinit(elem, side);
 
         // loop over quadrature points
-        for (unsigned int qp = 0; qp < tum.d_qrule_face.n_points(); qp++) {
+        for (unsigned int qp = 0; qp < pro.d_qrule_face.n_points(); qp++) {
 
-          chem_tum_cur = 0.;
-          tum_grad = 0.;
-          for (unsigned int l = 0; l < tum.d_phi_face.size(); l++) {
+          chem_pro_cur = 0.; chem_hyp_cur = 0.;
+          pro_grad = 0.; hyp_grad = 0.;
+          ecm_cur = 0.; ecm_proj = 0.;
+          for (unsigned int l = 0; l < pro.d_phi_face.size(); l++) {
 
-            chem_tum_cur +=
-                tum.d_phi_face[l][qp] * tum.get_current_sol_var(l, 1);
+            chem_pro_cur +=
+                pro.d_phi_face[l][qp] * pro.get_current_sol_var(l, 1);
 
-            tum_grad.add_scaled(tum.d_dphi_face[l][qp],
-                                tum.get_current_sol_var(l, 0));
+            pro_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                pro.get_current_sol_var(l, 0));
+
+            chem_hyp_cur +=
+                pro.d_phi_face[l][qp] * hyp.get_current_sol_var(l, 1);
+
+            hyp_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                hyp.get_current_sol_var(l, 0));
+
+
+            ecm_cur +=
+                pro.d_phi_face[l][qp] * ecm.get_current_sol(l);
+          }
+
+          ecm_proj = util::project_concentration(ecm_cur);
+
+          if (deck.d_assembly_method == 1) {
+            Sp = (chem_pro_cur + deck.d_chi_c * nut_cur +
+                  deck.d_chi_h * ecm_cur) *
+                     pro_grad +
+                 (chem_hyp_cur + deck.d_chi_c * nut_cur +
+                  deck.d_chi_h * ecm_cur) *
+                     hyp_grad;
+          } else {
+            Sp = (chem_pro_cur + deck.d_chi_c * nut_proj +
+                  deck.d_chi_h * ecm_proj) *
+                 pro_grad +
+                 (chem_hyp_cur + deck.d_chi_c * nut_proj +
+                  deck.d_chi_h * ecm_proj) *
+                 hyp_grad;
           }
 
           // add to force
-          Fe(0) += -factor_p * tum.d_JxW_face[qp] * deck.d_tissue_flow_coeff *
-                   chem_tum_cur * tum_grad * tum.d_qface_normals[qp];
+          Fe(0) += -factor_p * pro.d_JxW_face[qp] * deck.d_tissue_flow_coeff * Sp * pro.d_qface_normals[qp];
         } // loop over quadrature points on face
 
       } // elem neighbor is not null

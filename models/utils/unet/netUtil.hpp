@@ -65,20 +65,27 @@ void determineWeightsAndIds(int N_s, int N_theta, int N_3D,
                             std::vector<double> coord_neighbor, double radius,
                             double h_3D, double length_edge,
                             std::vector<double> &weights,
+                            std::vector<int> &id_3D_elements);
+
+void determineWeightsAndIds(int N_s, int N_theta, int N_3D,
+                            std::vector<double> coord,
+                            std::vector<double> coord_neighbor, double radius,
+                            double h_3D, double length_edge,
+                            std::vector<double> &weights,
                             std::vector<int> &id_3D_elements,
                             const int & integration_method,
                             const MeshBase &mesh,
                             bool check_elem_owner = false);
 
 void determineWeightsAndIdsLineSource(int N_s, int N_theta, int N_3D,
-                            std::vector<double> coord,
-                            std::vector<double> coord_neighbor, double radius,
-                            double h_3D, double length_edge,
-                            std::vector<double> &weights,
-                            std::vector<int> &id_3D_elements,
+                                      std::vector<double> coord,
+                                      std::vector<double> coord_neighbor, double radius,
+                                      double h_3D, double length_edge,
+                                      std::vector<double> &weights,
+                                      std::vector<int> &id_3D_elements,
                                       const int & integration_method,
-                            const MeshBase &mesh,
-                            bool check_elem_owner = false);
+                                      const MeshBase &mesh,
+                                      bool check_elem_owner = false);
 
 std::vector<int> getNeighboringElementIndices(int index, int N_3D, double h_3D,
                                               double L_x);
