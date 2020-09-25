@@ -31,7 +31,7 @@ void util::unet::Network::create_initial_network() {
   //
 
   auto &input = d_model_p->get_input_deck();
-  d_coupled_solver = d_model_p->d_name == "NetFCFVFE" or input.d_1d3d_coupled;
+  d_coupled_solver = d_model_p->d_name == "NetFCFVFE" or input.d_coupled_1d3d;
 
   if (d_procSize > 1 and d_coupled_solver)
     libmesh_error_msg(

@@ -29,7 +29,7 @@ struct ModelDeck {
 
   bool d_decouple_nutrients;
 
-  bool d_1d3d_coupled;
+  bool d_coupled_1d3d;
 
   int d_seed;
 
@@ -37,7 +37,7 @@ struct ModelDeck {
       : d_dim(2), d_domain_type("hyper_cuboid"),
         d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2),
         d_test_name(""), d_advection_active(false), d_decouple_nutrients
-        (false), d_seed(-1), d_1d3d_coupled(false) {
+        (false), d_seed(-1), d_coupled_1d3d(false) {
 
     if (!filename.empty())
       read_parameters(filename);
