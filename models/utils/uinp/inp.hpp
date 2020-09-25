@@ -29,13 +29,15 @@ struct ModelDeck {
 
   bool d_decouple_nutrients;
 
+  bool d_1d3d_coupled;
+
   int d_seed;
 
   explicit ModelDeck(const std::string &filename = "")
       : d_dim(2), d_domain_type("hyper_cuboid"),
         d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2),
         d_test_name(""), d_advection_active(false), d_decouple_nutrients
-        (false), d_seed(-1) {
+        (false), d_seed(-1), d_1d3d_coupled(false) {
 
     if (!filename.empty())
       read_parameters(filename);

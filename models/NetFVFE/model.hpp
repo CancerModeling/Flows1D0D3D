@@ -157,6 +157,7 @@ private:
   UniquePtr<NumericVector<Number>> d_err_check_nut;
   UniquePtr<NumericVector<Number>> d_err_check_mde;
   UniquePtr<NumericVector<Number>> d_err_check_ecm;
+  UniquePtr<NumericVector<Number>> d_err_check_pres;
 };
 
 } // namespace netfvfe

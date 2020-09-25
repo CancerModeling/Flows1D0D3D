@@ -284,6 +284,7 @@ netfvfe::Model::Model(
     d_err_check_nut = d_nut.d_sys.solution->clone();
     d_err_check_ecm = d_ecm.d_sys.solution->clone();
     d_err_check_mde = d_mde.d_sys.solution->clone();
+    d_err_check_pres = d_pres.d_sys.solution->clone();
   }
 
   // 1-D network
@@ -473,22 +474,33 @@ void netfvfe::Model::solve_system() {
     oss << "    Nonlinear step: " << l << " ";
     d_log(oss, "solve sys");
 
-    // solver for 1D nutrient
-    reset_clock();
-    d_log("|Nutrient_1D| -> ", "solve sys");
-    d_network.solveVGMforNutrient(d_pres, d_nut);
-    d_log.add_sys_solve_time(clock_begin, 1);
+    if (d_input.d_1d3d_coupled) {
+
+      // solver for 1D + 3D nutrient
+      reset_clock();
+      d_log("|Nutrient_1D + " + d_nut.d_sys_name + "| -> ", "solve sys");
+      d_network.solve3D1DNutrientProblem(d_nut, d_tum);
+      d_log.add_sys_solve_time(clock_begin, 1);
+      d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
+    } else {
+
+      // solver for nutrients
+      reset_clock();
+      d_log("|Nutrient_1D| -> ", "solve sys");
+      d_network.solveVGMforNutrient(d_pres, d_nut);
+      d_log.add_sys_solve_time(clock_begin, 1);
+
+      reset_clock();
+      d_log("|" + d_nut.d_sys_name + "| -> ", "solve sys");
+      d_err_check_nut->zero();
+      d_err_check_nut->add(*(d_nut.d_sys.solution));
+      d_nut.solve();
+      d_err_check_nut->add(-1., *(d_nut.d_sys.solution));
+      d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
+    }
 
     reset_clock();
-    d_log("|" + d_nut.d_sys_name + "| -> ", "solve sys");
-    d_err_check_nut->zero();
-    d_err_check_nut->add(*(d_nut.d_sys.solution));
-    d_nut.solve();
-    d_err_check_nut->add(-1., *(d_nut.d_sys.solution));
-    d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
-
-    reset_clock();
-    d_log("|" + d_tum.d_sys_name + "| -> ", "solve sys");
+    d_log("|" + d_pro.d_sys_name + "| -> ", "solve sys");
     d_err_check_pro->zero();
     d_err_check_pro->add(*(d_pro.d_sys.solution));
     d_pro.solve();
@@ -585,79 +597,88 @@ void netfvfe::Model::solve_pressure() {
   auto solve_clock = steady_clock::now();
   reset_clock();
 
-  // to compute the nonlinear convergence
-  UniquePtr<NumericVector<Number>> last_nonlinear_soln_pres(
-      d_pres.d_sys.solution->clone());
-
-  // Nonlinear iteration loop
-  d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
-
-  // reset nonlinear step
-  d_nonlinear_step = 0;
-
-  // Solve pressure system
-  d_log("  Nonlinear loop for pressure\n\n", "solve pres");
-  d_log(" \n", "solve pres");
-  // nonlinear loop
-  for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
-    // Debug
-    // for (unsigned int l = 0; l < 10; ++l) {
-
-    d_nonlinear_step = l;
-    oss << "    Nonlinear step: " << l;
-    d_log(oss, "solve pres");
-
-    // solver for 1-D pressure and nutrient
-    reset_clock();
-    d_log( " |Pressure_1D| -> ", "solve pres");
-    d_network.solveVGMforPressure(d_pres);
-    if (d_log.d_cur_step >= 0)
-      d_log.add_sys_solve_time(clock_begin, 0);
-
-
-    // solve for pressure in tissue
-    reset_clock();
-    last_nonlinear_soln_pres->zero();
-    last_nonlinear_soln_pres->add(*d_pres.d_sys.solution);
-    d_log("|" + d_pres.d_sys_name + "|\n", "solve pres");
-    d_pres.d_sys.solve();
-
-    last_nonlinear_soln_pres->add(-1., *d_pres.d_sys.solution);
-    last_nonlinear_soln_pres->close();
-    if (d_log.d_cur_step >= 0)
-      d_log.add_sys_solve_time(clock_begin, d_pres.d_sys.number());
-
-    // Nonlinear iteration error
-    double nonlinear_iter_error = last_nonlinear_soln_pres->linfty_norm();
-    if (d_input.d_perform_output) {
-
-      const unsigned int n_linear_iterations = d_pres.d_sys.n_linear_iterations();
-      const Real final_linear_residual = d_pres.d_sys.final_linear_residual();
-
-      oss << "      LC step: " << n_linear_iterations
-          << ", res: " << final_linear_residual
-          << ", NC: ||u - u_old|| = "
-          << nonlinear_iter_error << std::endl << std::endl;
-      d_log(oss, "debug");
+  // coupled 1d-3d or iterative method
+  if (d_input.d_1d3d_coupled) {
+    // call fully coupled 1D-3D solver (this will update the 3D pressure system
+    // in libmesh
+    d_log("      Solving |Pressure_1D + " + d_pres.d_sys_name + "| \n", "solve pres");
+    d_network.solve3D1DFlowProblem(d_pres, d_tum);
+    clock_end = std::chrono::steady_clock::now();
+    if (d_log.d_cur_step >= 0) {
+      d_log.add_pres_solve_time(util::TimePair(solve_clock, clock_end));
+      d_log.add_pres_nonlin_iter(1);
     }
-    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
+  } else {
 
-      d_log(" \n", "debug");
-      oss << "      NC step: " << l << std::endl
-          << std::endl;
-      d_log(oss, "converge sys");
+    // Nonlinear iteration loop
+    d_tum_sys.parameters.set<Real>("linear solver tolerance") =
+        d_input.d_linear_tol;
 
-      break;
+    // reset nonlinear step
+    d_nonlinear_step = 0;
+
+    // Solve pressure system
+    d_log("  Nonlinear loop for pressure\n\n", "solve pres");
+    d_log(" \n", "solve pres");
+    // nonlinear loop
+    for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
+      // Debug
+      // for (unsigned int l = 0; l < 10; ++l) {
+
+      d_nonlinear_step = l;
+      oss << "    Nonlinear step: " << l;
+      d_log(oss, "solve pres");
+
+      // solver for 1-D pressure and nutrient
+      reset_clock();
+      d_log(" |Pressure_1D| -> ", "solve pres");
+      d_network.solveVGMforPressure(d_pres);
+      if (d_log.d_cur_step >= 0)
+        d_log.add_sys_solve_time(clock_begin, 0);
+
+      // solve for pressure in tissue
+      reset_clock();
+      d_err_check_pres->zero();
+      d_err_check_pres->add(*d_pres.d_sys.solution);
+      d_log("|" + d_pres.d_sys_name + "|\n", "solve pres");
+      d_pres.d_sys.solve();
+
+      d_err_check_pres->add(-1., *d_pres.d_sys.solution);
+      d_err_check_pres->close();
+      if (d_log.d_cur_step >= 0)
+        d_log.add_sys_solve_time(clock_begin, d_pres.d_sys.number());
+
+      // Nonlinear iteration error
+      double nonlinear_iter_error = d_err_check_pres->linfty_norm();
+      if (d_input.d_perform_output) {
+
+        const unsigned int n_linear_iterations =
+            d_pres.d_sys.n_linear_iterations();
+        const Real final_linear_residual = d_pres.d_sys.final_linear_residual();
+
+        oss << "      LC step: " << n_linear_iterations
+            << ", res: " << final_linear_residual
+            << ", NC: ||u - u_old|| = " << nonlinear_iter_error << std::endl
+            << std::endl;
+        d_log(oss, "debug");
+      }
+      if (nonlinear_iter_error < d_input.d_nonlin_tol) {
+
+        d_log(" \n", "debug");
+        oss << "      NC step: " << l << std::endl << std::endl;
+        d_log(oss, "converge sys");
+
+        break;
+      }
+    } // nonlinear solver loop
+
+    d_log(" \n", "solve pres");
+
+    clock_end = std::chrono::steady_clock::now();
+    if (d_log.d_cur_step >= 0) {
+      d_log.add_pres_solve_time(util::TimePair(solve_clock, clock_end));
+      d_log.add_pres_nonlin_iter(d_nonlinear_step);
     }
-  } // nonlinear solver loop
-
-  d_log(" \n", "solve pres");
-
-  clock_end = std::chrono::steady_clock::now();
-  if (d_log.d_cur_step >= 0) {
-    d_log.add_pres_solve_time(util::TimePair(solve_clock, clock_end));
-    d_log.add_pres_nonlin_iter(d_nonlinear_step);
   }
 
   // solve for velocity
