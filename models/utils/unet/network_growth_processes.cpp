@@ -1658,6 +1658,7 @@ void util::unet::Network::processSproutingGrowth() {
         std::cout << "angle * 180.0 / M_PI: " << angle * 180.0 / M_PI << std::endl;
         std::cout << "length_vessel: " << length_vessel << std::endl;
         std::cout << "new_point: " << new_point << std::endl;
+        std::cout << "min_length_for_sprouting: " << input.d_min_length_for_sprouting << std::endl;
 
         if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 &&
             !isColliding && length_vessel > input.d_min_length_for_sprouting) {
