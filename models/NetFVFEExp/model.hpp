@@ -5,8 +5,8 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef NETFVFE_MODEL_H
-#define NETFVFE_MODEL_H
+#ifndef NETFVFEEXP_MODEL_H
+#define NETFVFEEXP_MODEL_H
 
 #include "umodel/model.hpp"
 #include "usystem/ghosting_functor.hpp"
@@ -22,7 +22,7 @@ typedef util::unet::Network Net;
  * network model. See
  * docs/NetTum/network_and_tumor_model.pdf for more details.
  */
-namespace netfvfe {
+namespace netfvfeexp {
 
 void model_setup_run(int argc,
                      char **argv,
@@ -122,6 +122,17 @@ private:
   /*! @brief Solves tumor system */
   void solve_system() override ;
 
+  // all 3D systems explicit including 3D+1D nutrient
+  // 1D-3D coupling in Nutrient and pressure is implicit in all cases
+  void solve_system_explicit();
+
+  // Nutrient is explicit ie out of the nonlineat iterations
+  void solve_system_nutrient_explicit();
+
+  // all 3D systems implicit
+  void solve_system_implicit();
+
+
   /*! @brief Compute quantity of interest */
   void compute_qoi() override ;
 
@@ -130,6 +141,7 @@ private:
    * iteratively.
    */
   void solve_pressure();
+  void solve_nutrient();
 
   /*! @brief Network class */
   Net d_network;
@@ -160,6 +172,6 @@ private:
   UniquePtr<NumericVector<Number>> d_err_check_pres;
 };
 
-} // namespace netfvfe
+} // namespace netfvfeexp
 
-#endif // NETFVFE_MODEL_H
+#endif // NETFVFEEXP_MODEL_H

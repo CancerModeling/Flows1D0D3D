@@ -492,7 +492,7 @@ void netfcfvfe::Model::solve_system() {
     d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
 
     reset_clock();
-    d_log("|" + d_tum.d_sys_name + "| -> ", "solve sys");
+    d_log("|" + d_pro.d_sys_name + "| -> ", "solve sys");
     d_err_check_pro->zero();
     d_err_check_pro->add(*(d_pro.d_sys.solution));
     d_pro.solve();
