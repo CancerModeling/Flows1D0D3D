@@ -468,7 +468,7 @@ void netfvfeexp::Model::solve_system_explicit() {
   solve_nutrient();
 
   reset_clock();
-  d_log("|" + d_pro.d_sys_name + "| -> ", "solve sys");
+  d_log("Solving |" + d_pro.d_sys_name + "| -> ", "solve sys");
   d_pro.solve();
   d_log.add_sys_solve_time(clock_begin, d_pro.d_sys.number());
 
@@ -556,7 +556,7 @@ void netfvfeexp::Model::solve_system_implicit() {
 
       // solver for 1D + 3D nutrient
       reset_clock();
-      d_log("|Nutrient_1D + " + d_nut.d_sys_name + "| -> ", "solve sys");
+      d_log(" |Nutrient_1D + " + d_nut.d_sys_name + "| -> ", "solve sys");
       d_network.solve3D1DNutrientProblem(d_nut, d_tum);
       d_log.add_sys_solve_time(clock_begin, 1);
       d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
@@ -569,7 +569,7 @@ void netfvfeexp::Model::solve_system_implicit() {
       d_log.add_sys_solve_time(clock_begin, 1);
 
       reset_clock();
-      d_log("|" + d_nut.d_sys_name + "| -> ", "solve sys");
+      d_log(" |" + d_nut.d_sys_name + "| -> ", "solve sys");
       d_err_check_nut->zero();
       d_err_check_nut->add(*(d_nut.d_sys.solution));
       d_nut.solve();
@@ -714,7 +714,7 @@ void netfvfeexp::Model::solve_system_nutrient_explicit() {
     d_log(oss, "solve sys");
 
     reset_clock();
-    d_log("|" + d_pro.d_sys_name + "| -> ", "solve sys");
+    d_log(" |" + d_pro.d_sys_name + "| -> ", "solve sys");
     d_err_check_pro->zero();
     d_err_check_pro->add(*(d_pro.d_sys.solution));
     d_pro.solve();
@@ -941,7 +941,7 @@ void netfvfeexp::Model::solve_nutrient() {
 
       // solver for nutrients
       reset_clock();
-      d_log("|Nutrient_1D| -> ", "solve nut");
+      d_log(" |Nutrient_1D| -> ", "solve nut");
       d_network.solveVGMforNutrient(d_pres, d_nut);
       if (d_log.d_cur_step >= 0)
         d_log.add_sys_solve_time(clock_begin, 1);
