@@ -648,7 +648,7 @@ void netfvfeexp::Model::solve_nutrient() {
       reset_clock();
       d_log("|" + d_nut.d_sys_name + "| -> ", "solve nut");
       d_err_check_nut->zero();
-      d_err_check_nut->add(*d_pres.d_sys.solution);
+      d_err_check_nut->add(*d_nut.d_sys.solution);
       d_nut.solve();
       d_err_check_nut->add(-1., *d_nut.d_sys.solution);
       d_err_check_nut->close();
