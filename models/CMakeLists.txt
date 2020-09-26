@@ -63,3 +63,9 @@ if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}" STREQUAL
     add_subdirectory(NetPresNut)
 
 endif ()
+
+if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
+        STREQUAL "Build_Prashant" OR "${LIBTG_BUILD_FLAG}" STREQUAL
+        "Build_NetFVFEExp")
+    add_subdirectory(NetFVFEExp)
+endif ()

@@ -60,6 +60,8 @@ void util::ModelDeck::read_parameters(const std::string &filename) {
   d_decouple_nutrients = input("network_decouple_nutrients", true);
 
   d_seed = input("seed", -1);
+
+  d_coupled_1d3d = input("coupled_1d3d", false);
 }
 
 void util::ModelDeck::print(unsigned int level) {}
