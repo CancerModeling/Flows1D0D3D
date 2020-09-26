@@ -322,11 +322,6 @@ void netfvfeexp::Model::run() {
   // Solve step
   //
 
-  if (!d_input.d_test_name.empty())
-    libmesh_warning(
-        "Test of sub-system removed from the model.\n Name of "
-        "test will be discarded and instead full system will be solved.");
-
   do {
 
     // Prepare time step
@@ -436,6 +431,19 @@ void netfvfeexp::Model::compute_qoi() {
 
 void netfvfeexp::Model::solve_system() {
 
+  if (d_input.d_test_name == "solve_explicit")
+    solve_system_explicit();
+  else if (d_input.d_test_name == "solve_nutrient_explicit")
+    solve_system_nutrient_explicit();
+  else if (d_input.d_test_name == "solve_implicit")
+    solve_system_implicit();
+  else
+    libmesh_error_msg("Test name is not valid. Try solve_explicit, "
+                      "solve_nutrient_explicit or solve_implicit.");
+}
+
+void netfvfeexp::Model::solve_system_explicit() {
+
   // update time
   for (auto &s : get_all_assembly())
     s->d_sys.time = d_time;
@@ -498,6 +506,299 @@ void netfvfeexp::Model::solve_system() {
 
   // solve for tumor
   d_log("|" + d_tum.d_sys_name + "| \n", "solve sys");
+  d_tum.solve_custom();
+  d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
+
+  d_log(" \n", "solve sys");
+}
+
+void netfvfeexp::Model::solve_system_implicit() {
+
+  // update time
+  for (auto &s: get_all_assembly())
+    s->d_sys.time = d_time;
+  d_tum_sys.parameters.set<Real>("time") = d_time;
+
+  // update old solution
+  for (auto &s: get_all_assembly()) {
+    if (s->d_sys_name != "Velocity"
+        and s->d_sys_name != "Tumor"
+        and s->d_sys_name != "TAF_Gradient") {
+
+      *(s->d_sys.old_local_solution) = *(s->d_sys.current_local_solution);
+    }
+  }
+
+  // update old concentration in network
+  d_network.update_old_concentration();
+
+  // solve for pressure
+  solve_pressure();
+
+  // reset nonlinear step
+  d_nonlinear_step = 0;
+
+  d_log("  Nonlinear loop\n", "solve sys");
+  d_log(" \n", "solve sys");
+
+  // Nonlinear iteration loop
+  d_tum_sys.parameters.set<Real>("linear solver tolerance") =
+      d_input.d_linear_tol;
+
+  // nonlinear loop
+  for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
+
+    d_nonlinear_step = l;
+    oss << "    Nonlinear step: " << l << " ";
+    d_log(oss, "solve sys");
+
+    if (d_input.d_coupled_1d3d) {
+
+      // solver for 1D + 3D nutrient
+      reset_clock();
+      d_log("|Nutrient_1D + " + d_nut.d_sys_name + "| -> ", "solve sys");
+      d_network.solve3D1DNutrientProblem(d_nut, d_tum);
+      d_log.add_sys_solve_time(clock_begin, 1);
+      d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
+    } else {
+
+      // solver for nutrients
+      reset_clock();
+      d_log("|Nutrient_1D| -> ", "solve sys");
+      d_network.solveVGMforNutrient(d_pres, d_nut);
+      d_log.add_sys_solve_time(clock_begin, 1);
+
+      reset_clock();
+      d_log("|" + d_nut.d_sys_name + "| -> ", "solve sys");
+      d_err_check_nut->zero();
+      d_err_check_nut->add(*(d_nut.d_sys.solution));
+      d_nut.solve();
+      d_err_check_nut->add(-1., *(d_nut.d_sys.solution));
+      d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
+    }
+
+    reset_clock();
+    d_log("|" + d_pro.d_sys_name + "| -> ", "solve sys");
+    d_err_check_pro->zero();
+    d_err_check_pro->add(*(d_pro.d_sys.solution));
+    d_pro.solve();
+    d_err_check_pro->add(-1., *(d_pro.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_pro.d_sys.number());
+
+    reset_clock();
+    d_log("|" + d_hyp.d_sys_name + "| -> ", "solve sys");
+    d_err_check_hyp->zero();
+    d_err_check_hyp->add(*(d_hyp.d_sys.solution));
+    d_hyp.solve();
+    d_err_check_hyp->add(-1., *(d_hyp.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_hyp.d_sys.number());
+
+    reset_clock();
+    d_log("|" + d_nec.d_sys_name + "| -> ", "solve sys");
+    d_err_check_nec->zero();
+    d_err_check_nec->add(*(d_nec.d_sys.solution));
+    d_nec.solve();
+    d_err_check_nec->add(-1., *(d_nec.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_nec.d_sys.number());
+
+    reset_clock();
+    d_log("|" + d_mde.d_sys_name + "| -> ", "solve sys");
+    d_err_check_mde->zero();
+    d_err_check_mde->add(*(d_mde.d_sys.solution));
+    d_mde.solve();
+    d_err_check_mde->add(-1., *(d_mde.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_mde.d_sys.number());
+
+    reset_clock();
+    d_log("|" + d_ecm.d_sys_name + "| \n", "solve sys");
+    d_err_check_ecm->zero();
+    d_err_check_ecm->add(*(d_ecm.d_sys.solution));
+    d_ecm.solve();
+    d_err_check_ecm->add(-1., *(d_ecm.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
+
+    // Nonlinear iteration error
+    double nonlinear_iter_error = d_err_check_pro->linfty_norm()
+                                  + d_err_check_hyp->linfty_norm()
+                                  + d_err_check_nec->linfty_norm()
+                                  + d_err_check_nut->linfty_norm()
+                                  + d_err_check_mde->linfty_norm()
+                                  + d_err_check_ecm->linfty_norm();
+
+    if (d_input.d_perform_output) {
+
+      const unsigned int n_linear_iterations = d_pro.d_sys.n_linear_iterations();
+      const Real final_linear_residual = d_pro.d_sys.final_linear_residual();
+
+      oss << "      LC step: " << n_linear_iterations
+          << ", res: " << final_linear_residual
+          << ", NC: ||u - u_old|| = "
+          << nonlinear_iter_error << std::endl << std::endl;
+      d_log(oss, "debug");
+    }
+    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
+
+      d_log(" \n", "debug");
+      oss << "      NC step: " << l << std::endl
+          << std::endl;
+      d_log(oss, "converge sys");
+
+      break;
+    }
+  } // nonlinear solver loop
+
+  d_log(" \n", "solve sys");
+  d_log.add_nonlin_iter(d_nonlinear_step);
+
+  // solve taf
+  reset_clock();
+  d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
+  d_taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+
+  // solve for grad taf
+  reset_clock();
+  d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
+  d_grad_taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
+
+  // solve for tumor
+  d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
+  d_tum.solve_custom();
+  d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
+
+  d_log(" \n", "solve sys");
+}
+
+void netfvfeexp::Model::solve_system_nutrient_explicit() {
+
+  // update time
+  for (auto &s: get_all_assembly())
+    s->d_sys.time = d_time;
+  d_tum_sys.parameters.set<Real>("time") = d_time;
+
+  // update old solution
+  for (auto &s: get_all_assembly()) {
+    if (s->d_sys_name != "Velocity"
+        and s->d_sys_name != "Tumor"
+        and s->d_sys_name != "TAF_Gradient") {
+
+      *(s->d_sys.old_local_solution) = *(s->d_sys.current_local_solution);
+    }
+  }
+
+  // update old concentration in network
+  d_network.update_old_concentration();
+
+  // solve for pressure
+  solve_pressure();
+
+  // solve nutrient
+  solve_nutrient();
+
+  // reset nonlinear step
+  d_nonlinear_step = 0;
+
+  d_log("  Nonlinear loop\n", "solve sys");
+  d_log(" \n", "solve sys");
+
+  // Nonlinear iteration loop
+  d_tum_sys.parameters.set<Real>("linear solver tolerance") =
+      d_input.d_linear_tol;
+
+  // nonlinear loop
+  for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
+
+    d_nonlinear_step = l;
+    oss << "    Nonlinear step: " << l << " ";
+    d_log(oss, "solve sys");
+
+    reset_clock();
+    d_log("|" + d_pro.d_sys_name + "| -> ", "solve sys");
+    d_err_check_pro->zero();
+    d_err_check_pro->add(*(d_pro.d_sys.solution));
+    d_pro.solve();
+    d_err_check_pro->add(-1., *(d_pro.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_pro.d_sys.number());
+
+    reset_clock();
+    d_log("|" + d_hyp.d_sys_name + "| -> ", "solve sys");
+    d_err_check_hyp->zero();
+    d_err_check_hyp->add(*(d_hyp.d_sys.solution));
+    d_hyp.solve();
+    d_err_check_hyp->add(-1., *(d_hyp.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_hyp.d_sys.number());
+
+    reset_clock();
+    d_log("|" + d_nec.d_sys_name + "| -> ", "solve sys");
+    d_err_check_nec->zero();
+    d_err_check_nec->add(*(d_nec.d_sys.solution));
+    d_nec.solve();
+    d_err_check_nec->add(-1., *(d_nec.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_nec.d_sys.number());
+
+    reset_clock();
+    d_log("|" + d_mde.d_sys_name + "| -> ", "solve sys");
+    d_err_check_mde->zero();
+    d_err_check_mde->add(*(d_mde.d_sys.solution));
+    d_mde.solve();
+    d_err_check_mde->add(-1., *(d_mde.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_mde.d_sys.number());
+
+    reset_clock();
+    d_log("|" + d_ecm.d_sys_name + "| \n", "solve sys");
+    d_err_check_ecm->zero();
+    d_err_check_ecm->add(*(d_ecm.d_sys.solution));
+    d_ecm.solve();
+    d_err_check_ecm->add(-1., *(d_ecm.d_sys.solution));
+    d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
+
+    // Nonlinear iteration error
+    double nonlinear_iter_error = d_err_check_pro->linfty_norm()
+                                  + d_err_check_hyp->linfty_norm()
+                                  + d_err_check_nec->linfty_norm()
+                                  + d_err_check_mde->linfty_norm()
+                                  + d_err_check_ecm->linfty_norm();
+
+    if (d_input.d_perform_output) {
+
+      const unsigned int n_linear_iterations = d_pro.d_sys.n_linear_iterations();
+      const Real final_linear_residual = d_pro.d_sys.final_linear_residual();
+
+      oss << "      LC step: " << n_linear_iterations
+          << ", res: " << final_linear_residual
+          << ", NC: ||u - u_old|| = "
+          << nonlinear_iter_error << std::endl << std::endl;
+      d_log(oss, "debug");
+    }
+    if (nonlinear_iter_error < d_input.d_nonlin_tol) {
+
+      d_log(" \n", "debug");
+      oss << "      NC step: " << l << std::endl
+          << std::endl;
+      d_log(oss, "converge sys");
+
+      break;
+    }
+  } // nonlinear solver loop
+
+  d_log(" \n", "solve sys");
+  d_log.add_nonlin_iter(d_nonlinear_step);
+
+  // solve taf
+  reset_clock();
+  d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
+  d_taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+
+  // solve for grad taf
+  reset_clock();
+  d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
+  d_grad_taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
+
+  // solve for tumor
+  d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
   d_tum.solve_custom();
   d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
 
