@@ -454,14 +454,6 @@ void util::unet::Network::processApicalGrowth() {
 
   std::cout << "L_x: " << L_x << "\n";
 
-  // Initialize random objects
-  std::lognormal_distribution<> log_normal_distribution(
-      input.d_log_normal_mean, input.d_log_normal_std_dev);
-  std::random_device rd;
-  std::mt19937 generator(rd());
-  if (input.d_seed >= 0)
-    generator.seed(input.d_seed);
-
   int numberOfNodes_old = VGM.getNumberOfNodes();
 
   // mark node for growth based on a certain criterion
@@ -517,7 +509,7 @@ void util::unet::Network::processApicalGrowth() {
       }
 
       // lognormal distribution
-      double log_dist = log_normal_distribution(generator);
+      double log_dist = d_logNormalDist();
       double radius_p = pointer->radii[0];
 
       // get length
@@ -701,10 +693,14 @@ void util::unet::Network::processApicalGrowth() {
         }
 
         // create normal distribution function
-        std::normal_distribution<> normal_distribution(R_c, R_c / 35.0);
+        //std::normal_distribution<> normal_distribution(R_c, R_c / 35.0);
 
-        double radius_b1 = normal_distribution(generator);
-        double radius_b2 = normal_distribution(generator);
+        //double radius_b1 = normal_distribution(generator);
+        //double radius_b2 = normal_distribution(generator);
+        double radius_b1 =
+            util::transform_to_normal_dist(R_c, R_c / 35., d_normalDist());
+        double radius_b2 =
+            util::transform_to_normal_dist(R_c, R_c / 35., d_normalDist());
 
         if (radius_b1 < input.d_min_radius) {
 
@@ -778,7 +774,7 @@ void util::unet::Network::processApicalGrowth() {
             double length_diff_2 = gmm::vect_norm2(diff_2);
 
             // lognormal distribution
-            double log_dist = log_normal_distribution(generator);
+            double log_dist = d_logNormalDist();
 
             // get length
             double length_1 = log_dist * radius_b1;
@@ -1308,13 +1304,6 @@ void util::unet::Network::markSproutingGrowth() {
 
   const auto &input = d_model_p->get_input_deck();
 
-  std::lognormal_distribution<> log_normal_distribution(
-      input.d_log_normal_mean, input.d_log_normal_std_dev);
-  std::random_device rd;
-  std::mt19937 generator(rd());
-  if (input.d_seed >= 0)
-    generator.seed(input.d_seed);
-
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
   while (pointer) {
@@ -1356,7 +1345,7 @@ void util::unet::Network::markSproutingGrowth() {
 
         double length = gmm::vect_norm2(diff);
 
-        double log_dist = log_normal_distribution(generator);
+        double log_dist = d_logNormalDist();
 
         sproutingProbability =
             0.5 +
@@ -1412,17 +1401,6 @@ void util::unet::Network::processSproutingGrowth() {
 
   double gamma = input.d_net_radius_exponent_gamma;
 
-  std::lognormal_distribution<> log_normal_distribution(
-      input.d_log_normal_mean, input.d_log_normal_std_dev);
-  std::random_device rd;
-  std::mt19937 generator_log(rd());
-  if (input.d_seed >= 0)
-    generator_log.seed(input.d_seed);
-
-  std::default_random_engine generator;
-  if (input.d_seed >= 0)
-    generator.seed(input.d_seed);
-
   double L_x = input.d_domain_params[1];
 
   std::cout << " " << std::endl;
@@ -1453,14 +1431,15 @@ void util::unet::Network::processSproutingGrowth() {
 
         double p_v_neighbor = pointer->neighbors[i]->p_v;
 
-        std::uniform_real_distribution<double> distribution_uniform(
-            1.25 * radius_min, radius_prime);
+        //std::uniform_real_distribution<double> distribution_uniform(
+        //    1.25 * radius_min, radius_prime);
 
         double radius_new = 1.25 * radius_min;
 
         if (1.25 * radius_min < radius_prime) {
 
-          radius_new = distribution_uniform(generator);
+          radius_new = util::transform_to_uniform_dist(
+              1.25 * radius_min, radius_prime, d_uniformDist());
         }
 
         if (radius_new > 0.035) {
@@ -1629,7 +1608,7 @@ void util::unet::Network::processSproutingGrowth() {
         double angle = std::acos(prod_angle);
 
         // lognormal distribution
-        double log_dist = log_normal_distribution(generator_log);
+        double log_dist = d_logNormalDist();
 
         // get length
         double length_new = log_dist * radius_new;
