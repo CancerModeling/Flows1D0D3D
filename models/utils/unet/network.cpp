@@ -37,6 +37,9 @@ void util::unet::Network::create_initial_network() {
     libmesh_error_msg(
         "Fully 1D-3D coupled solver only works in serial execution");
 
+  scenario = input.d_scenario;
+  oss << "Scenario: " << scenario << std::endl;
+
   // read file and create initial network
   // Do this only on first processor
   if (d_procRank == 0) {
@@ -44,11 +47,6 @@ void util::unet::Network::create_initial_network() {
     std::vector<double> pressures;
     std::vector<double> radii;
     std::vector<std::vector<unsigned int>> elements;
-
-    scenario = input.d_scenario;
-
-    // std::cout << " " << std::endl;
-    oss << "Scenario: " << scenario << std::endl;
 
     readData(vertices, pressures, radii, elements);
 
@@ -163,7 +161,7 @@ void util::unet::Network::create_initial_network() {
   // initialize nutrient as one in artery
   // Only on processor zero
   //if (d_procRank == 0) {
-  if (scenario == "two_vessels") {
+  if (scenario == "two_vessels" and d_procRank == 0) {
 
     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
