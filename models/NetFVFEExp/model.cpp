@@ -647,6 +647,8 @@ void netfvfeexp::Model::solve_system_implicit() {
     if (d_input.d_solve_ecm)
       nonlinear_iter_error += d_err_check_mde->linfty_norm()
                                   + d_err_check_ecm->linfty_norm();
+    if (!d_input.d_coupled_1d3d)
+      nonlinear_iter_error += d_err_check_nut->linfty_norm();
 
     if (d_input.d_perform_output) {
 
