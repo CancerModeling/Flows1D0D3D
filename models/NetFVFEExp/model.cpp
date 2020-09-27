@@ -353,7 +353,8 @@ void netfvfeexp::Model::run() {
     solve_system();
 
     // update network
-    d_network.updateNetwork(d_taf, d_grad_taf);
+    if (d_is_growth_step)
+      d_network.updateNetwork(d_taf, d_grad_taf);
 
     // write tumor solution
     write_system((d_step - d_input.d_init_step) / d_input.d_dt_output_interval);
