@@ -31,13 +31,15 @@ struct ModelDeck {
 
   bool d_coupled_1d3d;
 
+  bool d_solve_ecm;
+
   int d_seed;
 
   explicit ModelDeck(const std::string &filename = "")
       : d_dim(2), d_domain_type("hyper_cuboid"),
         d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2),
         d_test_name(""), d_advection_active(false), d_decouple_nutrients
-        (false), d_seed(-1), d_coupled_1d3d(false) {
+        (false), d_seed(-1), d_coupled_1d3d(false), d_solve_ecm(true) {
 
     if (!filename.empty())
       read_parameters(filename);
