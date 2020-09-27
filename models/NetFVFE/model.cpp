@@ -203,8 +203,6 @@ void netfvfe::model_setup_run(int argc, char **argv,
     boundary_condition_nut(tum_sys);
   }
 
-  exit(0);
-
   //
   // Create Model class
   //

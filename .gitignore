@@ -70,3 +70,8 @@ src/Config.h
 */sim_*
 */output*
 */ratbrain_secomb_vgm*
+
+# ignore tests_sim directory
+*/tests_sim/*
+*/tests_sim*
+tests_sim/
