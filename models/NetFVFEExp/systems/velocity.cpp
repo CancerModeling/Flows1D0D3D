@@ -110,22 +110,22 @@ void netfvfeexp::VelAssembly::assemble() {
       chem_pro_cur = 0.; chem_hyp_cur = 0.;
       pro_grad = 0.; hyp_grad = 0.;
       ecm_cur = 0.; ecm_proj = 0.;
-      for (unsigned int l = 0; l < d_phi_face.size(); l++) {
+      for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         chem_pro_cur +=
-            d_phi_face[l][qp] * pro.get_current_sol_var(l, 1);
+            d_phi[l][qp] * pro.get_current_sol_var(l, 1);
 
-        pro_grad.add_scaled(d_dphi_face[l][qp],
+        pro_grad.add_scaled(d_dphi[l][qp],
                             pro.get_current_sol_var(l, 0));
 
         chem_hyp_cur +=
-            d_phi_face[l][qp] * hyp.get_current_sol_var(l, 1);
+            d_phi[l][qp] * hyp.get_current_sol_var(l, 1);
 
-        hyp_grad.add_scaled(d_dphi_face[l][qp],
+        hyp_grad.add_scaled(d_dphi[l][qp],
                             hyp.get_current_sol_var(l, 0));
 
         ecm_cur +=
-            d_phi_face[l][qp] * ecm.get_current_sol(l);
+            d_phi[l][qp] * ecm.get_current_sol(l);
       }
 
       ecm_proj = util::project_concentration(ecm_cur);

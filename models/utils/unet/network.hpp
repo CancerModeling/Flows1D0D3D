@@ -158,7 +158,12 @@ public:
    */
   /**@{*/
 
-  void update_old_concentration() { C_v_old = C_v; };
+  void update_old_concentration() {
+    if (d_coupled_solver)
+      phi_sigma_old = phi_sigma;
+    else
+      C_v_old = C_v;
+  };
 
   void update_old_concentration_3D1D() { phi_sigma_old = phi_sigma; };
 

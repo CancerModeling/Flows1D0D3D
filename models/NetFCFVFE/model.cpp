@@ -82,6 +82,8 @@ void netfcfvfe::model_setup_run(int argc, char **argv,
   // read input file
   auto input = InpDeck(filename);
 
+  input.d_coupled_1d3d = true;
+
   // create logger
   std::string logger_file = input.d_output_path + "info";
   if (!input.d_outfile_tag.empty())
@@ -357,11 +359,7 @@ void netfcfvfe::Model::run() {
     solve_system();
 
     // update network
-    if (d_is_growth_step) {
-      d_log("  Updating Network\n", "net update");
-      d_network.updateNetwork(d_taf, d_grad_taf);
-      d_log(" \n", "net update");
-    }
+    d_network.updateNetwork(d_taf, d_grad_taf);
 
     // write tumor solution
     write_system((d_step - d_input.d_init_step) /
@@ -462,7 +460,7 @@ void netfcfvfe::Model::solve_system() {
   }
 
   // update old concentration in network
-  d_network.update_old_concentration_3D1D();
+  d_network.update_old_concentration();
 
   // solve for pressure
   solve_pressure();
@@ -535,7 +533,6 @@ void netfcfvfe::Model::solve_system() {
     double nonlinear_iter_error = d_err_check_pro->linfty_norm()
         + d_err_check_hyp->linfty_norm()
         + d_err_check_nec->linfty_norm()
-        + d_err_check_nut->linfty_norm()
         + d_err_check_mde->linfty_norm()
         + d_err_check_ecm->linfty_norm();
 
@@ -564,22 +561,28 @@ void netfcfvfe::Model::solve_system() {
   d_log(" \n", "solve sys");
   d_log.add_nonlin_iter(d_nonlinear_step);
 
-  // solve taf
-  reset_clock();
-  d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
-  d_taf.solve();
-  d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+  if (d_is_growth_step or d_is_output_step) {
+    // solve taf
+    reset_clock();
+    d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
+    d_taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
 
-  // solve for grad taf
-  reset_clock();
-  d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
-  d_grad_taf.solve();
-  d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
+    // Note: Grad TAF is not really used in growth algorithm
+    // so we disable it
+    if (false) {
+      // solve for grad taf
+      reset_clock();
+      d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
+      d_grad_taf.solve();
+      d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
+    }
 
-  // solve for tumor
-  d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
-  d_tum.solve_custom();
-  d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
+    // solve for tumor
+    d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
+    d_tum.solve_custom();
+    d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
+  }
 
   d_log(" \n", "solve sys");
 }
@@ -607,11 +610,15 @@ void netfcfvfe::Model::solve_pressure() {
     d_log.add_pres_nonlin_iter(1);
   }
 
-  // solve for velocity
-  reset_clock();
-  d_log("      Solving |" + d_vel.d_sys_name + "| \n", "solve pres");
-  d_log(" \n", "solve pres");
-  d_vel.solve();
-  if (d_log.d_cur_step >= 0)
-    d_log.add_sys_solve_time(clock_begin, d_vel.d_sys.number());
+  // Note: Solving for velocity takes unusually long time so we disable it
+  //  if the advection effects are disabled
+  if (d_input.d_advection_active) {
+    // solve for velocity
+    reset_clock();
+    d_log("      Solving |" + d_vel.d_sys_name + "| \n", "solve pres");
+    d_log(" \n", "solve pres");
+    d_vel.solve();
+    if (d_log.d_cur_step >= 0)
+      d_log.add_sys_solve_time(clock_begin, d_vel.d_sys.number());
+  }
 }

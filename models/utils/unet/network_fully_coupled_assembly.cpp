@@ -126,7 +126,7 @@ void util::unet::Network::assemble3D1DSystemForPressure( BaseAssembly &nut_sys, 
               chem_pro_cur = 0.; chem_hyp_cur = 0.;
               pro_grad = 0.; hyp_grad = 0.;
               ecm_cur = 0.; ecm_proj = 0.;
-              for (unsigned int l = 0; l < tum_sys.d_phi_face.size(); l++) {
+              for (unsigned int l = 0; l < pro.d_phi_face.size(); l++) {
 
                 chem_pro_cur +=
                     pro.d_phi_face[l][qp] * pro.get_current_sol_var(l, 1);
