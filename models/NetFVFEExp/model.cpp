@@ -446,12 +446,16 @@ void netfvfeexp::Model::solve_system_explicit() {
   d_tum_sys.parameters.set<Real>("time") = d_time;
 
   // update old solution
-  for (auto &s : get_all_assembly()) {
-    if (s->d_sys_name != "Velocity" and s->d_sys_name != "Tumor" and
-        s->d_sys_name != "TAF_Gradient") {
+  std::vector<std::string> no_update_sys = {"Pressure", "Velocity", "Tumor",
+                                            "TAF_Gradient"};
+  if (!d_input.d_solve_ecm) {
+    no_update_sys.push_back("MDE");
+    no_update_sys.push_back("ECM");
+  }
 
+  for (auto &s : get_all_assembly()) {
+    if (util::locate_in_set(s->d_sys_name, no_update_sys) == -1)
       *(s->d_sys.old_local_solution) = *(s->d_sys.current_local_solution);
-    }
   }
 
   // update old concentration in network
@@ -478,16 +482,20 @@ void netfvfeexp::Model::solve_system_explicit() {
   d_nec.solve();
   d_log.add_sys_solve_time(clock_begin, d_nec.d_sys.number());
 
-  reset_clock();
-  d_log("|" + d_mde.d_sys_name + "| -> ", "solve sys");
-  d_mde.solve();
-  d_log.add_sys_solve_time(clock_begin, d_mde.d_sys.number());
+  // solve mde and ecm only if specified in the input file
+  if (d_input.d_solve_ecm) {
+    reset_clock();
+    d_log("|" + d_mde.d_sys_name + "| -> ", "solve sys");
+    d_mde.solve();
+    d_log.add_sys_solve_time(clock_begin, d_mde.d_sys.number());
 
-  reset_clock();
-  d_log("|" + d_ecm.d_sys_name + "| -> ", "solve sys");
-  d_ecm.solve();
-  d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
+    reset_clock();
+    d_log("|" + d_ecm.d_sys_name + "| -> ", "solve sys");
+    d_ecm.solve();
+    d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
+  }
 
+  // solve taf and tumor only if it is either growth step or output step
   if (d_is_growth_step or d_is_output_step) {
     // solve taf
     reset_clock();
@@ -522,13 +530,16 @@ void netfvfeexp::Model::solve_system_implicit() {
   d_tum_sys.parameters.set<Real>("time") = d_time;
 
   // update old solution
-  for (auto &s: get_all_assembly()) {
-    if (s->d_sys_name != "Velocity"
-        and s->d_sys_name != "Tumor"
-        and s->d_sys_name != "TAF_Gradient") {
+  std::vector<std::string> no_update_sys = {"Pressure", "Velocity", "Tumor",
+                                            "TAF_Gradient"};
+  if (!d_input.d_solve_ecm) {
+    no_update_sys.push_back("MDE");
+    no_update_sys.push_back("ECM");
+  }
 
+  for (auto &s : get_all_assembly()) {
+    if (util::locate_in_set(s->d_sys_name, no_update_sys) == -1)
       *(s->d_sys.old_local_solution) = *(s->d_sys.current_local_solution);
-    }
   }
 
   // update old concentration in network
@@ -536,6 +547,13 @@ void netfvfeexp::Model::solve_system_implicit() {
 
   // solve for pressure
   solve_pressure();
+
+  // tissue systems to solve
+  std::vector<util::BaseAssembly *> sys_solve = {&d_pro, &d_hyp, &d_nec};
+  if (d_input.d_solve_ecm) {
+    sys_solve.push_back(&d_mde);
+    sys_solve.push_back(&d_ecm);
+  }
 
   // reset nonlinear step
   d_nonlinear_step = 0;
@@ -603,28 +621,31 @@ void netfvfeexp::Model::solve_system_implicit() {
     d_err_check_nec->add(-1., *(d_nec.d_sys.solution));
     d_log.add_sys_solve_time(clock_begin, d_nec.d_sys.number());
 
-    reset_clock();
-    d_log("|" + d_mde.d_sys_name + "| -> ", "solve sys");
-    d_err_check_mde->zero();
-    d_err_check_mde->add(*(d_mde.d_sys.solution));
-    d_mde.solve();
-    d_err_check_mde->add(-1., *(d_mde.d_sys.solution));
-    d_log.add_sys_solve_time(clock_begin, d_mde.d_sys.number());
+    if (d_input.d_solve_ecm) {
+      reset_clock();
+      d_log("|" + d_mde.d_sys_name + "| -> ", "solve sys");
+      d_err_check_mde->zero();
+      d_err_check_mde->add(*(d_mde.d_sys.solution));
+      d_mde.solve();
+      d_err_check_mde->add(-1., *(d_mde.d_sys.solution));
+      d_log.add_sys_solve_time(clock_begin, d_mde.d_sys.number());
 
-    reset_clock();
-    d_log("|" + d_ecm.d_sys_name + "| \n", "solve sys");
-    d_err_check_ecm->zero();
-    d_err_check_ecm->add(*(d_ecm.d_sys.solution));
-    d_ecm.solve();
-    d_err_check_ecm->add(-1., *(d_ecm.d_sys.solution));
-    d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
+      reset_clock();
+      d_log("|" + d_ecm.d_sys_name + "| \n", "solve sys");
+      d_err_check_ecm->zero();
+      d_err_check_ecm->add(*(d_ecm.d_sys.solution));
+      d_ecm.solve();
+      d_err_check_ecm->add(-1., *(d_ecm.d_sys.solution));
+      d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
+    }
 
     // Nonlinear iteration error
     double nonlinear_iter_error = d_err_check_pro->linfty_norm()
                                   + d_err_check_hyp->linfty_norm()
                                   + d_err_check_nec->linfty_norm()
-                                  + d_err_check_nut->linfty_norm()
-                                  + d_err_check_mde->linfty_norm()
+                                  + d_err_check_nut->linfty_norm();
+    if (d_input.d_solve_ecm)
+      nonlinear_iter_error += d_err_check_mde->linfty_norm()
                                   + d_err_check_ecm->linfty_norm();
 
     if (d_input.d_perform_output) {
@@ -746,27 +767,30 @@ void netfvfeexp::Model::solve_system_nutrient_explicit() {
     d_err_check_nec->add(-1., *(d_nec.d_sys.solution));
     d_log.add_sys_solve_time(clock_begin, d_nec.d_sys.number());
 
-    reset_clock();
-    d_log("|" + d_mde.d_sys_name + "| -> ", "solve sys");
-    d_err_check_mde->zero();
-    d_err_check_mde->add(*(d_mde.d_sys.solution));
-    d_mde.solve();
-    d_err_check_mde->add(-1., *(d_mde.d_sys.solution));
-    d_log.add_sys_solve_time(clock_begin, d_mde.d_sys.number());
+    if (d_input.d_solve_ecm) {
+      reset_clock();
+      d_log("|" + d_mde.d_sys_name + "| -> ", "solve sys");
+      d_err_check_mde->zero();
+      d_err_check_mde->add(*(d_mde.d_sys.solution));
+      d_mde.solve();
+      d_err_check_mde->add(-1., *(d_mde.d_sys.solution));
+      d_log.add_sys_solve_time(clock_begin, d_mde.d_sys.number());
 
-    reset_clock();
-    d_log("|" + d_ecm.d_sys_name + "| \n", "solve sys");
-    d_err_check_ecm->zero();
-    d_err_check_ecm->add(*(d_ecm.d_sys.solution));
-    d_ecm.solve();
-    d_err_check_ecm->add(-1., *(d_ecm.d_sys.solution));
-    d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
+      reset_clock();
+      d_log("|" + d_ecm.d_sys_name + "| \n", "solve sys");
+      d_err_check_ecm->zero();
+      d_err_check_ecm->add(*(d_ecm.d_sys.solution));
+      d_ecm.solve();
+      d_err_check_ecm->add(-1., *(d_ecm.d_sys.solution));
+      d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
+    }
 
     // Nonlinear iteration error
     double nonlinear_iter_error = d_err_check_pro->linfty_norm()
                                   + d_err_check_hyp->linfty_norm()
-                                  + d_err_check_nec->linfty_norm()
-                                  + d_err_check_mde->linfty_norm()
+                                  + d_err_check_nec->linfty_norm();
+    if (d_input.d_solve_ecm)
+      nonlinear_iter_error += d_err_check_mde->linfty_norm()
                                   + d_err_check_ecm->linfty_norm();
 
     if (d_input.d_perform_output) {
