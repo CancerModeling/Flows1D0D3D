@@ -505,11 +505,11 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
 
   // growth related params
   d_network_update = input("network_update", true);
-  d_network_update_interval = input("network_update_interval", 1);
-  if (d_network_update and d_network_update_interval != 3) {
-    d_network_update_interval = 3;
-    libmesh_warning("Currently network update interval is fixed to 3 and can not be changed from input file.");
-  }
+  d_network_update_interval = input("network_update_interval", 3);
+  //   if (d_network_update and d_network_update_interval != 3) {
+  //     d_network_update_interval = 3;
+  //     libmesh_warning("Currently network update interval is fixed to 3 and can not be changed from input file.");
+  //   }
 
   d_network_update_taf_threshold = input("network_update_taf_threshold", 0.);
   d_log_normal_mean = input("log_normal_mean", 0.);
