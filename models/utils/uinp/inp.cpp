@@ -64,6 +64,8 @@ void util::ModelDeck::read_parameters(const std::string &filename) {
   d_coupled_1d3d = input("coupled_1d3d", false);
 
   d_solve_ecm = input("solve_ecm", true);
+
+  d_solve_pres_with_net_update = input("solve_pres_with_net_update", false);
 }
 
 void util::ModelDeck::print(unsigned int level) {}

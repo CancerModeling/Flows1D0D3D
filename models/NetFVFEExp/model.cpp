@@ -850,6 +850,27 @@ void netfvfeexp::Model::solve_system_nutrient_explicit() {
 
 void netfvfeexp::Model::solve_pressure() {
 
+  // If d_solve_pres_with_net_update = true, solve for pressure only after
+  // the network update
+  bool solve_pres = false;
+  if (d_input.d_solve_pres_with_net_update) {
+    // two cases: network update is allowed or network is static
+    if (d_input.d_network_update) {
+        if((d_step + 1) % d_input.d_network_update_interval == 0)
+          solve_pres = true;
+    } else {
+      // network is static. In this case, we update pressure every 4 time step
+      // FIXME: Should we introduce a input parameter for this as well??
+      if (d_step % 4 == 0)
+        solve_pres = true;
+    }
+  } else
+    solve_pres = true;
+
+  // if this is 1st time step, we have to solve for pressure in any case
+  if (d_step == 1)
+    solve_pres = true;
+
   auto solve_clock = steady_clock::now();
   reset_clock();
 
