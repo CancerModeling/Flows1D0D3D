@@ -871,6 +871,9 @@ void netfvfeexp::Model::solve_pressure() {
   if (d_step == 1)
     solve_pres = true;
 
+  if (!solve_pres)
+    return;
+
   auto solve_clock = steady_clock::now();
   reset_clock();
 
