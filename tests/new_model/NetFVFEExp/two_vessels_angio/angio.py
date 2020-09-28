@@ -21,13 +21,14 @@ class DefaultSimParams:
 
     def __init__(self):
         self.pp_tag = 't1'
-        self.model_name = 'NetFVFEExp'
-        self.test_name = ''
+        self.model_name = 'NetFVFE'
+        self.test_name = 'none'
         self.output_debug_info = True
         self.advection_active = False
         self.network_decouple_nutrients = False
         self.coupled_1d3d = True
         self.solve_ecm = False
+        self.solve_pres_with_net_update = True
         self.assembly_method = 2
         self.dimension = 3
         self.n_mpi = 1
@@ -35,10 +36,10 @@ class DefaultSimParams:
         
         ## domain, mesh, and time
         self.L = 2.
-        self.num_elems = 32
-        self.final_time = 7.
-        self.delta_t = 0.02
-        self.total_outputs = 1000
+        self.num_elems = 16
+        self.final_time = 1.
+        self.delta_t = 0.05
+        self.total_outputs = 4
         self.dt_output = int(np.floor(self.final_time / self.delta_t) / self.total_outputs)
         if self.dt_output < 1:
             self.dt_output = 1
@@ -112,12 +113,12 @@ class DefaultSimParams:
         self.discrete_cyl_length = 20
         self.discrete_cyl_angle = 20
         self.network_coupling_theta = 1.
-        self.vessel_pressures = [1100., 1600., 3000., 2000.]
-        self.vessel_radius = [0.0625, 0.046875]
-        self.vessel_line_1 = [self.L - 3.*self.vessel_radius[0], self.L - 3.*self.vessel_radius[0], 0., self.L - 3.*self.vessel_radius[0], self.L - 3.*self.vessel_radius[0], self.L]
-        self.vessel_line_2 = [3.*self.vessel_radius[1], 3.*self.vessel_radius[1], 0., 3.*self.vessel_radius[1], 3.*self.vessel_radius[1], self.L]
-        self.identify_vein_pressure = 0.99 * 2000.
-        self.identify_artery_radius = 0.06
+        self.vessel_pressures = [3000., 2000., 1100., 1600.]
+        self.vessel_radius = [0.046875, 0.0625]
+        self.vessel_line_1 = [0.1875, 0.1875, 0., 0.1875, 0.1875, 2.]
+        self.vessel_line_2 = [1.8125, 1.8125, 0., 1.8125, 1.8125, 2.]        
+        self.identify_vein_pressure = 0.99 * self.vessel_pressures[1]
+        self.identify_artery_radius = self.vessel_radius[1]
         self.coupling_3d1d_integration_method = 2
         self.disable_remove_redundant_vessel = False
 
@@ -129,7 +130,7 @@ class DefaultSimParams:
 
         ## growth params
         self.network_active = True
-        self.network_update_interval = 3
+        self.network_update_interval = 2
         self.network_update_TAF_th = 1.e-4
         self.log_normal_mean = 1.
         self.log_normal_std_dev = 0.2
@@ -181,6 +182,7 @@ class DefaultSimParams:
         strs += '{}= {}\n'.format('{0:{space}}'.format('network_decouple_nutrients', space=space), bool_to_string(self.network_decouple_nutrients))
         strs += '{}= {}\n'.format('{0:{space}}'.format('coupled_1d3d', space=space), bool_to_string(self.coupled_1d3d))
         strs += '{}= {}\n'.format('{0:{space}}'.format('solve_ecm', space=space), bool_to_string(self.solve_ecm))
+        strs += '{}= {}\n'.format('{0:{space}}'.format('solve_pres_with_net_update', space=space), bool_to_string(self.solve_pres_with_net_update))
         strs += '{}= {}\n'.format('{0:{space}}'.format('assembly_method', space=space), self.assembly_method)
         strs += '{}= {}\n'.format('{0:{space}}'.format('dimension', space=space), self.dimension)
         
@@ -419,13 +421,9 @@ def setup():
     dp = SimParams()
     dp.model_name = 'NetFVFEExp'
     dp.test_name = 'solve_explicit'
-    dp.num_elems = 20
     dp.pp_tag = 'angio_' + str(i)
-    dp.seed = dp.seed + 197 * i + 328432
     dp.run_path = 'tests_sim/' + dp.model_name + '/' + dp.pp_tag + '/' 
 
-    dp.set_time(1., 0.05, 4)
-    
     dps.append(dp)
 
   return dps
