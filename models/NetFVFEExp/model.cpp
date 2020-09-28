@@ -856,7 +856,7 @@ void netfvfeexp::Model::solve_pressure() {
   if (d_input.d_solve_pres_with_net_update) {
     // two cases: network update is allowed or network is static
     if (d_input.d_network_update) {
-        if((d_step + 1) % d_input.d_network_update_interval == 0)
+        if((d_step - 1) % d_input.d_network_update_interval == 0)
           solve_pres = true;
     } else {
       // network is static. In this case, we update pressure every 4 time step
