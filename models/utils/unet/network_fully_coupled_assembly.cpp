@@ -385,7 +385,6 @@ void util::unet::Network::assemble3D1DSystemForNutrients( BaseAssembly &nut_sys,
 
   Gradient pro_grad = 0.;
   Gradient hyp_grad = 0.;
-  Gradient nec_grad = 0.;
 
   Gradient pro_old_grad = 0.;
   Gradient hyp_old_grad = 0.;
@@ -525,7 +524,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients( BaseAssembly &nut_sys,
                  qp++) {
 
               chem_pro_old = 0.; chem_hyp_old = 0.;
-              pro_grad = 0.; hyp_grad = 0.; nec_grad = 0.;
+              pro_grad = 0.; hyp_grad = 0.;
               pro_old_grad = 0.; hyp_old_grad = 0.;
               ecm_old = 0.; ecm_old_proj = 0.;
               for (unsigned int l = 0; l < pro.d_phi_face.size(); l++) {
@@ -547,9 +546,6 @@ void util::unet::Network::assemble3D1DSystemForNutrients( BaseAssembly &nut_sys,
 
                 hyp_old_grad.add_scaled(pro.d_dphi_face[l][qp],
                                         hyp.get_old_sol_var(l, 0));
-
-                nec_grad.add_scaled(pro.d_dphi_face[l][qp],
-                                    nec.get_current_sol(l));
 
                 ecm_old +=
                     pro.d_phi_face[l][qp] * ecm.get_old_sol(l);
@@ -575,7 +571,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients( BaseAssembly &nut_sys,
 
               // chemotactic term
               b_nut_3D1D[index] += -pro.d_JxW_face[qp] * dt * input.d_chi_c *
-                                   (pro_grad + hyp_grad + nec_grad) *
+                                   (pro_grad + hyp_grad) *
                                    pro.d_qface_normals[qp];
 
               // advection term
