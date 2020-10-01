@@ -121,8 +121,6 @@ void netfvfeexp::HypAssembly::assemble_1() {
             d_JxW[qp] * (hyp_old + dt * deck.d_lambda_PH * util::heaviside
                 (deck.d_sigma_PH - nut_cur) * pro_cur);
 
-        // keep the factor d_bar_E_phi_T in double well same for
-        // prolific and hypoxic
         compute_rhs_mu =
             d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
                          (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) +
@@ -131,7 +129,7 @@ void netfvfeexp::HypAssembly::assemble_1() {
 
         compute_mat_hyp =
             d_JxW[qp] * (1. + dt * deck.d_lambda_A -
-                         dt * deck.d_lambda_Ph * nut_cur +
+                         dt * deck.d_lambda_Ph * nut_cur * (1. - tum_cur) +
                          dt * deck.d_lambda_HP *
                          util::heaviside(nut_cur - deck.d_sigma_HP) +
                          dt * deck.d_lambda_HN *
@@ -143,8 +141,6 @@ void netfvfeexp::HypAssembly::assemble_1() {
             d_JxW[qp] * (hyp_old + dt * deck.d_lambda_PH * util::heaviside
                 (deck.d_sigma_PH - nut_proj) * pro_proj);
 
-        // keep the factor d_bar_E_phi_T in double well same for
-        // prolific and hypoxic
         compute_rhs_mu =
             d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
                          (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) +
@@ -153,7 +149,7 @@ void netfvfeexp::HypAssembly::assemble_1() {
 
         compute_mat_hyp =
             d_JxW[qp] * (1. + dt * deck.d_lambda_A -
-                         dt * deck.d_lambda_Ph * nut_proj +
+                              dt * deck.d_lambda_Ph * nut_cur * (1. - tum_proj) +
                          dt * deck.d_lambda_HP *
                          util::heaviside(nut_proj - deck.d_sigma_HP) +
                          dt * deck.d_lambda_HN *
@@ -187,7 +183,7 @@ void netfvfeexp::HypAssembly::assemble_1() {
           d_Ke_var[1][1](i, j) += d_JxW[qp] * d_phi[j][qp] * d_phi[i][qp];
 
           // coupling with tumor
-          d_Ke_var[1][0](i, j) -= d_JxW[qp] * 3.0 * deck.d_bar_E_phi_T * d_phi[j][qp] * d_phi[i][qp];
+          d_Ke_var[1][0](i, j) -= d_JxW[qp] * 3.0 * (deck.d_bar_E_phi_T + deck.d_bar_E_phi_H) * d_phi[j][qp] * d_phi[i][qp];
 
           d_Ke_var[1][0](i, j) -= d_JxW[qp] * pow(deck.d_epsilon_H, 2) *
                                   d_dphi[j][qp] * d_dphi[i][qp];
