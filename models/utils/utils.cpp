@@ -26,11 +26,22 @@ double util::linear(double x) {
     return x;
 }
 
+//double util::heaviside(double x) {
+//  if (fabs(x) >= 0.064) {
+//    return (x < 0) ? 0. : 1.;
+//  } else {
+//    return (1. / (2. * 0.064)) * (x + 0.064);
+//  }
+//}
+
 double util::heaviside(double x) {
-  if (fabs(x) >= 0.064) {
-    return (x < 0) ? 0. : 1.;
-  } else {
-    return (1. / (2. * 0.064)) * (x + 0.064);
+  if (x < 1.0E-10)
+    return 0.;
+  else {
+    if (x < 0.0001 - 1.0E-10)
+      return 1. - std::exp(1. - 1. / (1. - std::pow(x/0.0001, 4)));
+    else
+      return 1.;
   }
 }
 
