@@ -8,9 +8,9 @@
 #include "../model.hpp"
 
 Number netfv::initial_condition_ecm(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                    const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"ECM");
+  libmesh_assert_equal_to(system_name, "ECM");
 
   if (var_name == "ecm") {
 
@@ -21,8 +21,8 @@ Number netfv::initial_condition_ecm(const Point &p, const Parameters &es,
       return 0.;
     else if (ic_data.d_type == "spherical") {
 
-      Point dx = p - Point(ic_data.d_geom_params[0],ic_data.d_geom_params[1],
-          ic_data.d_geom_params[2]);
+      Point dx = p - Point(ic_data.d_geom_params[0], ic_data.d_geom_params[1],
+                           ic_data.d_geom_params[2]);
       double r = ic_data.d_geom_params[3];
 
       if (dx.norm() < r - 1.0E-12)
@@ -31,10 +31,9 @@ Number netfv::initial_condition_ecm(const Point &p, const Parameters &es,
         return 0.;
     } else if (ic_data.d_type == "elliptical") {
 
-      Point xc = Point(ic_data.d_geom_params[0],ic_data.d_geom_params[1],
+      Point xc = Point(ic_data.d_geom_params[0], ic_data.d_geom_params[1],
                        ic_data.d_geom_params[2]);
-      std::vector<double> r = {ic_data.d_geom_params[3], ic_data
-                               .d_geom_params[4], ic_data.d_geom_params[5]};
+      std::vector<double> r = {ic_data.d_geom_params[3], ic_data.d_geom_params[4], ic_data.d_geom_params[5]};
       const Point dx = p - xc;
 
       // transform ellipse into ball of radius
@@ -44,7 +43,7 @@ Number netfv::initial_condition_ecm(const Point &p, const Parameters &es,
       ball_r = std::sqrt(ball_r);
 
       Point p_ball = util::ellipse_to_ball(p, xc, r,
-                                                 deck->d_dim, ball_r);
+                                           deck->d_dim, ball_r);
 
       if (p_ball.norm() < ball_r - 1.0E-12) {
 
@@ -54,9 +53,9 @@ Number netfv::initial_condition_ecm(const Point &p, const Parameters &es,
 
     } else if (ic_data.d_type == "box") {
 
-      Point x1 = Point(ic_data.d_geom_params[0],ic_data.d_geom_params[1],
-                           ic_data.d_geom_params[2]);
-      Point x2 = Point(ic_data.d_geom_params[3],ic_data.d_geom_params[4],
+      Point x1 = Point(ic_data.d_geom_params[0], ic_data.d_geom_params[1],
+                       ic_data.d_geom_params[2]);
+      Point x2 = Point(ic_data.d_geom_params[3], ic_data.d_geom_params[4],
                        ic_data.d_geom_params[5]);
 
       if (util::is_inside_box(p, {x1, x2}))
@@ -82,15 +81,15 @@ void netfv::EcmAssembly::assemble_face() {
   // call advection calculation function
   if (d_model_p->get_input_deck().d_advection_active)
     netfv::assemble_advection(*this,
-                             d_model_p->get_pres_assembly(),
-                             d_model_p->get_tum_assembly(), this->d_model_p);
+                              d_model_p->get_pres_assembly(),
+                              d_model_p->get_tum_assembly(), this->d_model_p);
 }
 
 void netfv::EcmAssembly::assemble_1() {
 
   // Get required system alias
   // auto &ecm = d_model_p->get_ecm_assembly();
-  auto &nut = d_model_p->get_nut_assembly();  
+  auto &nut = d_model_p->get_nut_assembly();
   auto &mde = d_model_p->get_mde_assembly();
 
   // Model parameters
@@ -98,7 +97,7 @@ void netfv::EcmAssembly::assemble_1() {
   const Real dt = d_model_p->d_dt;
 
   // local matrix and vector
-  DenseMatrix<Number> Ke(1,1);
+  DenseMatrix<Number> Ke(1, 1);
   DenseVector<Number> Fe(1);
 
   // Store current and old solution
@@ -118,13 +117,13 @@ void netfv::EcmAssembly::assemble_1() {
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
-    nut.init_dof(elem);    
+    nut.init_dof(elem);
     mde.init_dof(elem);
 
     // const unsigned int n_dofs = ecm.d_dof_indices_sys.size();
 
     // reset matrix and force
-    Ke(0,0) = 0.;
+    Ke(0, 0) = 0.;
     Fe(0) = 0.;
 
     // get fields at this element
@@ -136,32 +135,32 @@ void netfv::EcmAssembly::assemble_1() {
     if (deck.d_assembly_method == 1) {
 
       compute_rhs =
-          deck.d_elem_size *
-          (ecm_old + dt * deck.d_lambda_ECM_P * nut_cur *
-                         util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+        deck.d_elem_size *
+        (ecm_old + dt * deck.d_lambda_ECM_P * nut_cur *
+                     util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
 
       compute_mat = deck.d_elem_size *
                     (1. + dt * deck.d_lambda_ECM_D * mde_cur +
                      dt * deck.d_lambda_ECM_P * nut_cur *
-                         util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+                       util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
     } else {
 
       nut_proj = util::project_concentration(nut.get_current_sol(0));
       mde_proj = util::project_concentration(mde.get_current_sol(0));
 
       compute_rhs =
-          deck.d_elem_size *
-          (ecm_old + dt * deck.d_lambda_ECM_P * nut_proj *
+        deck.d_elem_size *
+        (ecm_old + dt * deck.d_lambda_ECM_P * nut_proj *
                      util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
 
       compute_mat = deck.d_elem_size *
                     (1. + dt * deck.d_lambda_ECM_D * mde_proj +
                      dt * deck.d_lambda_ECM_P * nut_proj *
-                     util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+                       util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
     }
 
     // add
-    Ke(0,0) += compute_mat;
+    Ke(0, 0) += compute_mat;
     Fe(0) += compute_rhs;
 
     // add to matrix

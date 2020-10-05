@@ -63,7 +63,7 @@ Number ic_net(const Point &p, const Parameters &es,
 }
 
 unsigned int create_node(Point p, std::vector<unsigned int> &nodes,
-    ReplicatedMesh &mesh) {
+                         ReplicatedMesh &mesh) {
 
   auto node = mesh.add_point(p);
   nodes.push_back(node->id());
@@ -72,7 +72,7 @@ unsigned int create_node(Point p, std::vector<unsigned int> &nodes,
 }
 
 unsigned int create_elem(unsigned int node_1, unsigned int node_2,
-    std::vector<unsigned int> &elems, ReplicatedMesh &mesh) {
+                         std::vector<unsigned int> &elems, ReplicatedMesh &mesh) {
 
   auto elem = Elem::build(EDGE2).release();
   elem->set_node(0) = mesh.node_ptr(node_1);
@@ -364,7 +364,7 @@ void test::mesh::add_node_elem_eq_sys_test(int argc, char **argv,
 // system for pressure
 //
 void test::mesh::add_node_elem_eq_sys_test_2(int argc, char **argv,
-                                           Parallel::Communicator *comm) {
+                                             Parallel::Communicator *comm) {
 
   out << "********** TestMesh 2 **************\n";
 
@@ -420,13 +420,13 @@ void test::mesh::add_node_elem_eq_sys_test_2(int argc, char **argv,
 
     auto node_i = create_node(get_random_point(), nodes, mesh);
 
-    auto elem_i = create_elem(nodes[i], nodes[i+1], elems, mesh);
+    auto elem_i = create_elem(nodes[i], nodes[i + 1], elems, mesh);
 
     // finish adding nodes and elements
     mesh.prepare_for_use();
 
     // create a segment
-    segments.emplace_back(nodes[i], nodes[i+1]);
+    segments.emplace_back(nodes[i], nodes[i + 1]);
 
     // reinit equation system
     eq_sys.reinit();
@@ -463,8 +463,8 @@ void test::mesh::add_node_elem_eq_sys_test_2(int argc, char **argv,
     auto node_i = create_node(get_random_point(), nodes, mesh);
     auto node_j = create_node(get_random_point(), nodes, mesh);
 
-    auto elem_i = create_elem(nodes[i], nodes[i+1], elems, mesh);
-    auto elem_j = create_elem(nodes[i], nodes[i+2], elems, mesh);
+    auto elem_i = create_elem(nodes[i], nodes[i + 1], elems, mesh);
+    auto elem_j = create_elem(nodes[i], nodes[i + 2], elems, mesh);
 
     // finish adding nodes and elements
     mesh.prepare_for_use();
@@ -508,7 +508,7 @@ void test::mesh::add_node_elem_eq_sys_test_2(int argc, char **argv,
 // system for pressure
 //
 void test::mesh::elem_id_numbering(int argc, char **argv,
-                                           Parallel::Communicator *comm) {
+                                   Parallel::Communicator *comm) {
 
   out << "********** TestMesh 10 **************\n";
 
@@ -521,9 +521,9 @@ void test::mesh::elem_id_numbering(int argc, char **argv,
   // dummy mesh
   ReplicatedMesh mesh(*comm);
   unsigned int N = 4;
-  double h = 1./ N;
+  double h = 1. / N;
   MeshTools::Generation::build_cube(mesh, N, N, N, 0., 1., 0.,
-                                        1., 0., 1., HEX8);
+                                    1., 0., 1., HEX8);
 
   // Looping through elements
   out << "Element information:\n";
@@ -538,7 +538,7 @@ void test::mesh::elem_id_numbering(int argc, char **argv,
 
     // try 4 perturbations of point
     out << ", rdm pertb. guess: ";
-    for (unsigned int i=0; i<4; i++) {
+    for (unsigned int i = 0; i < 4; i++) {
       Point x = xc + get_random_point(0.8 * h);
       unsigned int id_guess = util::get_elem_id(xc, h, N, 3);
 
@@ -551,7 +551,7 @@ void test::mesh::elem_id_numbering(int argc, char **argv,
   out << "Node information:\n";
   for (const auto &node : mesh.node_ptr_range()) {
 
-    const Point& x = mesh.point(node->id());
+    const Point &x = mesh.point(node->id());
     unsigned int id_guess = 0;
     {
       unsigned int i = x(0) / h;
@@ -565,7 +565,4 @@ void test::mesh::elem_id_numbering(int argc, char **argv,
         << ", coord: " << print_pt(x)
         << "\n";
   }
-
 }
-
-

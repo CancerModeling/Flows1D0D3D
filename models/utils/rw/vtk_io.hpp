@@ -43,8 +43,7 @@ namespace libMesh {
 class MeshBase;
 }
 
-namespace rw
-{
+namespace rw {
 
 using namespace libMesh;
 
@@ -61,22 +60,19 @@ using namespace libMesh;
  * \date 2007
  */
 class VTKIO : public MeshInput<MeshBase>,
-              public MeshOutput<MeshBase>
-{
+              public MeshOutput<MeshBase> {
 public:
   /**
    * Constructor.  Takes a writable reference to a mesh object.
    * This is the constructor required to read a mesh.
    */
-  explicit
-  VTKIO (MeshBase & mesh);
+  explicit VTKIO(MeshBase &mesh);
 
   /**
    * Constructor.  Takes a read-only reference to a mesh object.
    * This is the constructor required to write a mesh.
    */
-  explicit
-  VTKIO (const MeshBase & mesh);
+  explicit VTKIO(const MeshBase &mesh);
 
   /**
    * Bring in base class functionality for name resolution and to
@@ -92,9 +88,9 @@ public:
    * "available" when !LIBMESH_HAVE_VTK, however, it will throw a
    * runtime error.
    */
-  virtual void write_nodal_data (const std::string &,
-                                 const std::vector<Number> &,
-                                 const std::vector<std::string> &) override;
+  virtual void write_nodal_data(const std::string &,
+                                const std::vector<Number> &,
+                                const std::vector<std::string> &) override;
 
   /**
    * This method implements reading a mesh from a specified file
@@ -104,7 +100,7 @@ public:
    * "available" when !LIBMESH_HAVE_VTK, however, it will throw a
    * runtime error.
    */
-  virtual void read (const std::string &) override;
+  virtual void read(const std::string &) override;
 
   /**
    * Output the mesh without solutions to a .pvtu file.
@@ -113,9 +109,9 @@ public:
    * "available" when !LIBMESH_HAVE_VTK, however, it will throw a
    * runtime error.
    */
-  virtual void write (const std::string &) override;
+  virtual void write(const std::string &) override;
 
-//#ifdef LIBMESH_HAVE_VTK
+  //#ifdef LIBMESH_HAVE_VTK
 
   /**
    * Setter for compression flag
@@ -125,7 +121,7 @@ public:
   /**
    * Get a pointer to the VTK unstructured grid data structure.
    */
-  vtkUnstructuredGrid * get_vtk_grid();
+  vtkUnstructuredGrid *get_vtk_grid();
 
 private:
   /**
@@ -142,18 +138,18 @@ private:
   /**
    * write the nodal values of soln to a vtkUnstructuredGrid
    */
-  void node_values_to_vtk(const std::string & name,
-                          const std::vector<Real> & local_values);
+  void node_values_to_vtk(const std::string &name,
+                          const std::vector<Real> &local_values);
 
   /**
    * Extract the values of soln that correspond to the nodes
    *
    * This method overwrites all values in local_values
    */
-  void get_local_node_values(std::vector<Number> & local_values,
+  void get_local_node_values(std::vector<Number> &local_values,
                              std::size_t variable,
-                             const std::vector<Number> & soln,
-                             const std::vector<std::string> & names);
+                             const std::vector<Number> &soln,
+                             const std::vector<std::string> &names);
 
   /**
    * Write the system vectors to vtk
@@ -186,18 +182,15 @@ private:
    * Helper object that holds a map from VTK to libMesh element types
    * and vice-versa.
    */
-  struct ElementMaps
-  {
+  struct ElementMaps {
     // Associate libmesh_type with vtk_type (searchable in both directions).
-    void associate(ElemType libmesh_type, vtkIdType vtk_type)
-    {
+    void associate(ElemType libmesh_type, vtkIdType vtk_type) {
       writing_map[libmesh_type] = vtk_type;
       reading_map[vtk_type] = libmesh_type;
     }
 
     // Find an entry in the writing map, or throw an error.
-    vtkIdType find(ElemType libmesh_type)
-    {
+    vtkIdType find(ElemType libmesh_type) {
       std::map<ElemType, vtkIdType>::iterator it = writing_map.find(libmesh_type);
 
       if (it == writing_map.end())
@@ -207,8 +200,7 @@ private:
     }
 
     // Find an entry in the reading map, or throw an error.
-    ElemType find(vtkIdType vtk_type)
-    {
+    ElemType find(vtkIdType vtk_type) {
       std::map<vtkIdType, ElemType>::iterator it = reading_map.find(vtk_type);
 
       if (it == reading_map.end())
@@ -232,9 +224,8 @@ private:
    */
   static ElementMaps build_element_maps();
 
-//#endif
+  //#endif
 };
-
 
 
 } // namespace rw

@@ -9,40 +9,34 @@
 namespace netfc {
 
 template<class Node>
-class GraphStructure{
+class GraphStructure {
 
-std::shared_ptr<Node> head, tail;
+  std::shared_ptr<Node> head, tail;
 
 public:
+  GraphStructure() {
 
-GraphStructure(){
+    head = tail = NULL;
+  }
 
-   head = tail = NULL;
+  ~GraphStructure() {}
 
-}
+  bool isEmpty() {
 
-~GraphStructure(){}
+    return (head == NULL) ? true : false;
+  }
 
-bool isEmpty(){
+  void attachNode(Node newNode) {
 
-     return (head == NULL) ? true : false;
+    auto sp_newNode = std::make_shared<Node>(newNode);
 
-}
-
-void attachNode(Node newNode){
-
-    auto sp_newNode = std::make_shared<Node>( newNode );
-
-    if( isEmpty() ){
-        tail = head = sp_newNode;
+    if (isEmpty()) {
+      tail = head = sp_newNode;
+    } else {
+      tail->successor = sp_newNode;
+      tail = sp_newNode;
     }
-    else{
-        tail->successor = sp_newNode;
-        tail = sp_newNode;
-    }
-
-}
-
+  }
 };
 
-}
+} // namespace netfc

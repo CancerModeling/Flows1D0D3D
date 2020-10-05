@@ -100,8 +100,8 @@ inline void create_mesh(InpDeck &input, ReplicatedMesh &mesh) {
 }
 
 inline double compute_diff_qoi(const std::string &type, BaseAssembly &a,
-    BaseAssembly &b, unsigned int local_var_id_a = 0,
-                        unsigned int local_var_id_b = 0) {
+                               BaseAssembly &b, unsigned int local_var_id_a = 0,
+                               unsigned int local_var_id_b = 0) {
 
   Real qoi = 0.;
   if (type == "inf")
@@ -148,18 +148,17 @@ inline double compute_diff_qoi(const std::string &type, BaseAssembly &a,
       else if (type == "linf") {
         if (qoi > std::abs(cur_sol_a - cur_sol_b))
           qoi = std::abs(cur_sol_a - cur_sol_b);
-      }
-      else {
+      } else {
         libmesh_error_msg("Error: Invalid type = " + type + " for qoi calculation");
       }
     } // loop over quadrature points
-  } // loop over elements
+  }   // loop over elements
 
   // communicate qoi from other processors
   Real total_qoi = 0.;
   if (type == "linf")
     MPI_Allreduce(&qoi, &total_qoi, 1, MPI_DOUBLE, MPI_MAX,
-                MPI_COMM_WORLD);
+                  MPI_COMM_WORLD);
   else
     MPI_Allreduce(&qoi, &total_qoi, 1, MPI_DOUBLE, MPI_SUM,
                   MPI_COMM_WORLD);
@@ -171,10 +170,10 @@ inline double compute_diff_qoi(const std::string &type, BaseAssembly &a,
 }
 
 inline double compute_prolific_qoi(const std::string &type, BaseAssembly &a,
-                            BaseAssembly &b, BaseAssembly &c,
-                            unsigned int local_var_id_a = 0,
-                            unsigned int local_var_id_b = 0,
-                            unsigned int local_var_id_c = 0) {
+                                   BaseAssembly &b, BaseAssembly &c,
+                                   unsigned int local_var_id_a = 0,
+                                   unsigned int local_var_id_b = 0,
+                                   unsigned int local_var_id_c = 0) {
 
   // a - tumor, b - hypoxic, c - necrotic
 
@@ -235,12 +234,11 @@ inline double compute_prolific_qoi(const std::string &type, BaseAssembly &a,
       else if (type == "linf") {
         if (qoi > std::abs(cur_sol_a - cur_sol_b - cur_sol_c))
           qoi = std::abs(cur_sol_a - cur_sol_b - cur_sol_c);
-      }
-      else {
+      } else {
         libmesh_error_msg("Error: Invalid type = " + type + " for qoi calculation");
       }
     } // loop over quadrature points
-  } // loop over elements
+  }   // loop over elements
 
   // communicate qoi from other processors
   Real total_qoi = 0.;
@@ -258,10 +256,10 @@ inline double compute_prolific_qoi(const std::string &type, BaseAssembly &a,
 }
 
 inline double compute_tumor_qoi(const std::string &type, BaseAssembly &a,
-                                   BaseAssembly &b, BaseAssembly &c,
-                                   unsigned int local_var_id_a = 0,
-                                   unsigned int local_var_id_b = 0,
-                                   unsigned int local_var_id_c = 0) {
+                                BaseAssembly &b, BaseAssembly &c,
+                                unsigned int local_var_id_a = 0,
+                                unsigned int local_var_id_b = 0,
+                                unsigned int local_var_id_c = 0) {
 
   // a - prolific, b - hypoxic, c - necrotic
 
@@ -322,12 +320,11 @@ inline double compute_tumor_qoi(const std::string &type, BaseAssembly &a,
       else if (type == "linf") {
         if (qoi > std::abs(cur_sol_a + cur_sol_b + cur_sol_c))
           qoi = std::abs(cur_sol_a + cur_sol_b + cur_sol_c);
-      }
-      else {
+      } else {
         libmesh_error_msg("Error: Invalid type = " + type + " for qoi calculation");
       }
     } // loop over quadrature points
-  } // loop over elements
+  }   // loop over elements
 
   // communicate qoi from other processors
   Real total_qoi = 0.;
@@ -407,9 +404,9 @@ inline void get_elem_sol(util::BaseAssembly &sys, std::vector<double> &sol,
 }
 
 inline void localize_solution_with_elem_id_numbering_const_elem(
-    util::BaseAssembly &sys, std::vector<double> &collect_sol,
-    std::vector<double> &localize_sol, std::vector<unsigned int> var_ids = {0},
-    bool resize_vec = true) {
+  util::BaseAssembly &sys, std::vector<double> &collect_sol,
+  std::vector<double> &localize_sol, std::vector<unsigned int> var_ids = {0},
+  bool resize_vec = true) {
 
   // gather solution in all processors
   // sys.d_sys.current_local_solution->localize(collect_sol);
@@ -422,8 +419,8 @@ inline void localize_solution_with_elem_id_numbering_const_elem(
       localize_sol.resize(sys.d_mesh.n_elem() * num_vars);
     else
       libmesh_error_msg(
-          "localize_sol size should match collect_sol size for system " +
-          sys.d_sys_name);
+        "localize_sol size should match collect_sol size for system " +
+        sys.d_sys_name);
   }
 
   // check if system has only 1 variable
@@ -451,10 +448,10 @@ inline void localize_solution_with_elem_id_numbering_const_elem(
 }
 
 inline void localize_solution_with_elem_id_numbering_const_elem(
-    util::BaseAssembly &sys,
-    std::unique_ptr<NumericVector<Number>> &collect_sol,
-    std::vector<double> &localize_sol, std::vector<unsigned int> var_ids = {0},
-    bool resize_vec = true) {
+  util::BaseAssembly &sys,
+  std::unique_ptr<NumericVector<Number>> &collect_sol,
+  std::vector<double> &localize_sol, std::vector<unsigned int> var_ids = {0},
+  bool resize_vec = true) {
 
   // gather solution in all processors
   // sys.d_sys.current_local_solution->localize(collect_sol);
@@ -467,8 +464,8 @@ inline void localize_solution_with_elem_id_numbering_const_elem(
       localize_sol.resize(sys.d_mesh.n_elem() * num_vars);
     else
       libmesh_error_msg(
-          "localize_sol size should match collect_sol size for system " +
-          sys.d_sys_name);
+        "localize_sol size should match collect_sol size for system " +
+        sys.d_sys_name);
   }
 
   // check if system has only 1 variable
@@ -496,9 +493,9 @@ inline void localize_solution_with_elem_id_numbering_const_elem(
 }
 
 inline void localize_solution_with_elem_id_numbering_non_const_elem(
-    util::BaseAssembly &sys, std::vector<double> &collect_sol,
-    std::vector<double> &localize_sol, std::vector<unsigned int> var_ids = {0},
-    bool resize_vec = true) {
+  util::BaseAssembly &sys, std::vector<double> &collect_sol,
+  std::vector<double> &localize_sol, std::vector<unsigned int> var_ids = {0},
+  bool resize_vec = true) {
 
   // gather solution in all processors
   // sys.d_sys.current_local_solution->localize(collect_sol);
@@ -511,8 +508,8 @@ inline void localize_solution_with_elem_id_numbering_non_const_elem(
       localize_sol.resize(sys.d_mesh.n_elem() * num_vars);
     else
       libmesh_error_msg(
-          "localize_sol size should match collect_sol size for system " +
-          sys.d_sys_name);
+        "localize_sol size should match collect_sol size for system " +
+        sys.d_sys_name);
   }
 
   // check if system has only 1 variable
@@ -544,10 +541,10 @@ inline void localize_solution_with_elem_id_numbering_non_const_elem(
 }
 
 inline void localize_solution_with_elem_id_numbering_non_const_elem(
-    util::BaseAssembly &sys,
-    std::unique_ptr<NumericVector<Number>> &collect_sol,
-    std::vector<double> &localize_sol, std::vector<unsigned int> var_ids = {0},
-    bool resize_vec = true) {
+  util::BaseAssembly &sys,
+  std::unique_ptr<NumericVector<Number>> &collect_sol,
+  std::vector<double> &localize_sol, std::vector<unsigned int> var_ids = {0},
+  bool resize_vec = true) {
 
   // gather solution in all processors
   // sys.d_sys.current_local_solution->localize(collect_sol);
@@ -560,8 +557,8 @@ inline void localize_solution_with_elem_id_numbering_non_const_elem(
       localize_sol.resize(sys.d_mesh.n_elem() * num_vars);
     else
       libmesh_error_msg(
-          "localize_sol size should match collect_sol size for system " +
-          sys.d_sys_name);
+        "localize_sol size should match collect_sol size for system " +
+        sys.d_sys_name);
   }
 
   // check if system has only 1 variable

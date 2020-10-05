@@ -23,14 +23,14 @@ public:
   VelAssembly(Model *model, const std::string system_name, MeshBase &mesh,
               TransientLinearImplicitSystem &sys)
       : util::BaseAssembly(
-      system_name, mesh, sys, mesh.mesh_dimension(),
-      (mesh.mesh_dimension() == 2
-       ? std::vector<unsigned int>{sys.variable_number("velocity_x"),
-                                   sys.variable_number("velocity_y")}
-       : std::vector<unsigned int>{sys.variable_number("velocity_x"),
-                                   sys.variable_number("velocity_y"),
-                                   sys.variable_number(
-                                       "velocity_z")})),
+          system_name, mesh, sys, mesh.mesh_dimension(),
+          (mesh.mesh_dimension() == 2
+             ? std::vector<unsigned int>{sys.variable_number("velocity_x"),
+                                         sys.variable_number("velocity_y")}
+             : std::vector<unsigned int>{sys.variable_number("velocity_x"),
+                                         sys.variable_number("velocity_y"),
+                                         sys.variable_number(
+                                           "velocity_z")})),
         d_model_p(model) {}
 
   /*! @brief Assembly function. Overrides the default assembly function */
@@ -41,7 +41,6 @@ public:
   void solve();
 
 public:
-
   /*! @brief Pointer reference to model */
   Model *d_model_p;
 };

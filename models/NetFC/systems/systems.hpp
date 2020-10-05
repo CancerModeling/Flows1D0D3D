@@ -35,7 +35,7 @@ public:
   /*!
    * @brief Constructor
    */
-  explicit ModelAssembly(Model * model) : d_model_p(model) {}
+  explicit ModelAssembly(Model *model) : d_model_p(model) {}
 
   /**
    * Assemble the system matrix and right-hand side vector.
@@ -43,7 +43,6 @@ public:
   void assemble() {}
 
 private:
-
   /*! @brief Store the pointer to Model object */
   Model *d_model_p;
 };
@@ -54,9 +53,9 @@ private:
 /**@{*/
 class NutAssembly : public System::Assembly {
 public:
-  NutAssembly(Model * model, const std::string system_name) :
-  d_model_p(model), d_sys_name(system_name) {}
+  NutAssembly(Model *model, const std::string system_name) : d_model_p(model), d_sys_name(system_name) {}
   void assemble() override;
+
 private:
   void assemble_1();
   void assemble_2();
@@ -66,7 +65,7 @@ private:
 };
 
 Number initial_condition_nut(const Point &p, const Parameters &es,
-                     const std::string &system_name, const std::string &var_name);
+                             const std::string &system_name, const std::string &var_name);
 
 void boundary_condition_nut(EquationSystems &es);
 
@@ -78,9 +77,9 @@ void boundary_condition_nut(EquationSystems &es);
 /**@{*/
 class TafAssembly : public System::Assembly {
 public:
-  TafAssembly(Model * model, const std::string system_name) :
-      d_model_p(model), d_sys_name(system_name) {}
+  TafAssembly(Model *model, const std::string system_name) : d_model_p(model), d_sys_name(system_name) {}
   void assemble() override;
+
 private:
   void assemble_1();
   void assemble_2();
@@ -90,7 +89,7 @@ private:
 };
 
 Number initial_condition_taf(const Point &p, const Parameters &es,
-                     const std::string &system_name, const std::string &var_name);
+                             const std::string &system_name, const std::string &var_name);
 
 /** @}*/
 
@@ -100,9 +99,9 @@ Number initial_condition_taf(const Point &p, const Parameters &es,
 /**@{*/
 class GradTafAssembly : public System::Assembly {
 public:
-  GradTafAssembly(Model * model, const std::string system_name) :
-      d_model_p(model), d_sys_name(system_name) {}
+  GradTafAssembly(Model *model, const std::string system_name) : d_model_p(model), d_sys_name(system_name) {}
   void assemble() override;
+
 private:
   void assemble_2d();
   void assemble_3d();
@@ -111,8 +110,8 @@ private:
 };
 
 Number initial_condition_grad_taf(const Point &p, const Parameters &es,
-                                          const std::string &system_name,
-                                          const std::string &var_name);
+                                  const std::string &system_name,
+                                  const std::string &var_name);
 
 /** @}*/
 
@@ -122,9 +121,9 @@ Number initial_condition_grad_taf(const Point &p, const Parameters &es,
 /**@{*/
 class HypAssembly : public System::Assembly {
 public:
-  HypAssembly(Model * model, const std::string system_name) :
-      d_model_p(model), d_sys_name(system_name) {}
+  HypAssembly(Model *model, const std::string system_name) : d_model_p(model), d_sys_name(system_name) {}
   void assemble() override;
+
 private:
   void assemble_1();
   void assemble_2();
@@ -134,10 +133,10 @@ private:
 };
 
 Number initial_condition_hyp(const Point &p, const Parameters &es,
-                     const std::string &system_name, const std::string &var_name);
+                             const std::string &system_name, const std::string &var_name);
 
 Number initial_condition_hyp_kernel(const Point &p,
-                                            const netfc::InputDeck *deck);
+                                    const netfc::InputDeck *deck);
 
 /** @}*/
 
@@ -147,9 +146,9 @@ Number initial_condition_hyp_kernel(const Point &p,
 /**@{*/
 class NecAssembly : public System::Assembly {
 public:
-  NecAssembly(Model * model, const std::string system_name) :
-      d_model_p(model), d_sys_name(system_name) {}
+  NecAssembly(Model *model, const std::string system_name) : d_model_p(model), d_sys_name(system_name) {}
   void assemble() override;
+
 private:
   void assemble_1();
   void assemble_2();
@@ -158,7 +157,7 @@ private:
 };
 
 Number initial_condition_nec(const Point &p, const Parameters &es,
-                     const std::string &system_name, const std::string &var_name);
+                             const std::string &system_name, const std::string &var_name);
 
 /** @}*/
 
@@ -168,9 +167,9 @@ Number initial_condition_nec(const Point &p, const Parameters &es,
 /**@{*/
 class TumAssembly : public System::Assembly {
 public:
-  TumAssembly(Model * model, const std::string system_name) :
-      d_model_p(model), d_sys_name(system_name) {}
+  TumAssembly(Model *model, const std::string system_name) : d_model_p(model), d_sys_name(system_name) {}
   void assemble() override;
+
 private:
   void assemble_1();
   void assemble_2();
@@ -180,7 +179,7 @@ private:
 };
 
 Number initial_condition_tum(const Point &p, const Parameters &es,
-                     const std::string &system_name, const std::string &var_name);
+                             const std::string &system_name, const std::string &var_name);
 
 /** @}*/
 
@@ -190,9 +189,9 @@ Number initial_condition_tum(const Point &p, const Parameters &es,
 /**@{*/
 class EcmAssembly : public System::Assembly {
 public:
-  EcmAssembly(Model * model, const std::string system_name) :
-      d_model_p(model), d_sys_name(system_name) {}
+  EcmAssembly(Model *model, const std::string system_name) : d_model_p(model), d_sys_name(system_name) {}
   void assemble() override;
+
 private:
   void assemble_1();
   void assemble_2();
@@ -214,9 +213,9 @@ void boundary_condition_ecm(EquationSystems &es);
 /**@{*/
 class MdeAssembly : public System::Assembly {
 public:
-  MdeAssembly(Model * model, const std::string system_name) :
-      d_model_p(model), d_sys_name(system_name) {}
+  MdeAssembly(Model *model, const std::string system_name) : d_model_p(model), d_sys_name(system_name) {}
   void assemble() override;
+
 private:
   void assemble_1();
   void assemble_2();
@@ -239,9 +238,9 @@ void boundary_condition_mde(EquationSystems &es);
 
 class PressureAssembly : public System::Assembly {
 public:
-  PressureAssembly(Model * model, const std::string system_name) :
-      d_model_p(model), d_sys_name(system_name) {}
+  PressureAssembly(Model *model, const std::string system_name) : d_model_p(model), d_sys_name(system_name) {}
   void assemble() override;
+
 private:
   void assemble_1();
   std::string d_sys_name;
@@ -249,25 +248,24 @@ private:
 };
 
 Number initial_condition_pres(const Point &p, const Parameters &es,
-                                     const std::string &system_name, const std::string &var_name);
+                              const std::string &system_name, const std::string &var_name);
 
 void boundary_condition_pres(EquationSystems &es);
 
 class VelocityAssembly : public System::Assembly {
 public:
-  VelocityAssembly(Model * model, const std::string system_name) :
-      d_model_p(model), d_sys_name(system_name) {}
+  VelocityAssembly(Model *model, const std::string system_name) : d_model_p(model), d_sys_name(system_name) {}
   void assemble() override;
   std::string d_sys_name;
   Model *d_model_p;
+
 private:
   void assemble_2d();
   void assemble_3d();
-
 };
 
 /** @}*/
 
-} // namespace anglima
+} // namespace netfc
 
 #endif // NETFC_SYSTEMS_H

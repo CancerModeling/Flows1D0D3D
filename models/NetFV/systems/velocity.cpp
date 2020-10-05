@@ -52,7 +52,8 @@ void netfv::VelAssembly::solve() {
     // get solution at this element
     tum_cur = tum.get_current_sol_var(0, 0);
     chem_tum_cur = tum.get_current_sol_var(0, 1);
-    pres_cur = pres.get_current_sol(0);;
+    pres_cur = pres.get_current_sol(0);
+    ;
     velocity = 0.;
     for (auto &n : ns)
       n = 0;
@@ -84,7 +85,7 @@ void netfv::VelAssembly::solve() {
 
         Real a = -deck.d_tissue_flow_coeff *
                  ((pres_cur - pres_neigh_cur) -
-                     chem_tum_cur * (tum_cur - tum_neigh_cur));
+                  chem_tum_cur * (tum_cur - tum_neigh_cur));
 
         if (dx_align == "x") {
           ns[0]++;

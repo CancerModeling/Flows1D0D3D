@@ -126,7 +126,7 @@ void netfvfeexp::model_setup_run(int argc, char **argv,
   auto &mde = tum_sys.add_system<TransientLinearImplicitSystem>("MDE");
   auto &pres = tum_sys.add_system<TransientLinearImplicitSystem>("Pressure");
   auto &grad_taf =
-      tum_sys.add_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    tum_sys.add_system<TransientLinearImplicitSystem>("TAF_Gradient");
   auto &vel = tum_sys.add_system<TransientLinearImplicitSystem>("Velocity");
   auto &tum = tum_sys.add_system<TransientLinearImplicitSystem>("Tumor");
 
@@ -216,15 +216,15 @@ void netfvfeexp::model_setup_run(int argc, char **argv,
 
 // Model class
 netfvfeexp::Model::Model(
-    int argc, char **argv, const std::string &filename,
-    Parallel::Communicator *comm, InpDeck &input, ReplicatedMesh &mesh,
-    EquationSystems &tum_sys, TransientLinearImplicitSystem &nec,
-    TransientLinearImplicitSystem &pro, TransientLinearImplicitSystem &nut,
-    TransientLinearImplicitSystem &hyp, TransientLinearImplicitSystem &taf,
-    TransientLinearImplicitSystem &ecm, TransientLinearImplicitSystem &mde,
-    TransientLinearImplicitSystem &pres,
-    TransientLinearImplicitSystem &grad_taf, TransientLinearImplicitSystem &vel,
-    TransientLinearImplicitSystem &tum, util::Logger &log)
+  int argc, char **argv, const std::string &filename,
+  Parallel::Communicator *comm, InpDeck &input, ReplicatedMesh &mesh,
+  EquationSystems &tum_sys, TransientLinearImplicitSystem &nec,
+  TransientLinearImplicitSystem &pro, TransientLinearImplicitSystem &nut,
+  TransientLinearImplicitSystem &hyp, TransientLinearImplicitSystem &taf,
+  TransientLinearImplicitSystem &ecm, TransientLinearImplicitSystem &mde,
+  TransientLinearImplicitSystem &pres,
+  TransientLinearImplicitSystem &grad_taf, TransientLinearImplicitSystem &vel,
+  TransientLinearImplicitSystem &tum, util::Logger &log)
     : util::BaseModel(comm, input, mesh, tum_sys, log, "NetFVFEExp"),
       d_network(this), d_nec(this, "Necrotic", d_mesh, nec),
       d_pro(this, "Prolific", d_mesh, pro),
@@ -249,11 +249,11 @@ netfvfeexp::Model::Model(
 
   // bounding box
   d_bounding_box.first =
-      Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
-            d_input.d_domain_params[4]);
+    Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
+          d_input.d_domain_params[4]);
   d_bounding_box.second =
-      Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
-            d_input.d_domain_params[5]);
+    Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
+          d_input.d_domain_params[5]);
 
   // remaining system setup
   {
@@ -316,7 +316,7 @@ void netfvfeexp::Model::run() {
   d_dt = d_input.d_dt;
 
   d_tum_sys.parameters.set<unsigned int>("linear solver maximum iterations") =
-      d_input.d_linear_max_iters;
+    d_input.d_linear_max_iters;
 
   //
   // Solve step
@@ -346,7 +346,7 @@ void netfvfeexp::Model::run() {
     solve_clock = steady_clock::now();
 
     d_log("Time step: " + std::to_string(d_step) +
-              ", time: " + std::to_string(d_time) + "\n",
+            ", time: " + std::to_string(d_time) + "\n",
           "integrate");
 
     // solve tumor-network system
@@ -384,7 +384,7 @@ void netfvfeexp::Model::write_system(const unsigned int &t_step) {
 
   // write tumor simulation
   rw::VTKIO(d_mesh).write_equation_systems(d_input.d_outfilename + "_" +
-                                               std::to_string(t_step) + ".pvtu",
+                                             std::to_string(t_step) + ".pvtu",
                                            d_tum_sys);
 }
 
@@ -395,10 +395,10 @@ void netfvfeexp::Model::compute_qoi() {
   std::vector<double> qoi(N, 0.);
   if (d_qoi.d_vec.empty()) {
     d_qoi = util::QoIVec(
-        {"tumor_mass", "hypoxic_mass", "necrotic_mass", "prolific_mass",
-         "nutrient_mass", "tumor_l2", "hypoxic_l2", "necrotic_l2",
-         "prolific_l2", "nutrient_l2", "r_v_mean", "r_v_std", "l_v_mean",
-         "l_v_std", "l_v_total", "vessel_vol", "vessel_density"});
+      {"tumor_mass", "hypoxic_mass", "necrotic_mass", "prolific_mass",
+       "nutrient_mass", "tumor_l2", "hypoxic_l2", "necrotic_l2",
+       "prolific_l2", "nutrient_l2", "r_v_mean", "r_v_std", "l_v_mean",
+       "l_v_std", "l_v_total", "vessel_vol", "vessel_density"});
 
     d_log.log_qoi_header(d_time, d_qoi.get_names());
   }
@@ -526,7 +526,7 @@ void netfvfeexp::Model::solve_system_explicit() {
 void netfvfeexp::Model::solve_system_implicit() {
 
   // update time
-  for (auto &s: get_all_assembly())
+  for (auto &s : get_all_assembly())
     s->d_sys.time = d_time;
   d_tum_sys.parameters.set<Real>("time") = d_time;
 
@@ -564,7 +564,7 @@ void netfvfeexp::Model::solve_system_implicit() {
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -641,13 +641,9 @@ void netfvfeexp::Model::solve_system_implicit() {
     }
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = d_err_check_pro->linfty_norm()
-                                  + d_err_check_hyp->linfty_norm()
-                                  + d_err_check_nec->linfty_norm()
-                                  + d_err_check_nut->linfty_norm();
+    double nonlinear_iter_error = d_err_check_pro->linfty_norm() + d_err_check_hyp->linfty_norm() + d_err_check_nec->linfty_norm() + d_err_check_nut->linfty_norm();
     if (d_input.d_solve_ecm)
-      nonlinear_iter_error += d_err_check_mde->linfty_norm()
-                                  + d_err_check_ecm->linfty_norm();
+      nonlinear_iter_error += d_err_check_mde->linfty_norm() + d_err_check_ecm->linfty_norm();
     if (!d_input.d_coupled_1d3d)
       nonlinear_iter_error += d_err_check_nut->linfty_norm();
 
@@ -659,7 +655,8 @@ void netfvfeexp::Model::solve_system_implicit() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_iter_error << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_iter_error < d_input.d_nonlin_tol) {
@@ -706,15 +703,13 @@ void netfvfeexp::Model::solve_system_implicit() {
 void netfvfeexp::Model::solve_system_nutrient_explicit() {
 
   // update time
-  for (auto &s: get_all_assembly())
+  for (auto &s : get_all_assembly())
     s->d_sys.time = d_time;
   d_tum_sys.parameters.set<Real>("time") = d_time;
 
   // update old solution
-  for (auto &s: get_all_assembly()) {
-    if (s->d_sys_name != "Velocity"
-        and s->d_sys_name != "Tumor"
-        and s->d_sys_name != "TAF_Gradient") {
+  for (auto &s : get_all_assembly()) {
+    if (s->d_sys_name != "Velocity" and s->d_sys_name != "Tumor" and s->d_sys_name != "TAF_Gradient") {
 
       *(s->d_sys.old_local_solution) = *(s->d_sys.current_local_solution);
     }
@@ -737,7 +732,7 @@ void netfvfeexp::Model::solve_system_nutrient_explicit() {
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -789,12 +784,9 @@ void netfvfeexp::Model::solve_system_nutrient_explicit() {
     }
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = d_err_check_pro->linfty_norm()
-                                  + d_err_check_hyp->linfty_norm()
-                                  + d_err_check_nec->linfty_norm();
+    double nonlinear_iter_error = d_err_check_pro->linfty_norm() + d_err_check_hyp->linfty_norm() + d_err_check_nec->linfty_norm();
     if (d_input.d_solve_ecm)
-      nonlinear_iter_error += d_err_check_mde->linfty_norm()
-                                  + d_err_check_ecm->linfty_norm();
+      nonlinear_iter_error += d_err_check_mde->linfty_norm() + d_err_check_ecm->linfty_norm();
 
     if (d_input.d_perform_output) {
 
@@ -804,7 +796,8 @@ void netfvfeexp::Model::solve_system_nutrient_explicit() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_iter_error << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_iter_error < d_input.d_nonlin_tol) {
@@ -856,8 +849,8 @@ void netfvfeexp::Model::solve_pressure() {
   if (d_input.d_solve_pres_with_net_update) {
     // two cases: network update is allowed or network is static
     if (d_input.d_network_update) {
-        if((d_step - 1) % d_input.d_network_update_interval == 0)
-          solve_pres = true;
+      if ((d_step - 1) % d_input.d_network_update_interval == 0)
+        solve_pres = true;
     } else {
       // network is static. In this case, we update pressure every 4 time step
       // FIXME: Should we introduce a input parameter for this as well??
@@ -893,7 +886,7 @@ void netfvfeexp::Model::solve_pressure() {
 
     // Nonlinear iteration loop
     d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-        d_input.d_linear_tol;
+      d_input.d_linear_tol;
 
     // reset nonlinear step
     d_nonlinear_step = 0;
@@ -934,7 +927,7 @@ void netfvfeexp::Model::solve_pressure() {
       if (d_input.d_perform_output) {
 
         const unsigned int n_linear_iterations =
-            d_pres.d_sys.n_linear_iterations();
+          d_pres.d_sys.n_linear_iterations();
         const Real final_linear_residual = d_pres.d_sys.final_linear_residual();
 
         oss << "      LC step: " << n_linear_iterations
@@ -946,7 +939,8 @@ void netfvfeexp::Model::solve_pressure() {
       if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
         d_log(" \n", "debug");
-        oss << "      NC step: " << l << std::endl << std::endl;
+        oss << "      NC step: " << l << std::endl
+            << std::endl;
         d_log(oss, "converge sys");
 
         break;
@@ -993,7 +987,7 @@ void netfvfeexp::Model::solve_nutrient() {
 
     // Nonlinear iteration loop
     d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-        d_input.d_linear_tol;
+      d_input.d_linear_tol;
 
     // reset nonlinear step
     d_nonlinear_step = 0;
@@ -1032,7 +1026,7 @@ void netfvfeexp::Model::solve_nutrient() {
       if (d_input.d_perform_output) {
 
         const unsigned int n_linear_iterations =
-            d_nut.d_sys.n_linear_iterations();
+          d_nut.d_sys.n_linear_iterations();
         const Real final_linear_residual = d_nut.d_sys.final_linear_residual();
 
         oss << "      LC step: " << n_linear_iterations
@@ -1044,7 +1038,8 @@ void netfvfeexp::Model::solve_nutrient() {
       if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
         d_log(" \n", "debug");
-        oss << "      NC step: " << l << std::endl << std::endl;
+        oss << "      NC step: " << l << std::endl
+            << std::endl;
         d_log(oss, "converge nut");
 
         break;

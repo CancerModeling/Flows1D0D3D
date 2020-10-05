@@ -17,7 +17,7 @@ double get_taf_source(const std::string &test_name, const Point &x,
   if (test_name != "test_taf" and test_name != "test_taf_2")
     return 0.;
 
-  for (int i=0; i < type.size(); i++) {
+  for (int i = 0; i < type.size(); i++) {
 
     const Point xc = util::to_point(centers[i]);
     auto d = (x - xc).norm();
@@ -29,12 +29,12 @@ double get_taf_source(const std::string &test_name, const Point &x,
   return 0.;
 }
 
-}
+} // namespace
 
 Number netfcfvfe::initial_condition_taf(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                        const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"TAF");
+  libmesh_assert_equal_to(system_name, "TAF");
 
   return 0.;
 }
@@ -78,14 +78,15 @@ void netfcfvfe::TafAssembly::assemble_1() {
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
       // Computing solution
-      taf_old = 0.; hyp_cur = 0.;
+      taf_old = 0.;
+      hyp_cur = 0.;
       vel_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         taf_old += d_phi[l][qp] * get_old_sol(l);
         hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
 
-        for (unsigned int ll=0; ll<d_mesh.mesh_dimension(); ll++)
+        for (unsigned int ll = 0; ll < d_mesh.mesh_dimension(); ll++)
           vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
       }
 
@@ -104,10 +105,10 @@ void netfcfvfe::TafAssembly::assemble_1() {
 
       // add artificial source if any
       compute_rhs +=
-          d_JxW[qp] * dt * deck.d_lambda_TAF *
-          get_taf_source(deck.d_test_name, d_qpoints[qp],
-                         deck.d_taf_source_type,
-                         deck.d_taf_source_center, deck.d_taf_source_radius);
+        d_JxW[qp] * dt * deck.d_lambda_TAF *
+        get_taf_source(deck.d_test_name, d_qpoints[qp],
+                       deck.d_taf_source_type,
+                       deck.d_taf_source_center, deck.d_taf_source_radius);
 
       // Assembling matrix
       for (unsigned int i = 0; i < d_phi.size(); i++) {
@@ -120,11 +121,11 @@ void netfcfvfe::TafAssembly::assemble_1() {
 
           // gradient term
           d_Ke(i, j) +=
-              d_JxW[qp] * dt * deck.d_D_TAF * d_dphi[j][qp] * d_dphi[i][qp];
+            d_JxW[qp] * dt * deck.d_D_TAF * d_dphi[j][qp] * d_dphi[i][qp];
 
           // advection of taf
           d_Ke(i, j) -=
-              advection_factor * d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
+            advection_factor * d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
         }
       }
     } // loop over quadrature points

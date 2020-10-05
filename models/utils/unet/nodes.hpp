@@ -35,11 +35,11 @@ struct ElemWeights {
   std::vector<unsigned int> elem_id;
   std::vector<double> elem_weight;
 
-  ElemWeights(unsigned int id = 0) : id_seg(id), half_cyl_surf(0.) {};
+  ElemWeights(unsigned int id = 0) : id_seg(id), half_cyl_surf(0.){};
 
   void add_unique(const unsigned int &elem, const double &weight) {
 
-    for (unsigned int i=0; i<elem_id.size(); i++) {
+    for (unsigned int i = 0; i < elem_id.size(); i++) {
       if (elem_id[i] == elem) {
         elem_weight[i] += weight;
         return;
@@ -58,7 +58,8 @@ struct ElemWeights {
   }
 };
 
-enum TypeOfSegment { DirBoundary, Inner };
+enum TypeOfSegment { DirBoundary,
+                     Inner };
 
 class SegFV {
 
@@ -67,11 +68,10 @@ public:
    * @brief Constructor
    */
 
-  SegFV(): index(0), typeOfSegment(Inner), length(0.0),
-           radius(0.0), L_p(0.0), p_boundary_1(0.0), p_boundary_2(0.0),
-           p_v(0.0), global_successor(NULL),
-           index_1(0), index_2(0), coord_1(0.0), coord_2(0.0)
-  {}
+  SegFV() : index(0), typeOfSegment(Inner), length(0.0),
+            radius(0.0), L_p(0.0), p_boundary_1(0.0), p_boundary_2(0.0),
+            p_v(0.0), global_successor(NULL),
+            index_1(0), index_2(0), coord_1(0.0), coord_2(0.0) {}
 
   std::vector<std::shared_ptr<SegFV>> neighbors_1;
 
@@ -94,23 +94,22 @@ public:
     t = (2.0 * M_PI * radius * radius * radius * radius) / (8.0 * length * mu);
 
     return t;
-
   }
-
 };
 
-enum TypeOfNode{DirichletNode,InnerNode,NeumannNode};
+enum TypeOfNode { DirichletNode,
+                  InnerNode,
+                  NeumannNode };
 
-class VGNode{
+class VGNode {
 
 public:
   /*!
    * @brief Constructor
    */
-  VGNode(): index(0), p_v(0.0), c_v(0.0), p_boundary(0.0), 
-            c_boundary(0.0), edge_touched(false), sprouting_edge(false), apicalGrowth(false),
-            coord(0.0), radii(0.0), radii_initial(0.0), tau_w_initial(0.0), L_p(0.0), notUpdated(0), is_initial_node(false)
-  {}
+  VGNode() : index(0), p_v(0.0), c_v(0.0), p_boundary(0.0),
+             c_boundary(0.0), edge_touched(false), sprouting_edge(false), apicalGrowth(false),
+             coord(0.0), radii(0.0), radii_initial(0.0), tau_w_initial(0.0), L_p(0.0), notUpdated(0), is_initial_node(false) {}
 
   int index, notUpdated;
 
@@ -118,13 +117,13 @@ public:
 
   double p_v, c_v, p_boundary, c_boundary;
 
-  std::vector< double > coord, radii, L_p, L_s, radii_initial, tau_w_initial;
+  std::vector<double> coord, radii, L_p, L_s, radii_initial, tau_w_initial;
 
-  std::vector< bool > edge_touched;
+  std::vector<bool> edge_touched;
 
-  std::vector< bool > sprouting_edge;
+  std::vector<bool> sprouting_edge;
 
-  std::vector< std::shared_ptr<VGNode> > neighbors;
+  std::vector<std::shared_ptr<VGNode>> neighbors;
 
   TypeOfNode typeOfVGNode;
 
@@ -134,243 +133,216 @@ public:
 
   bool is_initial_node;
 
-  void markEdge( int index ){
+  void markEdge(int index) {
 
     int numberOfNeighbors = neighbors.size();
 
-    for(int i=0;i<numberOfNeighbors;i++){
+    for (int i = 0; i < numberOfNeighbors; i++) {
 
-      if( index == neighbors[i]->index ){
+      if (index == neighbors[i]->index) {
 
-        edge_touched[ i ] = true;
-
+        edge_touched[i] = true;
       }
-
     }
-
   }
 
-  void markEdgeLocalIndex( int localIndex ){
+  void markEdgeLocalIndex(int localIndex) {
 
-    edge_touched[ localIndex ] = true;
-
+    edge_touched[localIndex] = true;
   }
 
-  int getLocalIndexOfNeighbor( std::shared_ptr<VGNode> neighbor ){
+  int getLocalIndexOfNeighbor(std::shared_ptr<VGNode> neighbor) {
 
     int local_index_neighbor = 0;
 
     int numberOfNeighbors = neighbors.size();
 
-    for(int i=0;i<numberOfNeighbors;i++){
+    for (int i = 0; i < numberOfNeighbors; i++) {
 
-      if( util::dist_between_points(neighbor->coord, neighbors[i]->coord) < 1.0e-12 ){ // neighbor->index == neighbors[i]->index ){
+      if (util::dist_between_points(neighbor->coord, neighbors[i]->coord) < 1.0e-12) { // neighbor->index == neighbors[i]->index ){
 
         local_index_neighbor = i;
-
       }
-
     }
 
     return local_index_neighbor;
-
   }
 
-  void replacePointerWithLocalIndex( int index_new, std::shared_ptr<VGNode> new_pointer ){
+  void replacePointerWithLocalIndex(int index_new, std::shared_ptr<VGNode> new_pointer) {
 
-       neighbors[ index_new ] = new_pointer;
-
+    neighbors[index_new] = new_pointer;
   }
 
 
-  void replacePointerWithGlobalIndex( int index_new, std::shared_ptr<VGNode> new_pointer ){
+  void replacePointerWithGlobalIndex(int index_new, std::shared_ptr<VGNode> new_pointer) {
 
     int numberOfNeighbors = neighbors.size();
 
-    for(int i=0;i<numberOfNeighbors;i++){
+    for (int i = 0; i < numberOfNeighbors; i++) {
 
-      if( index_new == neighbors[i]->index ){
+      if (index_new == neighbors[i]->index) {
 
-        neighbors[ i ] = new_pointer;
+        neighbors[i] = new_pointer;
 
-        edge_touched[ i ] = true;
-
+        edge_touched[i] = true;
       }
-
     }
-
   }
 
 
-  void attachNeighbor( std::shared_ptr<VGNode> new_pointer ){
+  void attachNeighbor(std::shared_ptr<VGNode> new_pointer) {
 
-    neighbors.push_back( new_pointer );
+    neighbors.push_back(new_pointer);
 
     typeOfVGNode = InnerNode;
-
   }
 
-  double getTotalVolume(){
+  double getTotalVolume() {
 
     double totalVolume = 0.0;
 
     int numberOfNeighbors = neighbors.size();
 
-    for(int i=0;i<numberOfNeighbors;i++){
+    for (int i = 0; i < numberOfNeighbors; i++) {
 
-      std::vector<double> coord_neighbor = neighbors[ i ]->coord;
+      std::vector<double> coord_neighbor = neighbors[i]->coord;
 
       double length = 0.0;
 
-      for(int j=0;j<3;j++){
+      for (int j = 0; j < 3; j++) {
 
-        length += (coord[j]-coord_neighbor[j])*(coord[j]-coord_neighbor[j]);
-
+        length += (coord[j] - coord_neighbor[j]) * (coord[j] - coord_neighbor[j]);
       }
 
       length = std::sqrt(length);
 
-      totalVolume = totalVolume + (M_PI*radii[ i ]*radii[ i ]*length/2.0);
-
+      totalVolume = totalVolume + (M_PI * radii[i] * radii[i] * length / 2.0);
     }
 
     return totalVolume;
   }
 
-  void markEdgeForSprouting(int edgeNumber){
+  void markEdgeForSprouting(int edgeNumber) {
 
-    sprouting_edge[ edgeNumber ] = true;
-
+    sprouting_edge[edgeNumber] = true;
   }
 
-  void markNodeForApicalGrowth(){
+  void markNodeForApicalGrowth() {
 
     apicalGrowth = true;
-
   }
 
-  void printInformationOfNode(){
+  void printInformationOfNode() {
 
-       std::cout << " " << std::endl;
-       std::cout << "Data of Node: " << index << std::endl;
-       std::cout << "notUpdated: " << notUpdated << std::endl; 
-       std::cout << "apicalGrowth: " << apicalGrowth << std::endl; 
-       std::cout << "p_v: " << p_v << std::endl; 
-       std::cout << "c_v: " << c_v << std::endl; 
-       std::cout << "p_boundary: " << p_boundary << std::endl; 
-       std::cout << "c_boundary: " << c_boundary << std::endl; 
-       std::cout << "coord: " << coord << std::endl; 
-       std::cout << "radii: " << radii << std::endl; 
-       std::cout << "L_p: " << L_p << std::endl; 
-       std::cout << "L_s: " << L_s << std::endl; 
-       std::cout << "edge_touched: " << edge_touched<< std::endl; 
-       std::cout << "sprouting_edge: " << sprouting_edge << std::endl; 
-       std::cout << "typeOfVGNode: " << typeOfVGNode << std::endl;
-       std::cout << "radii_initial: " << radii_initial << std::endl;
-       std::cout << "tau_w_initial: " << tau_w_initial << std::endl;
+    std::cout << " " << std::endl;
+    std::cout << "Data of Node: " << index << std::endl;
+    std::cout << "notUpdated: " << notUpdated << std::endl;
+    std::cout << "apicalGrowth: " << apicalGrowth << std::endl;
+    std::cout << "p_v: " << p_v << std::endl;
+    std::cout << "c_v: " << c_v << std::endl;
+    std::cout << "p_boundary: " << p_boundary << std::endl;
+    std::cout << "c_boundary: " << c_boundary << std::endl;
+    std::cout << "coord: " << coord << std::endl;
+    std::cout << "radii: " << radii << std::endl;
+    std::cout << "L_p: " << L_p << std::endl;
+    std::cout << "L_s: " << L_s << std::endl;
+    std::cout << "edge_touched: " << edge_touched << std::endl;
+    std::cout << "sprouting_edge: " << sprouting_edge << std::endl;
+    std::cout << "typeOfVGNode: " << typeOfVGNode << std::endl;
+    std::cout << "radii_initial: " << radii_initial << std::endl;
+    std::cout << "tau_w_initial: " << tau_w_initial << std::endl;
 
-       int numberOfNeighbors = neighbors.size(); 
-       std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
+    int numberOfNeighbors = neighbors.size();
+    std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
 
-       for(int i=0;i<numberOfNeighbors;i++){
+    for (int i = 0; i < numberOfNeighbors; i++) {
 
-           std::cout << "index_neighbor: " << neighbors[ i ]->index << std::endl;
-           std::cout << "coord_neighbor: " << neighbors[ i ]->coord << std::endl;
-
-       }
- 
+      std::cout << "index_neighbor: " << neighbors[i]->index << std::endl;
+      std::cout << "coord_neighbor: " << neighbors[i]->coord << std::endl;
+    }
   }
 
-  void removeComponent( int comp ){
+  void removeComponent(int comp) {
 
-       int numberOfComponents = neighbors.size(); 
+    int numberOfComponents = neighbors.size();
 
-       std::vector< double > radii_new, L_p_new, L_s_new, radii_initial_new, tau_w_initial_new;
+    std::vector<double> radii_new, L_p_new, L_s_new, radii_initial_new, tau_w_initial_new;
 
-       std::vector< bool > edge_touched_new, sprouting_edge_new;
+    std::vector<bool> edge_touched_new, sprouting_edge_new;
 
-       std::vector< std::shared_ptr<VGNode> > neighbors_new;
+    std::vector<std::shared_ptr<VGNode>> neighbors_new;
 
-       for(int i = 0;i<numberOfComponents;i++){
+    for (int i = 0; i < numberOfComponents; i++) {
 
-           if( i != comp ){
+      if (i != comp) {
 
-               radii_new.push_back( radii[ i ] );
-               L_p_new.push_back( L_p[ i ] );
-               L_s_new.push_back( L_s[ i ] );
-               radii_initial_new.push_back( radii_initial[ i ] );
-               tau_w_initial_new.push_back( tau_w_initial[ i ] );
-               edge_touched_new.push_back( edge_touched[ i ] );
-               sprouting_edge_new.push_back( sprouting_edge[ i ] );
-               neighbors_new.push_back( neighbors[ i ] );
+        radii_new.push_back(radii[i]);
+        L_p_new.push_back(L_p[i]);
+        L_s_new.push_back(L_s[i]);
+        radii_initial_new.push_back(radii_initial[i]);
+        tau_w_initial_new.push_back(tau_w_initial[i]);
+        edge_touched_new.push_back(edge_touched[i]);
+        sprouting_edge_new.push_back(sprouting_edge[i]);
+        neighbors_new.push_back(neighbors[i]);
+      }
+    }
 
-           }
-
-       }
-
-       radii = radii_new;
-       L_p = L_p_new;
-       L_s = L_s_new; 
-       radii_initial = radii_initial_new;
-       tau_w_initial = tau_w_initial_new;
-       edge_touched = edge_touched_new;
-       sprouting_edge = sprouting_edge_new;
-       neighbors = neighbors_new;
-
+    radii = radii_new;
+    L_p = L_p_new;
+    L_s = L_s_new;
+    radii_initial = radii_initial_new;
+    tau_w_initial = tau_w_initial_new;
+    edge_touched = edge_touched_new;
+    sprouting_edge = sprouting_edge_new;
+    neighbors = neighbors_new;
   }
 
-  void removeComponents( std::vector< int > components ){
+  void removeComponents(std::vector<int> components) {
 
-       int numberOfComponents = neighbors.size(); 
+    int numberOfComponents = neighbors.size();
 
-       int numberOfCompToRemove = components.size();
+    int numberOfCompToRemove = components.size();
 
-       std::vector< double > radii_new, L_p_new, L_s_new, radii_initial_new, tau_w_initial_new;
+    std::vector<double> radii_new, L_p_new, L_s_new, radii_initial_new, tau_w_initial_new;
 
-       std::vector< bool > edge_touched_new, sprouting_edge_new;
+    std::vector<bool> edge_touched_new, sprouting_edge_new;
 
-       std::vector< std::shared_ptr<VGNode> > neighbors_new;
+    std::vector<std::shared_ptr<VGNode>> neighbors_new;
 
-       for(int i=0;i<numberOfComponents;i++){
+    for (int i = 0; i < numberOfComponents; i++) {
 
-           bool removeComponent = false;
+      bool removeComponent = false;
 
-           for(int j=0;j<numberOfCompToRemove;j++){
+      for (int j = 0; j < numberOfCompToRemove; j++) {
 
-               if( i == components[ j ] ){
+        if (i == components[j]) {
 
-                   removeComponent = true;
+          removeComponent = true;
+        }
+      }
 
-               }
+      if (!removeComponent) {
 
-           } 
+        radii_new.push_back(radii[i]);
+        L_p_new.push_back(L_p[i]);
+        L_s_new.push_back(L_s[i]);
+        radii_initial_new.push_back(radii_initial[i]);
+        tau_w_initial_new.push_back(tau_w_initial[i]);
+        edge_touched_new.push_back(edge_touched[i]);
+        sprouting_edge_new.push_back(sprouting_edge[i]);
+        neighbors_new.push_back(neighbors[i]);
+      }
+    }
 
-           if( !removeComponent ){
-
-               radii_new.push_back( radii[ i ] );
-               L_p_new.push_back( L_p[ i ] );
-               L_s_new.push_back( L_s[ i ] );
-               radii_initial_new.push_back( radii_initial[ i ] );
-               tau_w_initial_new.push_back( tau_w_initial[ i ] );
-               edge_touched_new.push_back( edge_touched[ i ] );
-               sprouting_edge_new.push_back( sprouting_edge[ i ] );
-               neighbors_new.push_back( neighbors[ i ] );
-
-           }       
-
-       }
-
-       radii = radii_new;
-       L_p = L_p_new;
-       L_s = L_s_new; 
-       radii_initial = radii_initial_new;
-       tau_w_initial = tau_w_initial_new;
-       edge_touched = edge_touched_new;
-       sprouting_edge = sprouting_edge_new;
-       neighbors = neighbors_new;
-
+    radii = radii_new;
+    L_p = L_p_new;
+    L_s = L_s_new;
+    radii_initial = radii_initial_new;
+    tau_w_initial = tau_w_initial_new;
+    edge_touched = edge_touched_new;
+    sprouting_edge = sprouting_edge_new;
+    neighbors = neighbors_new;
   }
-
 };
 
 } // namespace unet

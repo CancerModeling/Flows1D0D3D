@@ -32,15 +32,13 @@ public:
         d_model_p(model) {}
 
   /*! @brief Assembly function. Overrides the default assembly function */
-  void assemble() override ;
+  void assemble() override;
 
 public:
-
   /*! @brief Pointer reference to model */
   Model *d_model_p;
 
 private:
-
   /*! @brief Assembly */
   void assemble_1();
 };

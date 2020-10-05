@@ -59,8 +59,7 @@ public:
     d_uniformDist.init(0., 1., input.d_seed);
   }
 
-  const util::unet::ListStructure<util::unet::VGNode> &get_mesh() const { return
-  VGM; }
+  const util::unet::ListStructure<util::unet::VGNode> &get_mesh() const { return VGM; }
 
   util::unet::ListStructure<util::unet::VGNode> &get_mesh() { return VGM; }
 
@@ -72,22 +71,22 @@ public:
   /*! @brief Create mesh for 1d network */
   void create_initial_network();
 
-  void readData( std::vector<std::vector<double>> &vertices,
-                 std::vector<double> &pressures, std::vector<double> &radii,
-                 std::vector<std::vector<unsigned int>> &elements );
+  void readData(std::vector<std::vector<double>> &vertices,
+                std::vector<double> &pressures, std::vector<double> &radii,
+                std::vector<std::vector<unsigned int>> &elements);
 
-  void transferDataToVGM( std::vector<std::vector<double>> &vertices,
-                          std::vector<double> &pressures,
-                          std::vector<double> &radii,
-                          std::vector<std::vector<unsigned int>> &elements );
+  void transferDataToVGM(std::vector<std::vector<double>> &vertices,
+                         std::vector<double> &pressures,
+                         std::vector<double> &radii,
+                         std::vector<std::vector<unsigned int>> &elements);
 
   void printDataVGM();
 
-  void writeDataToVTKTimeStep_VGM( int timeStep );
+  void writeDataToVTKTimeStep_VGM(int timeStep);
 
-  void writeDataToVTK_3D( std::vector<double> P_3D, int N_3D, double h_3D );
+  void writeDataToVTK_3D(std::vector<double> P_3D, int N_3D, double h_3D);
 
-  void writeDataToVTK3D_Pressure(std::vector<double> P_3D, std::vector< std::vector<double> > V_3D, int N_3D, double h_3D, int timeStep);
+  void writeDataToVTK3D_Pressure(std::vector<double> P_3D, std::vector<std::vector<double>> V_3D, int N_3D, double h_3D, int timeStep);
 
   void writeDataToVTK3D_Nutrients(std::vector<double> C_3D, int N_3D, double h_3D, int timeStep);
 
@@ -99,12 +98,14 @@ public:
   /**@{*/
 
   void assemble3D1DSystemForPressure(BaseAssembly
-                                     &pres_sys, BaseAssembly &tum_sys);
+                                       &pres_sys,
+                                     BaseAssembly &tum_sys);
 
   void assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
 
-   void solve3D1DFlowProblem(BaseAssembly
-   &pres_sys, BaseAssembly &tum_sys);
+  void solve3D1DFlowProblem(BaseAssembly
+                              &pres_sys,
+                            BaseAssembly &tum_sys);
 
   void solve3D1DNutrientProblem(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
 
@@ -131,15 +132,15 @@ public:
 
   void processApicalGrowth();
 
-  void createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer );
+  void createASingleNode(std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer);
 
-  void createALinkingNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer );
+  void createALinkingNode(std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer);
 
   void linkTerminalVessels();
 
-  bool testCollision( std::vector<double> point );
+  bool testCollision(std::vector<double> point);
 
-  bool testIntersection( std::vector<double> point_1, std::vector<double> point_2, double radius, std::shared_ptr<VGNode>& pointer_test );
+  bool testIntersection(std::vector<double> point_1, std::vector<double> point_2, double radius, std::shared_ptr<VGNode> &pointer_test);
 
   void removeRedundantTerminalVessels();
 
@@ -147,7 +148,7 @@ public:
 
   void processSproutingGrowth();
 
-  std::vector<double> findNearNetworkNode( std::vector<double> coord, std::vector<double> normal_plane );
+  std::vector<double> findNearNetworkNode(std::vector<double> coord, std::vector<double> normal_plane);
 
   void adaptRadius();
 
@@ -169,17 +170,17 @@ public:
 
   void refine1DMesh();
 
-  double getDirichletValue( std::vector< double > center_face, double L_p, double radius );
+  double getDirichletValue(std::vector<double> center_face, double L_p, double radius);
 
-  double getK1D( double s, double L_p, double radius );
+  double getK1D(double s, double L_p, double radius);
 
-  void rescaleSecombData( std::vector< std::vector<double> >& vertices, std::vector<double>& pressures, std::vector<double>& radii, double epsilon );
+  void rescaleSecombData(std::vector<std::vector<double>> &vertices, std::vector<double> &pressures, std::vector<double> &radii, double epsilon);
 
-  double sourceTermTAFTwoVessels( std::vector<double> coord );
+  double sourceTermTAFTwoVessels(std::vector<double> coord);
 
   std::vector<util::unet::ElemWeights>
   compute_elem_weights_at_node(std::shared_ptr<util::unet::VGNode> &pointer)
-  const;
+    const;
 
   /*! @brief Compute intersecting element and weight in tumor domain */
   void compute_elem_weights();

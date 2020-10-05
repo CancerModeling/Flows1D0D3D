@@ -13,13 +13,13 @@ namespace {
 double get_exact_source(const Point &p) {
 
   return std::sin(2. * M_PI * p(0)) * std::sin(2. * M_PI * p(1)) *
-         std::sin(2.* M_PI * p(2));
+         std::sin(2. * M_PI * p(2));
 }
-}
+} // namespace
 
 Number netfc::initial_condition_pres(const Point &p, const Parameters &es,
-                                      const std::string &system_name,
-                                      const std::string &var_name) {
+                                     const std::string &system_name,
+                                     const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Pressure");
 
@@ -67,7 +67,7 @@ void netfc::PressureAssembly::assemble() {
 
 void netfc::PressureAssembly::assemble_1() {
 
-/*  // get tumor equation system
+  /*  // get tumor equation system
   EquationSystems &es = d_model_p->get_system();
 
   // Tumor system
@@ -332,5 +332,4 @@ void netfc::PressureAssembly::assemble_1() {
     out << "matrix:\n";
     pres.matrix->print(out);
   } */
-
 }

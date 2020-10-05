@@ -50,20 +50,20 @@ public:
   /*! @brief Create mesh for 1d network */
   void create_initial_network();
 
-  void readData( std::vector<std::vector<double>> &vertices,
-                 std::vector<double> &pressures, std::vector<double> &radii,
-                 std::vector<std::vector<unsigned int>> &elements );
+  void readData(std::vector<std::vector<double>> &vertices,
+                std::vector<double> &pressures, std::vector<double> &radii,
+                std::vector<std::vector<unsigned int>> &elements);
 
-  void transferDataToVGM( std::vector<std::vector<double>> &vertices,
-                          std::vector<double> &pressures,
-                          std::vector<double> &radii,
-                          std::vector<std::vector<unsigned int>> &elements );
+  void transferDataToVGM(std::vector<std::vector<double>> &vertices,
+                         std::vector<double> &pressures,
+                         std::vector<double> &radii,
+                         std::vector<std::vector<unsigned int>> &elements);
 
   void printDataVGM();
 
-  void writeDataToVTKTimeStep_VGM( int timeStep );
+  void writeDataToVTKTimeStep_VGM(int timeStep);
 
-  void writeDataToVTK_3D( std::vector<double> P_3D, int N_3D, double h_3D );
+  void writeDataToVTK_3D(std::vector<double> P_3D, int N_3D, double h_3D);
 
   /** @}*/
 
@@ -81,15 +81,15 @@ public:
 
   void assemble3DSystemForTAF();
 
-  void solveVGMforNutrient(  int timeStep, double time );
+  void solveVGMforNutrient(int timeStep, double time);
 
-  void solve3DTAFProblem(  int timeStep, double time );
+  void solve3DTAFProblem(int timeStep, double time);
 
-  void solve3D1DFlowProblem( int timeStep, double time );
+  void solve3D1DFlowProblem(int timeStep, double time);
 
-  void solve3D1DNutrientProblem( int timeStep, double time );
+  void solve3D1DNutrientProblem(int timeStep, double time);
 
-  void solve3DProlificCellProblem( int timeStep, double time );
+  void solve3DProlificCellProblem(int timeStep, double time);
 
   /** @}*/
 
@@ -103,17 +103,17 @@ public:
   /*! @brief Compute intersecting element and weight in tumor domain */
   void compute_elem_weights();
 
-  double getDirichletValue( std::vector< double > center_face, double L_p, double radius );
+  double getDirichletValue(std::vector<double> center_face, double L_p, double radius);
 
-  double getK1D( double s, double L_p, double radius );
+  double getK1D(double s, double L_p, double radius);
 
-  void writeDataToVTK3D_Pressure(std::vector<double> P_3D, std::vector< std::vector<double> > V_3D, int N_3D, double h_3D, int timeStep);
+  void writeDataToVTK3D_Pressure(std::vector<double> P_3D, std::vector<std::vector<double>> V_3D, int N_3D, double h_3D, int timeStep);
 
   void writeDataToVTK3D_Nutrients(std::vector<double> C_3D, int N_3D, double h_3D, int timeStep);
 
   void writeDataToVTK3D_TAF(std::vector<double> phi_TAF_3D, int N_3D, double h_3D, int timeStep);
 
-  void rescaleSecombData( std::vector< std::vector<double> >& vertices, std::vector<double>& pressures, std::vector<double>& radii, double epsilon );
+  void rescaleSecombData(std::vector<std::vector<double>> &vertices, std::vector<double> &pressures, std::vector<double> &radii, double epsilon);
 
   void updateNetwork();
 
@@ -121,15 +121,15 @@ public:
 
   void processApicalGrowth();
 
-  double sourceTermTAFTwoVessels( std::vector<double> coord );
+  double sourceTermTAFTwoVessels(std::vector<double> coord);
 
-  void createASingleNode( std::vector<double> new_point, double radius, std::shared_ptr<VGNode>& pointer );
+  void createASingleNode(std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer);
 
   void linkTerminalVessels();
 
-  bool testCollision( std::vector<double> point );
+  bool testCollision(std::vector<double> point);
 
-  bool testIntersection( std::vector<double> point_1, std::vector<double> point_2, double radius, std::shared_ptr<VGNode>& pointer );
+  bool testIntersection(std::vector<double> point_1, std::vector<double> point_2, double radius, std::shared_ptr<VGNode> &pointer);
 
   void removeRedundantTerminalVessels();
 
@@ -139,7 +139,7 @@ public:
 
   void adaptRadius();
 
-  std::vector<double> findNearNetworkNode( std::vector<double> coord, std::vector<double> normal_plane );
+  std::vector<double> findNearNetworkNode(std::vector<double> coord, std::vector<double> normal_plane);
 
   /** @}*/
 
@@ -233,7 +233,6 @@ public:
   int N_3D;
 
   int N_tot_3D;
-
 };
 
 } // namespace netfc

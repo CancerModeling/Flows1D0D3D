@@ -66,8 +66,8 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
 
 // Model setup and run
 void netfv::model_setup_run(int argc, char **argv,
-                             const std::string &filename,
-                             Parallel::Communicator *comm) {
+                            const std::string &filename,
+                            Parallel::Communicator *comm) {
 
   reset_clock();
 
@@ -118,9 +118,9 @@ void netfv::model_setup_run(int argc, char **argv,
   auto &mde = tum_sys.add_system<TransientLinearImplicitSystem>("MDE");
   auto &pres = tum_sys.add_system<TransientLinearImplicitSystem>("Pressure");
   auto &grad_taf =
-      tum_sys.add_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    tum_sys.add_system<TransientLinearImplicitSystem>("TAF_Gradient");
   auto &vel =
-      tum_sys.add_system<TransientLinearImplicitSystem>("Velocity");
+    tum_sys.add_system<TransientLinearImplicitSystem>("Velocity");
 
   // some initial setups
   {
@@ -192,7 +192,7 @@ void netfv::model_setup_run(int argc, char **argv,
   // Create Model class
   //
   auto model = Model(argc, argv, filename, comm, input, mesh, tum_sys,
-                     nec, tum, nut, hyp, taf, ecm, mde, pres, grad_taf, vel, 
+                     nec, tum, nut, hyp, taf, ecm, mde, pres, grad_taf, vel,
                      log);
 
   // run model
@@ -201,16 +201,16 @@ void netfv::model_setup_run(int argc, char **argv,
 
 // Model class
 netfv::Model::Model(
-    int argc, char **argv, const std::string &filename,
-    Parallel::Communicator *comm,
-    InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
-    TransientLinearImplicitSystem &nec, TransientLinearImplicitSystem &tum,
-    TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
-    TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &ecm,
-    TransientLinearImplicitSystem &mde, TransientLinearImplicitSystem &pres,
-    TransientLinearImplicitSystem &grad_taf,
-    TransientLinearImplicitSystem &vel,
-    util::Logger &log)
+  int argc, char **argv, const std::string &filename,
+  Parallel::Communicator *comm,
+  InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
+  TransientLinearImplicitSystem &nec, TransientLinearImplicitSystem &tum,
+  TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
+  TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &ecm,
+  TransientLinearImplicitSystem &mde, TransientLinearImplicitSystem &pres,
+  TransientLinearImplicitSystem &grad_taf,
+  TransientLinearImplicitSystem &vel,
+  util::Logger &log)
     : util::BaseModel(comm, input, mesh, tum_sys, log, "NetFV"),
       d_network(this),
       d_nec_assembly(this, "Necrotic", d_mesh, nec),
@@ -256,11 +256,11 @@ netfv::Model::Model(
 
   // bounding box
   d_bounding_box.first =
-      Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
-            d_input.d_domain_params[4]);
+    Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
+          d_input.d_domain_params[4]);
   d_bounding_box.second =
-      Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
-            d_input.d_domain_params[5]);
+    Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
+          d_input.d_domain_params[5]);
 
   // remaining system setup
   {
@@ -305,42 +305,42 @@ netfv::Model::Model(
     // set Petsc matrix option to suppress the error
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(pres.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(pres.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(nut.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(nut.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(tum.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(tum.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(hyp.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(hyp.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(nec.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(nec.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(taf.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(taf.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(mde.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(mde.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(ecm.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(ecm.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
   }
@@ -373,7 +373,7 @@ void netfv::Model::run() {
   d_dt = d_input.d_dt;
 
   d_tum_sys.parameters.set<unsigned int>("linear solver maximum iterations") =
-      d_input.d_linear_max_iters;
+    d_input.d_linear_max_iters;
 
   //
   // Solve
@@ -442,7 +442,7 @@ void netfv::Model::run() {
     solve_clock = steady_clock::now();
 
     d_log("Time step: " + std::to_string(d_step) +
-          ", time: " + std::to_string(d_time) + "\n",
+            ", time: " + std::to_string(d_time) + "\n",
           "integrate");
 
     // solve tumor-network system
@@ -484,8 +484,8 @@ void netfv::Model::write_system(const unsigned int &t_step) {
 
   // write tumor simulation
   rw::VTKIO(d_mesh).write_equation_systems(
-      d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
-      d_tum_sys);
+    d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
+    d_tum_sys);
 }
 
 void netfv::Model::compute_qoi() {
@@ -495,10 +495,10 @@ void netfv::Model::compute_qoi() {
   std::vector<double> qoi(N, 0.);
   if (d_qoi.d_vec.empty()) {
     d_qoi = util::QoIVec(
-        {"tumor_mass", "hypoxic_mass", "necrotic_mass", "prolific_mass",
-         "nutrient_mass", "tumor_l2", "hypoxic_l2", "necrotic_l2",
-         "prolific_l2", "nutrient_l2", "r_v_mean", "r_v_std", "l_v_mean",
-         "l_v_std", "l_v_total", "vessel_vol", "vessel_density"});
+      {"tumor_mass", "hypoxic_mass", "necrotic_mass", "prolific_mass",
+       "nutrient_mass", "tumor_l2", "hypoxic_l2", "necrotic_l2",
+       "prolific_l2", "nutrient_l2", "r_v_mean", "r_v_std", "l_v_mean",
+       "l_v_std", "l_v_total", "vessel_vol", "vessel_density"});
 
     d_log.log_qoi_header(d_time, d_qoi.get_names());
   }
@@ -520,7 +520,7 @@ void netfv::Model::compute_qoi() {
   // length mean, length std dev, total length, total vessel vol, total domain vol
   auto vessel_qoi = d_network.compute_qoi();
   unsigned int i = 10; // start of network qoi
-  for (const auto &q: vessel_qoi)
+  for (const auto &q : vessel_qoi)
     qoi[i++] = q;
 
   d_qoi.add(qoi);
@@ -562,7 +562,7 @@ void netfv::Model::solve_system() {
   auto &mde = d_tum_sys.get_system<TransientLinearImplicitSystem>("MDE");
   auto &pres = d_tum_sys.get_system<TransientLinearImplicitSystem>("Pressure");
   auto &grad_taf =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
 
   // update time
   nut.time = d_time;
@@ -602,7 +602,7 @@ void netfv::Model::solve_system() {
     reset_clock();
 
     d_log("      Solving |1D nutrient|\n", "solve sys");
-    d_log( " \n", "solve sys");
+    d_log(" \n", "solve sys");
     d_network.solveVGMforNutrient(d_pres_assembly, d_nut_assembly);
 
     d_log.add_sys_solve_time(clock_begin, d_nut_1d_id);
@@ -610,14 +610,14 @@ void netfv::Model::solve_system() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+    tum.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -696,7 +696,8 @@ void netfv::Model::solve_system() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_global_error << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
@@ -740,11 +741,11 @@ void netfv::Model::solve_pressure() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_pres(
-      pres.solution->clone());
+    pres.solution->clone());
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // reset nonlinear step
   d_nonlinear_step = 0;
@@ -763,7 +764,7 @@ void netfv::Model::solve_pressure() {
 
     // solver for 1-D pressure and nutrient
     reset_clock();
-    d_log( " |1D pressure| -> ", "solve pres");
+    d_log(" |1D pressure| -> ", "solve pres");
     d_network.solveVGMforPressure(d_pres_assembly);
     if (d_log.d_cur_step >= 0)
       d_log.add_sys_solve_time(clock_begin, d_pres_1d_id);
@@ -795,7 +796,8 @@ void netfv::Model::solve_pressure() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error_pres << std::endl << std::endl;
+          << nonlinear_global_error_pres << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_global_error_pres < d_input.d_nonlin_tol) {
@@ -848,11 +850,11 @@ void netfv::Model::test_nut() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_nut(
-      nut.solution->clone());
+    nut.solution->clone());
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
@@ -897,7 +899,8 @@ void netfv::Model::test_nut() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error_nut << std::endl << std::endl;
+          << nonlinear_global_error_nut << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_global_error_nut < d_input.d_nonlin_tol) {
@@ -949,7 +952,7 @@ void netfv::Model::test_taf() {
   // get systems
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
   auto &grad_taf =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
 
   // update time
   taf.time = d_time;
@@ -977,7 +980,7 @@ void netfv::Model::test_taf_2() {
   // get systems
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
   auto &grad_taf =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
 
   // update time
   taf.time = d_time;
@@ -1022,7 +1025,7 @@ void netfv::Model::test_tum() {
         auto nut = d_nut_assembly.get_current_sol(0);
         if (nut < 1.)
           d_nut_assembly.d_sys.solution->set(
-              d_nut_assembly.get_global_dof_id(0), 1.);
+            d_nut_assembly.get_global_dof_id(0), 1.);
       }
     }
 
@@ -1052,14 +1055,14 @@ void netfv::Model::test_tum() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+    tum.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -1104,7 +1107,8 @@ void netfv::Model::test_tum() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_global_error << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
@@ -1149,14 +1153,14 @@ void netfv::Model::test_tum_2() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+    tum.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -1207,7 +1211,8 @@ void netfv::Model::test_tum_2() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_global_error << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
@@ -1234,7 +1239,7 @@ void netfv::Model::test_net_tum() {
   auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
   auto &grad_taf =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
 
   // update time
   nut.time = d_time;
@@ -1274,14 +1279,14 @@ void netfv::Model::test_net_tum() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+    tum.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -1342,7 +1347,8 @@ void netfv::Model::test_net_tum() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_global_error << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
@@ -1389,7 +1395,7 @@ void netfv::Model::test_net_tum_2() {
   auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
   auto &grad_taf =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
 
   // update time
   nut.time = d_time;
@@ -1426,14 +1432,14 @@ void netfv::Model::test_net_tum_2() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+    tum.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
   d_log(" \n", "solve sys");
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -1494,7 +1500,8 @@ void netfv::Model::test_net_tum_2() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_global_error << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
@@ -1531,4 +1538,3 @@ void netfv::Model::test_net_tum_2() {
   }
   d_log(" \n", "solve sys");
 }
-
