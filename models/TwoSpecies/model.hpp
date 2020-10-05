@@ -46,7 +46,7 @@ public:
       return d_nut_assembly;
     else if (system == "Tumor")
       return d_tum_assembly;
-    throw std::runtime_error( "unknown system " + system );
+    throw std::runtime_error("unknown system " + system);
   }
   NutAssembly &get_nut_assembly() { return d_nut_assembly; }
   TumAssembly &get_tum_assembly() { return d_tum_assembly; }
