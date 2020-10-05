@@ -159,6 +159,8 @@ public:
 
       pointer = pointer->global_successor;
     }
+
+    throw std::runtime_error( "could not find node with index " + std::to_string(indexOfNode) );
   }
 };
 

@@ -59,6 +59,8 @@ public:
       return d_taf_assembly;
     else if (system == "TAF_Gradient")
       return d_grad_taf_assembly;
+
+    throw std::runtime_error( "unknown system " + system );
   }
 
   NutAssembly &get_nut_assembly() { return d_nut_assembly; }

@@ -291,7 +291,7 @@ void netfc::Network::assemble3D1DSystemForPressure() {
 
   // 3D-1D coupled flow problem on a unit cube
   std::cout << " " << std::endl;
-  std::cout << "3D-1D coupled flow problem on a cube \Omega = (0," << L_x << ")^3" << std::endl;
+  std::cout << "3D-1D coupled flow problem on a cube \\Omega = (0," << L_x << ")^3" << std::endl;
 
   // Number of Elements (3D) in each space direction
   std::cout << " " << std::endl;
@@ -574,7 +574,7 @@ void netfc::Network::assemble3D1DSystemForNutrients() {
 
   // 3D-1D coupled flow problem on a cube
   std::cout << " " << std::endl;
-  std::cout << "3D-1D coupled nutrient transport problem on a cube \Omega = (0," << L_x << ")^3" << std::endl;
+  std::cout << "3D-1D coupled nutrient transport problem on a cube \\Omega = (0," << L_x << ")^3" << std::endl;
 
   // Number of Elements (3D) in each space direction
   std::cout << " " << std::endl;
