@@ -35,7 +35,7 @@ void util::unet::Network::create_initial_network() {
 
   if (d_procSize > 1 and d_coupled_solver)
     libmesh_error_msg(
-        "Fully 1D-3D coupled solver only works in serial execution");
+      "Fully 1D-3D coupled solver only works in serial execution");
 
   scenario = input.d_scenario;
   oss << "Scenario: " << scenario << std::endl;
@@ -78,7 +78,7 @@ void util::unet::Network::create_initial_network() {
     double min_vessel_length = 100. * input.d_domain_params[1];
     std::shared_ptr<VGNode> pointer = VGM.getHead();
     while (pointer) {
-      for (int i=0; i<pointer->neighbors.size(); i++) {
+      for (int i = 0; i < pointer->neighbors.size(); i++) {
         double length = util::dist_between_points(pointer->coord, pointer->neighbors[i]->coord);
         if (min_vessel_length > length)
           min_vessel_length = length;
@@ -97,7 +97,7 @@ void util::unet::Network::create_initial_network() {
   N_3D = input.d_num_elems;
   N_tot_3D = N_3D * N_3D * N_3D;
   L_x = input.d_domain_params[1];
-  h_3D = L_x / (double)N_3D;
+  h_3D = L_x / (double) N_3D;
   mu = input.d_init_vessel_mu;
   D_v = input.d_D_sigma_v;
   D_v_3D = input.d_D_sigma;
@@ -122,7 +122,7 @@ void util::unet::Network::create_initial_network() {
 
       // 1D pressure: matrix, rhs, and solution
       A_VGM =
-          gmm::row_matrix<gmm::wsvector<double>>(d_numVertices, d_numVertices);
+        gmm::row_matrix<gmm::wsvector<double>>(d_numVertices, d_numVertices);
       b = std::vector<double>(d_numVertices, 0.);
 
       // 1D nutrient: matrix, rhs, and solution
@@ -138,7 +138,7 @@ void util::unet::Network::create_initial_network() {
 
     // 3D1D flow problem: matrix, rhs and solution
     A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
-        N_tot_3D + d_numVertices, N_tot_3D + d_numVertices);
+      N_tot_3D + d_numVertices, N_tot_3D + d_numVertices);
     b_flow_3D1D = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
 
     P_3D1D = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
@@ -220,7 +220,7 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
     P_3D1D = b_flow_3D1D;
   }
 
-  gmm::iteration iter(1.0E-10,2);
+  gmm::iteration iter(1.0E-10, 2);
 
   gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50, 1e-8);
 
@@ -293,7 +293,6 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
     pointer->c_v = phi_sigma[N_tot_3D + indexOfNode];
 
     pointer = pointer->global_successor;
-
   }
 
   // do not modify old with current concentration as this solver could be
@@ -503,78 +502,72 @@ std::vector<double> util::unet::Network::compute_qoi() {
 
       int numberOfNeighbors = pointer->neighbors.size();
 
-      if( numberOfNeighbors > 2 ){
+      if (numberOfNeighbors > 2) {
 
         numberOfBifurcations++;
-
       }
 
-      for(int i=0;i<numberOfNeighbors;i++){
+      for (int i = 0; i < numberOfNeighbors; i++) {
 
-        if( pointer->edge_touched[ i ] == false ){
+        if (pointer->edge_touched[i] == false) {
 
           double length = util::dist_between_points(pointer->coord, pointer->neighbors[i]->coord);
 
           total_length = total_length + length;
 
-          total_volume = total_volume + length * pointer->radii[ i ] * pointer->radii[ i ] * M_PI;
+          total_volume = total_volume + length * pointer->radii[i] * pointer->radii[i] * M_PI;
 
           numberOfVessels++;
 
-          int localIndex = pointer->neighbors[i]->getLocalIndexOfNeighbor( pointer );
+          int localIndex = pointer->neighbors[i]->getLocalIndexOfNeighbor(pointer);
 
-          pointer->edge_touched[ i ] = true;
+          pointer->edge_touched[i] = true;
 
-          pointer->neighbors[i]->edge_touched[ localIndex ] = true;
-
+          pointer->neighbors[i]->edge_touched[localIndex] = true;
         }
-
       }
 
       pointer = pointer->global_successor;
-
     }
 
 
     pointer = VGM.getHead();
 
-    while( pointer ){
+    while (pointer) {
 
       int numberOfEdges = pointer->neighbors.size();
 
-      for(int i=0;i<numberOfEdges;i++){
+      for (int i = 0; i < numberOfEdges; i++) {
 
-        pointer->edge_touched[ i ] = false;
-        pointer->sprouting_edge[ i ] = false;
-
+        pointer->edge_touched[i] = false;
+        pointer->sprouting_edge[i] = false;
       }
 
       pointer = pointer->global_successor;
-
     }
 
     std::string path_number_bifurcations = "two_vessels_number_bifurcations.txt";
 
     std::fstream file_number_bifurcations;
-    file_number_bifurcations.open(path_number_bifurcations, std::ios::out|std::ios::app);
+    file_number_bifurcations.open(path_number_bifurcations, std::ios::out | std::ios::app);
     file_number_bifurcations << numberOfBifurcations << std::endl;
 
     std::string path_total_length = "two_vessels_total_length.txt";
 
     std::fstream file_total_length;
-    file_total_length.open(path_total_length, std::ios::out|std::ios::app);
+    file_total_length.open(path_total_length, std::ios::out | std::ios::app);
     file_total_length << total_length << std::endl;
 
     std::string path_number_of_vessels = "two_vessels_number_of_vessels.txt";
 
     std::fstream file_number_of_vessels;
-    file_number_of_vessels.open(path_number_of_vessels, std::ios::out|std::ios::app);
+    file_number_of_vessels.open(path_number_of_vessels, std::ios::out | std::ios::app);
     file_number_of_vessels << numberOfVessels << std::endl;
 
     std::string path_total_volume = "two_vessels_total_volume.txt";
 
     std::fstream file_total_volume;
-    file_total_volume.open(path_total_volume, std::ios::out|std::ios::app);
+    file_total_volume.open(path_total_volume, std::ios::out | std::ios::app);
     file_total_volume << total_volume << std::endl;
   }
 
@@ -625,8 +618,8 @@ std::vector<double> util::unet::Network::compute_qoi() {
 }
 
 unsigned int util::unet::Network::get_assembly_cases_pres(
-    const std::shared_ptr<VGNode> &pointer,
-    const double &identify_vein_pres) const {
+  const std::shared_ptr<VGNode> &pointer,
+  const double &identify_vein_pres) const {
 
   // find various cases
   if (pointer->neighbors.size() == 1) {
@@ -644,8 +637,8 @@ unsigned int util::unet::Network::get_assembly_cases_pres(
 }
 
 unsigned int util::unet::Network::get_assembly_cases_nut(
-    const std::shared_ptr<VGNode> &pointer,
-    const double &identify_vein_pres) const {
+  const std::shared_ptr<VGNode> &pointer,
+  const double &identify_vein_pres) const {
 
   // find various cases
   if (pointer->neighbors.size() == 1) {
@@ -672,8 +665,7 @@ unsigned int util::unet::Network::get_assembly_cases_nut(
         else
           // return "boundary_vein_inlet";
           return UNET_NUT_BDRY_VEIN_OUTLET;
-      }
-      else 
+      } else
         return UNET_NUT_BDRY_INNER_OUTLET;
     } // v < 0
   }   // neighbor == 1
@@ -684,8 +676,8 @@ unsigned int util::unet::Network::get_assembly_cases_nut(
 }
 
 std::string util::unet::Network::get_assembly_cases_pres_str(
-    const std::shared_ptr<VGNode> &pointer,
-    const double &identify_vein_pres) const {
+  const std::shared_ptr<VGNode> &pointer,
+  const double &identify_vein_pres) const {
 
   // find various cases
   if (pointer->neighbors.size() == 1) {
@@ -703,8 +695,8 @@ std::string util::unet::Network::get_assembly_cases_pres_str(
 }
 
 std::string util::unet::Network::get_assembly_cases_nut_str(
-    const std::shared_ptr<VGNode> &pointer,
-    const double &identify_vein_pres) const {
+  const std::shared_ptr<VGNode> &pointer,
+  const double &identify_vein_pres) const {
 
   // find various cases
   if (pointer->neighbors.size() == 1) {
@@ -712,10 +704,10 @@ std::string util::unet::Network::get_assembly_cases_nut_str(
       if (pointer->typeOfVGNode == TypeOfNode::DirichletNode) {
         if (pointer->p_v >= identify_vein_pres)
           return "boundary_artery_inlet";
-          //return UNET_NUT_BDRY_ARTERY_INLET;
+        //return UNET_NUT_BDRY_ARTERY_INLET;
         else
           return "boundary_vein_inlet";
-          //return UNET_NUT_BDRY_VEIN_INLET;
+        //return UNET_NUT_BDRY_VEIN_INLET;
       } // inlet dirichlet
       else {
         return "boundary_inner_inlet";
@@ -727,14 +719,13 @@ std::string util::unet::Network::get_assembly_cases_nut_str(
 
         if (pointer->p_v >= identify_vein_pres)
           return "boundary_artery_outlet";
-          //return UNET_NUT_BDRY_ARTERY_OUTLET;
+        //return UNET_NUT_BDRY_ARTERY_OUTLET;
         else
           return "boundary_vein_outlet";
-          //return UNET_NUT_BDRY_VEIN_OUTLET;
-      }
-      else
+        //return UNET_NUT_BDRY_VEIN_OUTLET;
+      } else
         return "boundary_inner_outlet";
-        //return UNET_NUT_BDRY_INNER_OUTLET;
+      //return UNET_NUT_BDRY_INNER_OUTLET;
     } // v < 0
   }   // neighbor == 1
   else {
@@ -745,8 +736,8 @@ std::string util::unet::Network::get_assembly_cases_nut_str(
 
 void util::unet::Network::prepare_and_communicate_network() {
 
-//  if (d_coupled_solver)
-//    return;
+  //  if (d_coupled_solver)
+  //    return;
 
   // On processor zero, prepare the network data
   if (d_procRank == 0) {
@@ -789,11 +780,11 @@ void util::unet::Network::prepare_and_communicate_network() {
 
           // check for length
           double length = util::dist_between_points(pointer->coord,
-              pointer->neighbors[i]->coord);
+                                                    pointer->neighbors[i]->coord);
           if (util::definitelyGreaterThan(length, 0.5))
-              libmesh_error_msg("Error unusually long vessel detected. Length = " +
-                                std::to_string(length) +
-                                " is greater than tolerance 0.5");
+            libmesh_error_msg("Error unusually long vessel detected. Length = " +
+                              std::to_string(length) +
+                              " is greater than tolerance 0.5");
 
           if (util::definitelyLessThan(length, 1.e-8))
             libmesh_error_msg("Error unusually short vessel detected. Length = " +
@@ -836,16 +827,16 @@ void util::unet::Network::prepare_and_communicate_network() {
     d_comm_p->allgather(d_vertices);
     if (d_vertices.size() != 3 * d_numVertices)
       libmesh_error_msg(
-          "Error size of vertices = " + std::to_string(d_vertices.size()) +
-          " does not match expected size = " +
-          std::to_string(3 * d_numVertices));
+        "Error size of vertices = " + std::to_string(d_vertices.size()) +
+        " does not match expected size = " +
+        std::to_string(3 * d_numVertices));
 
     d_comm_p->allgather(d_vertexBdFlag);
     if (d_vertexBdFlag.size() != d_numVertices)
       libmesh_error_msg(
-          "Error size of vertexBdFlag = " +
-          std::to_string(d_vertexBdFlag.size()) +
-          " does not match expected size = " + std::to_string(d_numVertices));
+        "Error size of vertexBdFlag = " +
+        std::to_string(d_vertexBdFlag.size()) +
+        " does not match expected size = " + std::to_string(d_numVertices));
 
     d_comm_p->allgather(d_segments);
     if (d_segments.size() != 2 * d_numSegments)
@@ -857,16 +848,16 @@ void util::unet::Network::prepare_and_communicate_network() {
     d_comm_p->allgather(d_segmentData);
     if (d_segmentData.size() != d_numSegments)
       libmesh_error_msg(
-          "Error size of segmentData = " +
-          std::to_string(d_segmentData.size()) +
-          " does not match expected size = " + std::to_string(d_numSegments));
+        "Error size of segmentData = " +
+        std::to_string(d_segmentData.size()) +
+        " does not match expected size = " + std::to_string(d_numSegments));
   }
 }
 
 void util::unet::Network::update_and_communicate_bdry_flag() {
 
-//  if (d_coupled_solver)
-//    return;
+  //  if (d_coupled_solver)
+  //    return;
 
   // On processor zero, prepare the network data
   if (d_procRank == 0) {
@@ -903,9 +894,9 @@ void util::unet::Network::update_and_communicate_bdry_flag() {
     d_comm_p->allgather(d_vertexBdFlag);
     if (d_vertexBdFlag.size() != d_numVertices)
       libmesh_error_msg(
-          "Error size of vertexBdFlag = " +
-          std::to_string(d_vertexBdFlag.size()) +
-          " does not match expected size = " + std::to_string(d_numVertices));
+        "Error size of vertexBdFlag = " +
+        std::to_string(d_vertexBdFlag.size()) +
+        " does not match expected size = " + std::to_string(d_numVertices));
   }
 }
 

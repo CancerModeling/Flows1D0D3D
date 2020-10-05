@@ -130,7 +130,6 @@ private:
   PressureAssembly d_pres_assembly;
   GradTafAssembly d_grad_taf_assembly;
   VelocityAssembly d_vel_assembly;
-
 };
 
 } // namespace netfc

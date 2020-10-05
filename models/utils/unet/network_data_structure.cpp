@@ -9,9 +9,9 @@
 #include "network.hpp"
 
 void util::unet::Network::readData(
-    std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
-    std::vector<double> &radii,
-    std::vector<std::vector<unsigned int>> &elements) {
+  std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
+  std::vector<double> &radii,
+  std::vector<std::vector<unsigned int>> &elements) {
 
   const auto &input = d_model_p->get_input_deck();
 
@@ -82,8 +82,8 @@ void util::unet::Network::readData(
 
       // Insert segment
       std::vector<unsigned int> cornerIDs(2);
-      cornerIDs[0] = (int)segmentInfo[0];
-      cornerIDs[1] = (int)segmentInfo[1];
+      cornerIDs[0] = (int) segmentInfo[0];
+      cornerIDs[1] = (int) segmentInfo[1];
       double radius = segmentInfo[2];
 
       radii.push_back(radius);
@@ -94,8 +94,8 @@ void util::unet::Network::readData(
   }
 }
 
-void util::unet::Network::transferDataToVGM( std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
-                                             std::vector<double> &radii, std::vector<std::vector<unsigned int>> &elements) {
+void util::unet::Network::transferDataToVGM(std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
+                                            std::vector<double> &radii, std::vector<std::vector<unsigned int>> &elements) {
 
   int numberOfVertices = vertices.size();
   const auto &input = d_model_p->get_input_deck();
@@ -166,9 +166,7 @@ void util::unet::Network::transferDataToVGM( std::vector<std::vector<double>> &v
     pointer_2->edge_touched.push_back(false);
     pointer_2->sprouting_edge.push_back(false);
     pointer_2->tau_w_initial.push_back(0.); // we missed this
-
   }
-
 }
 
 void util::unet::Network::printDataVGM() {
@@ -209,8 +207,8 @@ void util::unet::Network::printDataVGM() {
 }
 
 void util::unet::Network::rescaleSecombData(
-    std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
-    std::vector<double> &radii, double epsilon) {
+  std::vector<std::vector<double>> &vertices, std::vector<double> &pressures,
+  std::vector<double> &radii, double epsilon) {
 
   // Get min and max coordinates
   //std::cout << " " << std::endl;
@@ -268,8 +266,8 @@ void util::unet::Network::rescaleSecombData(
     for (int j = 0; j < 3; j++) {
 
       double new_value =
-          1.81 * (vertices[i][j] - vec_min[j]) / (vec_max[j] - vec_min[j]) +
-          0.066;
+        1.81 * (vertices[i][j] - vec_min[j]) / (vec_max[j] - vec_min[j]) +
+        0.066;
 
       //std::cout << "Value: " << new_value << std::endl;
 
@@ -343,14 +341,14 @@ void util::unet::Network::refine1DMesh() {
         new_node.typeOfVGNode = TypeOfNode::InnerNode;
 
         std::shared_ptr<VGNode> pointer_new_node =
-            std::make_shared<VGNode>(new_node);
+          std::make_shared<VGNode>(new_node);
 
         std::shared_ptr<VGNode> pointer_former_neighbor = pointer->neighbors[i];
 
         std::vector<double> coord_pointer = pointer->coord;
 
         std::vector<double> coord_former_neighbor =
-            pointer_former_neighbor->coord;
+          pointer_former_neighbor->coord;
 
         std::vector<double> new_coord;
 
@@ -384,11 +382,9 @@ void util::unet::Network::refine1DMesh() {
 
         counter = counter + 1;
       }
-
     }
 
     pointer = pointer->global_successor;
-
   }
 
   for (int i = 0; i < newNodes.size(); i++) {
@@ -418,7 +414,7 @@ void util::unet::Network::refine1DMesh() {
 }
 
 void util::unet::Network::writeDataToVTK_3D(std::vector<double> P_3D,
-                                              int N_3D, double h_3D) {
+                                            int N_3D, double h_3D) {
 
   int numberOfCells = P_3D.size();
 
@@ -443,8 +439,8 @@ void util::unet::Network::writeDataToVTK_3D(std::vector<double> P_3D,
 
       for (int k = 0; k < N_3D + 1; k++) { // z-loop
 
-        filevtk << (double)i * h_3D << " " << (double)j * h_3D << " "
-                << (double)k * h_3D << std::endl;
+        filevtk << (double) i * h_3D << " " << (double) j * h_3D << " "
+                << (double) k * h_3D << std::endl;
       }
     }
   }
@@ -464,44 +460,44 @@ void util::unet::Network::writeDataToVTK_3D(std::vector<double> P_3D,
         filevtk << "8"
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << std::endl;
       }
     }
@@ -536,7 +532,7 @@ void util::unet::Network::writeDataToVTK_3D(std::vector<double> P_3D,
 
 void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 
-    //check_vessel_length();
+  //check_vessel_length();
 
   if (d_model_p->get_comm()->rank() > 0)
     return;
@@ -548,24 +544,24 @@ void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
   //if (d_procRank == 0) {
   if (false) {
     std::string path =
-        input.d_outfilename_net + "_segments_" + std::to_string(timeStep) + ".txt";
+      input.d_outfilename_net + "_segments_" + std::to_string(timeStep) + ".txt";
     std::ofstream off;
     off.open(path);
-    for (unsigned int i=0; i<d_numSegments; i++) {
-      auto node1 = d_segments[2*i + 0];
-      auto node2 = d_segments[2*i + 1];
+    for (unsigned int i = 0; i < d_numSegments; i++) {
+      auto node1 = d_segments[2 * i + 0];
+      auto node2 = d_segments[2 * i + 1];
 
       std::vector<double> coord1, coord2;
-      for (unsigned int j=0; j<3; j++) {
-        coord1.push_back(d_vertices[3*node1 + j]);
-        coord2.push_back(d_vertices[3*node2 + j]);
+      for (unsigned int j = 0; j < 3; j++) {
+        coord1.push_back(d_vertices[3 * node1 + j]);
+        coord2.push_back(d_vertices[3 * node2 + j]);
       }
 
       // radius and length
       double radius = d_segmentData[i];
       double length = util::dist_between_points(coord1, coord2);
       if (length > 0.75)
-          libmesh_error_msg("Error vessel is too long");
+        libmesh_error_msg("Error vessel is too long");
 
       off << node1 << " " << node2 << " " << radius << " " << length << "\n";
     }
@@ -751,8 +747,8 @@ void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
 }
 
 void util::unet::Network::writeDataToVTK3D_Pressure(
-    std::vector<double> P_3D, std::vector<std::vector<double>> V_3D, int N_3D,
-    double h_3D, int timeStep) {
+  std::vector<double> P_3D, std::vector<std::vector<double>> V_3D, int N_3D,
+  double h_3D, int timeStep) {
 
   int numberOfCells = P_3D.size();
 
@@ -782,8 +778,8 @@ void util::unet::Network::writeDataToVTK3D_Pressure(
 
       for (int k = 0; k < N_3D + 1; k++) { // z-loop
 
-        filevtk << (double)i * h_3D << " " << (double)j * h_3D << " "
-                << (double)k * h_3D << std::endl;
+        filevtk << (double) i * h_3D << " " << (double) j * h_3D << " "
+                << (double) k * h_3D << std::endl;
       }
     }
   }
@@ -803,44 +799,44 @@ void util::unet::Network::writeDataToVTK3D_Pressure(
         filevtk << "8"
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << std::endl;
       }
     }
@@ -890,7 +886,7 @@ void util::unet::Network::writeDataToVTK3D_Pressure(
 }
 
 void util::unet::Network::writeDataToVTK3D_Nutrients(
-    std::vector<double> phi_sigma_3D, int N_3D, double h_3D, int timeStep) {
+  std::vector<double> phi_sigma_3D, int N_3D, double h_3D, int timeStep) {
 
   int numberOfCells = phi_sigma_3D.size();
 
@@ -920,8 +916,8 @@ void util::unet::Network::writeDataToVTK3D_Nutrients(
 
       for (int k = 0; k < N_3D + 1; k++) { // z-loop
 
-        filevtk << (double)i * h_3D << " " << (double)j * h_3D << " "
-                << (double)k * h_3D << std::endl;
+        filevtk << (double) i * h_3D << " " << (double) j * h_3D << " "
+                << (double) k * h_3D << std::endl;
       }
     }
   }
@@ -941,44 +937,44 @@ void util::unet::Network::writeDataToVTK3D_Nutrients(
         filevtk << "8"
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] - 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] - 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] - 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] - 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << " "
                 << getIndex(center[0] + 0.5 * h_3D, h_3D) * (N_3D + 1) *
-                           (N_3D + 1) +
-                       getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
-                       getIndex(center[2] + 0.5 * h_3D, h_3D)
+                       (N_3D + 1) +
+                     getIndex(center[1] + 0.5 * h_3D, h_3D) * (N_3D + 1) +
+                     getIndex(center[2] + 0.5 * h_3D, h_3D)
                 << std::endl;
       }
     }
@@ -1097,7 +1093,7 @@ void util::unet::Network::compute_elem_weights() {
 
           // get element of point x
           unsigned int elem_id =
-              util::get_elem_id(x, input.d_mesh_size, input.d_num_elems, input.d_dim);
+            util::get_elem_id(x, input.d_mesh_size, input.d_num_elems, input.d_dim);
           //          else {
           //            const auto *elem_x = mesh_locator(x);
           //            elem_id = elem_x->id();
@@ -1126,7 +1122,7 @@ void util::unet::Network::compute_elem_weights() {
 
 std::vector<util::unet::ElemWeights>
 util::unet::Network::compute_elem_weights_at_node(
-    std::shared_ptr<util::unet::VGNode> &pointer) const {
+  std::shared_ptr<util::unet::VGNode> &pointer) const {
 
   const auto &mesh = d_model_p->get_mesh();
   const auto &input = d_model_p->get_input_deck();
@@ -1193,7 +1189,7 @@ util::unet::Network::compute_elem_weights_at_node(
 
         // get element of point x
         unsigned int elem_id =
-            util::get_elem_id(x, input.d_mesh_size, input.d_num_elems, input.d_dim);
+          util::get_elem_id(x, input.d_mesh_size, input.d_num_elems, input.d_dim);
 
         // add data to J_b_ij
         J_b_ij.add_unique(elem_id, w);

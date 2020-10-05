@@ -17,8 +17,8 @@ double get_exact_source(const Point &p) {
 } // namespace
 
 Number netpresnut::initial_condition_pres(const Point &p, const Parameters &es,
-                                       const std::string &system_name,
-                                       const std::string &var_name) {
+                                          const std::string &system_name,
+                                          const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Pressure");
 
@@ -100,22 +100,22 @@ void netpresnut::PressureAssembly::assemble_1d_coupling() {
     double p_v = 0.;
     unsigned int assembly_cases;
 
-    for (unsigned int i=0; i<network.d_numSegments; i++) {
+    for (unsigned int i = 0; i < network.d_numSegments; i++) {
 
-      nodes[0] = network.d_segments[2*i + 0];
-      nodes[1] = network.d_segments[2*i + 1];
+      nodes[0] = network.d_segments[2 * i + 0];
+      nodes[1] = network.d_segments[2 * i + 1];
       radius = network.d_segmentData[i];
-      for (unsigned int j=0; j<3; j++) {
-        coords[0][j] = network.d_vertices[3*nodes[0] + j];
-        coords[1][j] = network.d_vertices[3*nodes[1] + j];
+      for (unsigned int j = 0; j < 3; j++) {
+        coords[0][j] = network.d_vertices[3 * nodes[0] + j];
+        coords[1][j] = network.d_vertices[3 * nodes[1] + j];
       }
       length = util::dist_between_points(coords[0], coords[1]);
 
-      for (unsigned int j=0; j<2; j++) {
+      for (unsigned int j = 0; j < 2; j++) {
 
         node_proc = 0;
         node_neigh = 1;
-        if (j==1) {
+        if (j == 1) {
           node_proc = 1;
           node_neigh = 0;
         }
@@ -128,10 +128,10 @@ void netpresnut::PressureAssembly::assemble_1d_coupling() {
           // Surface area of cylinder
           surface_area = 2.0 * M_PI * (0.5 * length) * radius;
           util::unet::determineWeightsAndIds(
-              deck.d_num_points_length, deck.d_num_points_angle, N_3D, coords[node_proc],
-              coords[node_neigh], radius, h_3D, 0.5 * length, weights,
-              id_3D_elements,
-              deck.d_coupling_3d1d_integration_method, d_mesh, true);
+            deck.d_num_points_length, deck.d_num_points_angle, N_3D, coords[node_proc],
+            coords[node_neigh], radius, h_3D, 0.5 * length, weights,
+            id_3D_elements,
+            deck.d_coupling_3d1d_integration_method, d_mesh, true);
 
           // Add coupling entry
           numberOfElements = id_3D_elements.size();
@@ -157,8 +157,8 @@ void netpresnut::PressureAssembly::assemble_1d_coupling() {
               }
             }
           } // loop over 3D elements
-        } // if not dirichlet
-      } // segment's node loop
+        }   // if not dirichlet
+      }     // segment's node loop
 
     } // loop over segments
   }

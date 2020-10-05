@@ -41,7 +41,7 @@ void netfc::VelocityAssembly::assemble_3d() {
 
   // Velocity
   auto &vel =
-      es.get_system<TransientLinearImplicitSystem>("Velocity");
+    es.get_system<TransientLinearImplicitSystem>("Velocity");
   std::vector<unsigned int> v_vel(3);
   v_vel[0] = vel.variable_number("velocity_x");
   v_vel[1] = vel.variable_number("velocity_y");
@@ -70,12 +70,12 @@ void netfc::VelocityAssembly::assemble_3d() {
   // Arranging matrix
   DenseMatrix<Number> Ke;
   DenseSubMatrix<Number> Ke_var[3][3] = {
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
-          DenseSubMatrix<Number>(Ke)},
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
-          DenseSubMatrix<Number>(Ke)},
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
-          DenseSubMatrix<Number>(Ke)}};
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
+     DenseSubMatrix<Number>(Ke)},
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
+     DenseSubMatrix<Number>(Ke)},
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
+     DenseSubMatrix<Number>(Ke)}};
 
   DenseVector<Number> Fe;
   DenseSubVector<Number> Fe_var[3] = {DenseSubVector<Number>(Fe),
@@ -85,7 +85,7 @@ void netfc::VelocityAssembly::assemble_3d() {
   // Looping through elements
   std::vector<dof_id_type> dof_indices;
 
-  for (const auto & elem : mesh.active_local_element_ptr_range()) {
+  for (const auto &elem : mesh.active_local_element_ptr_range()) {
 
     tum_map.dof_indices(elem, dof_indices_tum);
     for (unsigned int var = 0; var < 2; var++)
@@ -165,7 +165,7 @@ void netfc::VelocityAssembly::assemble_3d() {
         for (unsigned int l = 0; l < phi.size(); l++) {
 
           chem_tum_cur +=
-              phi[l][qp] * tum.current_solution(dof_indices_tum_var[1][l]);
+            phi[l][qp] * tum.current_solution(dof_indices_tum_var[1][l]);
           tum_grad.add_scaled(dphi[l][qp],
                               tum.current_solution(dof_indices_tum_var[0][l]));
         }
@@ -175,8 +175,8 @@ void netfc::VelocityAssembly::assemble_3d() {
         tum_grad = 0.;
 
         Gradient compute_rhs =
-            JxW[qp] * factor_p_t *
-            (-hyd_cond * (grad_p_cur - chem_tum_cur * tum_grad));
+          JxW[qp] * factor_p_t *
+          (-hyd_cond * (grad_p_cur - chem_tum_cur * tum_grad));
 
         // Assembling matrix
         for (unsigned int i = 0; i < phi.size(); i++) {
@@ -188,17 +188,17 @@ void netfc::VelocityAssembly::assemble_3d() {
           for (unsigned int j = 0; j < phi.size(); j++) {
 
             Ke_var[0][0](i, j) +=
-                JxW[qp] * factor_p_t * phi[j][qp] * phi[i][qp];
+              JxW[qp] * factor_p_t * phi[j][qp] * phi[i][qp];
             Ke_var[1][1](i, j) +=
-                JxW[qp] * factor_p_t * phi[j][qp] * phi[i][qp];
+              JxW[qp] * factor_p_t * phi[j][qp] * phi[i][qp];
             Ke_var[2][2](i, j) +=
-                JxW[qp] * factor_p_t * phi[j][qp] * phi[i][qp];
+              JxW[qp] * factor_p_t * phi[j][qp] * phi[i][qp];
           }
         }
       } // loop over quadrature points
 
       vel_map.heterogenously_constrain_element_matrix_and_vector(
-          Ke, Fe, dof_indices_vel);
+        Ke, Fe, dof_indices_vel);
       vel.matrix->add_matrix(Ke, dof_indices_vel);
       vel.rhs->add_vector(Fe, dof_indices_vel);
     }
@@ -228,7 +228,7 @@ void netfc::VelocityAssembly::assemble_2d() {
 
   // Velocity
   auto &vel =
-      es.get_system<TransientLinearImplicitSystem>("Velocity");
+    es.get_system<TransientLinearImplicitSystem>("Velocity");
   std::vector<unsigned int> v_vel(2);
   v_vel[0] = vel.variable_number("velocity_x");
   v_vel[1] = vel.variable_number("velocity_y");
@@ -255,8 +255,8 @@ void netfc::VelocityAssembly::assemble_2d() {
   // Arranging matrix
   DenseMatrix<Number> Ke;
   DenseSubMatrix<Number> Ke_var[2][2] = {
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)},
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)}};
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)},
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)}};
 
   DenseVector<Number> Fe;
   DenseSubVector<Number> Fe_var[2] = {DenseSubVector<Number>(Fe),
@@ -265,7 +265,7 @@ void netfc::VelocityAssembly::assemble_2d() {
   // Looping through elements
   MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
   const MeshBase::const_element_iterator end_el =
-      mesh.active_local_elements_end();
+    mesh.active_local_elements_end();
 
   for (; el != end_el; ++el) {
 
@@ -307,7 +307,7 @@ void netfc::VelocityAssembly::assemble_2d() {
 
         if (elem->neighbor_ptr(side) != nullptr) {
 
-          const Elem * neighbor = elem->neighbor_ptr(side);
+          const Elem *neighbor = elem->neighbor_ptr(side);
           const auto neighbor_center = neighbor->centroid();
           const auto dx = elem_center - neighbor_center;
 
@@ -349,7 +349,7 @@ void netfc::VelocityAssembly::assemble_2d() {
       }
 
       Gradient compute_rhs =
-          JxW[qp] * (-hyd_cond * (grad_p_cur - chem_tum_cur * tum_grad));
+        JxW[qp] * (-hyd_cond * (grad_p_cur - chem_tum_cur * tum_grad));
 
       // Assembling matrix
       for (unsigned int i = 0; i < phi.size(); i++) {

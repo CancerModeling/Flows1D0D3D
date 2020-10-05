@@ -9,8 +9,8 @@
 #include "systems.hpp"
 
 Number netfc::initial_condition_nut(const Point &p, const Parameters &es,
-                                     const std::string &system_name,
-                                     const std::string &var_name) {
+                                    const std::string &system_name,
+                                    const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Nutrient");
 
@@ -141,7 +141,7 @@ void netfc::NutAssembly::assemble() {
   // Data for surface integrals on the element boundary
   const std::vector<std::vector<Real>> &phi_face = fe_elem_face_tum->get_phi();
   const std::vector<std::vector<RealGradient>> &dphi_face =
-      fe_elem_face_tum->get_dphi();
+    fe_elem_face_tum->get_dphi();
   const std::vector<Real> &JxW_face = fe_elem_face_tum->get_JxW();
   const std::vector<Point> &qface_normals = fe_elem_face_tum->get_normals();
   const std::vector<Point> &qface_points = fe_elem_face_tum->get_xyz();
@@ -164,86 +164,79 @@ void netfc::NutAssembly::assemble() {
   std::vector<unsigned int> bc_rows;
   std::vector<Number> bc_vals;
 
-     // Looping through elements
-     for(const auto &elem : mesh.active_local_element_ptr_range()){
+  // Looping through elements
+  for (const auto &elem : mesh.active_local_element_ptr_range()) {
 
-         tum_map.dof_indices(elem, dof_indices_tum);
+    tum_map.dof_indices(elem, dof_indices_tum);
 
-         for (unsigned int var = 0; var < 2; var++){
+    for (unsigned int var = 0; var < 2; var++) {
 
-              tum_map.dof_indices(elem, dof_indices_tum_var[var], v_tum[var]);
+      tum_map.dof_indices(elem, dof_indices_tum_var[var], v_tum[var]);
+    }
 
-         }
+    nut_map.dof_indices(elem, dof_indices_nut, v_nut);
+    pres_map.dof_indices(elem, dof_indices_pres, v_pres);
 
-         nut_map.dof_indices(elem, dof_indices_nut, v_nut);
-         pres_map.dof_indices(elem, dof_indices_pres, v_pres);
+    const unsigned int n_dofs = dof_indices_nut.size();
 
-         const unsigned int n_dofs = dof_indices_nut.size();
+    fe_tum->reinit(elem);
 
-         fe_tum->reinit(elem);
+    std::vector<Real> Ke_val_col;
+    std::vector<unsigned int> Ke_dof_col;
+    std::vector<unsigned int> Ke_dof_row;
 
-         std::vector<Real> Ke_val_col;
-         std::vector<unsigned int> Ke_dof_col;
-         std::vector<unsigned int> Ke_dof_row;
+    Ke_dof_row.push_back(dof_indices_nut[0]);
+    DenseVector<Number> Fe;
+    Fe.resize(n_dofs);
 
-         Ke_dof_row.push_back(dof_indices_nut[0]);
-         DenseVector<Number> Fe;
-         Fe.resize(n_dofs);
+    const auto elem_center = elem->centroid();
 
-         const auto elem_center = elem->centroid();
+    double elem_p_t_k = pres.current_solution(dof_indices_pres[0]);
+    double elem_nut_old = nut.current_solution(dof_indices_nut[0]);
 
-         double elem_p_t_k = pres.current_solution(dof_indices_pres[0]);
-         double elem_nut_old = nut.current_solution(dof_indices_nut[0]);
+    // mass matrix
+    util::add_unique(dof_indices_nut[0], elem_vol, Ke_dof_col, Ke_val_col);
 
-         // mass matrix
-         util::add_unique(dof_indices_nut[0], elem_vol, Ke_dof_col, Ke_val_col);
+    // right hand side
+    Fe(0) += elem_nut_old * elem_vol;
 
-         // right hand side
-         Fe(0) += elem_nut_old * elem_vol;
+    // loop over sides of the element
+    for (auto side : elem->side_index_range()) {
 
-         // loop over sides of the element
-         for(auto side : elem->side_index_range()){
+      if (elem->neighbor_ptr(side) != nullptr) {
 
-             if(elem->neighbor_ptr(side) != nullptr){
+        const Elem *neighbor = elem->neighbor_ptr(side);
+        const auto neighbor_center = neighbor->centroid();
+        const auto dx = (elem_center - neighbor_center).norm();
 
-                const Elem *neighbor = elem->neighbor_ptr(side);
-                const auto neighbor_center = neighbor->centroid();
-                const auto dx = (elem_center - neighbor_center).norm();
+        // get dof id
+        std::vector<unsigned int> dof_indices_nut_neigh;
+        nut_map.dof_indices(neighbor, dof_indices_nut_neigh, v_nut);
 
-                // get dof id
-                std::vector<unsigned int> dof_indices_nut_neigh;
-                nut_map.dof_indices(neighbor, dof_indices_nut_neigh, v_nut);
+        std::vector<unsigned int> dof_indices_pres_neigh;
+        pres_map.dof_indices(neighbor, dof_indices_pres_neigh, v_pres);
+        double neighbor_p_t_k = pres.current_solution(dof_indices_pres_neigh[0]);
 
-                std::vector<unsigned int> dof_indices_pres_neigh;
-                pres_map.dof_indices(neighbor, dof_indices_pres_neigh, v_pres);
-                double neighbor_p_t_k = pres.current_solution(dof_indices_pres_neigh[0]);
+        // get coefficient
+        const Real a = dt * deck.d_D_sigma * face_area / dx;
 
-                // get coefficient
-                const Real a = dt * deck.d_D_sigma * face_area / dx;
+        util::add_unique(dof_indices_nut[0], a, Ke_dof_col, Ke_val_col);
+        util::add_unique(dof_indices_nut_neigh[0], -a, Ke_dof_col, Ke_val_col);
 
-                util::add_unique(dof_indices_nut[0], a, Ke_dof_col, Ke_val_col);
-                util::add_unique(dof_indices_nut_neigh[0], -a, Ke_dof_col, Ke_val_col);
+        // advection
+        double v = -deck.d_tissue_flow_K * (neighbor_p_t_k - elem_p_t_k) / (deck.d_tissue_flow_mu * mesh_size);
 
-                // advection
-                double v = -deck.d_tissue_flow_K * (neighbor_p_t_k - elem_p_t_k) / (deck.d_tissue_flow_mu * mesh_size);
+        if (v > 1.0e-8) {
 
-                if(v > 1.0e-8){
+          util::add_unique(dof_indices_nut[0], dt * v * face_area, Ke_dof_col, Ke_val_col);
 
-                   util::add_unique(dof_indices_nut[0], dt * v * face_area, Ke_dof_col, Ke_val_col);
-                
-                }
-                else{
+        } else {
 
-                   util::add_unique(dof_indices_nut_neigh[0], dt * v * face_area, Ke_dof_col, Ke_val_col);
-
-                }
-
-             }
-
-         }
-
-     }
-
+          util::add_unique(dof_indices_nut_neigh[0], dt * v * face_area, Ke_dof_col, Ke_val_col);
+        }
+      }
+    }
+  }
 }
 
 void netfc::NutAssembly::assemble_1() {
@@ -338,7 +331,7 @@ void netfc::NutAssembly::assemble_1() {
   // Data for surface integrals on the element boundary
   const std::vector<std::vector<Real>> &phi_face = fe_elem_face_tum->get_phi();
   const std::vector<std::vector<RealGradient>> &dphi_face =
-      fe_elem_face_tum->get_dphi();
+    fe_elem_face_tum->get_dphi();
   const std::vector<Real> &JxW_face = fe_elem_face_tum->get_JxW();
   const std::vector<Point> &qface_normals = fe_elem_face_tum->get_normals();
   const std::vector<Point> &qface_points = fe_elem_face_tum->get_xyz();
@@ -416,7 +409,7 @@ void netfc::NutAssembly::assemble_1() {
           std::vector<unsigned int> dof_indices_pres_neigh;
           pres_map.dof_indices(neighbor, dof_indices_pres_neigh, v_pres);
           double neighbor_p_t_k =
-              pres.current_solution(dof_indices_pres_neigh[0]);
+            pres.current_solution(dof_indices_pres_neigh[0]);
 
           // get coefficient
           const Real a = factor_nut * dt * deck.d_D_sigma * face_area / dx;
@@ -464,8 +457,8 @@ void netfc::NutAssembly::assemble_1() {
             for (unsigned int l = 0; l < phi_face.size(); l++) {
 
               tum_grad.add_scaled(
-                  dphi_face[l][qp],
-                  tum.current_solution(dof_indices_tum_var[0][l]));
+                dphi_face[l][qp],
+                tum.current_solution(dof_indices_tum_var[0][l]));
             }
 
             Fe(0) += factor_nut * JxW_face[qp] * deck.d_chi_c * tum_grad *
@@ -491,7 +484,7 @@ void netfc::NutAssembly::assemble_1() {
         for (unsigned int l = 0; l < phi.size(); l++) {
 
           tum_cur +=
-              phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
+            phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
           hyp_cur += phi[l][qp] * hyp.current_solution(dof_indices_hyp[l]);
           nec_cur += phi[l][qp] * nec.current_solution(dof_indices_nec[l]);
           taf_cur += phi[l][qp] * taf.current_solution(dof_indices_taf[l]);
@@ -506,11 +499,11 @@ void netfc::NutAssembly::assemble_1() {
 
         // handle all coupling with nutrient as source term
         double compute_mat =
-            JxW[qp] * dt *
-            (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
-             deck.d_lambda_Ph * hyp_cur +
-             deck.d_lambda_ECM_P * (1. - ecm_cur) *
-                 util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+          JxW[qp] * dt *
+          (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
+           deck.d_lambda_Ph * hyp_cur +
+           deck.d_lambda_ECM_P * (1. - ecm_cur) *
+             util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
 
         util::add_unique(dof_indices_nut[0], factor_nut * compute_mat,
                          Ke_dof_col, Ke_val_col);
@@ -696,7 +689,7 @@ void netfc::NutAssembly::assemble_2() {
   // Data for surface integrals on the element boundary
   const std::vector<std::vector<Real>> &phi_face = fe_elem_face_tum->get_phi();
   const std::vector<std::vector<RealGradient>> &dphi_face =
-      fe_elem_face_tum->get_dphi();
+    fe_elem_face_tum->get_dphi();
   const std::vector<Real> &JxW_face = fe_elem_face_tum->get_JxW();
   const std::vector<Point> &qface_normals = fe_elem_face_tum->get_normals();
   const std::vector<Point> &qface_points = fe_elem_face_tum->get_xyz();
@@ -774,7 +767,7 @@ void netfc::NutAssembly::assemble_2() {
           std::vector<unsigned int> dof_indices_pres_neigh;
           pres_map.dof_indices(neighbor, dof_indices_pres_neigh, v_pres);
           double neighbor_p_t_k =
-              pres.current_solution(dof_indices_pres_neigh[0]);
+            pres.current_solution(dof_indices_pres_neigh[0]);
 
           // get coefficient
           const Real a = factor_nut * dt * deck.d_D_sigma * face_area / dx;
@@ -822,8 +815,8 @@ void netfc::NutAssembly::assemble_2() {
             for (unsigned int l = 0; l < phi_face.size(); l++) {
 
               tum_grad.add_scaled(
-                  dphi_face[l][qp],
-                  tum.current_solution(dof_indices_tum_var[0][l]));
+                dphi_face[l][qp],
+                tum.current_solution(dof_indices_tum_var[0][l]));
             }
 
             Fe(0) += factor_nut * JxW_face[qp] * deck.d_chi_c * tum_grad *
@@ -847,7 +840,7 @@ void netfc::NutAssembly::assemble_2() {
         for (unsigned int l = 0; l < phi.size(); l++) {
 
           tum_cur +=
-              phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
+            phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
           hyp_cur += phi[l][qp] * hyp.current_solution(dof_indices_hyp[l]);
           nec_cur += phi[l][qp] * nec.current_solution(dof_indices_nec[l]);
           ecm_cur += phi[l][qp] * ecm.current_solution(dof_indices_ecm[l]);
@@ -868,11 +861,11 @@ void netfc::NutAssembly::assemble_2() {
 
         // handle all coupling with nutrient as source term
         double compute_mat =
-            JxW[qp] * dt *
-            (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
-             deck.d_lambda_Ph * hyp_proj +
-             deck.d_lambda_ECM_P * (1. - ecm_proj) *
-                 util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
+          JxW[qp] * dt *
+          (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
+           deck.d_lambda_Ph * hyp_proj +
+           deck.d_lambda_ECM_P * (1. - ecm_proj) *
+             util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
 
         util::add_unique(dof_indices_nut[0], factor_nut * compute_mat,
                          Ke_dof_col, Ke_val_col);
@@ -1060,7 +1053,7 @@ void netfc::NutAssembly::assemble_3() {
   // Data for surface integrals on the element boundary
   const std::vector<std::vector<Real>> &phi_face = fe_elem_face_tum->get_phi();
   const std::vector<std::vector<RealGradient>> &dphi_face =
-      fe_elem_face_tum->get_dphi();
+    fe_elem_face_tum->get_dphi();
   const std::vector<Real> &JxW_face = fe_elem_face_tum->get_JxW();
   const std::vector<Point> &qface_normals = fe_elem_face_tum->get_normals();
   const std::vector<Point> &qface_points = fe_elem_face_tum->get_xyz();
@@ -1138,7 +1131,7 @@ void netfc::NutAssembly::assemble_3() {
           std::vector<unsigned int> dof_indices_pres_neigh;
           pres_map.dof_indices(neighbor, dof_indices_pres_neigh, v_pres);
           double neighbor_p_t_k =
-              pres.current_solution(dof_indices_pres_neigh[0]);
+            pres.current_solution(dof_indices_pres_neigh[0]);
 
           // get coefficient
           const Real a = factor_nut * dt * deck.d_D_sigma * face_area / dx;
@@ -1186,8 +1179,8 @@ void netfc::NutAssembly::assemble_3() {
             for (unsigned int l = 0; l < phi_face.size(); l++) {
 
               tum_grad.add_scaled(
-                  dphi_face[l][qp],
-                  tum.current_solution(dof_indices_tum_var[0][l]));
+                dphi_face[l][qp],
+                tum.current_solution(dof_indices_tum_var[0][l]));
             }
 
             Fe(0) += factor_nut * JxW_face[qp] * deck.d_chi_c * tum_grad *
@@ -1213,7 +1206,7 @@ void netfc::NutAssembly::assemble_3() {
         for (unsigned int l = 0; l < phi.size(); l++) {
 
           tum_cur +=
-              phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
+            phi[l][qp] * tum.current_solution(dof_indices_tum_var[0][l]);
           hyp_cur += phi[l][qp] * hyp.current_solution(dof_indices_hyp[l]);
           nec_cur += phi[l][qp] * nec.current_solution(dof_indices_nec[l]);
           ecm_cur += phi[l][qp] * ecm.current_solution(dof_indices_ecm[l]);
@@ -1234,11 +1227,11 @@ void netfc::NutAssembly::assemble_3() {
 
         // handle all coupling with nutrient as source term
         Fe(0) +=
-            factor_nut * JxW[qp] * dt *
-            (-deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) * nut_proj -
-             deck.d_lambda_Ph * hyp_proj * nut_proj -
-             deck.d_lambda_ECM_P * (1. - ecm_proj) *
-                 util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P) * nut_proj);
+          factor_nut * JxW[qp] * dt *
+          (-deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) * nut_proj -
+           deck.d_lambda_Ph * hyp_proj * nut_proj -
+           deck.d_lambda_ECM_P * (1. - ecm_proj) *
+             util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P) * nut_proj);
       } // loop over quadrature points
     }
 

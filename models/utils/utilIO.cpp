@@ -22,7 +22,7 @@ bool util::io::read_network_file(std::string filename,
 
   if (!filein) {
     libmesh_error_msg("Error: Can not open network init file " +
-                          filename);
+                      filename);
     exit(1);
   }
 
@@ -57,7 +57,7 @@ bool util::io::read_network_file(std::string filename,
       nodes.resize(num_nodes);
 
       // start reading nodes
-      for (unsigned int i=0; i<num_nodes; i++) {
+      for (unsigned int i = 0; i < num_nodes; i++) {
         double x, y, z;
         unsigned int id;
 
@@ -71,7 +71,7 @@ bool util::io::read_network_file(std::string filename,
 
       // read end of node # Nodes end
       std::getline(filein, line);
-    } else if (tag =="$Elements") {
+    } else if (tag == "$Elements") {
 
       // get next line
       std::getline(filein, line);
@@ -84,7 +84,7 @@ bool util::io::read_network_file(std::string filename,
       elems.resize(num_elems);
 
       // start reading nodes
-      for (unsigned int i=0; i<num_elems; i++) {
+      for (unsigned int i = 0; i < num_elems; i++) {
 
         unsigned int id, type;
 
@@ -106,7 +106,7 @@ bool util::io::read_network_file(std::string filename,
 
       // read end of node # Elements end
       std::getline(filein, line);
-    } else if (tag =="$Nodes Boundary Flags") {
+    } else if (tag == "$Nodes Boundary Flags") {
 
       // get next line
       std::getline(filein, line);
@@ -119,7 +119,7 @@ bool util::io::read_network_file(std::string filename,
       node_boundary_flag.resize(num_nodes);
 
       // start reading nodes
-      for (unsigned int i=0; i<num_nodes; i++) {
+      for (unsigned int i = 0; i < num_nodes; i++) {
         unsigned int id, flag;
 
         std::getline(filein, line);
@@ -132,7 +132,7 @@ bool util::io::read_network_file(std::string filename,
 
       // read end of node # Nodes Boundary Flags end
       std::getline(filein, line);
-    } else if (tag =="$Nodes Branch Flags") {
+    } else if (tag == "$Nodes Branch Flags") {
 
       std::getline(filein, line);
       std::istringstream iss(line);
@@ -144,7 +144,7 @@ bool util::io::read_network_file(std::string filename,
       node_branch_flag.resize(num_nodes, false);
 
       // start reading nodes
-      for (unsigned int i=0; i<num_nodes; i++) {
+      for (unsigned int i = 0; i < num_nodes; i++) {
         unsigned int id, flag;
 
         std::getline(filein, line);
@@ -157,7 +157,7 @@ bool util::io::read_network_file(std::string filename,
 
       // read end of node # Nodes Branch Flags end
       std::getline(filein, line);
-    } else if (tag =="$Elements Radius") {
+    } else if (tag == "$Elements Radius") {
 
       std::getline(filein, line);
       std::istringstream iss(line);
@@ -169,7 +169,7 @@ bool util::io::read_network_file(std::string filename,
       elem_radius.resize(num_elems);
 
       // start reading nodes
-      for (unsigned int i=0; i<num_elems; i++) {
+      for (unsigned int i = 0; i < num_elems; i++) {
 
         unsigned int id;
         double r;
@@ -184,7 +184,7 @@ bool util::io::read_network_file(std::string filename,
 
       // read end of node # Elements Radius end
       std::getline(filein, line);
-    } else if (tag =="$Elements Viscosity") {
+    } else if (tag == "$Elements Viscosity") {
 
       std::getline(filein, line);
       std::istringstream iss(line);
@@ -196,7 +196,7 @@ bool util::io::read_network_file(std::string filename,
       elem_viscosity.resize(num_elems);
 
       // start reading nodes
-      for (unsigned int i=0; i<num_elems; i++) {
+      for (unsigned int i = 0; i < num_elems; i++) {
 
         unsigned int id;
         double mu;

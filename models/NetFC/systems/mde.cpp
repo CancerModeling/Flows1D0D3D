@@ -9,9 +9,9 @@
 #include "../model.hpp"
 
 Number netfc::initial_condition_mde(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                    const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"MDE");
+  libmesh_assert_equal_to(system_name, "MDE");
 
   if (var_name == "mde") {
 
@@ -57,7 +57,7 @@ void netfc::MdeAssembly::assemble_1() {
 
   // Nutrient system
   auto &nut =
-      es.get_system<TransientLinearImplicitSystem>("Nutrient");
+    es.get_system<TransientLinearImplicitSystem>("Nutrient");
   const unsigned int v_nut = nut.variable_number("nutrient");
   const DofMap &nut_map = nut.get_dof_map();
   std::vector<unsigned int> dof_indices_nut;
@@ -145,8 +145,8 @@ void netfc::MdeAssembly::assemble_1() {
       Number compute_rhs = JxW[qp] * (mde_old + dt * aux_1);
 
       Number compute_mat =
-          JxW[qp] * (1. + dt * deck->d_lambda_MDE_D +
-                     dt * aux_1 + dt * deck->d_lambda_ECM_D * ecm_cur);
+        JxW[qp] * (1. + dt * deck->d_lambda_MDE_D +
+                   dt * aux_1 + dt * deck->d_lambda_ECM_D * ecm_cur);
 
       // Assembling matrix
       for (unsigned int i = 0; i < phi.size(); i++) {
@@ -159,7 +159,7 @@ void netfc::MdeAssembly::assemble_1() {
 
           // gradient term
           Ke(i, j) +=
-              JxW[qp] * dt * deck->d_D_MDE * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * dt * deck->d_D_MDE * dphi[j][qp] * dphi[i][qp];
         }
       }
     } // loop over quadrature points
@@ -188,7 +188,7 @@ void netfc::MdeAssembly::assemble_2() {
 
   // Nutrient system
   auto &nut =
-      es.get_system<TransientLinearImplicitSystem>("Nutrient");
+    es.get_system<TransientLinearImplicitSystem>("Nutrient");
   const unsigned int v_nut = nut.variable_number("nutrient");
   const DofMap &nut_map = nut.get_dof_map();
   std::vector<unsigned int> dof_indices_nut;
@@ -283,8 +283,8 @@ void netfc::MdeAssembly::assemble_2() {
       Number compute_rhs = JxW[qp] * (mde_old + dt * aux_1);
 
       Number compute_mat =
-          JxW[qp] * (1. + dt * deck->d_lambda_MDE_D +
-                     dt * aux_1 + dt * deck->d_lambda_ECM_D * ecm_proj);
+        JxW[qp] * (1. + dt * deck->d_lambda_MDE_D +
+                   dt * aux_1 + dt * deck->d_lambda_ECM_D * ecm_proj);
 
       // Assembling matrix
       for (unsigned int i = 0; i < phi.size(); i++) {
@@ -297,7 +297,7 @@ void netfc::MdeAssembly::assemble_2() {
 
           // gradient term
           Ke(i, j) +=
-              JxW[qp] * dt * deck->d_D_MDE * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * dt * deck->d_D_MDE * dphi[j][qp] * dphi[i][qp];
         }
       }
     } // loop over quadrature points
@@ -326,7 +326,7 @@ void netfc::MdeAssembly::assemble_3() {
 
   // Nutrient system
   auto &nut =
-      es.get_system<TransientLinearImplicitSystem>("Nutrient");
+    es.get_system<TransientLinearImplicitSystem>("Nutrient");
   const unsigned int v_nut = nut.variable_number("nutrient");
   const DofMap &nut_map = nut.get_dof_map();
   std::vector<unsigned int> dof_indices_nut;
@@ -419,9 +419,9 @@ void netfc::MdeAssembly::assemble_3() {
                      ecm_proj * deck->d_sigma_HP / (1. + nut_proj);
 
       Number compute_rhs =
-          JxW[qp] * (mde_old + dt * aux_1 * (1. - mde_proj) -
-                     dt * deck->d_lambda_MDE_D * mde_proj -
-                     dt * deck->d_lambda_ECM_D * ecm_proj * mde_proj);
+        JxW[qp] * (mde_old + dt * aux_1 * (1. - mde_proj) -
+                   dt * deck->d_lambda_MDE_D * mde_proj -
+                   dt * deck->d_lambda_ECM_D * ecm_proj * mde_proj);
 
       Number compute_mat = JxW[qp];
 
@@ -436,7 +436,7 @@ void netfc::MdeAssembly::assemble_3() {
 
           // gradient term
           Ke(i, j) +=
-              JxW[qp] * dt * deck->d_D_MDE * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * dt * deck->d_D_MDE * dphi[j][qp] * dphi[i][qp];
         }
       }
     } // loop over quadrature points

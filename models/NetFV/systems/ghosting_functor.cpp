@@ -8,13 +8,13 @@
 #include "ghosting_functor.hpp"
 
 void netfv::GhostingFunctorNet::operator()(
-    const MeshBase::const_element_iterator &range_begin,
-    const MeshBase::const_element_iterator &range_end, processor_id_type p,
-    GhostingFunctor::map_type &coupled_elements) {
+  const MeshBase::const_element_iterator &range_begin,
+  const MeshBase::const_element_iterator &range_end, processor_id_type p,
+  GhostingFunctor::map_type &coupled_elements) {
 
-  CouplingMatrix * nullcm = nullptr;
+  CouplingMatrix *nullcm = nullptr;
 
-  for (const auto & elem : as_range(range_begin, range_end)) {
+  for (const auto &elem : as_range(range_begin, range_end)) {
 
     auto elem_id = elem->id();
 

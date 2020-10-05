@@ -105,7 +105,7 @@ void test::comm::run(int argc, char **argv, Parallel::Communicator *comm) {
   // their local tips
   unsigned int num_local_nodes = 1000;
   std::pair<unsigned int, unsigned int> id_range = {
-      comm->rank() * num_local_nodes, (comm->rank() + 1) * num_local_nodes};
+    comm->rank() * num_local_nodes, (comm->rank() + 1) * num_local_nodes};
 
   // generate dummy local nodes
   std::vector<unsigned int> nodes;
@@ -116,7 +116,7 @@ void test::comm::run(int argc, char **argv, Parallel::Communicator *comm) {
   std::vector<Tip> local_tips;
   for (size_t i = 0; i < 2; i++)
     local_tips.emplace_back(
-        Tip(nodes[i], get_unique_id(local_tips, id_range), comm->rank()));
+      Tip(nodes[i], get_unique_id(local_tips, id_range), comm->rank()));
 
   oss << "  Local tips = ";
   for (const auto &t : local_tips)

@@ -36,8 +36,7 @@ double util::BaseAssembly::compute_qoi(const std::string &type, unsigned int loc
         qoi += elem->volume() * std::abs(cur_sol);
       else if (type == "l2")
         qoi += elem->volume() * cur_sol * cur_sol;
-    }
-    else {
+    } else {
       for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
         cur_sol = 0.;
         for (unsigned int l = 0; l < d_phi.size(); l++) {

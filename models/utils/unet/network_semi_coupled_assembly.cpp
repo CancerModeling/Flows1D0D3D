@@ -19,10 +19,10 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
   int numberOfNodes = VGM.getNumberOfNodes();
   if (A_VGM.nrows() != numberOfNodes)
     A_VGM =
-        gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
+      gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
 
   for (unsigned int i = 0; i < A_VGM.nrows(); i++)
-      A_VGM[i].clear();
+    A_VGM[i].clear();
 
   if (b.size() != numberOfNodes)
     b.resize(numberOfNodes);
@@ -57,8 +57,8 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
     // find cases
     assembly_cases = d_vertexBdFlag[indexOfNode];
 
-      std::string assembly_cases_str =
-              get_assembly_cases_pres_str(pointer, input.d_identify_vein_pres);
+    std::string assembly_cases_str =
+      get_assembly_cases_pres_str(pointer, input.d_identify_vein_pres);
 
     // loop over segments and compute 1D and 1D-3D coupling
     for (int i = 0; i < numberOfNeighbors; i++) {
@@ -81,11 +81,8 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
       // case specific implementation
       if (assembly_cases & UNET_PRES_BDRY_DIRIC) {
 
-          libmesh_assert_equal_to_msg(assembly_cases_str, "boundary_dirichlet",
-                                      "Error assembly case "
-                                      + std::to_string(assembly_cases)
-                                      + " does not match expected case "
-                                      + "boundary_dirichlet");
+        libmesh_assert_equal_to_msg(assembly_cases_str, "boundary_dirichlet",
+                                    "Error assembly case " + std::to_string(assembly_cases) + " does not match expected case " + "boundary_dirichlet");
 
         A_VGM(indexOfNode, indexOfNode) += factor_p * 1.0;
         b[indexOfNode] += factor_p * pointer->p_boundary;
@@ -118,9 +115,7 @@ void util::unet::Network::assembleVGMSystemForPressure(BaseAssembly &pres_sys) {
     }
 
     if (row_sum < 0.)
-      libmesh_warning("Network node " + std::to_string(indexOfNode)
-                      + " is not diagonally dominated. Sum of row = "
-                      + std::to_string(row_sum));
+      libmesh_warning("Network node " + std::to_string(indexOfNode) + " is not diagonally dominated. Sum of row = " + std::to_string(row_sum));
 
     pointer = pointer->global_successor;
   }
@@ -138,10 +133,10 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
   int numberOfNodes = VGM.getNumberOfNodes();
   if (A_VGM.nrows() != numberOfNodes)
     A_VGM =
-        gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
+      gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes, numberOfNodes);
 
   for (unsigned int i = 0; i < A_VGM.nrows(); i++)
-      A_VGM[i].clear();
+    A_VGM[i].clear();
 
   if (b_c.size() != numberOfNodes)
     b_c.resize(numberOfNodes);
@@ -198,7 +193,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
       length = util::dist_between_points(coord, coord_neighbor);
       p_neighbor = pointer->neighbors[i]->p_v;
       v_interface =
-          -(radius * radius * M_PI) / (8.0 * length * mu) * (p_neighbor - p_v);
+        -(radius * radius * M_PI) / (8.0 * length * mu) * (p_neighbor - p_v);
       L_s = pointer->L_s[i];
       L_p = pointer->L_p[i];
 
@@ -208,7 +203,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
                              input.d_num_points_angle, N_3D, coord,
                              coord_neighbor, radius, h_3D, 0.5 * length,
                              weights, id_3D_elements,
-                               input.d_coupling_3d1d_integration_method, mesh, false);
+                             input.d_coupling_3d1d_integration_method, mesh, false);
 
       dirichlet_fixed = false;
       // case specific implementation
@@ -227,7 +222,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
         dirichlet_fixed = true;
 
       } else if (assembly_cases & UNET_NUT_BDRY_ARTERY_OUTLET or
-                  assembly_cases & UNET_NUT_BDRY_VEIN_OUTLET) {
+                 assembly_cases & UNET_NUT_BDRY_VEIN_OUTLET) {
 
         // advection
         A_VGM(indexOfNode, indexOfNode) += -dt * v_interface;
@@ -278,7 +273,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
 
         c_t = phi_sigma_3D[id_3D_elements[j]];
         b_c[indexOfNode] +=
-            factor_c * dt * L_s * surface_area * weights[j] * c_t;
+          factor_c * dt * L_s * surface_area * weights[j] * c_t;
 
         // osmotic reflection term
         p_t = P_3D[id_3D_elements[j]];
@@ -288,8 +283,8 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
           // 1D equation
           // -2pi R (p_v - p_t) phi_v term in right hand side of 1D equation
           A_VGM(indexOfNode, indexOfNode) +=
-              factor_c * dt * (1. - osmotic_sigma) * L_p * surface_area *
-              weights[j] * (p_v - p_t);
+            factor_c * dt * (1. - osmotic_sigma) * L_p * surface_area *
+            weights[j] * (p_v - p_t);
         } else {
 
           // 1D equation
@@ -307,9 +302,7 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
     }
 
     if (row_sum < 0.)
-      libmesh_warning("Network node " + std::to_string(indexOfNode)
-        + " is not diagonally dominated. Sum of row = "
-        + std::to_string(row_sum));
+      libmesh_warning("Network node " + std::to_string(indexOfNode) + " is not diagonally dominated. Sum of row = " + std::to_string(row_sum));
 
     pointer = pointer->global_successor;
   }

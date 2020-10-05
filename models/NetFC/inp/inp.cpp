@@ -287,7 +287,7 @@ void netfc::SolverDeck::read_parameters(const std::string &filename) {
   d_nonlin_tol = input("nonlinear_solver_tol", 1.e-6);
 
   d_project_solution_to_physical_range =
-      input("project_solution_to_phyiscal_range", false);
+    input("project_solution_to_phyiscal_range", false);
 }
 
 void netfc::SolverDeck::print(unsigned int level) {
@@ -480,7 +480,6 @@ void netfc::NecroticDeck::print(unsigned int level) {
   out << "# Constant for mobility of necrotic tumor cells\n";
   out << "# Default: 0\n";
   out << "bar_M_N = " << d_bar_M_N << "\n\n";
-
 }
 
 void netfc::TAFDeck::read_parameters(const std::string &filename) {
@@ -539,8 +538,8 @@ void netfc::ECMDeck::read_parameters(const std::string &filename) {
   // get the geometrical parameters
   unsigned int num_params = input("ECM_ic_num_params", 0);
 
-  for (unsigned int i=0; i<num_params; i++)
-    d_ecm_ic_data.d_geom_params.push_back(input("ECM_ic_params_" + std::to_string(i+1), 0.));
+  for (unsigned int i = 0; i < num_params; i++)
+    d_ecm_ic_data.d_geom_params.push_back(input("ECM_ic_params_" + std::to_string(i + 1), 0.));
 }
 
 void netfc::ECMDeck::print(unsigned int level) {
@@ -674,12 +673,12 @@ void netfc::TumorICDeck::read_parameters(const std::string &filename) {
     io::CSVReader<10> in(csv_file);
 
     in.read_header(io::ignore_extra_column, "type", "cx", "cy", "cz",
-        "tum_rx", "tum_ry", "tum_rz", "hyp_rx", "hyp_ry", "hyp_rz");
+                   "tum_rx", "tum_ry", "tum_rz", "hyp_rx", "hyp_ry", "hyp_rz");
 
     int type;
     double cx, cy, cz, tum_rx, tum_ry, tum_rz, hyp_rx, hyp_ry, hyp_rz;
     while (in.read_row(type, cx, cy, cz, tum_rx, tum_ry, tum_rz, hyp_rx,
-        hyp_ry, hyp_rz)) {
+                       hyp_ry, hyp_rz)) {
 
       std::string ic_type;
       if (type == 1)
@@ -702,7 +701,7 @@ void netfc::TumorICDeck::read_parameters(const std::string &filename) {
     int num_ic = input("ic_tumor_number", 0);
     d_tum_ic_data.resize(num_ic);
 
-    for (unsigned int i=0; i<num_ic; i++) {
+    for (unsigned int i = 0; i < num_ic; i++) {
 
       std::string postfix = "_" + std::to_string(i);
       if (num_ic == 1)
@@ -721,12 +720,12 @@ void netfc::TumorICDeck::read_parameters(const std::string &filename) {
 
         if (data.d_hyp_ic_radius[0] < data.d_tum_ic_radius[0]) {
           libmesh_error_msg(
-              "Error: Radius for hypoxic ic can not be smaller than"
-              " tumor ic.");
+            "Error: Radius for hypoxic ic can not be smaller than"
+            " tumor ic.");
           exit(1);
         }
       } else if (data.d_ic_type == "tumor_elliptical" or
-          data.d_ic_type == "tumor_hypoxic_elliptical") {
+                 data.d_ic_type == "tumor_hypoxic_elliptical") {
 
         data.d_tum_ic_radius[0] = input("ic_tumor_radius_x" + postfix, 0.);
         data.d_tum_ic_radius[1] = input("ic_tumor_radius_y" + postfix, 0.);
@@ -740,11 +739,11 @@ void netfc::TumorICDeck::read_parameters(const std::string &filename) {
         }
 
         if (data.d_hyp_ic_radius[0] < data.d_tum_ic_radius[0] or
-                data.d_hyp_ic_radius[1] < data.d_tum_ic_radius[1] ||
+            data.d_hyp_ic_radius[1] < data.d_tum_ic_radius[1] ||
             data.d_hyp_ic_radius[2] < data.d_tum_ic_radius[2]) {
           libmesh_error_msg(
-              "Error: Radius for hypoxic ic can not be smaller than"
-              " tumor ic.");
+            "Error: Radius for hypoxic ic can not be smaller than"
+            " tumor ic.");
           exit(1);
         }
       }
@@ -770,41 +769,41 @@ void netfc::TumorICDeck::print(unsigned int level) {
   out << "# Default: 0\n";
   out << "# Description: Following types of core has been implemented\n";
   out << "# 0- Spherical/circular core\n";
-//  out << "ic_tumor_type = " << d_tum_ic_type << "\n\n";
+  //  out << "ic_tumor_type = " << d_tum_ic_type << "\n\n";
 
   out << "# Tumor core radius (if ic_tumor_type is 0)  \n";
   out << "# Default: 1\n";
-//  out << "ic_tumor_radius = " << d_tum_ic_radius[0] << "\n\n";
+  //  out << "ic_tumor_radius = " << d_tum_ic_radius[0] << "\n\n";
 
   out << "# Tumor core x-radius (if ic_tumor_type is 1)  \n";
   out << "# Default: 1\n";
   out << "# Description: If core is ellipsoidal then this is size of axis in "
          "x-direction \n";
-//  out << "ic_tumor_radius_x = " << d_tum_ic_radius[0] << "\n\n";
+  //  out << "ic_tumor_radius_x = " << d_tum_ic_radius[0] << "\n\n";
 
   out << "# Tumor core y-radius (if ic_tumor_type is 1)  \n";
   out << "# Default: 1\n";
   out << "# Description: If core is ellipsoidal then this is size of axis in "
          "y-direction \n";
-//  out << "ic_tumor_radius_y = " << d_tum_ic_radius[1] << "\n\n";
+  //  out << "ic_tumor_radius_y = " << d_tum_ic_radius[1] << "\n\n";
 
   out << "# Tumor core z-radius (if ic_tumor_type is 1)  \n";
   out << "# Default: 1\n";
   out << "# Description: If core is ellipsoidal then this is size of axis in "
          "z-direction \n";
-//  out << "ic_tumor_radius_z = " << d_tum_ic_radius[2] << "\n\n";
+  //  out << "ic_tumor_radius_z = " << d_tum_ic_radius[2] << "\n\n";
 
   out << "# x-coordinate of center of tumor core \n";
   out << "# Default: 0\n";
-//  out << "ic_tumor_center_x = " << d_tum_ic_center[0] << "\n\n";
+  //  out << "ic_tumor_center_x = " << d_tum_ic_center[0] << "\n\n";
 
   out << "# y-coordinate of center of tumor core \n";
   out << "# Default: 0\n";
-//  out << "ic_tumor_center_y = " << d_tum_ic_center[1] << "\n\n";
+  //  out << "ic_tumor_center_y = " << d_tum_ic_center[1] << "\n\n";
 
   out << "# z-coordinate of center of tumor core \n";
   out << "# Default: 0\n";
-//  out << "ic_tumor_center_z = " << d_tum_ic_center[2] << "\n\n";
+  //  out << "ic_tumor_center_z = " << d_tum_ic_center[2] << "\n\n";
 }
 
 void netfc::NutrientBCDeck::read_parameters(const std::string &filename) {
@@ -884,18 +883,15 @@ void netfc::NetworkDeck::read_parameters(const std::string &filename) {
 
   d_vessel_no_taf_effect_dist = input("network_vessel_no_taf_dist", 5);
 
-  d_nonlocal_direction_search_num_points = input
-      ("network_nonlocal_search_num_points", 2);
+  d_nonlocal_direction_search_num_points = input("network_nonlocal_search_num_points", 2);
   d_nonlocal_direction_search_length =
-      input("network_nonlocal_search_length_factor", 10.);
+    input("network_nonlocal_search_length_factor", 10.);
   d_network_local_search = input("network_local_search", true);
 
-  d_network_no_new_node_search_factor = input
-      ("network_no_new_node_search_factor", 0.5);
+  d_network_no_new_node_search_factor = input("network_no_new_node_search_factor", 0.5);
 }
 
 void netfc::NetworkDeck::print(unsigned int level) {
-
 }
 
 void netfc::Flow1DDeck::read_parameters(const std::string &filename) {
@@ -916,7 +912,6 @@ void netfc::Flow1DDeck::read_parameters(const std::string &filename) {
   d_osmotic_sigma = input("osmotic_reflection_coeff", 0.1);
 
   d_scenario = input("scenario", "scenario not available");
-
 }
 
 void netfc::Flow1DDeck::print(unsigned int level) {
@@ -956,8 +951,8 @@ void netfc::FlowDeck::read_parameters(const std::string &filename) {
   d_pressure_bc_east = input("bc_tissue_pressure_east", false);
   d_pressure_bc_west = input("bc_tissue_pressure_west", false);
 
-  d_N_newton = input("N_newton",0);
-  d_omega = input("omega",0.0);
+  d_N_newton = input("N_newton", 0);
+  d_omega = input("omega", 0.0);
 }
 
 void netfc::FlowDeck::print(unsigned int level) {

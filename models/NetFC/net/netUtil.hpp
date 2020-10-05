@@ -34,7 +34,7 @@ std::vector<std::vector<double>> defineDirections();
 
 std::vector<std::vector<double>> defineDirectionsNeighboring();
 
-std::vector<double> getCenterFromIndex( int index, int N_3D, double h_3D );
+std::vector<double> getCenterFromIndex(int index, int N_3D, double h_3D);
 
 bool isCenterInDomain(std::vector<double> center, double L_x);
 
@@ -61,12 +61,11 @@ void updateWeightsAndIds(int N_s, int N_theta, int elementIndex,
                          std::vector<double> &weights,
                          std::vector<int> &id_3D_elements);
 
-void determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<double> coord, std::vector<double> coord_neighbor, 
+void determineWeightsAndIds(int N_s, int N_theta, int N_3D, std::vector<double> coord, std::vector<double> coord_neighbor,
                             double radius, double h_3D, double length_edge, std::vector<double> &weights, std::vector<int> &id_3D_elements);
 
-std::vector<int> getNeighboringElementIndices( int index, int N_3D, double h_3D, double L_x );
+std::vector<int> getNeighboringElementIndices(int index, int N_3D, double h_3D, double L_x);
 
-}
+} // namespace netfc
 
 #endif // TUMORMODELS_NETUTIL_H
-

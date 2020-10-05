@@ -9,17 +9,17 @@
 #include "../model.hpp"
 
 Number netfc::initial_condition_taf(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                    const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"TAF");
+  libmesh_assert_equal_to(system_name, "TAF");
 
   return 0.;
 }
 
 Number netfc::initial_condition_grad_taf(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                         const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"TAF_Gradient");
+  libmesh_assert_equal_to(system_name, "TAF_Gradient");
 
   return 0.;
 }
@@ -43,14 +43,14 @@ void netfc::TafAssembly::assemble_1() {
 
   // TAF system
   auto &taf =
-      es.get_system<TransientLinearImplicitSystem>("TAF");
+    es.get_system<TransientLinearImplicitSystem>("TAF");
   const unsigned int v_taf = taf.variable_number("taf");
   const DofMap &taf_map = taf.get_dof_map();
   std::vector<unsigned int> dof_indices_taf;
 
   // Hypoxic system
   auto &hyp =
-      es.get_system<TransientLinearImplicitSystem>("Hypoxic");
+    es.get_system<TransientLinearImplicitSystem>("Hypoxic");
   const unsigned int v_hyp = hyp.variable_number("hypoxic");
   const DofMap &hyp_map = hyp.get_dof_map();
   std::vector<unsigned int> dof_indices_hyp;
@@ -103,7 +103,7 @@ void netfc::TafAssembly::assemble_1() {
       }
 
       Number compute_rhs = JxW[qp] * (taf_old + dt * deck->d_lambda_TAF *
-          hyp_cur);
+                                                  hyp_cur);
 
       // ADD ARTIFICIAL SOURCE
       {
@@ -127,9 +127,9 @@ void netfc::TafAssembly::assemble_1() {
             const Point xc_plane = Point(L_half, L_half, 0.);
             if ((x_plane - xc_plane).norm() < 0.1 * L_half)
               compute_rhs +=
-                  JxW[qp] * dt * deck->d_lambda_TAF;
-//                  util::exp_decay_function((x_plane - xc_plane).norm() / (0.1 *
-//                  L_half), 4);
+                JxW[qp] * dt * deck->d_lambda_TAF;
+            //                  util::exp_decay_function((x_plane - xc_plane).norm() / (0.1 *
+            //                  L_half), 4);
           }
         }
       }
@@ -147,7 +147,7 @@ void netfc::TafAssembly::assemble_1() {
 
           // gradient term
           Ke(i, j) +=
-              JxW[qp] * dt * deck->d_D_TAF * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * dt * deck->d_D_TAF * dphi[j][qp] * dphi[i][qp];
         }
       }
     } // loop over quadrature points
@@ -166,14 +166,14 @@ void netfc::TafAssembly::assemble_2() {
 
   // TAF system
   auto &taf =
-      es.get_system<TransientLinearImplicitSystem>("TAF");
+    es.get_system<TransientLinearImplicitSystem>("TAF");
   const unsigned int v_taf = taf.variable_number("taf");
   const DofMap &taf_map = taf.get_dof_map();
   std::vector<unsigned int> dof_indices_taf;
 
   // Hypoxic system
   auto &hyp =
-      es.get_system<TransientLinearImplicitSystem>("Hypoxic");
+    es.get_system<TransientLinearImplicitSystem>("Hypoxic");
   const unsigned int v_hyp = hyp.variable_number("hypoxic");
   const DofMap &hyp_map = hyp.get_dof_map();
   std::vector<unsigned int> dof_indices_hyp;
@@ -229,7 +229,7 @@ void netfc::TafAssembly::assemble_2() {
       Number taf_proj = util::project_concentration(taf_cur);
 
       Number compute_rhs = JxW[qp] * (taf_old + dt * deck->d_lambda_TAF *
-                                                hyp_proj);
+                                                  hyp_proj);
 
       Number compute_mat = JxW[qp] * (1. + dt * deck->d_lambda_TAF * hyp_proj);
 
@@ -244,7 +244,7 @@ void netfc::TafAssembly::assemble_2() {
 
           // gradient term
           Ke(i, j) +=
-              JxW[qp] * dt * deck->d_D_TAF * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * dt * deck->d_D_TAF * dphi[j][qp] * dphi[i][qp];
         }
       }
     } // loop over quadrature points
@@ -263,14 +263,14 @@ void netfc::TafAssembly::assemble_3() {
 
   // TAF system
   auto &taf =
-      es.get_system<TransientLinearImplicitSystem>("TAF");
+    es.get_system<TransientLinearImplicitSystem>("TAF");
   const unsigned int v_taf = taf.variable_number("taf");
   const DofMap &taf_map = taf.get_dof_map();
   std::vector<unsigned int> dof_indices_taf;
 
   // Hypoxic system
   auto &hyp =
-      es.get_system<TransientLinearImplicitSystem>("Hypoxic");
+    es.get_system<TransientLinearImplicitSystem>("Hypoxic");
   const unsigned int v_hyp = hyp.variable_number("hypoxic");
   const DofMap &hyp_map = hyp.get_dof_map();
   std::vector<unsigned int> dof_indices_hyp;
@@ -326,8 +326,8 @@ void netfc::TafAssembly::assemble_3() {
       Number taf_proj = util::project_concentration(taf_cur);
 
       Number compute_rhs =
-          JxW[qp] *
-          (taf_old + dt * deck->d_lambda_TAF * hyp_proj * (1. - taf_proj));
+        JxW[qp] *
+        (taf_old + dt * deck->d_lambda_TAF * hyp_proj * (1. - taf_proj));
 
       Number compute_mat = JxW[qp];
 
@@ -342,7 +342,7 @@ void netfc::TafAssembly::assemble_3() {
 
           // gradient term
           Ke(i, j) +=
-              JxW[qp] * dt * deck->d_D_TAF * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * dt * deck->d_D_TAF * dphi[j][qp] * dphi[i][qp];
         }
       }
     } // loop over quadrature points
@@ -369,14 +369,14 @@ void netfc::GradTafAssembly::assemble_3d() {
 
   // TAF system
   auto &taf =
-      es.get_system<TransientLinearImplicitSystem>("TAF");
+    es.get_system<TransientLinearImplicitSystem>("TAF");
   const unsigned int v_taf = taf.variable_number("taf");
   const DofMap &taf_map = taf.get_dof_map();
   std::vector<unsigned int> dof_indices_taf;
 
   // Gradient of TAF
   auto &grad =
-      es.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    es.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
   std::vector<unsigned int> v_grad(3);
   v_grad[0] = grad.variable_number("taf_gradx");
   v_grad[1] = grad.variable_number("taf_grady");
@@ -400,12 +400,12 @@ void netfc::GradTafAssembly::assemble_3d() {
   // Arranging matrix
   DenseMatrix<Number> Ke;
   DenseSubMatrix<Number> Ke_var[3][3] = {
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
-          DenseSubMatrix<Number>(Ke)},
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
-          DenseSubMatrix<Number>(Ke)},
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
-          DenseSubMatrix<Number>(Ke)}};
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
+     DenseSubMatrix<Number>(Ke)},
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
+     DenseSubMatrix<Number>(Ke)},
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke),
+     DenseSubMatrix<Number>(Ke)}};
 
   DenseVector<Number> Fe;
   DenseSubVector<Number> Fe_var[3] = {DenseSubVector<Number>(Fe),
@@ -415,7 +415,7 @@ void netfc::GradTafAssembly::assemble_3d() {
   // Looping through elements
   MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
   const MeshBase::const_element_iterator end_el =
-      mesh.active_local_elements_end();
+    mesh.active_local_elements_end();
 
   for (; el != end_el; ++el) {
 
@@ -484,14 +484,14 @@ void netfc::GradTafAssembly::assemble_2d() {
 
   // TAF system
   auto &taf =
-      es.get_system<TransientLinearImplicitSystem>("TAF");
+    es.get_system<TransientLinearImplicitSystem>("TAF");
   const unsigned int v_taf = taf.variable_number("taf");
   const DofMap &taf_map = taf.get_dof_map();
   std::vector<unsigned int> dof_indices_taf;
 
   // Gradient of TAF
   auto &grad =
-      es.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    es.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
   std::vector<unsigned int> v_grad(2);
   v_grad[0] = grad.variable_number("taf_gradx");
   v_grad[1] = grad.variable_number("taf_grady");
@@ -514,8 +514,8 @@ void netfc::GradTafAssembly::assemble_2d() {
   // Arranging matrix
   DenseMatrix<Number> Ke;
   DenseSubMatrix<Number> Ke_var[2][2] = {
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)},
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)}};
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)},
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)}};
 
   DenseVector<Number> Fe;
   DenseSubVector<Number> Fe_var[2] = {DenseSubVector<Number>(Fe),
@@ -524,7 +524,7 @@ void netfc::GradTafAssembly::assemble_2d() {
   // Looping through elements
   MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
   const MeshBase::const_element_iterator end_el =
-      mesh.active_local_elements_end();
+    mesh.active_local_elements_end();
 
   for (; el != end_el; ++el) {
 

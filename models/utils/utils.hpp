@@ -76,8 +76,7 @@ double determinant(const std::vector<std::vector<double>> &M);
  * @param M Matrix
  * @return Minv Inverse of matrix M
  */
-std::vector<std::vector<double>> inverse(const
-std::vector<std::vector<double>> &M);
+std::vector<std::vector<double>> inverse(const std::vector<std::vector<double>> &M);
 
 /*!
  * @brief Transpose of matrix
@@ -85,8 +84,7 @@ std::vector<std::vector<double>> &M);
  * @param M Matrix
  * @return Mt Transpose of matrix M
  */
-std::vector<std::vector<double>> transpose(const
-std::vector<std::vector<double>> &M);
+std::vector<std::vector<double>> transpose(const std::vector<std::vector<double>> &M);
 
 /*!
  * @brief Add element to list
@@ -95,7 +93,7 @@ std::vector<std::vector<double>> &M);
  * @param data List
  * @return true True if i is added to list
  */
-bool addToList(unsigned int i, std::vector< unsigned int> *data);
+bool addToList(unsigned int i, std::vector<unsigned int> *data);
 
 /*!
  * @brief compute the mass of the qoi
@@ -159,10 +157,8 @@ Point get_direction(const Point &p1, const Point &p2);
  * @param box Box
  * @return True If point inside box otherwise false
  */
-bool is_inside_box(const Point &p, const std::pair<Point, Point> &box, double
-tol = 0.);
-bool is_inside_box(const Point &p, const double &box_size, double
-tol = 0.);
+bool is_inside_box(const Point &p, const std::pair<Point, Point> &box, double tol = 0.);
+bool is_inside_box(const Point &p, const double &box_size, double tol = 0.);
 
 /*!
  * @brief Returns true if point is inside the cylinder
@@ -173,8 +169,7 @@ tol = 0.);
  * @param axis Axis of cylinder
  * @return True If point inside cylinder otherwise false
  */
-bool is_inside_cylinder(const Point &p, const double &length, const double
-&radius, const Point &axis);
+bool is_inside_cylinder(const Point &p, const double &length, const double &radius, const Point &axis);
 
 /*!
  * @brief Returns true if point is inside the cylinder
@@ -199,8 +194,7 @@ bool is_inside_cylinder(const Point &p, const double &radius, const Point &x1,
  * @param d
  * @return True If point inside otherwise false
  */
-bool is_inside_ellipse(const Point &p, const Point &center, const
-std::vector<double> &radius_vec, unsigned int dim);
+bool is_inside_ellipse(const Point &p, const Point &center, const std::vector<double> &radius_vec, unsigned int dim);
 
 /*!
  * @brief Returns true if point is inside the ellipsoid
@@ -215,8 +209,7 @@ std::vector<double> &radius_vec, unsigned int dim);
  * @param d
  * @return True If point inside otherwise false
  */
-bool is_inside_ellipse(const Point &p, const Point &center, const
-std::vector<double> &radius_vec, unsigned int dim, double &d);
+bool is_inside_ellipse(const Point &p, const Point &center, const std::vector<double> &radius_vec, unsigned int dim, double &d);
 
 /*!
  * @brief Transforms point in ellipse to point in ball of given radius
@@ -228,8 +221,7 @@ std::vector<double> &radius_vec, unsigned int dim, double &d);
  * @param ball_r Radius of ball
  * @return Point Point in ball
  */
-Point ellipse_to_ball(const Point &p, const Point &center, const
-std::vector<double> &radius_vec, unsigned int dim, const double &ball_r);
+Point ellipse_to_ball(const Point &p, const Point &center, const std::vector<double> &radius_vec, unsigned int dim, const double &ball_r);
 
 /*!
  * @brief Returns the vector after rotating by desired angle
@@ -279,12 +271,16 @@ double angle(Point a, Point b, Point axis, bool is_axis = true);
 double exp_decay_function(double r, double exponent = 4.);
 
 std::vector<Point> discretize_ball_surface(const unsigned int
-                                                 &disc_num, const double
-                                                 &ball_r, unsigned int dim);
+                                             &disc_num,
+                                           const double
+                                             &ball_r,
+                                           unsigned int dim);
 
 std::vector<Point> discretize_cube(const unsigned int
-                                           &disc_num, const double
-                                           &cube_size, unsigned int dim);
+                                     &disc_num,
+                                   const double
+                                     &cube_size,
+                                   unsigned int dim);
 
 
 /*!
@@ -295,7 +291,7 @@ std::vector<Point> discretize_cube(const unsigned int
  * @return True If lines intersect, else false
  */
 bool lines_intersect(const std::pair<Point, Point> &line_1, const std::pair<Point,
-    Point> &line_2);
+                                                                            Point> &line_2);
 
 /*!
  * @brief Compute distance between lines
@@ -307,7 +303,7 @@ bool lines_intersect(const std::pair<Point, Point> &line_1, const std::pair<Poin
 double distance_between_lines(const std::pair<Point, Point> &line_1,
                               const std::pair<Point, Point> &line_2);
 double distance_between_segments(const std::pair<Point, Point> &line_1,
-                              const std::pair<Point, Point> &line_2);
+                                 const std::pair<Point, Point> &line_2);
 
 /*!
  * @brief Compute distance between planes
@@ -319,7 +315,7 @@ double distance_between_segments(const std::pair<Point, Point> &line_1,
  * @return Value Distance
  */
 double distance_between_planes(const std::pair<Point, Point> &plane_1,
-                              const std::pair<Point, Point> &plane_2);
+                               const std::pair<Point, Point> &plane_2);
 
 /*!
  * @brief Compute distance between point and line
@@ -329,9 +325,9 @@ double distance_between_planes(const std::pair<Point, Point> &plane_1,
  * @return Value Distance
  */
 double point_distance_line(const Point &p,
-                              const std::pair<Point, Point> &line);
-double point_distance_segment(const Point &p,
                            const std::pair<Point, Point> &line);
+double point_distance_segment(const Point &p,
+                              const std::pair<Point, Point> &line);
 
 /*!
  * @brief Compute distance between point and plane
@@ -342,7 +338,7 @@ double point_distance_segment(const Point &p,
  * @return Value Distance
  */
 double point_distance_plane(const Point &p,
-                           const std::pair<Point, Point> &plane);
+                            const std::pair<Point, Point> &plane);
 
 /*!
  * @brief Get list of elements which have this node as vertex
@@ -362,8 +358,7 @@ std::vector<unsigned int> find_elems(const unsigned int node_id,
  * @return List
  */
 void add_unique(unsigned int dof, Real val,
-                std::vector<unsigned int> &list, std::vector<Real>
-                &list_val);
+                std::vector<unsigned int> &list, std::vector<Real> &list_val);
 
 /*!
  * @brief Get the major axis which is parallel to given vector within some
@@ -382,8 +377,7 @@ std::string get_vec_major_axis(Point vec);
  * @return distance
  */
 
-double dist_between_points(const std::vector<double> &p1, const
-std::vector<double> &p2);
+double dist_between_points(const std::vector<double> &p1, const std::vector<double> &p2);
 
 void get_unit_vector(std::vector<double> &p1);
 
@@ -394,24 +388,25 @@ unsigned int get_elem_id(const Point &p, const double &mesh_size,
 
 Point to_point(const std::vector<double> &p);
 
-std::vector<double> cross_prod( std::vector<double> &p1, std::vector<double> &p2 );
+std::vector<double> cross_prod(std::vector<double> &p1, std::vector<double> &p2);
 
 std::vector<double> rotate(std::vector<double> &p, double theta, std::vector<double> &axis);
 
-Point determineRotator( const Point & dir );
-std::vector<double> determineRotator( const std::vector<double> &dir );
+Point determineRotator(const Point &dir);
+std::vector<double> determineRotator(const std::vector<double> &dir);
 
 inline float time_diff(std::chrono::steady_clock::time_point begin,
-                 std::chrono::steady_clock::time_point end) {
+                       std::chrono::steady_clock::time_point end) {
 
   return std::chrono::duration_cast<std::chrono::microseconds>(end -
-                                                        begin).count();
+                                                               begin)
+    .count();
 }
 
-template <class T>
+template<class T>
 inline int locate_in_set(const T &key, const std::vector<T> &set) {
 
-  for (int i =0; i<set.size(); i++)
+  for (int i = 0; i < set.size(); i++)
     if (set[i] == key)
       return i;
 
@@ -423,7 +418,7 @@ inline void clear_oss(std::ostringstream &oss) {
   oss.clear();
 }
 
-template <class T>
+template<class T>
 inline T get_avg(const std::vector<T> &list) {
 
   if (list.size() == 0)
@@ -437,7 +432,7 @@ inline T get_avg(const std::vector<T> &list) {
   return avg;
 }
 
-template <class T>
+template<class T>
 inline T get_std_dev(const std::vector<T> &list, const T mean) {
 
   if (list.size() == 0)
@@ -451,7 +446,7 @@ inline T get_std_dev(const std::vector<T> &list, const T mean) {
   return std::sqrt(dev);
 }
 
-template <class T>
+template<class T>
 inline T get_std_dev(const std::vector<T> &list) {
 
   if (list.size() == 0)

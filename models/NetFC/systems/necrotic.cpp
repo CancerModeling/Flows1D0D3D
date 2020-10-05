@@ -9,9 +9,9 @@
 #include "../model.hpp"
 
 Number netfc::initial_condition_nec(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                    const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"Necrotic");
+  libmesh_assert_equal_to(system_name, "Necrotic");
 
   return 0.;
 }
@@ -33,7 +33,7 @@ void netfc::NecAssembly::assemble_1() {
 
   // Tumor system
   auto &tum =
-      es.get_system<TransientLinearImplicitSystem>("Tumor");
+    es.get_system<TransientLinearImplicitSystem>("Tumor");
   std::vector<unsigned int> v_tum(2);
   v_tum[0] = tum.variable_number("tumor");
   v_tum[1] = tum.variable_number("chemical_tumor");
@@ -44,7 +44,7 @@ void netfc::NecAssembly::assemble_1() {
 
   // Nutrient system
   auto &nut =
-      es.get_system<TransientLinearImplicitSystem>("Nutrient");
+    es.get_system<TransientLinearImplicitSystem>("Nutrient");
   const unsigned int v_nut = nut.variable_number("nutrient");
 
   const DofMap &nut_map = nut.get_dof_map();
@@ -52,14 +52,14 @@ void netfc::NecAssembly::assemble_1() {
 
   // Hypoxic system
   auto &hyp =
-      es.get_system<TransientLinearImplicitSystem>("Hypoxic");
+    es.get_system<TransientLinearImplicitSystem>("Hypoxic");
   const unsigned int v_hyp = hyp.variable_number("hypoxic");
   const DofMap &hyp_map = hyp.get_dof_map();
   std::vector<unsigned int> dof_indices_hyp;
 
   // Necrotic system
   auto &nec =
-      es.get_system<TransientLinearImplicitSystem>("Necrotic");
+    es.get_system<TransientLinearImplicitSystem>("Necrotic");
   const unsigned int v_nec = nec.variable_number("necrotic");
   const DofMap &nec_map = nec.get_dof_map();
   std::vector<unsigned int> dof_indices_nec;
@@ -122,14 +122,14 @@ void netfc::NecAssembly::assemble_1() {
       }
 
       Number compute_rhs = JxW[qp] *
-                       (nec_old + dt * deck->d_lambda_HN *
-                                  util::heaviside(deck->d_sigma_HN - nut_cur) *
-                                  hyp_cur);
+                           (nec_old + dt * deck->d_lambda_HN *
+                                        util::heaviside(deck->d_sigma_HN - nut_cur) *
+                                        hyp_cur);
 
       // Assembling matrix
       for (unsigned int i = 0; i < phi.size(); i++) {
 
-        Fi(i) +=  compute_rhs * phi[i][qp];
+        Fi(i) += compute_rhs * phi[i][qp];
 
         for (unsigned int j = 0; j < phi.size(); j++) {
 
@@ -152,7 +152,7 @@ void netfc::NecAssembly::assemble_2() {
 
   // Tumor system
   auto &tum =
-      es.get_system<TransientLinearImplicitSystem>("Tumor");
+    es.get_system<TransientLinearImplicitSystem>("Tumor");
   std::vector<unsigned int> v_tum(2);
   v_tum[0] = tum.variable_number("tumor");
   v_tum[1] = tum.variable_number("chemical_tumor");
@@ -163,7 +163,7 @@ void netfc::NecAssembly::assemble_2() {
 
   // Nutrient system
   auto &nut =
-      es.get_system<TransientLinearImplicitSystem>("Nutrient");
+    es.get_system<TransientLinearImplicitSystem>("Nutrient");
   const unsigned int v_nut = nut.variable_number("nutrient");
 
   const DofMap &nut_map = nut.get_dof_map();
@@ -171,14 +171,14 @@ void netfc::NecAssembly::assemble_2() {
 
   // Hypoxic system
   auto &hyp =
-      es.get_system<TransientLinearImplicitSystem>("Hypoxic");
+    es.get_system<TransientLinearImplicitSystem>("Hypoxic");
   const unsigned int v_hyp = hyp.variable_number("hypoxic");
   const DofMap &hyp_map = hyp.get_dof_map();
   std::vector<unsigned int> dof_indices_hyp;
 
   // Necrotic system
   auto &nec =
-      es.get_system<TransientLinearImplicitSystem>("Necrotic");
+    es.get_system<TransientLinearImplicitSystem>("Necrotic");
   const unsigned int v_nec = nec.variable_number("necrotic");
   const DofMap &nec_map = nec.get_dof_map();
   std::vector<unsigned int> dof_indices_nec;
@@ -245,15 +245,15 @@ void netfc::NecAssembly::assemble_2() {
       Number hyp_proj = util::project_concentration(hyp_cur);
 
       Number compute_rhs =
-          JxW[qp] *
-          (nec_old + dt * deck->d_lambda_HN *
-                         util::heaviside(deck->d_sigma_HN - nut_proj) *
-                         hyp_proj);
+        JxW[qp] *
+        (nec_old + dt * deck->d_lambda_HN *
+                     util::heaviside(deck->d_sigma_HN - nut_proj) *
+                     hyp_proj);
 
       // Assembling matrix
       for (unsigned int i = 0; i < phi.size(); i++) {
 
-        Fi(i) +=  compute_rhs * phi[i][qp];
+        Fi(i) += compute_rhs * phi[i][qp];
 
         for (unsigned int j = 0; j < phi.size(); j++) {
 

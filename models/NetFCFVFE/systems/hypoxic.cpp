@@ -8,9 +8,9 @@
 #include "../model.hpp"
 
 Number netfcfvfe::initial_condition_hyp(const Point &p, const Parameters &es,
-                                      const std::string &system_name, const std::string &var_name){
+                                        const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"Hypoxic");
+  libmesh_assert_equal_to(system_name, "Hypoxic");
 
   if (var_name == "hypoxic") {
     return 0.;
@@ -84,9 +84,15 @@ void netfcfvfe::HypAssembly::assemble_1() {
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
       // Computing solution
-      pro_old = 0.; pro_cur = 0.; tum_cur = 0.; hyp_cur = 0.;
-      nec_cur = 0.; ecm_cur = 0.;
-      tum_old = 0.; hyp_old = 0.; nec_old = 0.;
+      pro_old = 0.;
+      pro_cur = 0.;
+      tum_cur = 0.;
+      hyp_cur = 0.;
+      nec_cur = 0.;
+      ecm_cur = 0.;
+      tum_old = 0.;
+      hyp_old = 0.;
+      nec_old = 0.;
       vel_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
@@ -98,7 +104,7 @@ void netfcfvfe::HypAssembly::assemble_1() {
         nec_old += d_phi[l][qp] * nec.get_old_sol(l);
         ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
 
-        for (unsigned int ll=0; ll<d_mesh.mesh_dimension(); ll++)
+        for (unsigned int ll = 0; ll < d_mesh.mesh_dimension(); ll++)
           vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
       }
 
@@ -118,41 +124,39 @@ void netfcfvfe::HypAssembly::assemble_1() {
 
         // compute quantities independent of dof loop
         compute_rhs_hyp =
-            d_JxW[qp] * (hyp_old + dt * deck.d_lambda_PH * util::heaviside
-                (deck.d_sigma_PH - nut_cur) * pro_cur);
+          d_JxW[qp] * (hyp_old + dt * deck.d_lambda_PH * util::heaviside(deck.d_sigma_PH - nut_cur) * pro_cur);
 
         compute_rhs_mu =
-            d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
+          d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
                          (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) +
-                         3. * deck.d_bar_E_phi_T * (pro_cur + nec_cur) -
-                         deck.d_chi_c * nut_cur - deck.d_chi_h * ecm_cur);
+                       3. * deck.d_bar_E_phi_T * (pro_cur + nec_cur) -
+                       deck.d_chi_c * nut_cur - deck.d_chi_h * ecm_cur);
 
         compute_mat_hyp =
-            d_JxW[qp] * (1. + dt * deck.d_lambda_A -
-                         dt * deck.d_lambda_Ph * nut_cur * (1. - tum_cur) +
-                         dt * deck.d_lambda_HP *
+          d_JxW[qp] * (1. + dt * deck.d_lambda_A -
+                       dt * deck.d_lambda_Ph * nut_cur * (1. - tum_cur) +
+                       dt * deck.d_lambda_HP *
                          util::heaviside(nut_cur - deck.d_sigma_HP) +
-                         dt * deck.d_lambda_HN *
+                       dt * deck.d_lambda_HN *
                          util::heaviside(deck.d_sigma_HN - nut_cur));
       } else {
 
         // compute quantities independent of dof loop
         compute_rhs_hyp =
-            d_JxW[qp] * (hyp_old + dt * deck.d_lambda_PH * util::heaviside
-                (deck.d_sigma_PH - nut_proj) * pro_proj);
+          d_JxW[qp] * (hyp_old + dt * deck.d_lambda_PH * util::heaviside(deck.d_sigma_PH - nut_proj) * pro_proj);
 
         compute_rhs_mu =
-            d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
+          d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
                          (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) +
-                         3. * deck.d_bar_E_phi_T * (pro_proj + nec_proj) -
-                         deck.d_chi_c * nut_proj - deck.d_chi_h * ecm_proj);
+                       3. * deck.d_bar_E_phi_T * (pro_proj + nec_proj) -
+                       deck.d_chi_c * nut_proj - deck.d_chi_h * ecm_proj);
 
         compute_mat_hyp =
-            d_JxW[qp] * (1. + dt * deck.d_lambda_A -
-                         dt * deck.d_lambda_Ph * nut_cur * (1. - tum_proj) +
-                         dt * deck.d_lambda_HP *
+          d_JxW[qp] * (1. + dt * deck.d_lambda_A -
+                       dt * deck.d_lambda_Ph * nut_cur * (1. - tum_proj) +
+                       dt * deck.d_lambda_HP *
                          util::heaviside(nut_proj - deck.d_sigma_HP) +
-                         dt * deck.d_lambda_HN *
+                       dt * deck.d_lambda_HN *
                          util::heaviside(deck.d_sigma_HN - nut_proj));
       }
 
@@ -173,11 +177,11 @@ void netfcfvfe::HypAssembly::assemble_1() {
 
           // advection of hypoxic
           d_Ke_var[0][0](i, j) -=
-              advection_factor * d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
+            advection_factor * d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
 
           // coupling with chemical potential
           d_Ke_var[0][1](i, j) +=
-              d_JxW[qp] * dt * mobility * d_dphi[j][qp] * d_dphi[i][qp];
+            d_JxW[qp] * dt * mobility * d_dphi[j][qp] * d_dphi[i][qp];
 
           // chemical
           d_Ke_var[1][1](i, j) += d_JxW[qp] * d_phi[j][qp] * d_phi[i][qp];
