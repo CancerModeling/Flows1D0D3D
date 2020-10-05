@@ -12,8 +12,8 @@ SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 # Include directories
 # ****************************************************************************
 include_directories("${PROJECT_SOURCE_DIR}/utils")
-include_directories("${CMAKE_SOURCE_DIR}/external/gmm")
-include_directories("${CMAKE_SOURCE_DIR}/external/aixlog")
+include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/gmm")
+include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/aixlog")
 include_directories(${VTK_INCLUDE_DIRS})
 
 # our csv parser, included as a system dependencies to silence the warnings:
