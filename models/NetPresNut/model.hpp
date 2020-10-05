@@ -8,11 +8,11 @@
 #ifndef NETPRESNUT_MODEL_H
 #define NETPRESNUT_MODEL_H
 
-#include "umodel/model.hpp"
-#include "usystem/ghosting_functor.hpp"
 #include "modelUtil.hpp"
 #include "systems/systems.hpp"
+#include "umodel/model.hpp"
 #include "unet/network.hpp"
+#include "usystem/ghosting_functor.hpp"
 
 // typedef network
 typedef util::unet::Network Net;

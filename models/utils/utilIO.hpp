@@ -8,13 +8,19 @@
 #ifndef UTILS_UTIL_IO_H
 #define UTILS_UTIL_IO_H
 
+#include <fstream>
 #include <iostream>
+#include <sstream>
 #include <vector>
+
+#include "libmesh/point.h"
 
 namespace util {
 
 /*! @brief Provides geometrical methods such as point inside rectangle */
 namespace io {
+
+using libMesh::Point;
 
 /*!
  * @brief Computes specified amount of tab
@@ -115,7 +121,7 @@ inline void print(const std::vector<T> &list, int nt = 0, std::string delim = ",
   std::cout << printStr(list, nt, delim);
 }
 
-bool read_network_file(std::string filename, std::vector<Point> &nodes,
+bool read_network_file(const std::string &filename, std::vector<Point> &nodes,
                        std::vector<std::vector<unsigned int>> &elems,
                        std::vector<unsigned int> &node_boundary_flag,
                        std::vector<bool> &node_branch_flag,

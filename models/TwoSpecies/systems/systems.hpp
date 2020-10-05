@@ -9,8 +9,8 @@
 #define TWOSP_SYSTEMS_H
 
 // systems
-#include "tumor.hpp"
 #include "nutrient.hpp"
+#include "tumor.hpp"
 
 
 #endif // TWOSP_SYSTEMS_H

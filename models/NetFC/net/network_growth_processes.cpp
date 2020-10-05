@@ -5,9 +5,9 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "network.hpp"
-#include "netUtil.hpp"
 #include "../model.hpp"
+#include "netUtil.hpp"
+#include "network.hpp"
 #include "nodes.hpp"
 #include "utilIO.hpp"
 #include "utils.hpp"

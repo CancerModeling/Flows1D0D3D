@@ -5,11 +5,11 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils.hpp"
 #include "utilIO.hpp"
-#include <math.h>
+#include "utils.hpp"
+#include <cmath>
 
-bool util::io::read_network_file(std::string filename,
+bool util::io::read_network_file(const std::string &filename,
                                  std::vector<Point> &nodes,
                                  std::vector<std::vector<unsigned int>> &elems,
                                  std::vector<unsigned int> &node_boundary_flag,

@@ -9,12 +9,12 @@
 #define NETFC_NETWORK_H
 
 #include "gmm.h"
-#include "utilLibs.hpp"
 #include "inp.hpp"
-#include "systems.hpp"
-#include "utils.hpp"
 #include "list_structure.hpp"
 #include "nodes.hpp"
+#include "systems.hpp"
+#include "utilLibs.hpp"
+#include "utils.hpp"
 #include <string>
 #include <vector>
 

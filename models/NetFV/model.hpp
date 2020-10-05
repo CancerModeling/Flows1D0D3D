@@ -8,9 +8,9 @@
 #ifndef NETFV_MODEL_H
 #define NETFV_MODEL_H
 
-#include "umodel/model.hpp"
 #include "modelUtil.hpp"
 #include "systems/systems.hpp"
+#include "umodel/model.hpp"
 #include "unet/network.hpp"
 
 // typedef network

@@ -27,11 +27,10 @@ public:
     head = tail = NULL;
   }
 
-  ~ListStructure() {}
+  ~ListStructure() = default;
 
   bool isEmpty() {
-
-    return (head == NULL) ? true : false;
+    return (head == NULL);
   }
 
   void attachNode(Node newNode) {
