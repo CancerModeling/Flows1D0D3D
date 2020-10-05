@@ -17,7 +17,7 @@ double get_taf_source(const std::string &test_name, const Point &x,
   if (test_name != "test_taf" and test_name != "test_taf_2")
     return 0.;
 
-  for (int i=0; i < type.size(); i++) {
+  for (int i = 0; i < type.size(); i++) {
 
     const Point xc = util::to_point(centers[i]);
     auto d = (x - xc).norm();
@@ -29,12 +29,12 @@ double get_taf_source(const std::string &test_name, const Point &x,
   return 0.;
 }
 
-}
+} // namespace
 
 Number netfv::initial_condition_taf(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                    const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"TAF");
+  libmesh_assert_equal_to(system_name, "TAF");
 
   return 0.;
 }
@@ -50,8 +50,8 @@ void netfv::TafAssembly::assemble_face() {
   // call diffusion-advection calculation function
   if (d_model_p->get_input_deck().d_advection_active)
     netfv::assemble_diffusion_advection(*this,
-                                       d_model_p->get_pres_assembly(),
-                                       d_model_p->get_tum_assembly(), this->d_model_p);
+                                        d_model_p->get_pres_assembly(),
+                                        d_model_p->get_tum_assembly(), this->d_model_p);
   else
     netfv::assemble_diffusion(*this, this->d_model_p);
 }
@@ -60,14 +60,14 @@ void netfv::TafAssembly::assemble_1() {
 
   // Get required system alias
   // auto &taf = d_model_p->get_ecm_assembly();
-  auto &hyp = d_model_p->get_hyp_assembly();  
+  auto &hyp = d_model_p->get_hyp_assembly();
 
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
   const Real dt = d_model_p->d_dt;
 
   // local matrix and vector
-  DenseMatrix<Number> Ke(1,1);
+  DenseMatrix<Number> Ke(1, 1);
   DenseVector<Number> Fe(1);
 
   // Store current and old solution
@@ -86,7 +86,7 @@ void netfv::TafAssembly::assemble_1() {
     hyp.init_dof(elem);
 
     // reset matrix and force
-    Ke(0,0) = 0.;
+    Ke(0, 0) = 0.;
     Fe(0) = 0.;
 
     // get fields at this element
@@ -108,13 +108,13 @@ void netfv::TafAssembly::assemble_1() {
 
     // add artificial source if any
     compute_rhs +=
-        deck.d_elem_size * dt * deck.d_lambda_TAF *
-        get_taf_source(deck.d_test_name, elem->centroid(),
-                       deck.d_taf_source_type,
-                       deck.d_taf_source_center, deck.d_taf_source_radius);
+      deck.d_elem_size * dt * deck.d_lambda_TAF *
+      get_taf_source(deck.d_test_name, elem->centroid(),
+                     deck.d_taf_source_type,
+                     deck.d_taf_source_center, deck.d_taf_source_radius);
 
     // add
-    Ke(0,0) += compute_mat;
+    Ke(0, 0) += compute_mat;
     Fe(0) += compute_rhs;
 
     // add to matrix

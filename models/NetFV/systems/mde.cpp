@@ -8,16 +8,16 @@
 #include "../model.hpp"
 
 Number netfv::initial_condition_mde(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                    const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"MDE");
+  libmesh_assert_equal_to(system_name, "MDE");
 
   if (var_name == "mde") {
 
     const auto *deck = es.get<InpDeck *>("input_deck");
 
     double val = 0.;
-    for (unsigned int i=0; i<deck->d_tum_ic_data.size(); i++)
+    for (unsigned int i = 0; i < deck->d_tum_ic_data.size(); i++)
       val += initial_condition_hyp_kernel(p, deck->d_dim,
                                           deck->d_tum_ic_data[i].d_ic_type,
                                           deck->d_tum_ic_data[i].d_ic_center,
@@ -41,8 +41,8 @@ void netfv::MdeAssembly::assemble_face() {
   // call diffusion-advection calculation function
   if (d_model_p->get_input_deck().d_advection_active)
     netfv::assemble_diffusion_advection(*this,
-                             d_model_p->get_pres_assembly(),
-                             d_model_p->get_tum_assembly(), this->d_model_p);
+                                        d_model_p->get_pres_assembly(),
+                                        d_model_p->get_tum_assembly(), this->d_model_p);
   else
     netfv::assemble_diffusion(*this, this->d_model_p);
 }
@@ -61,7 +61,7 @@ void netfv::MdeAssembly::assemble_1() {
   const Real dt = d_model_p->d_dt;
 
   // local matrix and vector
-  DenseMatrix<Number> Ke(1,1);
+  DenseMatrix<Number> Ke(1, 1);
   DenseVector<Number> Fe(1);
 
   // Store current and old solution
@@ -89,7 +89,7 @@ void netfv::MdeAssembly::assemble_1() {
     ecm.init_dof(elem);
 
     // reset matrix and force
-    Ke(0,0) = 0.;
+    Ke(0, 0) = 0.;
     Fe(0) = 0.;
 
     // get fields at this element
@@ -107,8 +107,8 @@ void netfv::MdeAssembly::assemble_1() {
       compute_rhs = deck.d_elem_size * (mde_old + dt * aux_1);
 
       compute_mat =
-          deck.d_elem_size * (1. + dt * deck.d_lambda_MDE_D + dt * aux_1 +
-                              dt * deck.d_lambda_ECM_D * ecm_cur);
+        deck.d_elem_size * (1. + dt * deck.d_lambda_MDE_D + dt * aux_1 +
+                            dt * deck.d_lambda_ECM_D * ecm_cur);
     } else {
 
       tum_proj = util::project_concentration(tum_cur);
@@ -122,11 +122,11 @@ void netfv::MdeAssembly::assemble_1() {
       compute_rhs = deck.d_elem_size * (mde_old + dt * aux_1);
 
       compute_mat = deck.d_elem_size * (1. + dt * deck.d_lambda_MDE_D + dt * aux_1 +
-                                 dt * deck.d_lambda_ECM_D * ecm_proj);
+                                        dt * deck.d_lambda_ECM_D * ecm_proj);
     }
 
     // add
-    Ke(0,0) += compute_mat;
+    Ke(0, 0) += compute_mat;
 
     // previous time step term
     Fe(0) += compute_rhs;

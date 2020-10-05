@@ -10,9 +10,9 @@
 
 
 Number netfc::initial_condition_tum(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                    const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"Tumor");
+  libmesh_assert_equal_to(system_name, "Tumor");
 
   if (var_name == "tumor") {
 
@@ -27,7 +27,7 @@ Number netfc::initial_condition_tum(const Point &p, const Parameters &es,
 
       auto data = deck->d_tum_ic_data[ic];
 
-      const std::string type =data.d_ic_type;
+      const std::string type = data.d_ic_type;
       const Point xc = Point(data.d_ic_center[0], data.d_ic_center[1],
                              data.d_ic_center[2]);
       const Point dx = p - xc;
@@ -129,8 +129,8 @@ void netfc::TumAssembly::assemble_1() {
   // Arranging matrix
   DenseMatrix<Number> Ke;
   DenseSubMatrix<Number> Ke_var[2][2] = {
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)},
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)}};
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)},
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)}};
 
   DenseVector<Number> Fe;
   DenseSubVector<Number> Fe_var[2] = {DenseSubVector<Number>(Fe),
@@ -183,18 +183,18 @@ void netfc::TumAssembly::assemble_1() {
 
       Number pro_cur = tum_cur - hyp_cur - nec_cur;
       Number mobility =
-          deck->d_bar_M_P * pow(pro_cur, 2) * pow(1. - pro_cur, 2) +
-          deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
+        deck->d_bar_M_P * pow(pro_cur, 2) * pow(1. - pro_cur, 2) +
+        deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
 
       // compute rhs
       Number compute_rhs_tum = JxW[qp] * (tum_old +
                                           dt * deck->d_lambda_P * nut_cur *
-                                              pro_cur * (1. - tum_cur) +
+                                            pro_cur * (1. - tum_cur) +
                                           dt * deck->d_lambda_A * nec_cur);
 
       Number compute_rhs_mu = JxW[qp] * (deck->d_bar_E_phi_T * tum_old *
-                           (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) -
-                           deck->d_chi_c * nut_cur);
+                                           (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) -
+                                         deck->d_chi_c * nut_cur);
 
       // compute matrix
       Number compute_mat_tum = JxW[qp] * (1. + dt * deck->d_lambda_A);
@@ -215,7 +215,7 @@ void netfc::TumAssembly::assemble_1() {
 
           // coupling with chemical potential
           Ke_var[0][1](i, j) +=
-              JxW[qp] * dt * mobility * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * dt * mobility * dphi[j][qp] * dphi[i][qp];
 
           //-- Chemical_tumor --//
           Ke_var[1][1](i, j) += JxW[qp] * phi[j][qp] * phi[i][qp];
@@ -224,7 +224,7 @@ void netfc::TumAssembly::assemble_1() {
           Ke_var[1][0](i, j) -= JxW[qp] * 3.0 * deck->d_bar_E_phi_T * phi[j][qp] * phi[i][qp];
 
           Ke_var[1][0](i, j) -=
-              JxW[qp] * pow(deck->d_epsilon_T, 2) * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * pow(deck->d_epsilon_T, 2) * dphi[j][qp] * dphi[i][qp];
         }
       }
     } // loop over quadrature points
@@ -287,8 +287,8 @@ void netfc::TumAssembly::assemble_2() {
   // Arranging matrix
   DenseMatrix<Number> Ke;
   DenseSubMatrix<Number> Ke_var[2][2] = {
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)},
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)}};
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)},
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)}};
 
   DenseVector<Number> Fe;
   DenseSubVector<Number> Fe_var[2] = {DenseSubVector<Number>(Fe),
@@ -342,8 +342,8 @@ void netfc::TumAssembly::assemble_2() {
 
       Number pro_cur = tum_cur - hyp_cur - nec_cur;
       Number mobility =
-          deck->d_bar_M_P * pow(pro_cur, 2) * pow(1. - pro_cur, 2) +
-          deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
+        deck->d_bar_M_P * pow(pro_cur, 2) * pow(1. - pro_cur, 2) +
+        deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
 
       // get projected values of species
       Number tum_proj = util::project_concentration(tum_cur);
@@ -355,14 +355,14 @@ void netfc::TumAssembly::assemble_2() {
       // compute rhs
       Number compute_rhs_tum = JxW[qp] * (tum_old +
                                           dt * deck->d_lambda_P * nut_proj *
-                                              (tum_proj - hyp_proj - nec_proj) * (1. - tum_proj) +
+                                            (tum_proj - hyp_proj - nec_proj) * (1. - tum_proj) +
                                           dt * deck->d_lambda_A * nec_proj);
 
       Number compute_rhs_mu =
-          JxW[qp] *
-          (deck->d_bar_E_phi_T * tum_proj_old *
-               (4.0 * pow(tum_proj_old, 2) - 6.0 * tum_proj_old - 1.) -
-           deck->d_chi_c * nut_proj);
+        JxW[qp] *
+        (deck->d_bar_E_phi_T * tum_proj_old *
+           (4.0 * pow(tum_proj_old, 2) - 6.0 * tum_proj_old - 1.) -
+         deck->d_chi_c * nut_proj);
 
       // compute matrix
       Number compute_mat_tum = JxW[qp] * (1. + dt * deck->d_lambda_A);
@@ -383,7 +383,7 @@ void netfc::TumAssembly::assemble_2() {
 
           // coupling with chemical potential
           Ke_var[0][1](i, j) +=
-              JxW[qp] * dt * mobility * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * dt * mobility * dphi[j][qp] * dphi[i][qp];
 
           //-- Chemical_tumor --//
           Ke_var[1][1](i, j) += JxW[qp] * phi[j][qp] * phi[i][qp];
@@ -392,7 +392,7 @@ void netfc::TumAssembly::assemble_2() {
           Ke_var[1][0](i, j) -= JxW[qp] * 3.0 * deck->d_bar_E_phi_T * phi[j][qp] * phi[i][qp];
 
           Ke_var[1][0](i, j) -=
-              JxW[qp] * pow(deck->d_epsilon_T, 2) * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * pow(deck->d_epsilon_T, 2) * dphi[j][qp] * dphi[i][qp];
         }
       }
     } // loop over quadrature points
@@ -455,8 +455,8 @@ void netfc::TumAssembly::assemble_3() {
   // Arranging matrix
   DenseMatrix<Number> Ke;
   DenseSubMatrix<Number> Ke_var[2][2] = {
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)},
-      {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)}};
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)},
+    {DenseSubMatrix<Number>(Ke), DenseSubMatrix<Number>(Ke)}};
 
   DenseVector<Number> Fe;
   DenseSubVector<Number> Fe_var[2] = {DenseSubVector<Number>(Fe),
@@ -510,8 +510,8 @@ void netfc::TumAssembly::assemble_3() {
 
       Number pro_cur = tum_cur - hyp_cur - nec_cur;
       Number mobility =
-          deck->d_bar_M_P * pow(pro_cur, 2) * pow(1. - pro_cur, 2) +
-          deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
+        deck->d_bar_M_P * pow(pro_cur, 2) * pow(1. - pro_cur, 2) +
+        deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
 
       // get projected values of species
       Number tum_proj = util::project_concentration(tum_cur);
@@ -523,16 +523,16 @@ void netfc::TumAssembly::assemble_3() {
       // compute rhs
       Number compute_rhs_tum = JxW[qp] * (tum_old +
                                           dt * deck->d_lambda_P * nut_proj *
-                                          (tum_proj - hyp_proj - nec_proj) *
-                                              (1. - tum_proj) -
+                                            (tum_proj - hyp_proj - nec_proj) *
+                                            (1. - tum_proj) -
                                           dt * deck->d_lambda_A *
-                                                  (tum_proj - nec_proj));
+                                            (tum_proj - nec_proj));
 
       Number compute_rhs_mu =
-          JxW[qp] *
-          (deck->d_bar_E_phi_T * tum_proj_old *
+        JxW[qp] *
+        (deck->d_bar_E_phi_T * tum_proj_old *
            (4.0 * pow(tum_proj_old, 2) - 6.0 * tum_proj_old - 1.) -
-           deck->d_chi_c * nut_proj);
+         deck->d_chi_c * nut_proj);
 
       // compute matrix
       Number compute_mat_tum = JxW[qp];
@@ -553,7 +553,7 @@ void netfc::TumAssembly::assemble_3() {
 
           // coupling with chemical potential
           Ke_var[0][1](i, j) +=
-              JxW[qp] * dt * mobility * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * dt * mobility * dphi[j][qp] * dphi[i][qp];
 
           //-- Chemical_tumor --//
           Ke_var[1][1](i, j) += JxW[qp] * phi[j][qp] * phi[i][qp];
@@ -562,7 +562,7 @@ void netfc::TumAssembly::assemble_3() {
           Ke_var[1][0](i, j) -= JxW[qp] * 3.0 * deck->d_bar_E_phi_T * phi[j][qp] * phi[i][qp];
 
           Ke_var[1][0](i, j) -=
-              JxW[qp] * pow(deck->d_epsilon_T, 2) * dphi[j][qp] * dphi[i][qp];
+            JxW[qp] * pow(deck->d_epsilon_T, 2) * dphi[j][qp] * dphi[i][qp];
         }
       }
     } // loop over quadrature points

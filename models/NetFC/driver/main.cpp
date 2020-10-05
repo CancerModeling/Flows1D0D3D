@@ -9,7 +9,7 @@
 #include <libmesh/getpot.h>
 #include <iostream>
 
-int main(int argc, char* argv[]){
+int main(int argc, char *argv[]) {
 
   // Open file with model setup
   std::string filename = "input.in";

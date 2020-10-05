@@ -89,17 +89,17 @@ public:
     else
       libmesh_error_msg("Invalid system = " + system + " name");
   }
-  PressureAssembly &get_pres_assembly() {return d_pres;}
-  NutAssembly &get_nut_assembly() {return d_nut;}
-  ProAssembly &get_pro_assembly() {return d_pro;}
-  HypAssembly &get_hyp_assembly() {return d_hyp;}
-  NecAssembly &get_nec_assembly() {return d_nec;}
-  TafAssembly &get_taf_assembly() {return d_taf;}
-  GradTafAssembly &get_grad_taf_assembly() {return d_grad_taf;}
-  EcmAssembly &get_ecm_assembly() {return d_ecm;}
-  MdeAssembly &get_mde_assembly() {return d_mde;}
-  VelAssembly &get_vel_assembly() {return d_vel;}
-  TumAssembly &get_tum_assembly() {return d_tum;}
+  PressureAssembly &get_pres_assembly() { return d_pres; }
+  NutAssembly &get_nut_assembly() { return d_nut; }
+  ProAssembly &get_pro_assembly() { return d_pro; }
+  HypAssembly &get_hyp_assembly() { return d_hyp; }
+  NecAssembly &get_nec_assembly() { return d_nec; }
+  TafAssembly &get_taf_assembly() { return d_taf; }
+  GradTafAssembly &get_grad_taf_assembly() { return d_grad_taf; }
+  EcmAssembly &get_ecm_assembly() { return d_ecm; }
+  MdeAssembly &get_mde_assembly() { return d_mde; }
+  VelAssembly &get_vel_assembly() { return d_vel; }
+  TumAssembly &get_tum_assembly() { return d_tum; }
 
   std::vector<util::BaseAssembly *> get_all_assembly() override {
     return {&d_tum, &d_nut, &d_pro, &d_hyp, &d_nec, &d_taf,
@@ -112,18 +112,17 @@ public:
   }
 
   /*! @brief Run model */
-  void run() override ;
+  void run() override;
 
 private:
-
   /*! @brief Output results of tumor system and network system */
-  void write_system(const unsigned int &t_step) override ;
+  void write_system(const unsigned int &t_step) override;
 
   /*! @brief Solves tumor system */
-  void solve_system() override ;
+  void solve_system() override;
 
   /*! @brief Compute quantity of interest */
-  void compute_qoi() override ;
+  void compute_qoi() override;
 
   /*! @brief Solves 1D-3D pressure system
    * At given time step, it solves for 1D and 3D pressure in a nonlinear loop

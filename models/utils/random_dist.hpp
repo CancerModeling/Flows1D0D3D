@@ -57,11 +57,11 @@ inline double transform_to_uniform_dist(double min, double max, double sample) {
 }
 
 
-template <class T>
+template<class T>
 class DistributionSample {
 public:
   DistributionSample(double arg1, double arg2, int seed = -1)
-      : d_seed(seed), d_gen(get_rd_gen(seed)), d_dist(arg1, arg2) {};
+      : d_seed(seed), d_gen(get_rd_gen(seed)), d_dist(arg1, arg2){};
 
   DistributionSample() : d_seed(-1){};
 
@@ -78,7 +78,7 @@ public:
 
   // not implemented for this
   void debug_out(std::string filename) {
-    return ;
+    return;
   }
 
   int d_seed;
@@ -86,13 +86,13 @@ public:
   T d_dist;
 };
 
-template <class T>
+template<class T>
 class DistributionSampleParallel {
 public:
   DistributionSampleParallel(double arg1, double arg2,
-                                      Parallel::Communicator *comm,
-                                      int seed = -1,
-                                      unsigned int sample_size = 1000)
+                             Parallel::Communicator *comm,
+                             int seed = -1,
+                             unsigned int sample_size = 1000)
       : d_seed(seed), d_curSample(0), d_sampleSize(sample_size),
         d_gen(get_rd_gen(seed)), d_dist(arg1, arg2), d_procRank(0),
         d_procSize(0), d_comm_p(comm) {
@@ -111,19 +111,19 @@ public:
 
   DistributionSampleParallel()
       : d_seed(-1), d_curSample(0), d_sampleSize(0), d_procRank(0),
-        d_procSize(0), d_comm_p(nullptr) {};
+        d_procSize(0), d_comm_p(nullptr){};
 
   void init(double arg1, double arg2,
-                             Parallel::Communicator *comm,
-                             int seed = -1,
-                             unsigned int sample_size = 1000) {
+            Parallel::Communicator *comm,
+            int seed = -1,
+            unsigned int sample_size = 1000) {
 
-      d_seed = seed;
-      d_curSample = 0;
-      d_sampleSize = sample_size;
-      d_gen = RandGenerator(get_rd_gen(seed));
-      d_dist = T(arg1, arg2);
-      d_comm_p = comm;
+    d_seed = seed;
+    d_curSample = 0;
+    d_sampleSize = sample_size;
+    d_gen = RandGenerator(get_rd_gen(seed));
+    d_dist = T(arg1, arg2);
+    d_comm_p = comm;
 
     if (comm) {
       d_procRank = d_comm_p->rank();
@@ -150,7 +150,7 @@ public:
 
     d_curSample = 0;
     if (d_procRank == 0) {
-      for (unsigned int i=0; i<d_sampleSize; i++)
+      for (unsigned int i = 0; i < d_sampleSize; i++)
         d_samples[i] = d_dist(d_gen);
     } else {
       d_samples.resize(0);

@@ -24,11 +24,11 @@ double get_nut_source(const std::string &test_name, const Point &x,
 
   return 0.;
 }
-}
+} // namespace
 
 Number avafv::initial_condition_nut(const Point &p, const Parameters &es,
-                                     const std::string &system_name,
-                                     const std::string &var_name) {
+                                    const std::string &system_name,
+                                    const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Nutrient");
 
@@ -92,7 +92,7 @@ void avafv::NutAssembly::assemble_1() {
   const Real factor_nut = deck.d_assembly_factor_c_t;
 
   // local matrix and vector
-  DenseMatrix<Number> Ke(1,1);
+  DenseMatrix<Number> Ke(1, 1);
   DenseVector<Number> Fe(1);
 
   // Store current and old solution
@@ -118,7 +118,7 @@ void avafv::NutAssembly::assemble_1() {
     taf.init_dof(elem);
 
     // reset matrix and force
-    Ke(0,0) = 0.;
+    Ke(0, 0) = 0.;
     Fe(0) = 0.;
 
     // get solution in this element
@@ -132,9 +132,9 @@ void avafv::NutAssembly::assemble_1() {
       compute_rhs = deck.d_elem_size * nut_old;
 
       compute_mat =
-          deck.d_elem_size *
-          (1. + dt * (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
-                      deck.d_lambda_Ph * hyp_cur));
+        deck.d_elem_size *
+        (1. + dt * (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
+                    deck.d_lambda_Ph * hyp_cur));
 
     } else {
 
@@ -145,21 +145,21 @@ void avafv::NutAssembly::assemble_1() {
       compute_rhs = deck.d_elem_size * nut_old;
 
       compute_mat =
-          deck.d_elem_size *
-          (1. + dt * (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
-                      deck.d_lambda_Ph * hyp_proj));
+        deck.d_elem_size *
+        (1. + dt * (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
+                    deck.d_lambda_Ph * hyp_proj));
     }
 
     // add artificial source if asked
     Real artificial_source =
-        get_nut_source(deck.d_test_name, elem->centroid(),
-                       deck.d_nut_source_center, deck.d_nut_source_radius) -
-        nut_old;
+      get_nut_source(deck.d_test_name, elem->centroid(),
+                     deck.d_nut_source_center, deck.d_nut_source_radius) -
+      nut_old;
     if (artificial_source > 0.)
       compute_rhs += deck.d_elem_size * dt * artificial_source;
 
     // add
-    Ke(0,0) += factor_nut * compute_mat;
+    Ke(0, 0) += factor_nut * compute_mat;
     Fe(0) += factor_nut * compute_rhs;
 
     // add to matrix

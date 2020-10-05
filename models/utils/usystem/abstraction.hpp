@@ -50,7 +50,7 @@ public:
 
       d_Fe_var = std::vector<DenseSubVector<Number>>(d_num_vars, d_Fe);
       d_Ke_var = std::vector<std::vector<DenseSubMatrix<Number>>>(
-          d_num_vars, std::vector<DenseSubMatrix<Number>>(d_num_vars, d_Ke));
+        d_num_vars, std::vector<DenseSubMatrix<Number>>(d_num_vars, d_Ke));
     }
   }
 
@@ -73,7 +73,7 @@ public:
    *
    * This function is virtual for flexibility. Default method should work.
    */
-  virtual void solve_custom() {};
+  virtual void solve_custom(){};
 
   /*!
    * @brief compute norm of the system
@@ -233,7 +233,7 @@ public:
   double get_current_sol_var(const unsigned int &local_dof_id,
                              const unsigned int &local_var_id) {
     return d_sys.current_solution(
-        d_dof_indices_sys_var[local_var_id][local_dof_id]);
+      d_dof_indices_sys_var[local_var_id][local_dof_id]);
   }
 
   /*!
@@ -264,10 +264,10 @@ public:
    * @return solution Solution at the given dof
    */
   double get_current_sol_var(
-      const unsigned int &local_dof_id, const unsigned int &local_var_id,
-      const std::vector<std::vector<unsigned int>> &dof_indices_sys_var) {
+    const unsigned int &local_dof_id, const unsigned int &local_var_id,
+    const std::vector<std::vector<unsigned int>> &dof_indices_sys_var) {
     return d_sys.current_solution(
-        dof_indices_sys_var[local_var_id][local_dof_id]);
+      dof_indices_sys_var[local_var_id][local_dof_id]);
   }
 
   /*!
@@ -293,7 +293,7 @@ public:
   double get_old_sol_var(const unsigned int &local_dof_id,
                          const unsigned int &local_var_id) {
     return d_sys.old_solution(
-        d_dof_indices_sys_var[local_var_id][local_dof_id]);
+      d_dof_indices_sys_var[local_var_id][local_dof_id]);
   }
 
   /*!
@@ -324,8 +324,8 @@ public:
    * @return solution Solution at the given dof
    */
   double get_old_sol_var(
-      const unsigned int &local_dof_id, const unsigned int &local_var_id,
-      const std::vector<std::vector<unsigned int>> &dof_indices_sys_var) {
+    const unsigned int &local_dof_id, const unsigned int &local_var_id,
+    const std::vector<std::vector<unsigned int>> &dof_indices_sys_var) {
     return d_sys.old_solution(dof_indices_sys_var[local_var_id][local_dof_id]);
   }
 
@@ -389,8 +389,8 @@ public:
    * @param resize_vec Set to true to resize the vector
    */
   void localize_solution_with_elem_id_numbering_const_elem(
-      std::vector<double> &localize_sol,
-      std::vector<unsigned int> var_ids = {0}, bool resize_vec = true) {
+    std::vector<double> &localize_sol,
+    std::vector<unsigned int> var_ids = {0}, bool resize_vec = true) {
 
     // TODO
     //  Should localize_to_one() be used so that only on processor 0 is localized
@@ -410,8 +410,8 @@ public:
         localize_sol.resize(d_mesh.n_elem() * num_vars);
       else
         libmesh_error_msg(
-            "localize_sol size should match collect_sol size for system " +
-            d_sys_name);
+          "localize_sol size should match collect_sol size for system " +
+          d_sys_name);
     }
 
     // check if system has only 1 variable
@@ -448,8 +448,8 @@ public:
    * @param resize_vec Set to true to resize the vector
    */
   void localize_solution_with_elem_id_numbering_non_const_elem(
-      std::vector<double> &localize_sol,
-      std::vector<unsigned int> var_ids = {0}, bool resize_vec = true) {
+    std::vector<double> &localize_sol,
+    std::vector<unsigned int> var_ids = {0}, bool resize_vec = true) {
 
     // gather solution in all processors
     // sys.d_sys.current_local_solution->localize(collect_sol);
@@ -465,8 +465,8 @@ public:
         localize_sol.resize(d_mesh.n_elem() * num_vars);
       else
         libmesh_error_msg(
-            "localize_sol size should match collect_sol size for system " +
-            d_sys_name);
+          "localize_sol size should match collect_sol size for system " +
+          d_sys_name);
     }
 
     // check if system has only 1 variable

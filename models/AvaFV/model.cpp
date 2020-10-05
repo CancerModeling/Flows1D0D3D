@@ -44,8 +44,8 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
 
 // Model setup and run
 void avafv::model_setup_run(int argc, char **argv,
-                             const std::string &filename,
-                             Parallel::Communicator *comm) {
+                            const std::string &filename,
+                            Parallel::Communicator *comm) {
 
   // init seed for random number
   random_init();
@@ -91,7 +91,7 @@ void avafv::model_setup_run(int argc, char **argv,
   auto &nec = tum_sys.add_system<TransientLinearImplicitSystem>("Necrotic");
   auto &taf = tum_sys.add_system<TransientLinearImplicitSystem>("TAF");
   auto &grad_taf =
-      tum_sys.add_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    tum_sys.add_system<TransientLinearImplicitSystem>("TAF_Gradient");
 
   // some initial setups
   {
@@ -149,13 +149,13 @@ void avafv::model_setup_run(int argc, char **argv,
 
 // Model class
 avafv::Model::Model(
-    int argc, char **argv, const std::string &filename,
-    Parallel::Communicator *comm,
-    InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
-    TransientLinearImplicitSystem &nec, TransientLinearImplicitSystem &tum,
-    TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
-    TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &grad_taf,
-    util::Logger &log)
+  int argc, char **argv, const std::string &filename,
+  Parallel::Communicator *comm,
+  InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
+  TransientLinearImplicitSystem &nec, TransientLinearImplicitSystem &tum,
+  TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
+  TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &grad_taf,
+  util::Logger &log)
     : util::BaseModel(comm, input, mesh, tum_sys, log, "AvaFV"),
       d_nec_assembly(this, "Necrotic", d_mesh, nec),
       d_tum_assembly(this, "Tumor", d_mesh, tum),
@@ -166,11 +166,11 @@ avafv::Model::Model(
 
   // bounding box
   d_bounding_box.first =
-      Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
-            d_input.d_domain_params[4]);
+    Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
+          d_input.d_domain_params[4]);
   d_bounding_box.second =
-      Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
-            d_input.d_domain_params[5]);
+    Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
+          d_input.d_domain_params[5]);
 
   // remaining system setup
   {
@@ -206,27 +206,27 @@ avafv::Model::Model(
     // set Petsc matrix option to suppress the error
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(nut.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(nut.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(tum.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(tum.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(hyp.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(hyp.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(nec.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(nec.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
     {
       PetscMatrix<Number> *pet_mat =
-          dynamic_cast<PetscMatrix<Number> *>(taf.matrix);
+        dynamic_cast<PetscMatrix<Number> *>(taf.matrix);
       MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     }
   }
@@ -248,7 +248,7 @@ void avafv::Model::run() {
   d_dt = d_input.d_dt;
 
   d_tum_sys.parameters.set<unsigned int>("linear solver maximum iterations") =
-      d_input.d_linear_max_iters;
+    d_input.d_linear_max_iters;
 
   //
   // Solve
@@ -293,7 +293,7 @@ void avafv::Model::run() {
     if (d_is_output_step)
       // write tumor solution
       write_system((d_step - d_input.d_init_step) /
-                       d_input.d_dt_output_interval);
+                   d_input.d_dt_output_interval);
 
 
     // output qoi
@@ -316,8 +316,8 @@ void avafv::Model::write_system(const unsigned int &t_step) {
 
   //
   rw::VTKIO(d_mesh).write_equation_systems(
-      d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
-      d_tum_sys);
+    d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
+    d_tum_sys);
 
   // save for restart
   if (d_input.d_restart_save &&
@@ -350,7 +350,8 @@ void avafv::Model::compute_qoi() {
   double tumor_mass = total_mass;
 
   // integral of hypoxic
-  value_mass = 0.; total_mass = 0.;
+  value_mass = 0.;
+  total_mass = 0.;
   util::computeMass(d_tum_sys, "Hypoxic", "hypoxic", value_mass);
   MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -359,7 +360,8 @@ void avafv::Model::compute_qoi() {
   double hypoxic_mass = total_mass;
 
   // integral of necrotic
-  value_mass = 0.; total_mass = 0.;
+  value_mass = 0.;
+  total_mass = 0.;
   util::computeMass(d_tum_sys, "Necrotic", "necrotic", value_mass);
   MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
@@ -368,7 +370,8 @@ void avafv::Model::compute_qoi() {
   double necrotic_mass = total_mass;
 
   // L2 norm of total tumor
-  value_mass = 0.; total_mass = 0.;
+  value_mass = 0.;
+  total_mass = 0.;
   value_mass = d_tum_assembly.d_sys.solution->l2_norm();
   MPI_Allreduce(&value_mass, &total_mass, 1, MPI_DOUBLE,
                 MPI_SUM, MPI_COMM_WORLD);
@@ -400,7 +403,7 @@ void avafv::Model::solve_system() {
   auto &nec = d_tum_sys.get_system<TransientLinearImplicitSystem>("Necrotic");
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
   auto &grad_taf =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
 
   // update time
   nut.time = d_time;
@@ -421,14 +424,14 @@ void avafv::Model::solve_system() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+    tum.solution->clone());
 
   oss << "\n  Nonlinear loop\n\n";
   d_log(oss);
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -482,7 +485,8 @@ void avafv::Model::solve_system() {
       oss << "      Linear converged at step: " << n_linear_iterations
           << ", residual: " << final_linear_residual
           << ", Nonlinear convergence: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_global_error << std::endl
+          << std::endl;
       d_log(oss);
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
@@ -523,7 +527,7 @@ void avafv::Model::test_tum() {
         auto nut = d_nut_assembly.get_current_sol(0);
         if (nut < 1.)
           d_nut_assembly.d_sys.solution->set(
-              d_nut_assembly.get_global_dof_id(0), 1.);
+            d_nut_assembly.get_global_dof_id(0), 1.);
       }
     }
 
@@ -550,14 +554,14 @@ void avafv::Model::test_tum() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+    tum.solution->clone());
 
   oss << "\n  Nonlinear loop\n";
   d_log(oss);
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -601,7 +605,8 @@ void avafv::Model::test_tum() {
       oss << "      Linear converged at step: " << n_linear_iterations
           << ", residual: " << final_linear_residual
           << ", Nonlinear convergence: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_global_error << std::endl
+          << std::endl;
       d_log(oss);
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {
@@ -642,14 +647,14 @@ void avafv::Model::test_tum_2() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+    tum.solution->clone());
 
   oss << "\n  Nonlinear loop\n";
   d_log(oss);
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -698,7 +703,8 @@ void avafv::Model::test_tum_2() {
       oss << "      Linear converged at step: " << n_linear_iterations
           << ", residual: " << final_linear_residual
           << ", Nonlinear convergence: ||u - u_old|| = "
-          << nonlinear_global_error << std::endl << std::endl;
+          << nonlinear_global_error << std::endl
+          << std::endl;
       d_log(oss);
     }
     if (nonlinear_global_error < d_input.d_nonlin_tol) {

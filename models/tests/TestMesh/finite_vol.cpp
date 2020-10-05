@@ -48,17 +48,17 @@ struct NetNode {
   bool d_state;
   std::vector<unsigned int> d_elems;
 
-  NetNode() : d_state(false) {};
-  explicit NetNode(bool state) : d_state(state) {};
+  NetNode() : d_state(false){};
+  explicit NetNode(bool state) : d_state(state){};
 };
 
-unsigned int create_node(const Point& p, std::vector<NetNode> &nodes,
+unsigned int create_node(const Point &p, std::vector<NetNode> &nodes,
                          ReplicatedMesh &mesh) {
 
   auto node = mesh.add_point(p);
   unsigned int id = node->id();
   if (nodes.size() <= id)
-    nodes.resize(id+1);
+    nodes.resize(id + 1);
   nodes[id] = NetNode(true);
 
   return id;
@@ -75,7 +75,7 @@ unsigned int create_elem(unsigned int node_1, unsigned int node_2,
 
   unsigned int id = add_elem->id();
   if (elems.size() <= id)
-    elems.resize(id+1);
+    elems.resize(id + 1);
 
   elems[id] = Segment(node_1, node_2);
 
@@ -92,10 +92,9 @@ void add_unique(unsigned int i, std::vector<unsigned int> &list) {
 }
 
 void add_unique(unsigned int dof, Real val,
-                std::vector<unsigned int> &list, std::vector<Real>
-                &list_val) {
+                std::vector<unsigned int> &list, std::vector<Real> &list_val) {
 
-  for (unsigned int i=0; i<list.size(); i++) {
+  for (unsigned int i = 0; i < list.size(); i++) {
 
     if (list[i] == dof) {
       list_val[i] += val;
@@ -108,12 +107,11 @@ void add_unique(unsigned int dof, Real val,
   list_val.push_back(val);
 }
 
-void update_connectivity(std::vector<NetNode> &nodes, std::vector<Segment>
-    &elems, ReplicatedMesh &mesh) {
+void update_connectivity(std::vector<NetNode> &nodes, std::vector<Segment> &elems, ReplicatedMesh &mesh) {
 
-  for (size_t e=0; e<elems.size(); e++) {
+  for (size_t e = 0; e < elems.size(); e++) {
 
-    auto & elem = elems[e];
+    auto &elem = elems[e];
 
     if (!elem.d_state)
       continue;
@@ -136,9 +134,9 @@ void assemble_net(EquationSystems &es, const std::string &system_name) {
 
   // Parameters
   const auto *net_nodes =
-      es.parameters.get<std::vector<NetNode> *>("net_nodes");
+    es.parameters.get<std::vector<NetNode> *>("net_nodes");
   const auto *net_elems =
-      es.parameters.get<std::vector<Segment> *>("net_elems");
+    es.parameters.get<std::vector<Segment> *>("net_elems");
 
   // store boundary condition constraints
   std::vector<unsigned int> bc_rows;
@@ -147,7 +145,7 @@ void assemble_net(EquationSystems &es, const std::string &system_name) {
   // Looping through elements
   MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
   const MeshBase::const_element_iterator end_el =
-      mesh.active_local_elements_end();
+    mesh.active_local_elements_end();
 
   for (; el != end_el; ++el) {
 
@@ -162,7 +160,7 @@ void assemble_net(EquationSystems &es, const std::string &system_name) {
 
     // loop over vertex of element
     const auto &net_e = (*net_elems)[elem->id()];
-    for (unsigned int I=0; I<2; I++) {
+    for (unsigned int I = 0; I < 2; I++) {
 
       unsigned int node_I = net_e.d_n1;
       if (I == 1)
@@ -199,8 +197,8 @@ void assemble_net(EquationSystems &es, const std::string &system_name) {
     // add to matrix
     DenseMatrix<Number> Ke;
     Ke.resize(1, Ke_dof_col.size());
-    for (unsigned int i=0; i<Ke_dof_col.size(); i++)
-      Ke(0,i) = Ke_val_col[i];
+    for (unsigned int i = 0; i < Ke_dof_col.size(); i++)
+      Ke(0, i) = Ke_val_col[i];
 
     pres.matrix->add_matrix(Ke, Ke_dof_row, Ke_dof_col);
 
@@ -220,7 +218,7 @@ void assemble_net(EquationSystems &es, const std::string &system_name) {
 
   // apply bc constraint
   pres.matrix->zero_rows(bc_rows, 1.);
-  for (unsigned int i=0; i<bc_rows.size(); i++)
+  for (unsigned int i = 0; i < bc_rows.size(); i++)
     pres.rhs->set(bc_rows[i], bc_vals[i]);
 
   pres.matrix->close();
@@ -297,7 +295,7 @@ void solve_eq_sys(EquationSystems &eq_sys, std::vector<NetNode> &nodes,
       char sim_file_i[400];
       sprintf(sim_file_i, "%s_%d.e", sim_file.c_str(), 1);
       ExodusII_IO exo(mesh);
-      exo.write_timestep(sim_file_i, eq_sys, t_step+1, pres.time);
+      exo.write_timestep(sim_file_i, eq_sys, t_step + 1, pres.time);
     }
 
   } while (t_step < num_steps);
@@ -309,7 +307,7 @@ void solve_eq_sys(EquationSystems &eq_sys, std::vector<NetNode> &nodes,
 // Test
 //
 void test::fv::run(int argc, char **argv, Parallel::Communicator *comm,
-    double pressure_in, bool branch) {
+                   double pressure_in, bool branch) {
 
   out << "********** Finite Volume **************\n";
 
@@ -406,8 +404,8 @@ void test::fv::run(int argc, char **argv, Parallel::Communicator *comm,
 
   // set Petsc matrix option to suppress the error
   PetscMatrix<Number> *pet_mat =
-      dynamic_cast<PetscMatrix<Number>*>(pres.matrix);
-  MatSetOption( pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+    dynamic_cast<PetscMatrix<Number> *>(pres.matrix);
+  MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
   {
     // write solution to file

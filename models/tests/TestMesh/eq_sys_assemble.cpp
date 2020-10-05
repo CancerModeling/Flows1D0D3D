@@ -117,9 +117,9 @@ struct Matrix {
     }
 
     if (d_size == 1)
-      return (*this)(0,0);
+      return (*this)(0, 0);
     else if (d_size == 2)
-      return (*this)(0,0) * (*this)(1,1) - (*this)(0,1) * (*this)(1,0);
+      return (*this)(0, 0) * (*this)(1, 1) - (*this)(0, 1) * (*this)(1, 0);
     else if (d_size == 3)
       return (*this)(0, 0) * ((*this)(1, 1) * (*this)(2, 2) -
                               (*this)(2, 1) * (*this)(1, 2)) -
@@ -139,24 +139,22 @@ struct Matrix {
 
     if (d_size == 1) {
       Matrix n(d_size);
-      n(0,0) = 1. / (*this)(0, 0);
+      n(0, 0) = 1. / (*this)(0, 0);
 
       return n;
-    }
-    else if (d_size == 2) {
+    } else if (d_size == 2) {
 
       auto det_inv = 1. / this->det();
 
       Matrix n(d_size);
-      n(0,0) = det_inv * (*this)(1,1);
-      n(1,1) = det_inv * (*this)(0,0);
+      n(0, 0) = det_inv * (*this)(1, 1);
+      n(1, 1) = det_inv * (*this)(0, 0);
 
-      n(0,1) = -det_inv * (*this)(0,1);
-      n(1,0) = -det_inv * (*this)(1,0);
+      n(0, 1) = -det_inv * (*this)(0, 1);
+      n(1, 0) = -det_inv * (*this)(1, 0);
 
       return n;
-    }
-    else if (d_size == 3) {
+    } else if (d_size == 3) {
 
       auto det_inv = 1. / this->det();
 
@@ -231,11 +229,12 @@ struct Matrix {
     auto tabS = util::io::getTabS(nt);
     std::ostringstream oss;
 
-    oss << tabS << "------- Matrix --------" << std::endl << std::endl;
+    oss << tabS << "------- Matrix --------" << std::endl
+        << std::endl;
     oss << tabS << "Size = " << d_size << std::endl;
     oss << tabS << "Elements:" << std::endl;
     oss << tabS << "[";
-    for (unsigned int i=0; i<d_size; i++) {
+    for (unsigned int i = 0; i < d_size; i++) {
       if (i > 0)
         oss << tabS;
 
@@ -305,7 +304,7 @@ void assemble_net(EquationSystems &es, const std::string &system_name) {
   // Looping through elements
   MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
   const MeshBase::const_element_iterator end_el =
-      mesh.active_local_elements_end();
+    mesh.active_local_elements_end();
 
   for (; el != end_el; ++el) {
 
@@ -340,7 +339,7 @@ void assemble_net(EquationSystems &es, const std::string &system_name) {
     } // loop over quadrature points
 
     flow_map.heterogenously_constrain_element_matrix_and_vector(
-        Ke, Fi, dof_indices_flow);
+      Ke, Fi, dof_indices_flow);
     flow.matrix->add_matrix(Ke, dof_indices_flow);
     flow.rhs->add_vector(Fi, dof_indices_flow);
   }
@@ -374,7 +373,7 @@ void assemble_net_2(EquationSystems &es, const std::string &system_name) {
   // Looping through elements
   MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
   const MeshBase::const_element_iterator end_el =
-      mesh.active_local_elements_end();
+    mesh.active_local_elements_end();
 
   for (; el != end_el; ++el) {
 
@@ -411,7 +410,7 @@ void assemble_net_2(EquationSystems &es, const std::string &system_name) {
     } // loop over quadrature points
 
     flow_map.heterogenously_constrain_element_matrix_and_vector(
-        Ke, Fi, dof_indices_flow);
+      Ke, Fi, dof_indices_flow);
     flow.matrix->add_matrix(Ke, dof_indices_flow);
     flow.rhs->add_vector(Fi, dof_indices_flow);
   }
@@ -447,7 +446,7 @@ void assemble_net_transient(EquationSystems &es,
   // Looping through elements
   MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
   const MeshBase::const_element_iterator end_el =
-      mesh.active_local_elements_end();
+    mesh.active_local_elements_end();
 
   for (; el != end_el; ++el) {
 
@@ -491,7 +490,7 @@ void assemble_net_transient(EquationSystems &es,
     } // loop over quadrature points
 
     flow_map.heterogenously_constrain_element_matrix_and_vector(
-        Ke, Fi, dof_indices_flow);
+      Ke, Fi, dof_indices_flow);
     flow.matrix->add_matrix(Ke, dof_indices_flow);
     flow.rhs->add_vector(Fi, dof_indices_flow);
   }
@@ -604,7 +603,7 @@ void verify_solution(EquationSystems &eq_sys, std::vector<unsigned int> &nodes,
     double p2_exact = seg_length * seg_length * 0.5 + p_in;
 
     double p2_approx =
-        flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
 
     out << "Exact sol node 2 = (" << p2_exact << "), "
         << "Approx sol node 2 = (" << p2_approx << ")" << std::endl;
@@ -620,9 +619,9 @@ void verify_solution(EquationSystems &eq_sys, std::vector<unsigned int> &nodes,
     double p3_exact = 2. * seg_length * seg_length + p_in;
 
     double p2_approx =
-        flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
     double p3_approx =
-        flow.current_solution(mesh.node_ptr(nodes[2])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[2])->dof_number(0, 0, 0));
 
     out << "Exact sols node 2 and 3 = (" << p2_exact << ", " << p3_exact
         << "), "
@@ -647,11 +646,11 @@ void verify_solution(EquationSystems &eq_sys, std::vector<unsigned int> &nodes,
     }
 
     double p2_approx =
-        flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
     double p3_approx =
-        flow.current_solution(mesh.node_ptr(nodes[2])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[2])->dof_number(0, 0, 0));
     double p4_approx =
-        flow.current_solution(mesh.node_ptr(nodes[3])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[3])->dof_number(0, 0, 0));
 
     out << "Exact sols node 2, 3, 4 = (" << p2_exact << ", " << p3_exact << ", "
         << p4_exact << "), "
@@ -685,25 +684,25 @@ void verify_transient_solution(EquationSystems &eq_sys,
   const Real dt = eq_sys.parameters.get<Real>("time_step");
   const Real init_time = eq_sys.parameters.get<Real>("init_time");
   const unsigned int num_steps =
-      eq_sys.parameters.get<unsigned int>("num_steps");
+    eq_sys.parameters.get<unsigned int>("num_steps");
 
   // verify solution
   if (test_case == "one_segment") {
 
     double p2_exact = 0.;
     double p2_approx =
-        flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
 
     // compute p2_exact at time step = num_steps
     double alpha = 3. * dt / (seg_length * seg_length);
     Matrix A(1);
-    A(0,0) = 1. - alpha;
+    A(0, 0) = 1. - alpha;
     std::vector<double> b(1, 0.);
     b[0] = 3. * dt / 2. + alpha * p_in;
 
     // get matrix
     Matrix M(1);
-    for (int i =0; i < num_steps; i++) {
+    for (int i = 0; i < num_steps; i++) {
       auto Mi = A.pow(i);
       M.add(Mi);
     }
@@ -724,28 +723,28 @@ void verify_transient_solution(EquationSystems &eq_sys,
     double p2_exact = 0.;
     double p3_exact = 0.;
     double p2_approx =
-        flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
     double p3_approx =
-        flow.current_solution(mesh.node_ptr(nodes[2])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[2])->dof_number(0, 0, 0));
 
     // compute p2_exact and p3_exact at time step = num_steps
     double alpha = 3. * dt / (seg_length * seg_length);
 
     // mass matrix and its inverse
     Matrix M(2);
-    M(0,0) = 2.;
-    M(0,1) = 0.5;
-    M(1,0) = 0.5;
-    M(1,1) = 1.;
+    M(0, 0) = 2.;
+    M(0, 1) = 0.5;
+    M(1, 0) = 0.5;
+    M(1, 1) = 1.;
 
     Matrix Mbar = M.inv();
 
     // stiffness matrix
     Matrix K(2);
-    K(0,0) = 2. * alpha;
-    K(0,1) = -alpha;
-    K(1,0) = -alpha;
-    K(1,1) = alpha;
+    K(0, 0) = 2. * alpha;
+    K(0, 1) = -alpha;
+    K(1, 0) = -alpha;
+    K(1, 1) = alpha;
 
     // A matrix
     Matrix Id(2, true);
@@ -762,7 +761,7 @@ void verify_transient_solution(EquationSystems &eq_sys,
 
     // get factor matrix
     Matrix D(2);
-    for (int i =0; i < num_steps; i++) {
+    for (int i = 0; i < num_steps; i++) {
       auto Di = A.pow(i);
       D.add(Di);
     }
@@ -789,40 +788,40 @@ void verify_transient_solution(EquationSystems &eq_sys,
     double p3_exact = 0.;
     double p4_exact = 0.;
     double p2_approx =
-        flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
     double p3_approx =
-        flow.current_solution(mesh.node_ptr(nodes[2])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[2])->dof_number(0, 0, 0));
     double p4_approx =
-        flow.current_solution(mesh.node_ptr(nodes[3])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[3])->dof_number(0, 0, 0));
 
     // compute p2_exact and p3_exact at time step = num_steps
     double alpha = 3. * dt / (seg_length * seg_length);
 
     // mass matrix and its inverse
     Matrix M(3);
-    M(0,0) = 3.;
-    M(0,1) = 0.5;
-    M(0,2) = 0.5;
-    M(1,0) = 0.5;
-    M(1,1) = 1.;
-    M(1,2) = 0.;
-    M(2,0) = 0.5;
-    M(2,1) = 0.;
-    M(2,2) = 1.;
+    M(0, 0) = 3.;
+    M(0, 1) = 0.5;
+    M(0, 2) = 0.5;
+    M(1, 0) = 0.5;
+    M(1, 1) = 1.;
+    M(1, 2) = 0.;
+    M(2, 0) = 0.5;
+    M(2, 1) = 0.;
+    M(2, 2) = 1.;
 
     Matrix Mbar = M.inv();
 
     // stiffness matrix
     Matrix K(3);
-    K(0,0) = 3. * alpha;
-    K(0,1) = -alpha;
-    K(0,2) = -alpha;
-    K(1,0) = -alpha;
-    K(1,1) = alpha;
-    K(1,2) = 0.;
-    K(2,0) = -alpha;
-    K(2,1) = 0.;
-    K(2,2) = alpha;
+    K(0, 0) = 3. * alpha;
+    K(0, 1) = -alpha;
+    K(0, 2) = -alpha;
+    K(1, 0) = -alpha;
+    K(1, 1) = alpha;
+    K(1, 2) = 0.;
+    K(2, 0) = -alpha;
+    K(2, 1) = 0.;
+    K(2, 2) = alpha;
 
     // A matrix
     Matrix Id(3, true);
@@ -840,7 +839,7 @@ void verify_transient_solution(EquationSystems &eq_sys,
 
     // get factor matrix
     Matrix D(3);
-    for (int i =0; i < num_steps; i++) {
+    for (int i = 0; i < num_steps; i++) {
       auto Di = A.pow(i);
       D.add(Di);
     }
@@ -872,8 +871,6 @@ void verify_transient_solution(EquationSystems &eq_sys,
         std::abs(p4_approx - p4_exact) > 1.0E-10) {
       out << "Approx solution does not match exact solution for test = "
           << test_case << std::endl;
-
-
 
 
       libmesh_error();
@@ -1008,11 +1005,11 @@ void test::mesh::eq_sys_assemble(int argc, char **argv,
   // results with exact solution
   {
     eq_sys.parameters.set<unsigned int>("linear solver maximum iterations") =
-        10;
+      10;
 
     // to compute the nonlinear convergence
     UniquePtr<NumericVector<Number>> last_nonlinear_soln(
-        flow.solution->clone());
+      flow.solution->clone());
 
     size_t t_step = 1;
     double current_time = 0.;
@@ -1050,7 +1047,7 @@ void test::mesh::eq_sys_assemble(int argc, char **argv,
     double exact_sol = 1.5 - diri_bc_val / 2.;
 
     double approx_sol =
-        flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
+      flow.current_solution(mesh.node_ptr(nodes[1])->dof_number(0, 0, 0));
 
     out << "Exact sol at node 2 = " << exact_sol
         << ", Approx sol at node 2 = " << approx_sol << std::endl;
@@ -1185,7 +1182,7 @@ void test::mesh::eq_sys_assemble_2(int argc, char **argv, double p_in,
   // Solve the final system
   {
     auto node_i =
-        create_node(Point(1.5, 1. - std::sqrt(5. / 2.), 0.5), nodes, mesh);
+      create_node(Point(1.5, 1. - std::sqrt(5. / 2.), 0.5), nodes, mesh);
 
     auto elem_i = create_elem(nodes[nodes.size() - 2], nodes[nodes.size() - 1],
                               elems, mesh);
@@ -1210,7 +1207,7 @@ void test::mesh::eq_sys_assemble_2(int argc, char **argv, double p_in,
   // Solve the final system
   {
     auto node_i =
-        create_node(Point(2., 1. - 2. * std::sqrt(5. / 2.), 1.), nodes, mesh);
+      create_node(Point(2., 1. - 2. * std::sqrt(5. / 2.), 1.), nodes, mesh);
 
     auto elem_i = create_elem(nodes[nodes.size() - 2], nodes[nodes.size() - 1],
                               elems, mesh);
@@ -1351,7 +1348,7 @@ void test::mesh::eq_sys_assemble_3(int argc, char **argv, double p_in,
   // Solve the final system
   {
     auto node_i =
-        create_node(Point(1.5, 1. - std::sqrt(5. / 2.), 0.5), nodes, mesh);
+      create_node(Point(1.5, 1. - std::sqrt(5. / 2.), 0.5), nodes, mesh);
 
     auto elem_i = create_elem(nodes[nodes.size() - 2], nodes[nodes.size() - 1],
                               elems, mesh);
@@ -1376,7 +1373,7 @@ void test::mesh::eq_sys_assemble_3(int argc, char **argv, double p_in,
   // Solve the final system
   {
     auto node_i =
-        create_node(Point(0.5, 1. + std::sqrt(5. / 2.), 1.5), nodes, mesh);
+      create_node(Point(0.5, 1. + std::sqrt(5. / 2.), 1.5), nodes, mesh);
 
     // branching at second vertex (note the id of node_1)
     auto elem_i = create_elem(nodes[nodes.size() - 3], nodes[nodes.size() - 1],
@@ -1510,7 +1507,7 @@ void test::mesh::eq_sys_assemble_transient(int argc, char **argv, std::string te
 
     // verify solution
     verify_transient_solution(eq_sys, nodes, elems, "one_segment", p_in,
-        seg_length);
+                              seg_length);
 
     return;
   }
@@ -1523,7 +1520,7 @@ void test::mesh::eq_sys_assemble_transient(int argc, char **argv, std::string te
   // Solve the final system
   {
     auto node_i =
-        create_node(Point(1.5, 1. - std::sqrt(5. / 2.), 0.5), nodes, mesh);
+      create_node(Point(1.5, 1. - std::sqrt(5. / 2.), 0.5), nodes, mesh);
 
     auto elem_i = create_elem(nodes[nodes.size() - 2], nodes[nodes.size() - 1],
                               elems, mesh);
@@ -1553,7 +1550,7 @@ void test::mesh::eq_sys_assemble_transient(int argc, char **argv, std::string te
   // Solve the final system
   {
     auto node_i =
-        create_node(Point(0.5, 1. + std::sqrt(5. / 2.), 1.5), nodes, mesh);
+      create_node(Point(0.5, 1. + std::sqrt(5. / 2.), 1.5), nodes, mesh);
 
     // branching at second vertex (note the id of node_1)
     auto elem_i = create_elem(nodes[nodes.size() - 3], nodes[nodes.size() - 1],
@@ -1572,7 +1569,7 @@ void test::mesh::eq_sys_assemble_transient(int argc, char **argv, std::string te
 
       // verify solution
       verify_transient_solution(eq_sys, nodes, elems, test_case, p_in,
-                      seg_length);
+                                seg_length);
 
       return;
     }

@@ -26,11 +26,22 @@ double util::linear(double x) {
     return x;
 }
 
+//double util::heaviside(double x) {
+//  if (fabs(x) >= 0.064) {
+//    return (x < 0) ? 0. : 1.;
+//  } else {
+//    return (1. / (2. * 0.064)) * (x + 0.064);
+//  }
+//}
+
 double util::heaviside(double x) {
-  if (fabs(x) >= 0.064) {
-    return (x < 0) ? 0. : 1.;
-  } else {
-    return (1. / (2. * 0.064)) * (x + 0.064);
+  if (x < 1.0E-10)
+    return 0.;
+  else {
+    if (x < 0.0001 - 1.0E-10)
+      return 1. - std::exp(1. - 1. / (1. - std::pow(x / 0.0001, 4)));
+    else
+      return 1.;
   }
 }
 
@@ -75,9 +86,9 @@ util::inverse(const std::vector<std::vector<double>> &M) {
     for (size_t i = 0; i < 3; i++) {
       for (size_t j = 0; j < 3; j++)
         Minv[j][i] =
-            (M[(i + 1) % 3][(j + 1) % 3] * M[(i + 2) % 3][(j + 2) % 3] -
-             M[(i + 1) % 3][(j + 2) % 3] * M[(i + 2) % 3][(j + 1) % 3]) /
-            detM;
+          (M[(i + 1) % 3][(j + 1) % 3] * M[(i + 2) % 3][(j + 2) % 3] -
+           M[(i + 1) % 3][(j + 2) % 3] * M[(i + 2) % 3][(j + 1) % 3]) /
+          detM;
     }
 
     return Minv;
@@ -118,7 +129,7 @@ void util::computeMass(EquationSystems &es, const std::string &system_name,
   value_mass = 0.;
 
   TransientLinearImplicitSystem &sys =
-      es.get_system<TransientLinearImplicitSystem>(system_name);
+    es.get_system<TransientLinearImplicitSystem>(system_name);
 
   const unsigned int var = sys.variable_number(var_name);
   const MeshBase &mesh = es.get_mesh();
@@ -135,7 +146,7 @@ void util::computeMass(EquationSystems &es, const std::string &system_name,
   Number qoi_mass = 0.;
   MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
   const MeshBase::const_element_iterator end_el =
-      mesh.active_local_elements_end();
+    mesh.active_local_elements_end();
   for (; el != end_el; ++el) {
     const Elem *elem = *el;
     sys_map.dof_indices(elem, dof_indices);
@@ -211,9 +222,9 @@ bool util::is_inside_box(const Point &p, const std::pair<Point, Point> &box,
 
   const double eps = 1.0E-10;
   return !(
-      p(0) < box.first(0) + tol - eps || p(0) > box.second(0) - tol + eps ||
-      p(1) < box.first(1) + tol - eps || p(1) > box.second(1) - tol + eps ||
-      p(2) < box.first(2) + tol - eps || p(2) > box.second(2) - tol + eps);
+    p(0) < box.first(0) + tol - eps || p(0) > box.second(0) - tol + eps ||
+    p(1) < box.first(1) + tol - eps || p(1) > box.second(1) - tol + eps ||
+    p(2) < box.first(2) + tol - eps || p(2) > box.second(2) - tol + eps);
 }
 
 bool util::is_inside_box(const Point &p, const double &box_size, double tol) {
@@ -306,31 +317,28 @@ Point util::rotate(const Point &p, const double &theta, const Point &axis) {
   return (1. - ct) * p_dot_n * axis + ct * p + st * n_cross_p;
 }
 
-std::vector<double> util::rotate(std::vector<double> &p, double theta, std::vector<double> &axis){
+std::vector<double> util::rotate(std::vector<double> &p, double theta, std::vector<double> &axis) {
 
-                    std::vector<double> rotated_point = std::vector<double>(3,0.0);
+  std::vector<double> rotated_point = std::vector<double>(3, 0.0);
 
-                    auto ct = std::cos(theta);
-                    auto st = std::sin(theta);
+  auto ct = std::cos(theta);
+  auto st = std::sin(theta);
 
-                    double p_dot_n = 0.0; 
+  double p_dot_n = 0.0;
 
-                    for(int i=0;i<3;i++){
+  for (int i = 0; i < 3; i++) {
 
-                        p_dot_n = p_dot_n + p[ i ]*axis[ i ];
+    p_dot_n = p_dot_n + p[i] * axis[i];
+  }
 
-                    }
+  std::vector<double> n_cross_p = cross_prod(axis, p);
 
-                    std::vector<double> n_cross_p = cross_prod( axis, p );
+  for (int i = 0; i < 3; i++) {
 
-                    for(int i=0;i<3;i++){
+    rotated_point[i] = (1. - ct) * p_dot_n * axis[i] + ct * p[i] + st * n_cross_p[i];
+  }
 
-                        rotated_point[ i ] = (1. - ct) * p_dot_n * axis[ i ] + ct * p[ i ] + st * n_cross_p[ i ];
-
-                    }
-
-                    return rotated_point;
-
+  return rotated_point;
 }
 
 Point util::cross_product(const Point &p1, const Point &p2) {
@@ -347,39 +355,32 @@ Point util::cross_product(const Point &p1, const Point &p2) {
     return Point();
 }
 
-std::vector<double> util::cross_prod( std::vector<double> &p1, std::vector<double> &p2 ){
+std::vector<double> util::cross_prod(std::vector<double> &p1, std::vector<double> &p2) {
 
-                    std::vector<double> c_product = std::vector<double>(3,0.0);
+  std::vector<double> c_product = std::vector<double>(3, 0.0);
 
-                    c_product[ 0 ] = p1[ 1 ]*p2[ 2 ]-p1[ 2 ]*p2[ 1 ];
-                    c_product[ 1 ] = p1[ 2 ]*p2[ 0 ]-p1[ 0 ]*p2[ 2 ];
-                    c_product[ 2 ] = p1[ 0 ]*p2[ 1 ]-p1[ 1 ]*p2[ 0 ];
+  c_product[0] = p1[1] * p2[2] - p1[2] * p2[1];
+  c_product[1] = p1[2] * p2[0] - p1[0] * p2[2];
+  c_product[2] = p1[0] * p2[1] - p1[1] * p2[0];
 
-                    double norm_c_product = std::sqrt(c_product[0] * c_product[0]
-                        + c_product[1] * c_product[1] + c_product[2] *
-                        c_product[2]);
+  double norm_c_product = std::sqrt(c_product[0] * c_product[0] + c_product[1] * c_product[1] + c_product[2] * c_product[2]);
 
-                    if( norm_c_product>0.0 ){
+  if (norm_c_product > 0.0) {
 
-                        for(int i=0;i<3;i++){
+    for (int i = 0; i < 3; i++) {
 
-                            c_product[ i ] = c_product[ i ]/norm_c_product;
-                   
-                        }
+      c_product[i] = c_product[i] / norm_c_product;
+    }
 
-                    }
-                    else{
+  } else {
 
-                        for(int i=0;i<3;i++){
+    for (int i = 0; i < 3; i++) {
 
-                            c_product[ i ] = 0.0;
-                   
-                        }
+      c_product[i] = 0.0;
+    }
+  }
 
-                    }
-
-                    return c_product;
-
+  return c_product;
 }
 
 double util::angle(Point a, Point b) {
@@ -495,7 +496,7 @@ std::vector<Point> util::discretize_cube(const unsigned int &disc_num,
           continue;
 
         Point x =
-            Point(double(i), double(j), double(k)) * cube_size / double(N);
+          Point(double(i), double(j), double(k)) * cube_size / double(N);
 
         points.push_back(x);
       }
@@ -798,48 +799,43 @@ unsigned int util::get_elem_id(const Point &p,
 Point util::to_point(const std::vector<double> &p) {
 
   auto q = Point();
-  for (unsigned int i=0; i<p.size(); i++)
+  for (unsigned int i = 0; i < p.size(); i++)
     q(i) = p[i];
 
   return q;
 }
 
-std::vector<double> util::determineRotator( const std::vector<double> &dir ){
+std::vector<double> util::determineRotator(const std::vector<double> &dir) {
 
   std::vector<double> rotator;
 
-  if( std::abs(dir[ 0 ])<1.0e-11 && std::abs(dir[ 1 ])<1.0e-11 ){
+  if (std::abs(dir[0]) < 1.0e-11 && std::abs(dir[1]) < 1.0e-11) {
 
-    rotator.push_back( 1.0 );
+    rotator.push_back(1.0);
 
-    rotator.push_back( 0.0 );
+    rotator.push_back(0.0);
 
-    rotator.push_back( 0.0 );
+    rotator.push_back(0.0);
 
-  }
-  else{
+  } else {
 
-    rotator.push_back( -dir[ 1 ] );
+    rotator.push_back(-dir[1]);
 
-    rotator.push_back(  dir[ 0 ] );
+    rotator.push_back(dir[0]);
 
-    rotator.push_back(       0.0 );
-
+    rotator.push_back(0.0);
   }
 
   return rotator;
-
 }
 
-Point util::determineRotator( const Point &dir ){
+Point util::determineRotator(const Point &dir) {
 
-  if( std::abs(dir(0))<1.0e-11 && std::abs(dir(1))<1.0e-11 ){
+  if (std::abs(dir(0)) < 1.0e-11 && std::abs(dir(1)) < 1.0e-11) {
 
     return Point(1., 0., 0.);
-  }
-  else{
+  } else {
 
     return Point(-dir(1), dir(0), 0.);
   }
-
 }

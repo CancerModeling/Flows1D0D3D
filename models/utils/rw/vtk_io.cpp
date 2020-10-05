@@ -65,51 +65,48 @@
 // It relies on the VTK version numbers detected during configure.  Note that if
 // LIBMESH_HAVE_VTK is not defined, none of the LIBMESH_DETECTED_VTK_VERSION_* variables will
 // be defined either.
-#define VTK_VERSION_LESS_THAN(major,minor,subminor)                     \
-  ((LIBMESH_DETECTED_VTK_VERSION_MAJOR < (major) ||                     \
-    (LIBMESH_DETECTED_VTK_VERSION_MAJOR == (major) && (LIBMESH_DETECTED_VTK_VERSION_MINOR < (minor) || \
-                                                       (LIBMESH_DETECTED_VTK_VERSION_MINOR == (minor) && \
-                                                        LIBMESH_DETECTED_VTK_VERSION_SUBMINOR < (subminor))))) ? 1 : 0)
+#define VTK_VERSION_LESS_THAN(major, minor, subminor)                                                          \
+  ((LIBMESH_DETECTED_VTK_VERSION_MAJOR < (major) ||                                                            \
+    (LIBMESH_DETECTED_VTK_VERSION_MAJOR == (major) && (LIBMESH_DETECTED_VTK_VERSION_MINOR < (minor) ||         \
+                                                       (LIBMESH_DETECTED_VTK_VERSION_MINOR == (minor) &&       \
+                                                        LIBMESH_DETECTED_VTK_VERSION_SUBMINOR < (subminor))))) \
+     ? 1                                                                                                       \
+     : 0)
 
 //#endif // LIBMESH_HAVE_VTK
 
 
-namespace rw
-{
+namespace rw {
 
 using namespace libMesh;
 
 // Constructor for reading
-VTKIO::VTKIO (MeshBase & mesh) :
-  MeshInput<MeshBase> (mesh, /*is_parallel_format=*/true),
-  MeshOutput<MeshBase>(mesh, /*is_parallel_format=*/true)
+VTKIO::VTKIO(MeshBase &mesh) : MeshInput<MeshBase>(mesh, /*is_parallel_format=*/true),
+                               MeshOutput<MeshBase>(mesh, /*is_parallel_format=*/true)
 #ifdef LIBMESH_HAVE_VTK
-  ,_compress(false)
+                               ,
+                               _compress(false)
 #endif
 {
 }
-
 
 
 // Constructor for writing
-VTKIO::VTKIO (const MeshBase & mesh) :
-  MeshOutput<MeshBase>(mesh, /*is_parallel_format=*/true)
+VTKIO::VTKIO(const MeshBase &mesh) : MeshOutput<MeshBase>(mesh, /*is_parallel_format=*/true)
 #ifdef LIBMESH_HAVE_VTK
-  ,_compress(false)
+                                     ,
+                                     _compress(false)
 #endif
 {
 }
 
 
-
 // Output the mesh without solutions to a .pvtu file
-void VTKIO::write (const std::string & name)
-{
+void VTKIO::write(const std::string &name) {
   std::vector<Number> soln;
   std::vector<std::string> names;
   this->write_nodal_data(name, soln, names);
 }
-
 
 
 // The rest of the file is wrapped in ifdef LIBMESH_HAVE_VTK except for
@@ -120,8 +117,7 @@ void VTKIO::write (const std::string & name)
 VTKIO::ElementMaps VTKIO::_element_maps = VTKIO::build_element_maps();
 
 // Static function which constructs the ElementMaps object.
-VTKIO::ElementMaps VTKIO::build_element_maps()
-{
+VTKIO::ElementMaps VTKIO::build_element_maps() {
   // Object to be filled up
   ElementMaps em;
 
@@ -153,13 +149,11 @@ VTKIO::ElementMaps VTKIO::build_element_maps()
 }
 
 
-
-void VTKIO::read (const std::string & name)
-{
+void VTKIO::read(const std::string &name) {
   // This is a serial-only process for now;
   // the Mesh should be read on processor 0 and
   // broadcast later
-  libmesh_assert_equal_to (MeshOutput<MeshBase>::mesh().processor_id(), 0);
+  libmesh_assert_equal_to(MeshOutput<MeshBase>::mesh().processor_id(), 0);
 
   // Keep track of what kinds of elements this file contains
   elems_of_dimension.clear();
@@ -179,7 +173,7 @@ void VTKIO::read (const std::string & name)
   _vtk_grid = reader->GetOutput();
 
   // Get a reference to the mesh
-  MeshBase & mesh = MeshInput<MeshBase>::mesh();
+  MeshBase &mesh = MeshInput<MeshBase>::mesh();
 
   // Clear out any pre-existing data from the Mesh
   mesh.clear();
@@ -188,72 +182,68 @@ void VTKIO::read (const std::string & name)
   const unsigned int vtk_num_points = static_cast<unsigned int>(_vtk_grid->GetNumberOfPoints());
 
   // always numbered nicely so we can loop like this
-  for (unsigned int i=0; i<vtk_num_points; ++i)
-    {
-      // add to the id map
-      // and add the actual point
-      double pnt[3];
-      _vtk_grid->GetPoint(static_cast<vtkIdType>(i), pnt);
-      Point xyz(pnt[0], pnt[1], pnt[2]);
-      mesh.add_point(xyz, i);
-    }
+  for (unsigned int i = 0; i < vtk_num_points; ++i) {
+    // add to the id map
+    // and add the actual point
+    double pnt[3];
+    _vtk_grid->GetPoint(static_cast<vtkIdType>(i), pnt);
+    Point xyz(pnt[0], pnt[1], pnt[2]);
+    mesh.add_point(xyz, i);
+  }
 
   // Get the number of cells from the _vtk_grid object
   const unsigned int vtk_num_cells = static_cast<unsigned int>(_vtk_grid->GetNumberOfCells());
 
   vtkSmartPointer<vtkGenericCell> cell = vtkSmartPointer<vtkGenericCell>::New();
-  for (unsigned int i=0; i<vtk_num_cells; ++i)
-    {
-      _vtk_grid->GetCell(i, cell);
+  for (unsigned int i = 0; i < vtk_num_cells; ++i) {
+    _vtk_grid->GetCell(i, cell);
 
-      // Get the libMesh element type corresponding to this VTK element type.
-      ElemType libmesh_elem_type = _element_maps.find(cell->GetCellType());
-      Elem * elem = Elem::build(libmesh_elem_type).release();
+    // Get the libMesh element type corresponding to this VTK element type.
+    ElemType libmesh_elem_type = _element_maps.find(cell->GetCellType());
+    Elem *elem = Elem::build(libmesh_elem_type).release();
 
-      // get the straightforward numbering from the VTK cells
-      for (unsigned int j=0; j<elem->n_nodes(); ++j)
-        elem->set_node(j) =
-          mesh.node_ptr(cast_int<dof_id_type>(cell->GetPointId(j)));
+    // get the straightforward numbering from the VTK cells
+    for (unsigned int j = 0; j < elem->n_nodes(); ++j)
+      elem->set_node(j) =
+        mesh.node_ptr(cast_int<dof_id_type>(cell->GetPointId(j)));
 
-      // then get the connectivity
-      std::vector<dof_id_type> conn;
-      elem->connectivity(0, VTK, conn);
+    // then get the connectivity
+    std::vector<dof_id_type> conn;
+    elem->connectivity(0, VTK, conn);
 
-      // then reshuffle the nodes according to the connectivity, this
-      // two-time-assign would evade the definition of the vtk_mapping
-      for (unsigned int j=0,
-           n_conn = cast_int<unsigned int>(conn.size());
-           j != n_conn; ++j)
-        elem->set_node(j) = mesh.node_ptr(conn[j]);
+    // then reshuffle the nodes according to the connectivity, this
+    // two-time-assign would evade the definition of the vtk_mapping
+    for (unsigned int j = 0,
+                      n_conn = cast_int<unsigned int>(conn.size());
+         j != n_conn; ++j)
+      elem->set_node(j) = mesh.node_ptr(conn[j]);
 
-      elem->set_id(i);
+    elem->set_id(i);
 
-      elems_of_dimension[elem->dim()] = true;
+    elems_of_dimension[elem->dim()] = true;
 
-      mesh.add_elem(elem);
-    } // end loop over VTK cells
+    mesh.add_elem(elem);
+  } // end loop over VTK cells
 
   // Set the mesh dimension to the largest encountered for an element
-  for (unsigned char i=0; i!=4; ++i)
+  for (unsigned char i = 0; i != 4; ++i)
     if (elems_of_dimension[i])
       mesh.set_mesh_dimension(i);
 
 #if LIBMESH_DIM < 3
   if (mesh.mesh_dimension() > LIBMESH_DIM)
-    libmesh_error_msg("Cannot open dimension "  \
-                      << mesh.mesh_dimension()              \
-                      << " mesh file when configured without "  \
-                      << mesh.mesh_dimension()                  \
+    libmesh_error_msg("Cannot open dimension "
+                      << mesh.mesh_dimension()
+                      << " mesh file when configured without "
+                      << mesh.mesh_dimension()
                       << "D support.");
 #endif // LIBMESH_DIM < 3
 }
 
 
-
-void VTKIO::write_nodal_data (const std::string & fname,
-                              const std::vector<Number> & soln,
-                              const std::vector<std::string> & names)
-{
+void VTKIO::write_nodal_data(const std::string &fname,
+                             const std::vector<Number> &soln,
+                             const std::vector<std::string> &names) {
   // Warn that the .pvtu file extension should be used.  Paraview
   // recognizes this, and it works in both serial and parallel.  Only
   // warn about this once.
@@ -268,7 +258,7 @@ void VTKIO::write_nodal_data (const std::string & fname,
     libmesh_error_msg("Empty soln vector in VTKIO::write_nodal_data().");
 
   // Get a reference to the mesh
-  MeshBase & mesh = MeshInput<MeshBase>::mesh();
+  MeshBase &mesh = MeshInput<MeshBase>::mesh();
 
 
   // we only use Unstructured grids
@@ -295,38 +285,36 @@ void VTKIO::write_nodal_data (const std::string & fname,
   this->cells_to_vtk();
 
   // add nodal solutions to the grid, if solutions are given
-  if (names.size() > 0)
-    {
-      std::size_t num_vars = names.size();
-      std::vector<Number> local_values;
+  if (names.size() > 0) {
+    std::size_t num_vars = names.size();
+    std::vector<Number> local_values;
 
 #ifdef LIBMESH_USE_COMPLEX_NUMBERS
-      std::vector<Real> local_real_values;
+    std::vector<Real> local_real_values;
 #endif
 
-      for (std::size_t variable=0; variable<num_vars; ++variable)
-        {
-          get_local_node_values(local_values, variable, soln, names);
+    for (std::size_t variable = 0; variable < num_vars; ++variable) {
+      get_local_node_values(local_values, variable, soln, names);
 
 #ifdef LIBMESH_USE_COMPLEX_NUMBERS
-          // write real part
-          local_real_values.resize(local_values.size());
-          std::transform(local_values.begin(), local_values.end(),
-                         local_real_values.begin(),
-                         [](Number x) { return x.real(); });
-          node_values_to_vtk(names[variable] + "_real", local_real_values);
+      // write real part
+      local_real_values.resize(local_values.size());
+      std::transform(local_values.begin(), local_values.end(),
+                     local_real_values.begin(),
+                     [](Number x) { return x.real(); });
+      node_values_to_vtk(names[variable] + "_real", local_real_values);
 
-          // write imaginary part
-          local_real_values.resize(local_values.size());
-          std::transform(local_values.begin(), local_values.end(),
-                         local_real_values.begin(),
-                         [](Number x) { return x.imag(); });
-          node_values_to_vtk(names[variable] + "_imag", local_real_values);
+      // write imaginary part
+      local_real_values.resize(local_values.size());
+      std::transform(local_values.begin(), local_values.end(),
+                     local_real_values.begin(),
+                     [](Number x) { return x.imag(); });
+      node_values_to_vtk(names[variable] + "_imag", local_real_values);
 #else
-          node_values_to_vtk(names[variable], local_values);
+      node_values_to_vtk(names[variable], local_values);
 #endif
-        }
     }
+  }
 
   // Tell the writer how many partitions exist and on which processor
   // we are currently
@@ -349,60 +337,51 @@ void VTKIO::write_nodal_data (const std::string & fname,
   writer->SetDataModeToAscii();
 
   // compress the output, if desired (switches also to binary)
-  if (this->_compress)
-    {
-      writer->SetCompressorTypeToZLib();
-    }
+  if (this->_compress) {
+    writer->SetCompressorTypeToZLib();
+  }
 
   writer->Write();
-
 }
 
 
-
-vtkUnstructuredGrid * VTKIO::get_vtk_grid()
-{
+vtkUnstructuredGrid *VTKIO::get_vtk_grid() {
   return _vtk_grid;
 }
 
 
-
-void VTKIO::set_compression(bool b)
-{
+void VTKIO::set_compression(bool b) {
   this->_compress = b;
 }
 
 
-
-void VTKIO::nodes_to_vtk()
-{
-  const MeshBase & mesh = MeshOutput<MeshBase>::mesh();
+void VTKIO::nodes_to_vtk() {
+  const MeshBase &mesh = MeshOutput<MeshBase>::mesh();
 
   // containers for points and coordinates of points
   vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
   vtkSmartPointer<vtkDoubleArray> pcoords = vtkSmartPointer<vtkDoubleArray>::New();
   // if this grid is to be used in VTK then the dimension of the points should be 3
   pcoords->SetNumberOfComponents(LIBMESH_DIM);
-  pcoords->Allocate(3*mesh.n_local_nodes());
+  pcoords->Allocate(3 * mesh.n_local_nodes());
   points->SetNumberOfPoints(mesh.n_local_nodes()); // it seems that it needs this to prevent a segfault
 
   unsigned int local_node_counter = 0;
 
-  for (const auto & node_ptr : mesh.local_node_ptr_range())
-    {
-      const Node & node = *node_ptr;
+  for (const auto &node_ptr : mesh.local_node_ptr_range()) {
+    const Node &node = *node_ptr;
 
-      double pnt[3] = {0, 0, 0};
-      for (unsigned int i=0; i<LIBMESH_DIM; ++i)
-        pnt[i] = node(i);
+    double pnt[3] = {0, 0, 0};
+    for (unsigned int i = 0; i < LIBMESH_DIM; ++i)
+      pnt[i] = node(i);
 
-      // Fill mapping between global and local node numbers
-      _local_node_map[node.id()] = local_node_counter;
+    // Fill mapping between global and local node numbers
+    _local_node_map[node.id()] = local_node_counter;
 
-      // add point
-      pcoords->InsertNextTuple(pnt);
-      ++local_node_counter;
-    }
+    // add point
+    pcoords->InsertNextTuple(pnt);
+    ++local_node_counter;
+  }
 
   // add coordinates to points
   points->SetData(pcoords);
@@ -412,10 +391,8 @@ void VTKIO::nodes_to_vtk()
 }
 
 
-
-void VTKIO::cells_to_vtk()
-{
-  const MeshBase & mesh = MeshOutput<MeshBase>::mesh();
+void VTKIO::cells_to_vtk() {
+  const MeshBase &mesh = MeshOutput<MeshBase>::mesh();
 
   vtkSmartPointer<vtkCellArray> cells = vtkSmartPointer<vtkCellArray>::New();
   vtkSmartPointer<vtkIdList> pts = vtkSmartPointer<vtkIdList>::New();
@@ -435,53 +412,50 @@ void VTKIO::cells_to_vtk()
   elem_proc_id->SetNumberOfComponents(1);
 
   unsigned active_element_counter = 0;
-  for (const auto & elem : mesh.active_local_element_ptr_range())
-    {
-      pts->SetNumberOfIds(elem->n_nodes());
+  for (const auto &elem : mesh.active_local_element_ptr_range()) {
+    pts->SetNumberOfIds(elem->n_nodes());
 
-      // get the connectivity for this element
-      std::vector<dof_id_type> conn;
-      elem->connectivity(0, VTK, conn);
+    // get the connectivity for this element
+    std::vector<dof_id_type> conn;
+    elem->connectivity(0, VTK, conn);
 
-      for (unsigned int i=0,
-           n_conn = cast_int<unsigned int>(conn.size());
-           i != n_conn; ++i)
-        {
-          // If the node ID is not found in the _local_node_map, we'll
-          // add it to the _vtk_grid.  NOTE[JWP]: none of the examples
-          // I have actually enters this section of code...
-          if (_local_node_map.find(conn[i]) == _local_node_map.end())
-            {
-              dof_id_type global_node_id = elem->node_id(i);
+    for (unsigned int i = 0,
+                      n_conn = cast_int<unsigned int>(conn.size());
+         i != n_conn; ++i) {
+      // If the node ID is not found in the _local_node_map, we'll
+      // add it to the _vtk_grid.  NOTE[JWP]: none of the examples
+      // I have actually enters this section of code...
+      if (_local_node_map.find(conn[i]) == _local_node_map.end()) {
+        dof_id_type global_node_id = elem->node_id(i);
 
-              const Point & the_node = mesh.point(global_node_id);
+        const Point &the_node = mesh.point(global_node_id);
 
-              // InsertNextPoint accepts either a double or float array of length 3.
-              double pt[3] = {0., 0., 0.};
-              for (unsigned int d=0; d<LIBMESH_DIM; ++d)
-                pt[d] = the_node(d);
+        // InsertNextPoint accepts either a double or float array of length 3.
+        double pt[3] = {0., 0., 0.};
+        for (unsigned int d = 0; d < LIBMESH_DIM; ++d)
+          pt[d] = the_node(d);
 
-              // Insert the point into the _vtk_grid
-              vtkIdType local = _vtk_grid->GetPoints()->InsertNextPoint(pt);
+        // Insert the point into the _vtk_grid
+        vtkIdType local = _vtk_grid->GetPoints()->InsertNextPoint(pt);
 
-              // Update the _local_node_map with the ID returned by VTK
-              _local_node_map[global_node_id] =
-                cast_int<dof_id_type>(local);
-            }
+        // Update the _local_node_map with the ID returned by VTK
+        _local_node_map[global_node_id] =
+          cast_int<dof_id_type>(local);
+      }
 
-          // Otherwise, the node ID was found in the _local_node_map, so
-          // insert it into the vtkIdList.
-          pts->InsertId(i, _local_node_map[conn[i]]);
-        }
+      // Otherwise, the node ID was found in the _local_node_map, so
+      // insert it into the vtkIdList.
+      pts->InsertId(i, _local_node_map[conn[i]]);
+    }
 
-      vtkIdType vtkcellid = cells->InsertNextCell(pts);
-      types[active_element_counter] = cast_int<int>(_element_maps.find(elem->type()));
+    vtkIdType vtkcellid = cells->InsertNextCell(pts);
+    types[active_element_counter] = cast_int<int>(_element_maps.find(elem->type()));
 
-      elem_id->InsertTuple1(vtkcellid, elem->id());
-      subdomain_id->InsertTuple1(vtkcellid, elem->subdomain_id());
-      elem_proc_id->InsertTuple1(vtkcellid, elem->processor_id());
-      ++active_element_counter;
-    } // end loop over active elements
+    elem_id->InsertTuple1(vtkcellid, elem->id());
+    subdomain_id->InsertTuple1(vtkcellid, elem->subdomain_id());
+    elem_proc_id->InsertTuple1(vtkcellid, elem->processor_id());
+    ++active_element_counter;
+  } // end loop over active elements
 
   _vtk_grid->SetCells(types.data(), cells);
   _vtk_grid->GetCellData()->AddArray(elem_id);
@@ -489,9 +463,8 @@ void VTKIO::cells_to_vtk()
   _vtk_grid->GetCellData()->AddArray(elem_proc_id);
 }
 
-void VTKIO::node_values_to_vtk(const std::string & name,
-                               const std::vector<Real> & local_values)
-{
+void VTKIO::node_values_to_vtk(const std::string &name,
+                               const std::vector<Real> &local_values) {
   vtkSmartPointer<vtkDoubleArray> data = vtkSmartPointer<vtkDoubleArray>::New();
   data->SetName(name.c_str());
 
@@ -501,19 +474,18 @@ void VTKIO::node_values_to_vtk(const std::string & name,
   data->SetNumberOfValues(_local_node_map.size());
 
   // copy values into vtk
-  for (size_t i=0; i<local_values.size(); ++i) {
+  for (size_t i = 0; i < local_values.size(); ++i) {
     data->SetValue(i, local_values[i]);
   }
 
   _vtk_grid->GetPointData()->AddArray(data);
 }
 
-void VTKIO::get_local_node_values(std::vector<Number> & local_values,
+void VTKIO::get_local_node_values(std::vector<Number> &local_values,
                                   std::size_t variable,
-                                  const std::vector<Number> & soln,
-                                  const std::vector<std::string> & names)
-{
-  const MeshBase & mesh = MeshOutput<MeshBase>::mesh();
+                                  const std::vector<Number> &soln,
+                                  const std::vector<std::string> &names) {
+  const MeshBase &mesh = MeshOutput<MeshBase>::mesh();
   std::size_t num_vars = names.size();
   dof_id_type num_nodes = mesh.n_nodes();
 
@@ -522,16 +494,14 @@ void VTKIO::get_local_node_values(std::vector<Number> & local_values,
 
   // loop over all nodes and get the solution for the current
   // variable, if the node is in the current partition
-  for (dof_id_type k=0; k<num_nodes; ++k)
-    {
-      std::map<dof_id_type, dof_id_type>::iterator local_node_it = _local_node_map.find(k);
-      if (local_node_it == _local_node_map.end())
-        continue; // not a local node
+  for (dof_id_type k = 0; k < num_nodes; ++k) {
+    std::map<dof_id_type, dof_id_type>::iterator local_node_it = _local_node_map.find(k);
+    if (local_node_it == _local_node_map.end())
+      continue; // not a local node
 
-      local_values[local_node_it->second] = soln[k*num_vars + variable];
-    }
+    local_values[local_node_it->second] = soln[k * num_vars + variable];
+  }
 }
-
 
 
 /**
@@ -591,7 +561,6 @@ void VTKIO::get_local_node_values(std::vector<Number> & local_values,
 // }
 
 
-
 //#else // !LIBMESH_HAVE_VTK
 
 /*
@@ -616,7 +585,6 @@ void VTKIO::write_nodal_data (const std::string & fname,
 #endif // LIBMESH_HAVE_VTK
 
 */
-
 
 
 } // namespace rw

@@ -21,7 +21,7 @@ std::pair<Point, Point> bounding_box(const std::vector<Point> &nodes) {
 
   for (const auto &x : nodes) {
 
-    for (unsigned int i=0;i<3; i++) {
+    for (unsigned int i = 0; i < 3; i++) {
       if (x(i) < box.first(i))
         box.first(i) = x(i);
 
@@ -32,7 +32,7 @@ std::pair<Point, Point> bounding_box(const std::vector<Point> &nodes) {
 
   return box;
 }
-}
+} // namespace
 
 void test::geom::rotation(int argc, char **argv, Parallel::Communicator *comm) {
 
@@ -123,7 +123,7 @@ void test::geom::cylinder(int argc, char **argv, Parallel::Communicator *comm, P
 
   // render cross-section at fixed intervals
   unsigned int N = 10;
-  for (unsigned int j=0; j<=N; j++) {
+  for (unsigned int j = 0; j <= N; j++) {
 
     // parametric coordinate
     double s = double(j) * L / (double(N));
@@ -135,8 +135,8 @@ void test::geom::cylinder(int argc, char **argv, Parallel::Communicator *comm, P
 
     // get basis vector for plane parallel to cross-section and passing
     // through origin
-    Point e1 = xs - (xs*a) * a;
-    e1 = e1/e1.norm();
+    Point e1 = xs - (xs * a) * a;
+    e1 = e1 / e1.norm();
 
     // rotate R*e1 from 0 to 2 pi to generate disk in plane passing through
     // origin
@@ -145,7 +145,7 @@ void test::geom::cylinder(int argc, char **argv, Parallel::Communicator *comm, P
     for (unsigned int i = 0; i < Nr; i++) {
       double theta = i * 2. * M_PI / Nr;
 
-      auto x = xs + util::rotate(R*e1, theta, a);
+      auto x = xs + util::rotate(R * e1, theta, a);
       file << x(0) << ", " << x(1) << ", " << x(2) << ", "
            << 10. * double(j + 1) << ", " << theta << std::endl;
     }
@@ -155,7 +155,7 @@ void test::geom::cylinder(int argc, char **argv, Parallel::Communicator *comm, P
 }
 
 void test::geom::point_in_cylinder(int argc, char **argv, Parallel::Communicator *comm, Point x0,
-                          Point a, double R, double L) {
+                                   Point a, double R, double L) {
 
   if (comm->rank() == 0) {
     printf("********** TestGeom: Point In Cylinder **************\n");
@@ -173,13 +173,13 @@ void test::geom::point_in_cylinder(int argc, char **argv, Parallel::Communicator
   a = a / a.norm();
   // get basis vector for plane parallel to cross-section and passing
   // through origin
-  Point e1 = x0 - (x0*a) * a;
-  e1 = e1/e1.norm();
+  Point e1 = x0 - (x0 * a) * a;
+  e1 = e1 / e1.norm();
 
   // get random point between (0,L) and (0,R) and check if random point lies
   // in cylinder
   unsigned int N = 100;
-  for (unsigned int j=0; j<=N; j++) {
+  for (unsigned int j = 0; j <= N; j++) {
 
     // get random r
     double r = get_random_number() * 2. * R;
@@ -200,8 +200,7 @@ void test::geom::point_in_cylinder(int argc, char **argv, Parallel::Communicator
   file.close();
 }
 
-void test::geom::angle_test(int argc, char **argv, Parallel::Communicator
-*comm) {
+void test::geom::angle_test(int argc, char **argv, Parallel::Communicator *comm) {
 
   if (comm->rank() == 0) {
     printf("********** TestGeom: Angle Test **************\n");
@@ -251,7 +250,7 @@ void test::geom::angle_test(int argc, char **argv, Parallel::Communicator
     }
 
     // find angle without orientation
-    for (auto p: test_points_1) {
+    for (auto p : test_points_1) {
 
       Point x = p.first;
       double theta_find = util::angle(x0, x);
@@ -262,7 +261,7 @@ void test::geom::angle_test(int argc, char **argv, Parallel::Communicator
     }
 
     // find angle with axis of rotation
-    for (auto p: test_points_1) {
+    for (auto p : test_points_1) {
 
       Point x = p.first;
       double theta_find = util::angle(x0, x, ax);
@@ -273,7 +272,7 @@ void test::geom::angle_test(int argc, char **argv, Parallel::Communicator
     }
 
     // find angle with orientation
-    for (auto p: test_points_1) {
+    for (auto p : test_points_1) {
 
       Point x = p.first;
       double theta_find = util::angle(x0, x, Point(0., 0., 1.), false);
@@ -354,7 +353,7 @@ void test::geom::cube_to_ball(int argc, char **argv, unsigned int dim, double a,
 }
 
 void test::geom::cylinder_intersection_mesh(int argc, char **argv, Parallel::Communicator *comm, Point x0,
-                          Point a, double R, double L) {
+                                            Point a, double R, double L) {
 
   if (comm->rank() == 0) {
     printf("********** TestGeom: Cylinder intersecting Mesh **************\n");
@@ -380,7 +379,7 @@ void test::geom::cylinder_intersection_mesh(int argc, char **argv, Parallel::Com
   std::vector<unsigned int> cyl_elems;
 
   unsigned int N = 10; // 10 elements along length
-  for (unsigned int j=0; j<N; j++) {
+  for (unsigned int j = 0; j < N; j++) {
 
     // parametric coordinate
     double s = (double(j) + 0.5) * L / (double(N));
@@ -390,8 +389,8 @@ void test::geom::cylinder_intersection_mesh(int argc, char **argv, Parallel::Com
 
     // get basis vector for plane parallel to cross-section and passing
     // through origin
-    Point e1 = xs - (xs*a) * a;
-    e1 = e1/e1.norm();
+    Point e1 = xs - (xs * a) * a;
+    e1 = e1 / e1.norm();
 
     // now discretize the theta direction
     // rotate R*e1 from 0 to 2 pi to generate disk in plane passing through
@@ -401,7 +400,7 @@ void test::geom::cylinder_intersection_mesh(int argc, char **argv, Parallel::Com
 
       double theta = (double(i) + 0.5) * 2. * M_PI / Nr;
 
-      auto x = xs + util::rotate(R*e1, theta, a);
+      auto x = xs + util::rotate(R * e1, theta, a);
 
       // compute weight of the point x
       double w = (L / double(N)) * 2. * M_PI / Nr * R;
@@ -414,15 +413,15 @@ void test::geom::cylinder_intersection_mesh(int argc, char **argv, Parallel::Com
 
   // find the bounding box
   auto box = bounding_box(cyl_points);
-  box.first -= Point(L/5, L/5, L/5);
-  box.second += Point(L/5, L/5, L/5);
+  box.first -= Point(L / 5, L / 5, L / 5);
+  box.second += Point(L / 5, L / 5, L / 5);
 
   // create mesh
   MeshTools::Generation::build_cube(mesh, 10, 10, 10,
-      box.first(0), box.second(0),
-      box.first(1), box.second(1),
-      box.first(2), box.second(2),
-      HEX8);
+                                    box.first(0), box.second(0),
+                                    box.first(1), box.second(1),
+                                    box.first(2), box.second(2),
+                                    HEX8);
 
   // get point locator
   const auto &mesh_locator = mesh.point_locator();
@@ -436,16 +435,16 @@ void test::geom::cylinder_intersection_mesh(int argc, char **argv, Parallel::Com
   }
 
   // write the data to file
-  for (unsigned int i=0; i<cyl_points.size(); i++)
+  for (unsigned int i = 0; i < cyl_points.size(); i++)
     file << cyl_points[i](0) << ", " << cyl_points[i](1)
-        << ", " << cyl_points[i](2)<< ", " << cyl_weights[i]
-        << ", " << cyl_elems[i] << "\n";
+         << ", " << cyl_points[i](2) << ", " << cyl_weights[i]
+         << ", " << cyl_elems[i] << "\n";
 
   file.close();
 
   // compute sum of weights and see if it is equal to area of cylinder
   double sum = 0.;
-  for (auto w: cyl_weights)
+  for (auto w : cyl_weights)
     sum += w;
   out << "Sum of weights = " << sum
       << ", surface area of cylinder = " << 2. * M_PI * R * L << "\n";

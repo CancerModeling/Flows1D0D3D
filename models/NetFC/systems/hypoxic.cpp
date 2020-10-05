@@ -9,7 +9,7 @@
 #include "systems.hpp"
 
 Number netfc::initial_condition_hyp_kernel(const Point &p,
-    const netfc::InputDeck *deck) {
+                                           const netfc::InputDeck *deck) {
 
   const unsigned int dim = deck->d_dim;
   const unsigned int num_ic = deck->d_tum_ic_data.size();
@@ -22,7 +22,7 @@ Number netfc::initial_condition_hyp_kernel(const Point &p,
 
     const std::string type = data.d_ic_type;
     const Point xc =
-        Point(data.d_ic_center[0], data.d_ic_center[1], data.d_ic_center[2]);
+      Point(data.d_ic_center[0], data.d_ic_center[1], data.d_ic_center[2]);
     const Point dx = p - xc;
 
     if (type == "tumor_hypoxic_spherical") {
@@ -30,15 +30,15 @@ Number netfc::initial_condition_hyp_kernel(const Point &p,
       if (dx.norm() < data.d_tum_ic_radius[0] - 1.0E-12) {
 
         return 1. - util::exp_decay_function(
-            dx.norm() / data.d_tum_ic_radius[0], 4.);
+                      dx.norm() / data.d_tum_ic_radius[0], 4.);
 
       } else if (dx.norm() > data.d_tum_ic_radius[0] - 1.0E-12 and
                  dx.norm() < data.d_hyp_ic_radius[0] - 1.0E-12) {
 
         return util::exp_decay_function(
-            (dx.norm() - data.d_tum_ic_radius[0]) /
+          (dx.norm() - data.d_tum_ic_radius[0]) /
             (data.d_hyp_ic_radius[0] - data.d_tum_ic_radius[0]),
-            4.);
+          4.);
       }
     } else if (type == "tumor_hypoxic_elliptical") {
 
@@ -63,13 +63,13 @@ Number netfc::initial_condition_hyp_kernel(const Point &p,
       if (p_small_ball.norm() < small_ball_r - 1.0E-12) {
 
         return 1. - util::exp_decay_function(
-            p_small_ball.norm() / small_ball_r, 4.);
+                      p_small_ball.norm() / small_ball_r, 4.);
 
       } else if (p_small_ball.norm() > small_ball_r - 1.0E-12 and
                  p_small_ball.norm() < large_ball_r - 1.0E-12) {
 
         return util::exp_decay_function((p_small_ball.norm() - small_ball_r) /
-                                        (large_ball_r - small_ball_r),
+                                          (large_ball_r - small_ball_r),
                                         4.);
       }
     }
@@ -79,8 +79,8 @@ Number netfc::initial_condition_hyp_kernel(const Point &p,
 }
 
 Number netfc::initial_condition_hyp(const Point &p, const Parameters &es,
-                                     const std::string &system_name,
-                                     const std::string &var_name) {
+                                    const std::string &system_name,
+                                    const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Hypoxic");
 
@@ -199,21 +199,21 @@ void netfc::HypAssembly::assemble_1() {
       }
 
       Number mobility =
-          deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
+        deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
 
       Number compute_rhs =
-          JxW[qp] * (hyp_old + dt * deck->d_lambda_PH *
-                                   util::heaviside(deck->d_sigma_PH - nut_cur) *
-                                   (tum_cur - nec_cur));
+        JxW[qp] * (hyp_old + dt * deck->d_lambda_PH *
+                               util::heaviside(deck->d_sigma_PH - nut_cur) *
+                               (tum_cur - nec_cur));
 
       Number compute_mat =
-          JxW[qp] * (1. + dt * deck->d_lambda_A +
-                     dt * deck->d_lambda_HP *
-                         util::heaviside(nut_cur - deck->d_sigma_HP) +
-                     dt * deck->d_lambda_PH *
-                         util::heaviside(deck->d_sigma_PH - nut_cur) +
-                     dt * deck->d_lambda_HN *
-                         util::heaviside(deck->d_sigma_HN - nut_cur));
+        JxW[qp] * (1. + dt * deck->d_lambda_A +
+                   dt * deck->d_lambda_HP *
+                     util::heaviside(nut_cur - deck->d_sigma_HP) +
+                   dt * deck->d_lambda_PH *
+                     util::heaviside(deck->d_sigma_PH - nut_cur) +
+                   dt * deck->d_lambda_HN *
+                     util::heaviside(deck->d_sigma_HN - nut_cur));
 
       // Assembling matrix
       for (unsigned int i = 0; i < phi.size(); i++) {
@@ -331,26 +331,26 @@ void netfc::HypAssembly::assemble_2() {
       }
 
       Number mobility =
-          deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
+        deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
 
       // get projected values of species
       Number tum_proj = util::project_concentration(tum_cur);
       Number nec_proj = util::project_concentration(nec_cur);
 
       Number compute_rhs =
-          JxW[qp] *
-          (hyp_old + dt * deck->d_lambda_PH *
-                         util::heaviside(deck->d_sigma_PH - nut_proj) *
-                         (tum_proj - nec_proj));
+        JxW[qp] *
+        (hyp_old + dt * deck->d_lambda_PH *
+                     util::heaviside(deck->d_sigma_PH - nut_proj) *
+                     (tum_proj - nec_proj));
 
       Number compute_mat =
-          JxW[qp] * (1. + dt * deck->d_lambda_A +
-                     dt * deck->d_lambda_HP *
-                         util::heaviside(nut_proj - deck->d_sigma_HP) +
-                     dt * deck->d_lambda_PH *
-                         util::heaviside(deck->d_sigma_PH - nut_proj) +
-                     dt * deck->d_lambda_HN *
-                         util::heaviside(deck->d_sigma_HN - nut_proj));
+        JxW[qp] * (1. + dt * deck->d_lambda_A +
+                   dt * deck->d_lambda_HP *
+                     util::heaviside(nut_proj - deck->d_sigma_HP) +
+                   dt * deck->d_lambda_PH *
+                     util::heaviside(deck->d_sigma_PH - nut_proj) +
+                   dt * deck->d_lambda_HN *
+                     util::heaviside(deck->d_sigma_HN - nut_proj));
 
       // Assembling matrix
       for (unsigned int i = 0; i < phi.size(); i++) {
@@ -468,7 +468,7 @@ void netfc::HypAssembly::assemble_3() {
       }
 
       Number mobility =
-          deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
+        deck->d_bar_M_H * pow(hyp_cur, 2) * pow(1. - hyp_cur, 2);
 
       // get projected values of species
       Number tum_proj = util::project_concentration(tum_cur);
@@ -476,16 +476,16 @@ void netfc::HypAssembly::assemble_3() {
       Number hyp_proj = util::project_concentration(hyp_cur);
 
       Number compute_rhs =
-          JxW[qp] *
-          (hyp_old +
-           dt * deck->d_lambda_PH *
-               util::heaviside(deck->d_sigma_PH - nut_proj) *
-               (tum_proj - hyp_proj - nec_proj) -
-           dt * deck->d_lambda_A * hyp_proj -
-           dt * deck->d_lambda_HP *
-               util::heaviside(nut_proj - deck->d_sigma_HP) * hyp_proj -
-           dt * deck->d_lambda_HN *
-               util::heaviside(deck->d_sigma_HN - nut_proj) * hyp_proj);
+        JxW[qp] *
+        (hyp_old +
+         dt * deck->d_lambda_PH *
+           util::heaviside(deck->d_sigma_PH - nut_proj) *
+           (tum_proj - hyp_proj - nec_proj) -
+         dt * deck->d_lambda_A * hyp_proj -
+         dt * deck->d_lambda_HP *
+           util::heaviside(nut_proj - deck->d_sigma_HP) * hyp_proj -
+         dt * deck->d_lambda_HN *
+           util::heaviside(deck->d_sigma_HN - nut_proj) * hyp_proj);
 
       Number compute_mat = JxW[qp];
 

@@ -55,7 +55,7 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
 
 // Model class
 netfc::Model::Model(int argc, char **argv, std::vector<double> &QOI_MASS,
-                     const std::string &filename, Parallel::Communicator *comm)
+                    const std::string &filename, Parallel::Communicator *comm)
     : d_step(0), d_time(0.), d_dt(0.), d_hmin(0.), d_hmax(0.),
       d_bounding_box(Point(), Point()), d_comm_p(comm),
       d_mesh(ReplicatedMesh(*d_comm_p)), d_tum_sys(d_mesh), d_network(this),
@@ -77,11 +77,11 @@ netfc::Model::Model(int argc, char **argv, std::vector<double> &QOI_MASS,
   // d_input.print();
   // bounding box
   d_bounding_box.first =
-      Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
-            d_input.d_domain_params[4]);
+    Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
+          d_input.d_domain_params[4]);
   d_bounding_box.second =
-      Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
-            d_input.d_domain_params[5]);
+    Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
+          d_input.d_domain_params[5]);
 
   //
   // 2d/3d tumor growth model
@@ -116,7 +116,7 @@ netfc::Model::Model(int argc, char **argv, std::vector<double> &QOI_MASS,
   d_time = d_input.d_init_time;
   d_dt = d_input.d_dt;
 
-  do{
+  do {
 
     // Prepare time step
     d_step++;
@@ -127,21 +127,19 @@ netfc::Model::Model(int argc, char **argv, std::vector<double> &QOI_MASS,
     out << "Solving time step: " << d_step << ", time: " << d_time << std::endl;
     out << "-----------------------------------------------------" << std::endl;
 
-    d_network.solve3D1DFlowProblem( d_step, d_time );
-    d_network.solve3D1DNutrientProblem( d_step, d_time );
-   // d_network.solve3DProlificCellProblem( d_step, d_time );
-    d_network.solve3DTAFProblem( d_step, d_time );
+    d_network.solve3D1DFlowProblem(d_step, d_time);
+    d_network.solve3D1DNutrientProblem(d_step, d_time);
+    // d_network.solve3DProlificCellProblem( d_step, d_time );
+    d_network.solve3DTAFProblem(d_step, d_time);
 
-    if( d_step%2 ){
+    if (d_step % 2) {
 
-        d_network.updateNetwork();
-
+      d_network.updateNetwork();
     }
 
     //d_network.printDataVGM();
 
-  }while (d_step < d_input.d_steps);
-
+  } while (d_step < d_input.d_steps);
 }
 
 void netfc::Model::create_mesh() {
@@ -188,9 +186,9 @@ void netfc::Model::create_mesh() {
 
     // check if length of element in x and y direction are same
     if (std::abs(d_input.d_mesh_size_vec[0] - d_input.d_mesh_size_vec[1]) >
-        0.001 * d_input.d_mesh_size_vec[0] or
+          0.001 * d_input.d_mesh_size_vec[0] or
         std::abs(d_input.d_mesh_size_vec[0] - d_input.d_mesh_size_vec[2]) >
-        0.001 * d_input.d_mesh_size_vec[0]) {
+          0.001 * d_input.d_mesh_size_vec[0]) {
       libmesh_error_msg("Size of element needs to be same in all three "
                         "direction, ie. element needs to be square\n"
                         "If domain is cuboid than specify number of "
@@ -233,7 +231,7 @@ void netfc::Model::setup_system() {
   auto &mde = d_tum_sys.add_system<TransientLinearImplicitSystem>("MDE");
   auto &pres = d_tum_sys.add_system<TransientLinearImplicitSystem>("Pressure");
   auto &grad_taf =
-      d_tum_sys.add_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    d_tum_sys.add_system<TransientLinearImplicitSystem>("TAF_Gradient");
   auto &vel = d_tum_sys.add_system<TransientLinearImplicitSystem>("Velocity");
 
   if (d_input.d_restart) {
@@ -342,19 +340,18 @@ void netfc::Model::setup_system() {
   // set Petsc matrix option to suppress the error
   {
     PetscMatrix<Number> *pet_mat =
-        dynamic_cast<PetscMatrix<Number> *>(pres.matrix);
+      dynamic_cast<PetscMatrix<Number> *>(pres.matrix);
     MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
   }
   {
     PetscMatrix<Number> *pet_mat =
-        dynamic_cast<PetscMatrix<Number> *>(nut.matrix);
+      dynamic_cast<PetscMatrix<Number> *>(nut.matrix);
     MatSetOption(pet_mat->mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
   }
-
 }
 
 void netfc::Model::write_system(const unsigned int &t_step,
-                                 std::vector<double> *QOI_MASS) {
+                                std::vector<double> *QOI_MASS) {
 
   ExodusII_IO exodus(d_mesh);
 
@@ -372,7 +369,7 @@ void netfc::Model::write_system(const unsigned int &t_step,
     // Looping through elements
     MeshBase::const_element_iterator el = d_mesh.active_local_elements_begin();
     const MeshBase::const_element_iterator end_el =
-        d_mesh.active_local_elements_end();
+      d_mesh.active_local_elements_end();
 
     for (; el != end_el; ++el) {
 
@@ -416,14 +413,15 @@ void netfc::Model::write_system(const unsigned int &t_step,
   out_file << std::scientific << d_time << " " << total_mass << std::endl;
 
   // write mesh and simulation results
-  std::string filename = "sim_" +std::to_string(t_step) + ".e";
+  std::string filename = "sim_" + std::to_string(t_step) + ".e";
 
   // write to exodus
   // exodus.write_timestep(filename, d_tum_sys, 1, d_time);
 
   //
   rw::VTKIO(d_mesh).write_equation_systems("sim_" + std::to_string(t_step) +
-                                       ".pvtu",  d_tum_sys);
+                                             ".pvtu",
+                                           d_tum_sys);
 
   // save for restart
   if (d_input.d_restart_save &&
@@ -451,7 +449,7 @@ void netfc::Model::write_system(const unsigned int &t_step,
 }
 
 void netfc::Model::project_solution_to_physical_range(
-    const MeshBase &mesh, TransientLinearImplicitSystem &sys) {
+  const MeshBase &mesh, TransientLinearImplicitSystem &sys) {
 
   if (!d_input.d_project_solution_to_physical_range)
     return;
@@ -495,7 +493,7 @@ void netfc::Model::solve_system() {
   auto &mde = d_tum_sys.get_system<TransientLinearImplicitSystem>("MDE");
   auto &pres = d_tum_sys.get_system<TransientLinearImplicitSystem>("Pressure");
   auto &grad_taf =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
   auto &vel = d_tum_sys.get_system<TransientLinearImplicitSystem>("Velocity");
 
   // update time
@@ -525,11 +523,11 @@ void netfc::Model::solve_system() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+    tum.solution->clone());
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -537,47 +535,57 @@ void netfc::Model::solve_system() {
     d_tum_sys.parameters.set<unsigned int>("nonlinear_step") = l;
 
     // solver for 1-D pressure and nutrient
-    out << std::endl << "Solving Network system" << std::endl;
+    out << std::endl
+        << "Solving Network system" << std::endl;
     //d_network.solve_system();
 
     // solve for pressure in tissue
-    out << std::endl << "Solving tissue pressure system" << std::endl;
+    out << std::endl
+        << "Solving tissue pressure system" << std::endl;
     pres.solve();
 
     // solve for velocity in tissue
-    out << std::endl << "Solving tissue velocity system" << std::endl;
+    out << std::endl
+        << "Solving tissue velocity system" << std::endl;
     vel.solve();
 
     // solve nutrient<
-    out << std::endl << "Solving nutrient system" << std::endl;
+    out << std::endl
+        << "Solving nutrient system" << std::endl;
     nut.solve();
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << std::endl << "Solving tumor system" << std::endl;
+    out << std::endl
+        << "Solving tumor system" << std::endl;
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << std::endl << "Solving hypoxic system" << std::endl;
+    out << std::endl
+        << "Solving hypoxic system" << std::endl;
     hyp.solve();
 
     // solve necrotic
-    out << std::endl << "Solving necrotic system" << std::endl;
+    out << std::endl
+        << "Solving necrotic system" << std::endl;
     nec.solve();
 
     // solve taf
-    out << std::endl << "Solving TAF system" << std::endl;
+    out << std::endl
+        << "Solving TAF system" << std::endl;
     taf.solve();
 
     // solve mde
-    out << std::endl << "Solving MDE system" << std::endl;
+    out << std::endl
+        << "Solving MDE system" << std::endl;
     mde.solve();
 
     // solve ecm
-    out << std::endl << "Solving ECM system" << std::endl;
+    out << std::endl
+        << "Solving ECM system" << std::endl;
     ecm.solve();
 
     // Nonlinear iteration error
@@ -606,7 +614,8 @@ void netfc::Model::solve_system() {
   } // nonlinear solver loop
 
   // solve for gradient of taf
-  out << std::endl << "Solving gradient of TAF system" << std::endl;
+  out << std::endl
+      << "Solving gradient of TAF system" << std::endl;
   grad_taf.solve();
 }
 
@@ -624,11 +633,11 @@ void netfc::Model::test_nutrient() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_nut(
-      nut.solution->clone());
+    nut.solution->clone());
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // Nutrient coupling
   out << "Nonlinear loop for coupled nutrient systems\n";
@@ -640,13 +649,15 @@ void netfc::Model::test_nutrient() {
     d_tum_sys.parameters.set<unsigned int>("nonlinear_step") = l;
 
     // solver for 1-D nutrient
-    out << std::endl << "Solving network nutrient system" << std::endl;
+    out << std::endl
+        << "Solving network nutrient system" << std::endl;
     //d_network.solveVGMforNutrient();
 
     // solve for nutrient in tissue
     last_nonlinear_soln_nut->zero();
     last_nonlinear_soln_nut->add(*nut.solution);
-    out << std::endl << "Solving tissue nutrient system" << std::endl;
+    out << std::endl
+        << "Solving tissue nutrient system" << std::endl;
     nut.solve();
     last_nonlinear_soln_nut->add(-1., *nut.solution);
     last_nonlinear_soln_nut->close();
@@ -679,22 +690,21 @@ void netfc::Model::test_nutrient() {
   } // nonlinear solver loop
 }
 
-void netfc::Model::solve_nutrient_3D(){
+void netfc::Model::solve_nutrient_3D() {
 
-     out << " " << std::endl;
-     out << "Solve 3D nutrient equation" << std::endl;
-     
-     // get systems
-     auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
+  out << " " << std::endl;
+  out << "Solve 3D nutrient equation" << std::endl;
 
-     // update time
-     nut.time = d_time;
-     d_tum_sys.parameters.set<Real>("time") = d_time;
+  // get systems
+  auto &nut = d_tum_sys.get_system<TransientLinearImplicitSystem>("Nutrient");
 
-     // update old solution
-     *nut.old_local_solution = *nut.current_local_solution;
-     nut.solve();
+  // update time
+  nut.time = d_time;
+  d_tum_sys.parameters.set<Real>("time") = d_time;
 
+  // update old solution
+  *nut.old_local_solution = *nut.current_local_solution;
+  nut.solve();
 }
 
 void netfc::Model::test_nutrient_2() {
@@ -710,21 +720,23 @@ void netfc::Model::test_nutrient_2() {
   *nut.old_local_solution = *nut.current_local_solution;
 
   // solver for 1-D nutrient
-  out << std::endl << "Solving network nutrient system" << std::endl;
+  out << std::endl
+      << "Solving network nutrient system" << std::endl;
   //d_network.solveVGMforNutrient();
 
-  out << std::endl << "Solving tissue nutrient system" << std::endl;
+  out << std::endl
+      << "Solving tissue nutrient system" << std::endl;
   nut.solve();
 
   return;
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_nut(
-      nut.solution->clone());
+    nut.solution->clone());
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // Nutrient coupling
   out << "Nonlinear loop for 3d nutrient systems\n";
@@ -736,13 +748,15 @@ void netfc::Model::test_nutrient_2() {
     d_tum_sys.parameters.set<unsigned int>("nonlinear_step") = l;
 
     // solver for 1-D nutrient
-    out << std::endl << "Solving network nutrient system" << std::endl;
+    out << std::endl
+        << "Solving network nutrient system" << std::endl;
     //d_network.solveVGMforNutrient();
 
     // solve for nutrient in tissue
     last_nonlinear_soln_nut->zero();
     last_nonlinear_soln_nut->add(*nut.solution);
-    out << std::endl << "Solving tissue nutrient system" << std::endl;
+    out << std::endl
+        << "Solving tissue nutrient system" << std::endl;
     nut.solve();
     last_nonlinear_soln_nut->add(-1., *nut.solution);
     last_nonlinear_soln_nut->close();
@@ -786,7 +800,7 @@ void netfc::Model::test_taf() {
   auto &ecm = d_tum_sys.get_system<TransientLinearImplicitSystem>("ECM");
   auto &mde = d_tum_sys.get_system<TransientLinearImplicitSystem>("MDE");
   auto &grad_taf =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
 
   // update time
   nut.time = d_time;
@@ -811,11 +825,11 @@ void netfc::Model::test_taf() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_tum(
-      tum.solution->clone());
+    tum.solution->clone());
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -823,38 +837,46 @@ void netfc::Model::test_taf() {
     d_tum_sys.parameters.set<unsigned int>("nonlinear_step") = l;
     out << "Nonlinear step: " << l << "\n";
 
-    out << std::endl << "Solving network nutrient system" << std::endl;
+    out << std::endl
+        << "Solving network nutrient system" << std::endl;
     //d_network.solveVGMforNutrient();
 
-    out << std::endl << "Solving tissue nutrient system" << std::endl;
+    out << std::endl
+        << "Solving tissue nutrient system" << std::endl;
     nut.solve();
 
     // solve tumor
     last_nonlinear_soln_tum->zero();
     last_nonlinear_soln_tum->add(*tum.solution);
-    out << std::endl << "Solving tumor system" << std::endl;
+    out << std::endl
+        << "Solving tumor system" << std::endl;
     tum.solve();
     last_nonlinear_soln_tum->add(-1., *tum.solution);
     last_nonlinear_soln_tum->close();
 
     // solve hypoxic
-    out << std::endl << "Solving hypoxic system" << std::endl;
+    out << std::endl
+        << "Solving hypoxic system" << std::endl;
     hyp.solve();
 
     // solve necrotic
-    out << std::endl << "Solving necrotic system" << std::endl;
+    out << std::endl
+        << "Solving necrotic system" << std::endl;
     nec.solve();
 
     // solve taf
-    out << std::endl << "Solving TAF system" << std::endl;
+    out << std::endl
+        << "Solving TAF system" << std::endl;
     taf.solve();
 
     // solve mde
-    out << std::endl << "Solving MDE system" << std::endl;
+    out << std::endl
+        << "Solving MDE system" << std::endl;
     // mde.solve();
 
     // solve ecm
-    out << std::endl << "Solving ECM system" << std::endl;
+    out << std::endl
+        << "Solving ECM system" << std::endl;
     // ecm.solve();
 
     // Nonlinear iteration error
@@ -883,7 +905,8 @@ void netfc::Model::test_taf() {
   } // nonlinear solver loop
 
   // solve for gradient of taf
-  out << std::endl << "Solving gradient of TAF system" << std::endl;
+  out << std::endl
+      << "Solving gradient of TAF system" << std::endl;
   grad_taf.solve();
 }
 
@@ -892,7 +915,7 @@ void netfc::Model::test_taf_2() {
   // get systems
   auto &taf = d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF");
   auto &grad_taf =
-      d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    d_tum_sys.get_system<TransientLinearImplicitSystem>("TAF_Gradient");
 
   // update time
   taf.time = d_time;
@@ -903,10 +926,12 @@ void netfc::Model::test_taf_2() {
   // update old solution
   *taf.old_local_solution = *taf.current_local_solution;
 
-  out << std::endl << "Solving TAF system" << std::endl;
+  out << std::endl
+      << "Solving TAF system" << std::endl;
   taf.solve();
 
   // solve for gradient of taf
-  out << std::endl << "Solving gradient of TAF system" << std::endl;
+  out << std::endl
+      << "Solving gradient of TAF system" << std::endl;
   grad_taf.solve();
 }

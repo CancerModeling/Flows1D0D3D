@@ -154,15 +154,15 @@ void netfv::assemble_diffusion_advection(util::BaseAssembly &sys, PressureAssemb
         // pres
         pres.init_dof(neighbor, dof_indices_pres_neigh);
         pres_neigh_cur =
-            pres.get_current_sol(0, dof_indices_pres_neigh);
+          pres.get_current_sol(0, dof_indices_pres_neigh);
 
         // tum
         tum.init_var_dof(neighbor, dof_indices_tum_neigh, dof_indices_tum_var_neigh);
 
         tum_neigh_cur = tum.get_current_sol_var(0, 0,
-                                                     dof_indices_tum_var_neigh);
+                                                dof_indices_tum_var_neigh);
         chem_tum_neigh_cur = tum.get_current_sol_var(0, 1,
-                                                          dof_indices_tum_var_neigh);
+                                                     dof_indices_tum_var_neigh);
 
         // diffusion
         compute_mat = dt * diff_coeff * deck.d_face_by_h;
@@ -175,10 +175,10 @@ void netfv::assemble_diffusion_advection(util::BaseAssembly &sys, PressureAssemb
         compute_mat = 0.;
         if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.E-12)
           compute_mat = 2. * chem_tum_cur * chem_tum_neigh_cur /
-                         (chem_tum_cur + chem_tum_neigh_cur);
+                        (chem_tum_cur + chem_tum_neigh_cur);
         Real v = deck.d_tissue_flow_coeff * deck.d_face_by_h *
-                   ((pres_cur - pres_neigh_cur) -
-                       compute_mat * (tum_cur - tum_neigh_cur));
+                 ((pres_cur - pres_neigh_cur) -
+                  compute_mat * (tum_cur - tum_neigh_cur));
 
         // upwinding
         if (v >= 0.)
@@ -269,24 +269,24 @@ void netfv::assemble_advection(util::BaseAssembly &sys, PressureAssembly &pres, 
         // pres
         pres.init_dof(neighbor, dof_indices_pres_neigh);
         pres_neigh_cur =
-            pres.get_current_sol(0, dof_indices_pres_neigh);
+          pres.get_current_sol(0, dof_indices_pres_neigh);
 
         // tum
         tum.init_var_dof(neighbor, dof_indices_tum_neigh, dof_indices_tum_var_neigh);
 
         tum_neigh_cur = tum.get_current_sol_var(0, 0,
-                                                     dof_indices_tum_var_neigh);
+                                                dof_indices_tum_var_neigh);
         chem_tum_neigh_cur = tum.get_current_sol_var(0, 1,
-                                                          dof_indices_tum_var_neigh);
+                                                     dof_indices_tum_var_neigh);
 
         // advection
         compute_mat = 0.;
         if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.E-12)
           compute_mat = 2. * chem_tum_cur * chem_tum_neigh_cur /
-                         (chem_tum_cur + chem_tum_neigh_cur);
+                        (chem_tum_cur + chem_tum_neigh_cur);
         Real v = deck.d_tissue_flow_coeff * deck.d_face_by_h *
-                   ((pres_cur - pres_neigh_cur) -
-                       compute_mat * (tum_cur - tum_neigh_cur));
+                 ((pres_cur - pres_neigh_cur) -
+                  compute_mat * (tum_cur - tum_neigh_cur));
 
         // upwinding
         if (v >= 0.)

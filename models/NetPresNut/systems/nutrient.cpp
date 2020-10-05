@@ -27,8 +27,8 @@ double get_nut_source(const std::string &test_name, const Point &x,
 } // namespace
 
 Number netpresnut::initial_condition_nut(const Point &p, const Parameters &es,
-                                      const std::string &system_name,
-                                      const std::string &var_name) {
+                                         const std::string &system_name,
+                                         const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Nutrient");
 
@@ -151,10 +151,10 @@ void netpresnut::NutAssembly::assemble_1d_coupling() {
           // Surface area of cylinder
           surface_area = 2.0 * M_PI * (0.5 * length) * radius;
           util::unet::determineWeightsAndIds(
-              deck.d_num_points_length, deck.d_num_points_angle, N_3D,
-              coords[node_proc], coords[node_neigh], radius, h_3D, 0.5 * length,
-              weights, id_3D_elements,
-              deck.d_coupling_3d1d_integration_method, d_mesh, true);
+            deck.d_num_points_length, deck.d_num_points_angle, N_3D,
+            coords[node_proc], coords[node_neigh], radius, h_3D, 0.5 * length,
+            weights, id_3D_elements,
+            deck.d_coupling_3d1d_integration_method, d_mesh, true);
 
           // Add coupling entry
           numberOfElements = id_3D_elements.size();

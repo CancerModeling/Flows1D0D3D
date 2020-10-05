@@ -24,9 +24,9 @@ struct SinkLibmeshOut : public AixLog::SinkFormat {
                  const std::string &format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)")
       : AixLog::SinkFormat(severity, type, format) {}
 
-//  SinkLibmeshOut(AixLog::Severity severity, AixLog::Type type,
-//                 const std::string &format = "%Y-%m-%d %H-%M-%S.#ms")
-//      : AixLog::SinkFormat(severity, type, format) {}
+  //  SinkLibmeshOut(AixLog::Severity severity, AixLog::Type type,
+  //                 const std::string &format = "%Y-%m-%d %H-%M-%S.#ms")
+  //      : AixLog::SinkFormat(severity, type, format) {}
 
   void log(const AixLog::Metadata &metadata,
            const std::string &message) override {
@@ -38,18 +38,18 @@ struct MySinkFile : public AixLog::SinkFormat {
   MySinkFile(AixLog::Severity severity, AixLog::Type type,
              const std::string &filename,
              const std::string &format =
-                 "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)")
+               "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)")
       : AixLog::SinkFormat(severity, type, format) {
     ofs.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
   }
 
-//  MySinkFile(AixLog::Severity severity, AixLog::Type type,
-//             const std::string &filename,
-//             const std::string &format =
-//             "%Y-%m-%d %H-%M-%S.#ms")
-//      : AixLog::SinkFormat(severity, type, format) {
-//    ofs.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
-//  }
+  //  MySinkFile(AixLog::Severity severity, AixLog::Type type,
+  //             const std::string &filename,
+  //             const std::string &format =
+  //             "%Y-%m-%d %H-%M-%S.#ms")
+  //      : AixLog::SinkFormat(severity, type, format) {
+  //    ofs.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+  //  }
 
   ~MySinkFile() override { ofs.close(); }
 
@@ -75,8 +75,7 @@ std::string helper(int width, const std::string &severity, std::string &tag) {
          std::string(pad2, ' ');
 }
 
-std::string helper(int width, int s_width, std::string
-&tag) {
+std::string helper(int width, int s_width, std::string &tag) {
   int len = s_width + tag.length() + 5;
   if (width < len) {
     return tag;
@@ -86,20 +85,19 @@ std::string helper(int width, int s_width, std::string
   return tag + std::string(diff, ' ');
 }
 
-std::string helper2(int width, int s_width, std::string
-&tag) {
+std::string helper2(int width, int s_width, std::string &tag) {
   int len = s_width + tag.length() + 5;
   if (width < len) {
     return tag;
   }
 
   int diff = width - len;
-  int pad1 = diff/2;
+  int pad1 = diff / 2;
   int pad2 = diff - pad1;
   return std::string(pad1, ' ') + tag + std::string(pad2, ' ');
 }
 
-template <class T>
+template<class T>
 inline T get_avg(const std::vector<T> &list) {
 
   if (list.size() == 0)
@@ -113,7 +111,7 @@ inline T get_avg(const std::vector<T> &list) {
   return avg;
 }
 
-template <class T>
+template<class T>
 inline T get_total(const std::vector<T> &list) {
 
   if (list.size() == 0)
@@ -135,13 +133,13 @@ util::Logger::Logger(const std::string &log_file, Parallel::Communicator *comm,
     auto sink_cout = std::make_shared<SinkLibmeshOut>(AixLog::Severity::trace,
                                                       AixLog::Type::normal);
     auto sink_file = std::make_shared<MySinkFile>(
-        AixLog::Severity::trace, AixLog::Type::all, log_file + ".log");
+      AixLog::Severity::trace, AixLog::Type::all, log_file + ".log");
     AixLog::Log::init({sink_cout, sink_file});
   } else {
     auto sink_cout = std::make_shared<SinkLibmeshOut>(AixLog::Severity::notice,
                                                       AixLog::Type::normal);
     auto sink_file = std::make_shared<MySinkFile>(
-        AixLog::Severity::trace, AixLog::Type::all, log_file + ".log");
+      AixLog::Severity::trace, AixLog::Type::all, log_file + ".log");
     AixLog::Log::init({sink_cout, sink_file});
   }
 
@@ -281,7 +279,7 @@ std::string util::Logger::log_ts_base_final_avg(double sim_time, const int ns) {
     for (unsigned int j = 0; j < d_sys_solve_time[0].size(); j++) {
 
       std::vector<float> delta_t;
-      for (auto & i : d_sys_solve_time)
+      for (auto &i : d_sys_solve_time)
         delta_t.push_back(i[j].time_diff());
 
       oss << get_avg(delta_t);
@@ -320,7 +318,7 @@ std::string util::Logger::log_ts_base_final_avg(double sim_time, const int ns) {
     for (unsigned int j = 0; j < d_sys_solve_time[0].size(); j++) {
 
       std::vector<float> delta_t;
-      for (auto & i : d_sys_solve_time)
+      for (auto &i : d_sys_solve_time)
         delta_t.push_back(i[j].time_diff());
 
       oss << get_total(delta_t);

@@ -33,7 +33,7 @@ void assemble_pres(EquationSystems &es, const std::string &system_name) {
   // Looping through elements
   MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
   const MeshBase::const_element_iterator end_el =
-      mesh.active_local_elements_end();
+    mesh.active_local_elements_end();
 
   for (; el != end_el; ++el) {
 
@@ -96,7 +96,7 @@ class Model;
 
 class PressureAssembly : public System::Assembly {
 public:
-  PressureAssembly(Model * model, const std::string system_name)
+  PressureAssembly(Model *model, const std::string system_name)
       : d_model_p(model), d_sys_name(system_name) {}
   void assemble() override;
 
@@ -129,7 +129,7 @@ Model::Model(int argc, char **argv, Parallel::Communicator *comm)
   std::string sim_file = "t11/sim";
 
   // dummy mesh
-  unsigned int num_elems =30;
+  unsigned int num_elems = 30;
   MeshTools::Generation::build_cube(d_mesh, num_elems, num_elems, num_elems, 0.,
                                     1., 0., 1., 0., 1., HEX8);
 
@@ -156,7 +156,6 @@ Model::Model(int argc, char **argv, Parallel::Communicator *comm)
       pres.solve();
     }
   }
-
 }
 
 void PressureAssembly::assemble() {
@@ -169,7 +168,7 @@ void PressureAssembly::assemble() {
 void test::mesh::memory_leak(int argc, char **argv,
                              Parallel::Communicator *comm) {
 
-// auto model = Model(argc, argv, comm);
+  // auto model = Model(argc, argv, comm);
   auto model = Model(argc, argv, comm);
 
   return;

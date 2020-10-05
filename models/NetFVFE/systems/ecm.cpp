@@ -8,9 +8,9 @@
 #include "../model.hpp"
 
 Number netfvfe::initial_condition_ecm(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                      const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"ECM");
+  libmesh_assert_equal_to(system_name, "ECM");
 
   if (var_name == "ecm") {
 
@@ -29,7 +29,7 @@ void netfvfe::EcmAssembly::assemble() {
 void netfvfe::EcmAssembly::assemble_1() {
 
   // Get required system alias
-  auto &nut = d_model_p->get_nut_assembly();  
+  auto &nut = d_model_p->get_nut_assembly();
   auto &mde = d_model_p->get_mde_assembly();
 
   // Model parameters
@@ -52,7 +52,7 @@ void netfvfe::EcmAssembly::assemble_1() {
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
-    nut.init_dof(elem);    
+    nut.init_dof(elem);
     mde.init_dof(elem);
 
     // init fe and element matrix and vector
@@ -65,7 +65,9 @@ void netfvfe::EcmAssembly::assemble_1() {
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
       // Computing solution
-      ecm_cur = 0.; ecm_old = 0.; mde_cur = 0.;
+      ecm_cur = 0.;
+      ecm_old = 0.;
+      mde_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         ecm_cur += d_phi[l][qp] * get_current_sol(l);
@@ -76,26 +78,26 @@ void netfvfe::EcmAssembly::assemble_1() {
       if (deck.d_assembly_method == 1) {
 
         compute_rhs =
-            d_JxW[qp] *
-            (ecm_old + dt * deck.d_lambda_ECM_P * nut_cur *
-                           util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+          d_JxW[qp] *
+          (ecm_old + dt * deck.d_lambda_ECM_P * nut_cur *
+                       util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
 
         compute_mat =
-            d_JxW[qp] * (1. + dt * deck.d_lambda_ECM_D * mde_cur +
-                         dt * deck.d_lambda_ECM_P * nut_cur *
-                             util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+          d_JxW[qp] * (1. + dt * deck.d_lambda_ECM_D * mde_cur +
+                       dt * deck.d_lambda_ECM_P * nut_cur *
+                         util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
       } else {
 
         mde_proj = util::project_concentration(mde_cur);
 
         compute_rhs =
-            d_JxW[qp] *
-            (ecm_old + dt * deck.d_lambda_ECM_P * nut_proj *
+          d_JxW[qp] *
+          (ecm_old + dt * deck.d_lambda_ECM_P * nut_proj *
                        util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
 
         compute_mat =
-            d_JxW[qp] * (1. + dt * deck.d_lambda_ECM_D * mde_proj +
-                         dt * deck.d_lambda_ECM_P * nut_proj *
+          d_JxW[qp] * (1. + dt * deck.d_lambda_ECM_D * mde_proj +
+                       dt * deck.d_lambda_ECM_P * nut_proj *
                          util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
       }
 

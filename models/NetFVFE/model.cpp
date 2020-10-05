@@ -69,8 +69,8 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
 
 // Model setup and run
 void netfvfe::model_setup_run(int argc, char **argv,
-                             const std::string &filename,
-                             Parallel::Communicator *comm) {
+                              const std::string &filename,
+                              Parallel::Communicator *comm) {
 
   auto sim_begin = steady_clock::now();
 
@@ -81,6 +81,8 @@ void netfvfe::model_setup_run(int argc, char **argv,
 
   // read input file
   auto input = InpDeck(filename);
+
+  input.d_coupled_1d3d = false;
 
   // create logger
   std::string logger_file = input.d_output_path + "info";
@@ -123,11 +125,11 @@ void netfvfe::model_setup_run(int argc, char **argv,
   auto &mde = tum_sys.add_system<TransientLinearImplicitSystem>("MDE");
   auto &pres = tum_sys.add_system<TransientLinearImplicitSystem>("Pressure");
   auto &grad_taf =
-      tum_sys.add_system<TransientLinearImplicitSystem>("TAF_Gradient");
+    tum_sys.add_system<TransientLinearImplicitSystem>("TAF_Gradient");
   auto &vel =
-      tum_sys.add_system<TransientLinearImplicitSystem>("Velocity");
+    tum_sys.add_system<TransientLinearImplicitSystem>("Velocity");
   auto &tum =
-      tum_sys.add_system<TransientLinearImplicitSystem>("Tumor");
+    tum_sys.add_system<TransientLinearImplicitSystem>("Tumor");
 
   // some initial setups
   {
@@ -201,8 +203,6 @@ void netfvfe::model_setup_run(int argc, char **argv,
     boundary_condition_nut(tum_sys);
   }
 
-  exit(0);
-
   //
   // Create Model class
   //
@@ -214,20 +214,20 @@ void netfvfe::model_setup_run(int argc, char **argv,
   model.run();
 
   model.d_log.log_ts_final(
-      util::time_diff(sim_begin, steady_clock::now()));
+    util::time_diff(sim_begin, steady_clock::now()));
 }
 
 // Model class
 netfvfe::Model::Model(
-    int argc, char **argv, const std::string &filename, Parallel::Communicator *comm,
-    InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
-    TransientLinearImplicitSystem &nec, TransientLinearImplicitSystem &pro,
-    TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
-    TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &ecm,
-    TransientLinearImplicitSystem &mde, TransientLinearImplicitSystem &pres,
-    TransientLinearImplicitSystem &grad_taf,
-    TransientLinearImplicitSystem &vel, TransientLinearImplicitSystem &tum,
-    util::Logger &log)
+  int argc, char **argv, const std::string &filename, Parallel::Communicator *comm,
+  InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
+  TransientLinearImplicitSystem &nec, TransientLinearImplicitSystem &pro,
+  TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &hyp,
+  TransientLinearImplicitSystem &taf, TransientLinearImplicitSystem &ecm,
+  TransientLinearImplicitSystem &mde, TransientLinearImplicitSystem &pres,
+  TransientLinearImplicitSystem &grad_taf,
+  TransientLinearImplicitSystem &vel, TransientLinearImplicitSystem &tum,
+  util::Logger &log)
     : util::BaseModel(comm, input, mesh, tum_sys, log, "NetFVFE"),
       d_network(this), d_nec(this, "Necrotic", d_mesh, nec),
       d_pro(this, "Prolific", d_mesh, pro),
@@ -239,7 +239,7 @@ netfvfe::Model::Model(
       d_ghosting_fv(d_mesh) {
 
   d_sys_names.clear();
-  for (auto s: get_all_assembly()) {
+  for (auto s : get_all_assembly()) {
     if (d_sys_names.size() <= s->d_sys.number())
       d_sys_names.resize(s->d_sys.number() + 3);
     d_sys_names[s->d_sys.number() + 2] = s->d_sys_name;
@@ -252,30 +252,30 @@ netfvfe::Model::Model(
 
   // bounding box
   d_bounding_box.first =
-      Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
-            d_input.d_domain_params[4]);
+    Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
+          d_input.d_domain_params[4]);
   d_bounding_box.second =
-      Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
-            d_input.d_domain_params[5]);
+    Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
+          d_input.d_domain_params[5]);
 
   // remaining system setup
   {
     // attach assembly objects to various systems
-    for (auto &s: get_all_assembly())
+    for (auto &s : get_all_assembly())
       s->d_sys.attach_assemble_object(*s);
 
     // Initialize and print system
     if (!d_input.d_restart)
       d_tum_sys.init();
 
-    for (auto &s: get_all_assembly())
+    for (auto &s : get_all_assembly())
       s->d_sys.time = d_input.d_init_time;
 
     if (d_input.d_perform_output and !d_input.d_quiet) {
       d_delayed_msg += "Libmesh Info \n";
       d_delayed_msg += d_mesh.get_info();
       d_delayed_msg += " \n";
-      d_delayed_msg +=d_tum_sys.get_info();
+      d_delayed_msg += d_tum_sys.get_info();
       d_mesh.write("mesh_" + d_input.d_outfile_tag + ".e");
     }
 
@@ -319,7 +319,7 @@ void netfvfe::Model::run() {
   d_dt = d_input.d_dt;
 
   d_tum_sys.parameters.set<unsigned int>("linear solver maximum iterations") =
-      d_input.d_linear_max_iters;
+    d_input.d_linear_max_iters;
 
   //
   // Solve step
@@ -327,8 +327,8 @@ void netfvfe::Model::run() {
 
   if (!d_input.d_test_name.empty())
     libmesh_warning(
-        "Test of sub-system removed from the model.\n Name of "
-        "test will be discarded and instead full system will be solved.");
+      "Test of sub-system removed from the model.\n Name of "
+      "test will be discarded and instead full system will be solved.");
 
   do {
 
@@ -353,18 +353,15 @@ void netfvfe::Model::run() {
     solve_clock = steady_clock::now();
 
     d_log("Time step: " + std::to_string(d_step) +
-          ", time: " + std::to_string(d_time) + "\n",
+            ", time: " + std::to_string(d_time) + "\n",
           "integrate");
 
     // solve tumor-network system
     solve_system();
 
     // update network
-    if (d_is_growth_step) {
-      d_log("  Updating Network\n", "net update");
+    if (d_is_growth_step)
       d_network.updateNetwork(d_taf, d_grad_taf);
-      d_log(" \n", "net update");
-    }
 
     // write tumor solution
     write_system((d_step - d_input.d_init_step) /
@@ -395,8 +392,8 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
 
   // write tumor simulation
   rw::VTKIO(d_mesh).write_equation_systems(
-      d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
-      d_tum_sys);
+    d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
+    d_tum_sys);
 }
 
 void netfvfe::Model::compute_qoi() {
@@ -406,10 +403,10 @@ void netfvfe::Model::compute_qoi() {
   std::vector<double> qoi(N, 0.);
   if (d_qoi.d_vec.empty()) {
     d_qoi = util::QoIVec(
-        {"tumor_mass", "hypoxic_mass", "necrotic_mass", "prolific_mass",
-         "nutrient_mass", "tumor_l2", "hypoxic_l2", "necrotic_l2",
-         "prolific_l2", "nutrient_l2", "r_v_mean", "r_v_std", "l_v_mean",
-         "l_v_std", "l_v_total", "vessel_vol", "vessel_density"});
+      {"tumor_mass", "hypoxic_mass", "necrotic_mass", "prolific_mass",
+       "nutrient_mass", "tumor_l2", "hypoxic_l2", "necrotic_l2",
+       "prolific_l2", "nutrient_l2", "r_v_mean", "r_v_std", "l_v_mean",
+       "l_v_std", "l_v_total", "vessel_vol", "vessel_density"});
 
     d_log.log_qoi_header(d_time, d_qoi.get_names());
   }
@@ -430,7 +427,7 @@ void netfvfe::Model::compute_qoi() {
   // length mean, length std dev, total length, total vessel vol, total domain vol
   auto vessel_qoi = d_network.compute_qoi();
   unsigned int i = 10; // start of network qoi
-  for (const auto &q: vessel_qoi)
+  for (const auto &q : vessel_qoi)
     qoi[i++] = q;
 
   d_qoi.add(qoi);
@@ -439,15 +436,13 @@ void netfvfe::Model::compute_qoi() {
 void netfvfe::Model::solve_system() {
 
   // update time
-  for (auto &s: get_all_assembly())
+  for (auto &s : get_all_assembly())
     s->d_sys.time = d_time;
   d_tum_sys.parameters.set<Real>("time") = d_time;
 
   // update old solution
-  for (auto &s: get_all_assembly()) {
-    if (s->d_sys_name != "Velocity"
-        and s->d_sys_name != "Tumor"
-        and s->d_sys_name != "TAF_Gradient") {
+  for (auto &s : get_all_assembly()) {
+    if (s->d_sys_name != "Velocity" and s->d_sys_name != "Tumor" and s->d_sys_name != "TAF_Gradient") {
 
       *(s->d_sys.old_local_solution) = *(s->d_sys.current_local_solution);
     }
@@ -467,7 +462,7 @@ void netfvfe::Model::solve_system() {
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -542,12 +537,7 @@ void netfvfe::Model::solve_system() {
     d_log.add_sys_solve_time(clock_begin, d_ecm.d_sys.number());
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = d_err_check_pro->linfty_norm()
-        + d_err_check_hyp->linfty_norm()
-        + d_err_check_nec->linfty_norm()
-        + d_err_check_nut->linfty_norm()
-        + d_err_check_mde->linfty_norm()
-        + d_err_check_ecm->linfty_norm();
+    double nonlinear_iter_error = d_err_check_pro->linfty_norm() + d_err_check_hyp->linfty_norm() + d_err_check_nec->linfty_norm() + d_err_check_nut->linfty_norm() + d_err_check_mde->linfty_norm() + d_err_check_ecm->linfty_norm();
 
     if (d_input.d_perform_output) {
 
@@ -557,7 +547,8 @@ void netfvfe::Model::solve_system() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_iter_error << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_iter_error < d_input.d_nonlin_tol) {
@@ -574,22 +565,28 @@ void netfvfe::Model::solve_system() {
   d_log(" \n", "solve sys");
   d_log.add_nonlin_iter(d_nonlinear_step);
 
-  // solve taf
-  reset_clock();
-  d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
-  d_taf.solve();
-  d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+  if (d_is_growth_step or d_is_output_step) {
+    // solve taf
+    reset_clock();
+    d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
+    d_taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
 
-  // solve for grad taf
-  reset_clock();
-  d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
-  d_grad_taf.solve();
-  d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
+    // Note: Grad TAF is not really used in growth algorithm
+    // so we disable it
+    if (false) {
+      // solve for grad taf
+      reset_clock();
+      d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
+      d_grad_taf.solve();
+      d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
+    }
 
-  // solve for tumor
-  d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
-  d_tum.solve_custom();
-  d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
+    // solve for tumor
+    d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
+    d_tum.solve_custom();
+    d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
+  }
 
   d_log(" \n", "solve sys");
 }
@@ -614,7 +611,7 @@ void netfvfe::Model::solve_pressure() {
 
     // Nonlinear iteration loop
     d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-        d_input.d_linear_tol;
+      d_input.d_linear_tol;
 
     // reset nonlinear step
     d_nonlinear_step = 0;
@@ -655,7 +652,7 @@ void netfvfe::Model::solve_pressure() {
       if (d_input.d_perform_output) {
 
         const unsigned int n_linear_iterations =
-            d_pres.d_sys.n_linear_iterations();
+          d_pres.d_sys.n_linear_iterations();
         const Real final_linear_residual = d_pres.d_sys.final_linear_residual();
 
         oss << "      LC step: " << n_linear_iterations
@@ -667,7 +664,8 @@ void netfvfe::Model::solve_pressure() {
       if (nonlinear_iter_error < d_input.d_nonlin_tol) {
 
         d_log(" \n", "debug");
-        oss << "      NC step: " << l << std::endl << std::endl;
+        oss << "      NC step: " << l << std::endl
+            << std::endl;
         d_log(oss, "converge sys");
 
         break;
@@ -683,10 +681,14 @@ void netfvfe::Model::solve_pressure() {
     }
   }
 
-  // solve for velocity
-  reset_clock();
-  d_log("      Solving |" + d_vel.d_sys_name + "| \n", "solve pres");
-  d_vel.solve();
-  if (d_log.d_cur_step >= 0)
-    d_log.add_sys_solve_time(clock_begin, d_vel.d_sys.number());
+  // Note: Solving for velocity takes unusually long time so we disable it
+  //  if the advection effects are disabled
+  if (d_input.d_advection_active) {
+    // solve for velocity
+    reset_clock();
+    d_log("      Solving |" + d_vel.d_sys_name + "| \n", "solve pres");
+    d_vel.solve();
+    if (d_log.d_cur_step >= 0)
+      d_log.add_sys_solve_time(clock_begin, d_vel.d_sys.number());
+  }
 }

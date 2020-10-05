@@ -8,8 +8,8 @@
 #include "../model.hpp"
 
 Number twosp::initial_condition_nut(const Point &p, const Parameters &es,
-                                      const std::string &system_name,
-                                      const std::string &var_name) {
+                                    const std::string &system_name,
+                                    const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Nutrient");
 
@@ -96,7 +96,7 @@ void twosp::NutAssembly::assemble_1() {
       if (deck.d_assembly_method == 1) {
 
         compute_rhs =
-            d_JxW[qp] * (nut_old + dt * deck.d_lambda_A * tum_cur);
+          d_JxW[qp] * (nut_old + dt * deck.d_lambda_A * tum_cur);
 
         compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_P * tum_cur);
 
@@ -105,7 +105,7 @@ void twosp::NutAssembly::assemble_1() {
         tum_proj = util::project_concentration(tum_cur);
 
         compute_rhs =
-            d_JxW[qp] * (nut_old + dt * deck.d_lambda_A * tum_proj);
+          d_JxW[qp] * (nut_old + dt * deck.d_lambda_A * tum_proj);
 
         compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_P * tum_proj);
       }
@@ -121,7 +121,7 @@ void twosp::NutAssembly::assemble_1() {
 
           // gradient term
           d_Ke(i, j) +=
-              d_JxW[qp] * dt * deck.d_D_sigma * d_dphi[j][qp] * d_dphi[i][qp];
+            d_JxW[qp] * dt * deck.d_D_sigma * d_dphi[j][qp] * d_dphi[i][qp];
         }
       }
 

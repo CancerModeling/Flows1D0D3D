@@ -12,7 +12,7 @@
 #include <libmesh/getpot.h>
 #include <iostream>
 
-int main(int argc, char* argv[]){
+int main(int argc, char *argv[]) {
 
   // Open file with model setup
   std::string filename = "input.in";
@@ -52,7 +52,7 @@ int main(int argc, char* argv[]){
     // Print solution to screen
     for (auto i : out_rd)
       std::cout << "Solution: Tumor area = " << i << std::endl;
-  }  else if (model_name == "NetTum") {
+  } else if (model_name == "NetTum") {
 
     // Note: This one requires pointer to comm and therefore we have to init
     // libmesh and then call the constructor of model
@@ -65,7 +65,6 @@ int main(int argc, char* argv[]){
     // Print solution to screen
     for (auto i : out_rd)
       std::cout << "Solution: Tumor area = " << i << std::endl;
-
   }
 
   // End Code

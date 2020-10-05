@@ -39,14 +39,14 @@ void netfvfe::GradTafAssembly::assemble() {
       // Assembling matrix
       for (unsigned int i = 0; i < d_phi.size(); i++) {
 
-        for (unsigned int d=0; d<deck.d_dim; d++)
+        for (unsigned int d = 0; d < deck.d_dim; d++)
           d_Fe_var[d](i) += d_JxW[qp] * taf_grad(d) * d_phi[i][qp];
 
         for (unsigned int j = 0; j < d_phi.size(); j++) {
 
-          for (unsigned int d=0; d<deck.d_dim; d++)
+          for (unsigned int d = 0; d < deck.d_dim; d++)
             d_Ke_var[d][d](i, j) +=
-                d_JxW[qp] * d_phi[j][qp] * d_phi[i][qp];
+              d_JxW[qp] * d_phi[j][qp] * d_phi[i][qp];
         }
       }
     } // loop over quadrature points

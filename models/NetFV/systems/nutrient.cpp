@@ -25,11 +25,11 @@ double get_nut_source(const std::string &test_name, const Point &x,
 
   return 0.;
 }
-}
+} // namespace
 
 Number netfv::initial_condition_nut(const Point &p, const Parameters &es,
-                                     const std::string &system_name,
-                                     const std::string &var_name) {
+                                    const std::string &system_name,
+                                    const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Nutrient");
 
@@ -91,7 +91,7 @@ void netfv::NutAssembly::assemble_1d_coupling() {
     const auto &network = d_model_p->get_network();
     auto pointer = network.get_mesh().getHead();
 
-    DenseMatrix<Number> Ke(1,1);
+    DenseMatrix<Number> Ke(1, 1);
     DenseVector<Number> Fe(1);
 
     while (pointer) {
@@ -122,11 +122,11 @@ void netfv::NutAssembly::assemble_1d_coupling() {
 
           // implicit for c_t in source
           Ke(0, 0) = dt * factor_nut * deck.d_coupling_method_theta *
-                      pointer->L_s[i] * J_b_data.half_cyl_surf * e_w;
+                     pointer->L_s[i] * J_b_data.half_cyl_surf * e_w;
 
           // explicit for c_v in source
           Fe(0) = dt * factor_nut * pointer->L_s[i] * J_b_data.half_cyl_surf *
-                   e_w * (c_v_k - (1. - deck.d_coupling_method_theta) * c_t_k);
+                  e_w * (c_v_k - (1. - deck.d_coupling_method_theta) * c_t_k);
 
           // term due to pressure difference
           double c_transport = 0.;
@@ -228,18 +228,18 @@ void netfv::NutAssembly::assemble_face() {
         // pres
         pres.init_dof(neighbor, dof_indices_pres_neigh);
         pres_neigh_cur =
-            pres.get_current_sol(0, dof_indices_pres_neigh);
+          pres.get_current_sol(0, dof_indices_pres_neigh);
 
         // tum
         tum.init_var_dof(neighbor, dof_indices_tum_neigh, dof_indices_tum_var_neigh);
         tum_neigh_cur = tum.get_current_sol_var(0, 0,
-                                                     dof_indices_tum_var_neigh);
+                                                dof_indices_tum_var_neigh);
         chem_tum_neigh_cur = tum.get_current_sol_var(0, 1,
-                                                          dof_indices_tum_var_neigh);
+                                                     dof_indices_tum_var_neigh);
 
         // diffusion
         compute_mat =
-            factor_nut * dt * deck.d_D_sigma * deck.d_face_by_h;
+          factor_nut * dt * deck.d_D_sigma * deck.d_face_by_h;
         util::add_unique(get_global_dof_id(0), compute_mat, Ke_dof_col,
                          Ke_val_col);
         util::add_unique(dof_indices_nut_neigh[0], -compute_mat, Ke_dof_col,
@@ -249,10 +249,10 @@ void netfv::NutAssembly::assemble_face() {
         compute_mat = 0.;
         if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.0E-12)
           compute_mat = 2. * chem_tum_cur * chem_tum_neigh_cur /
-                         (chem_tum_cur + chem_tum_neigh_cur);
+                        (chem_tum_cur + chem_tum_neigh_cur);
         Real v = deck.d_tissue_flow_coeff * deck.d_face_by_h *
-                   ((pres_cur - pres_neigh_cur) -
-                       compute_mat * (tum_cur - tum_neigh_cur));
+                 ((pres_cur - pres_neigh_cur) -
+                  compute_mat * (tum_cur - tum_neigh_cur));
 
         // upwinding
         if (v >= 0.)
@@ -264,7 +264,7 @@ void netfv::NutAssembly::assemble_face() {
 
         // chemotactic term
         compute_rhs = factor_nut * dt * deck.d_chi_c * deck.d_D_sigma *
-                         deck.d_face_by_h;
+                      deck.d_face_by_h;
         Fe(0) += compute_rhs * (tum_cur - tum_neigh_cur);
       } // elem neighbor is not null
     }   // loop over faces
@@ -298,7 +298,7 @@ void netfv::NutAssembly::assemble_1() {
   const Real factor_nut = deck.d_assembly_factor_c_t;
 
   // local matrix and vector
-  DenseMatrix<Number> Ke(1,1);
+  DenseMatrix<Number> Ke(1, 1);
   DenseVector<Number> Fe(1);
 
   // Store current and old solution
@@ -330,7 +330,7 @@ void netfv::NutAssembly::assemble_1() {
     mde.init_dof(elem);
 
     // reset matrix and force
-    Ke(0,0) = 0.;
+    Ke(0, 0) = 0.;
     Fe(0) = 0.;
 
     // get solution in this element
@@ -344,15 +344,15 @@ void netfv::NutAssembly::assemble_1() {
     if (deck.d_assembly_method == 1) {
 
       compute_rhs =
-          deck.d_elem_size * (nut_old + dt * deck.d_lambda_ECM_D *
-                                                      ecm_cur * mde_cur);
+        deck.d_elem_size * (nut_old + dt * deck.d_lambda_ECM_D *
+                                        ecm_cur * mde_cur);
 
       compute_mat =
-          deck.d_elem_size *
-          (1. + dt * (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
-                      deck.d_lambda_Ph * hyp_cur +
-                      deck.d_lambda_ECM_P * (1. - ecm_cur) *
-                          util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P)));
+        deck.d_elem_size *
+        (1. + dt * (deck.d_lambda_P * (tum_cur - hyp_cur - nec_cur) +
+                    deck.d_lambda_Ph * hyp_cur +
+                    deck.d_lambda_ECM_P * (1. - ecm_cur) *
+                      util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P)));
 
     } else {
 
@@ -366,23 +366,23 @@ void netfv::NutAssembly::assemble_1() {
                     (nut_old + dt * deck.d_lambda_ECM_D * ecm_proj * mde_proj);
 
       compute_mat =
-          deck.d_elem_size *
-          (1. + dt * (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
-                      deck.d_lambda_Ph * hyp_proj +
-                      deck.d_lambda_ECM_P * (1. - ecm_proj) *
-                          util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P)));
+        deck.d_elem_size *
+        (1. + dt * (deck.d_lambda_P * (tum_proj - hyp_proj - nec_proj) +
+                    deck.d_lambda_Ph * hyp_proj +
+                    deck.d_lambda_ECM_P * (1. - ecm_proj) *
+                      util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P)));
     }
 
     // add artificial source if asked
     Real artificial_source =
-        get_nut_source(deck.d_test_name, elem->centroid(),
-                       deck.d_nut_source_center, deck.d_nut_source_radius) -
-        nut_old;
+      get_nut_source(deck.d_test_name, elem->centroid(),
+                     deck.d_nut_source_center, deck.d_nut_source_radius) -
+      nut_old;
     if (artificial_source > 0.)
       compute_rhs += deck.d_elem_size * dt * artificial_source;
 
     // add
-    Ke(0,0) += factor_nut * compute_mat;
+    Ke(0, 0) += factor_nut * compute_mat;
     Fe(0) += factor_nut * compute_rhs;
 
     // add to matrix

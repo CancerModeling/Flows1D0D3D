@@ -55,8 +55,8 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
 
 // Model setup and run
 void netpresnut::model_setup_run(int argc, char **argv,
-                             const std::string &filename,
-                             Parallel::Communicator *comm) {
+                                 const std::string &filename,
+                                 Parallel::Communicator *comm) {
 
   auto sim_begin = steady_clock::now();
 
@@ -130,21 +130,21 @@ void netpresnut::model_setup_run(int argc, char **argv,
   // Create Model class
   //
   auto model =
-      Model(argc, argv, filename, comm, input, mesh, tum_sys, nut, pres, log);
+    Model(argc, argv, filename, comm, input, mesh, tum_sys, nut, pres, log);
 
   // run model
   model.run();
 
   model.d_log.log_ts_final(
-      util::time_diff(sim_begin, steady_clock::now()));
+    util::time_diff(sim_begin, steady_clock::now()));
 }
 
 // Model class
 netpresnut::Model::Model(
-    int argc, char **argv, const std::string &filename, Parallel::Communicator *comm,
-    InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
-    TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &pres,
-    util::Logger &log)
+  int argc, char **argv, const std::string &filename, Parallel::Communicator *comm,
+  InpDeck &input, ReplicatedMesh &mesh, EquationSystems &tum_sys,
+  TransientLinearImplicitSystem &nut, TransientLinearImplicitSystem &pres,
+  util::Logger &log)
     : util::BaseModel(comm, input, mesh, tum_sys, log, "NetPresNut"),
       d_network(this),
       d_nut_assembly(this, "Nutrient", d_mesh, nut),
@@ -163,11 +163,11 @@ netpresnut::Model::Model(
 
   // bounding box
   d_bounding_box.first =
-      Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
-            d_input.d_domain_params[4]);
+    Point(d_input.d_domain_params[0], d_input.d_domain_params[2],
+          d_input.d_domain_params[4]);
   d_bounding_box.second =
-      Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
-            d_input.d_domain_params[5]);
+    Point(d_input.d_domain_params[1], d_input.d_domain_params[3],
+          d_input.d_domain_params[5]);
 
   // remaining system setup
   {
@@ -192,7 +192,7 @@ netpresnut::Model::Model(
       d_delayed_msg += "Libmesh Info \n";
       d_delayed_msg += d_mesh.get_info();
       d_delayed_msg += " \n";
-      d_delayed_msg +=d_tum_sys.get_info();
+      d_delayed_msg += d_tum_sys.get_info();
       d_mesh.write("mesh_" + d_input.d_outfile_tag + ".e");
     }
   }
@@ -230,7 +230,7 @@ void netpresnut::Model::run() {
   d_dt = d_input.d_dt;
 
   d_tum_sys.parameters.set<unsigned int>("linear solver maximum iterations") =
-      d_input.d_linear_max_iters;
+    d_input.d_linear_max_iters;
 
   //
   // Solve step
@@ -290,7 +290,7 @@ void netpresnut::Model::run() {
 
       // write tumor solution
       write_system((d_step - d_input.d_init_step) /
-                       d_input.d_dt_output_interval);
+                   d_input.d_dt_output_interval);
       d_network.writeDataToVTKTimeStep_VGM((d_step - d_input.d_init_step) /
                                            d_input.d_dt_output_interval);
     }
@@ -313,8 +313,8 @@ void netpresnut::Model::write_system(const unsigned int &t_step) {
 
   //
   rw::VTKIO(d_mesh).write_equation_systems(
-      d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
-      d_tum_sys);
+    d_input.d_outfilename + "_" + std::to_string(t_step) + ".pvtu",
+    d_tum_sys);
 }
 
 void netpresnut::Model::compute_qoi() {
@@ -349,13 +349,13 @@ void netpresnut::Model::solve_system() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_nut(
-      nut.solution->clone());
+    nut.solution->clone());
 
   d_log("  Nonlinear loop\n", "solve sys");
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
@@ -389,7 +389,8 @@ void netpresnut::Model::solve_system() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_iter_error << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_iter_error < d_input.d_nonlin_tol) {
@@ -425,11 +426,11 @@ void netpresnut::Model::solve_pressure() {
 
   // to compute the nonlinear convergence
   UniquePtr<NumericVector<Number>> last_nonlinear_soln_pres(
-      pres.solution->clone());
+    pres.solution->clone());
 
   // Nonlinear iteration loop
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
-      d_input.d_linear_tol;
+    d_input.d_linear_tol;
 
   // reset nonlinear step
   d_nonlinear_step = 0;
@@ -448,7 +449,7 @@ void netpresnut::Model::solve_pressure() {
 
     // solver for 1-D pressure and nutrient
     reset_clock();
-    d_log( " |1D pressure| -> ", "solve pres");
+    d_log(" |1D pressure| -> ", "solve pres");
     d_network.solveVGMforPressure(d_pres_assembly);
     if (d_log.d_cur_step >= 0)
       d_log.add_sys_solve_time(clock_begin, d_pres_1d_id);
@@ -476,7 +477,8 @@ void netpresnut::Model::solve_pressure() {
       oss << "      LC step: " << n_linear_iterations
           << ", res: " << final_linear_residual
           << ", NC: ||u - u_old|| = "
-          << nonlinear_iter_error << std::endl << std::endl;
+          << nonlinear_iter_error << std::endl
+          << std::endl;
       d_log(oss, "debug");
     }
     if (nonlinear_iter_error < d_input.d_nonlin_tol) {
