@@ -129,6 +129,8 @@ void netfvfe::HypAssembly::assemble_1() {
         compute_rhs_mu =
           d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
                          (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) +
+                       deck.d_bar_E_phi_H * hyp_old *
+                         (4.0 * pow(hyp_old, 2) - 6.0 * hyp_old - 1.) +
                        3. * deck.d_bar_E_phi_T * (pro_cur + nec_cur) -
                        deck.d_chi_c * nut_cur - deck.d_chi_h * ecm_cur);
 
@@ -148,6 +150,8 @@ void netfvfe::HypAssembly::assemble_1() {
         compute_rhs_mu =
           d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
                          (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) +
+                       deck.d_bar_E_phi_H * hyp_old *
+                         (4.0 * pow(hyp_old, 2) - 6.0 * hyp_old - 1.) +
                        3. * deck.d_bar_E_phi_T * (pro_proj + nec_proj) -
                        deck.d_chi_c * nut_proj - deck.d_chi_h * ecm_proj);
 
