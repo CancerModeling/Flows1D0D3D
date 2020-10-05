@@ -8,9 +8,9 @@
 #ifndef TWOSP_MODEL_H
 #define TWOSP_MODEL_H
 
-#include "umodel/model.hpp"
 #include "modelUtil.hpp"
 #include "systems/systems.hpp"
+#include "umodel/model.hpp"
 
 
 /*!

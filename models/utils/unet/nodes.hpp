@@ -8,8 +8,8 @@
 #ifndef UTIL_UNET_SEG_FV_H
 #define UTIL_UNET_SEG_FV_H
 
-#include "utils.hpp"
 #include "list_structure.hpp"
+#include "utils.hpp"
 
 // definitions
 #define UNET_FREE_MASK 0x0000

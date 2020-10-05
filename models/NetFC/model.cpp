@@ -6,10 +6,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "model.hpp"
+#include "rw/vtk_io.hpp"
 #include "systems.hpp"
 #include "utilIO.hpp"
 #include "utils.hpp"
-#include "rw/vtk_io.hpp"
 #include <random>
 
 namespace {

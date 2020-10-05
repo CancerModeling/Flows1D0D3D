@@ -5,8 +5,8 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "systems.hpp"
 #include "../model.hpp"
+#include "systems.hpp"
 
 Number netfc::initial_condition_taf(const Point &p, const Parameters &es,
                                     const std::string &system_name, const std::string &var_name) {

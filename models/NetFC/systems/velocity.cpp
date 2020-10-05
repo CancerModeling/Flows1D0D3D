@@ -5,8 +5,8 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "systems.hpp"
 #include "../model.hpp"
+#include "systems.hpp"
 
 void netfc::VelocityAssembly::assemble() {
 

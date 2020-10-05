@@ -8,9 +8,9 @@
 #ifndef NETFC_SYSTEMS_H
 #define NETFC_SYSTEMS_H
 
+#include "../inp/inp.hpp"
 #include "utilLibs.hpp"
 #include "utils.hpp"
-#include "../inp/inp.hpp"
 
 #include <string>
 

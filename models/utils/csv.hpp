@@ -32,22 +32,22 @@
 #ifndef CSV_H
 #define CSV_H
 
-#include <vector>
-#include <string>
-#include <cstring>
 #include <algorithm>
-#include <utility>
 #include <cstdio>
+#include <cstring>
 #include <exception>
+#include <string>
+#include <utility>
+#include <vector>
 #ifndef CSV_IO_NO_THREAD
+#include <condition_variable>
 #include <mutex>
 #include <thread>
-#include <condition_variable>
 #endif
-#include <memory>
 #include <cassert>
 #include <cerrno>
 #include <istream>
+#include <memory>
 
 namespace io {
 ////////////////////////////////////////////////////////////////////////////

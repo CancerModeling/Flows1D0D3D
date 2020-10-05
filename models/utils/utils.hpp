@@ -8,9 +8,10 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include "utilLibs.hpp"
-#include "utilIO.hpp"
+
 #include "utilCompare.hpp"
+#include "utilIO.hpp"
+#include "utilLibs.hpp"
 #include <boost/random.hpp>
 
 //#include "../../external/gmm/gmm.h"

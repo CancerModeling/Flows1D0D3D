@@ -8,6 +8,8 @@
 #ifndef NETFC_LISTSTRUCTURE_H
 #define NETFC_LISTSTRUCTURE_H
 
+#include <memory>
+
 namespace netfc {
 
 template<class Node>

@@ -6,8 +6,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "inp.hpp"
-#include "libmesh/getpot.h"
 #include "csv.hpp"
+#include "libmesh/getpot.h"
 
 void netfc::ModelDeck::read_parameters(const std::string &filename) {
 

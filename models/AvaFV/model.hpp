@@ -8,9 +8,9 @@
 #ifndef AVAFV_MODEL_H
 #define AVAFV_MODEL_H
 
-#include "umodel/model.hpp"
 #include "modelUtil.hpp"
 #include "systems/systems.hpp"
+#include "umodel/model.hpp"
 
 /*!
  * @brief Namespace for coupled 3d tumor growth model and 1d blood flow

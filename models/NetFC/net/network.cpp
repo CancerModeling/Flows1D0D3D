@@ -6,9 +6,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "network.hpp"
-#include "network_data_structure.cpp"
-#include "netUtil.hpp"
 #include "../model.hpp"
+#include "netUtil.hpp"
+#include "network_data_structure.cpp"
 #include "nodes.hpp"
 #include "utilIO.hpp"
 #include "utils.hpp"

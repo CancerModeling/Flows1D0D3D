@@ -6,8 +6,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "model.hpp"
-#include <libmesh/getpot.h>
 #include <iostream>
+#include <libmesh/getpot.h>
 
 int main(int argc, char *argv[]) {
 

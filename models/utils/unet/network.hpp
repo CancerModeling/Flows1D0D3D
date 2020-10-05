@@ -9,8 +9,8 @@
 #define UTIL_UNET_NETWORK_H
 
 // Libmesh
-#include "utils.hpp"
 #include "random_dist.hpp"
+#include "utils.hpp"
 
 // gmm dependencies
 #include "gmm.h"
