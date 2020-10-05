@@ -10,8 +10,8 @@ project(Applications CXX)
 # ****************************************************************************
 include_directories("${CMAKE_SOURCE_DIR}/models/utils")
 include_directories("${CMAKE_SOURCE_DIR}/models/")
-include_directories("${CMAKE_SOURCE_DIR}/external/gmm")
-include_directories("${CMAKE_SOURCE_DIR}/external/aixlog")
+include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/gmm")
+include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/aixlog")
 include_directories(${VTK_INCLUDE_DIRS})
 
 # ****************************************************************************
