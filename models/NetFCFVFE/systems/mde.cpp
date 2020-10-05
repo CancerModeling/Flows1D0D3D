@@ -15,8 +15,6 @@ Number netfcfvfe::initial_condition_mde(const Point &p, const Parameters &es,
   if (var_name == "mde") {
     return 0.;
   }
-
-  throw std::runtime_error( "the variable " + var_name + " does not belong to system " + system_name );
 }
 
 // Assembly class
