@@ -19,8 +19,6 @@ Number netfcfvfe::initial_condition_ecm(const Point &p, const Parameters &es,
 
     return ic_data.d_val;
   }
-
-  throw std::runtime_error( "the variable " + var_name + " does not belong to system " + system_name );
 }
 
 // Assembly class
