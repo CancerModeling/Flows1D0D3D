@@ -27,8 +27,8 @@ double get_nut_source(const std::string &test_name, const Point &x,
 } // namespace
 
 Number netfcfvfe::initial_condition_nut(const Point &p, const Parameters &es,
-                                      const std::string &system_name,
-                                      const std::string &var_name) {
+                                        const std::string &system_name,
+                                        const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Nutrient");
 
@@ -151,10 +151,10 @@ void netfcfvfe::NutAssembly::assemble_1d_coupling() {
           // Surface area of cylinder
           surface_area = 2.0 * M_PI * (0.5 * length) * radius;
           util::unet::determineWeightsAndIds(
-              deck.d_num_points_length, deck.d_num_points_angle, N_3D,
-              coords[node_proc], coords[node_neigh], radius, h_3D, 0.5 * length,
-              weights, id_3D_elements,
-              deck.d_coupling_3d1d_integration_method, d_mesh, true);
+            deck.d_num_points_length, deck.d_num_points_angle, N_3D,
+            coords[node_proc], coords[node_neigh], radius, h_3D, 0.5 * length,
+            weights, id_3D_elements,
+            deck.d_coupling_3d1d_integration_method, d_mesh, true);
 
           // Add coupling entry
           numberOfElements = id_3D_elements.size();
@@ -328,53 +328,58 @@ void netfcfvfe::NutAssembly::assemble_face() {
         // loop over quadrature points
         for (unsigned int qp = 0; qp < pro.d_qrule_face.n_points(); qp++) {
 
-          chem_pro_old = 0.; chem_hyp_old = 0.;
-          pro_grad = 0.; hyp_grad = 0.; nec_grad = 0.;
-          pro_old_grad = 0.; hyp_old_grad = 0.;
-          ecm_old = 0.; ecm_old_proj = 0.;
+          chem_pro_old = 0.;
+          chem_hyp_old = 0.;
+          pro_grad = 0.;
+          hyp_grad = 0.;
+          nec_grad = 0.;
+          pro_old_grad = 0.;
+          hyp_old_grad = 0.;
+          ecm_old = 0.;
+          ecm_old_proj = 0.;
           for (unsigned int l = 0; l < pro.d_phi_face.size(); l++) {
 
             chem_pro_old +=
-                pro.d_phi_face[l][qp] * pro.get_old_sol_var(l, 1);
+              pro.d_phi_face[l][qp] * pro.get_old_sol_var(l, 1);
 
             pro_grad.add_scaled(pro.d_dphi_face[l][qp],
                                 pro.get_current_sol_var(l, 0));
 
             pro_old_grad.add_scaled(pro.d_dphi_face[l][qp],
-                                pro.get_old_sol_var(l, 0));
+                                    pro.get_old_sol_var(l, 0));
 
             chem_hyp_old +=
-                pro.d_phi_face[l][qp] * hyp.get_old_sol_var(l, 1);
+              pro.d_phi_face[l][qp] * hyp.get_old_sol_var(l, 1);
 
             hyp_grad.add_scaled(pro.d_dphi_face[l][qp],
                                 hyp.get_current_sol_var(l, 0));
 
             hyp_old_grad.add_scaled(pro.d_dphi_face[l][qp],
-                                hyp.get_old_sol_var(l, 0));
+                                    hyp.get_old_sol_var(l, 0));
 
             nec_grad.add_scaled(pro.d_dphi_face[l][qp],
                                 nec.get_current_sol(l));
 
             ecm_old +=
-                pro.d_phi_face[l][qp] * ecm.get_old_sol(l);
+              pro.d_phi_face[l][qp] * ecm.get_old_sol(l);
           }
 
           ecm_old_proj = util::project_concentration(ecm_old);
 
           if (deck.d_assembly_method == 1) {
             Sp_old = (chem_pro_old + deck.d_chi_c * nut_old +
-                  deck.d_chi_h * ecm_old) *
-                 pro_old_grad +
-                 (chem_hyp_old + deck.d_chi_c * nut_old +
-                  deck.d_chi_h * ecm_old) *
-                 hyp_old_grad;
+                      deck.d_chi_h * ecm_old) *
+                       pro_old_grad +
+                     (chem_hyp_old + deck.d_chi_c * nut_old +
+                      deck.d_chi_h * ecm_old) *
+                       hyp_old_grad;
           } else {
             Sp_old = (chem_pro_old + deck.d_chi_c * nut_old_proj +
-                  deck.d_chi_h * ecm_old_proj) *
-                 pro_old_grad +
-                 (chem_hyp_old + deck.d_chi_c * nut_old_proj +
-                  deck.d_chi_h * ecm_old_proj) *
-                 hyp_old_grad;
+                      deck.d_chi_h * ecm_old_proj) *
+                       pro_old_grad +
+                     (chem_hyp_old + deck.d_chi_c * nut_old_proj +
+                      deck.d_chi_h * ecm_old_proj) *
+                       hyp_old_grad;
           }
 
           // chemotactic term
@@ -478,14 +483,13 @@ void netfcfvfe::NutAssembly::assemble_1() {
       if (deck.d_assembly_method == 1) {
 
         compute_rhs =
-            hyp.d_JxW[qp] * dt * (deck.d_lambda_A * (pro_cur + hyp_cur) +
-                                     deck.d_lambda_ECM_D * ecm_cur * mde_cur);
+          hyp.d_JxW[qp] * dt * (deck.d_lambda_A * (pro_cur + hyp_cur) + deck.d_lambda_ECM_D * ecm_cur * mde_cur);
 
         compute_mat = hyp.d_JxW[qp] * dt *
                       (deck.d_lambda_P * pro_cur +
                        deck.d_lambda_Ph * hyp_cur +
                        deck.d_lambda_ECM_P * (1. - ecm_cur) *
-                           util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+                         util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
 
       } else {
 
@@ -495,14 +499,13 @@ void netfcfvfe::NutAssembly::assemble_1() {
         hyp_proj = util::project_concentration(hyp_cur);
 
         compute_rhs =
-            hyp.d_JxW[qp] * dt * (deck.d_lambda_A * (pro_proj + hyp_proj) +
-                                  deck.d_lambda_ECM_D * ecm_proj * mde_proj);
+          hyp.d_JxW[qp] * dt * (deck.d_lambda_A * (pro_proj + hyp_proj) + deck.d_lambda_ECM_D * ecm_proj * mde_proj);
 
         compute_mat = hyp.d_JxW[qp] * dt *
                       (deck.d_lambda_P * pro_proj +
                        deck.d_lambda_Ph * hyp_proj +
                        deck.d_lambda_ECM_P * (1. - ecm_proj) *
-                       util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
+                         util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
       }
 
       // add rhs

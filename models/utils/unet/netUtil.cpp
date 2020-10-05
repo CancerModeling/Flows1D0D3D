@@ -79,9 +79,9 @@ std::vector<double> util::unet::getElementCenter(int i, int j, int k,
 
   std::vector<double> center;
 
-  center.push_back((double)i * h_3D + 0.5 * h_3D);
-  center.push_back((double)j * h_3D + 0.5 * h_3D);
-  center.push_back((double)k * h_3D + 0.5 * h_3D);
+  center.push_back((double) i * h_3D + 0.5 * h_3D);
+  center.push_back((double) j * h_3D + 0.5 * h_3D);
+  center.push_back((double) k * h_3D + 0.5 * h_3D);
 
   return center;
 }
@@ -257,8 +257,8 @@ std::vector<double> util::unet::determineRotator(std::vector<double> dir) {
 }
 
 std::vector<double> util::unet::computeNodesOnCylinders(
-    std::vector<double> dir, std::vector<double> rotator,
-    std::vector<double> midpoint, double radius, double theta) {
+  std::vector<double> dir, std::vector<double> rotator,
+  std::vector<double> midpoint, double radius, double theta) {
 
   std::vector<double> cylinder_node(3);
 
@@ -342,16 +342,16 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
 
     for (int j = 0; j < 3; j++) {
 
-      midpoint[j] = coord[j] + (((double)i_s / (double)N_s) * (length_edge)) *
-                                   direction[j];
+      midpoint[j] = coord[j] + (((double) i_s / (double) N_s) * (length_edge)) *
+                                 direction[j];
     }
 
     for (int i_theta = 0; i_theta < N_theta; i_theta++) {
 
-      theta = ((double)i_theta) / ((double)N_theta) * 2.0 * M_PI;
+      theta = ((double) i_theta) / ((double) N_theta) * 2.0 * M_PI;
 
       std::vector<double> cylinder_node =
-          computeNodesOnCylinders(direction, rotator, midpoint, radius, theta);
+        computeNodesOnCylinders(direction, rotator, midpoint, radius, theta);
 
       if (isCenterInDomain(cylinder_node, 2.0)) {
 
@@ -372,15 +372,15 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
                                         double length_edge,
                                         std::vector<double> &weights,
                                         std::vector<int> &id_3D_elements,
-                                        const int & integration_method,
+                                        const int &integration_method,
                                         const MeshBase &mesh,
                                         bool check_elem_owner) {
 
   if (integration_method == 1 or
       (integration_method == 2 and radius < 0.5 * h_3D))
     return determineWeightsAndIdsLineSource(
-        N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge,
-        weights, id_3D_elements, integration_method, mesh, check_elem_owner);
+      N_s, N_theta, N_3D, coord, coord_neighbor, radius, h_3D, length_edge,
+      weights, id_3D_elements, integration_method, mesh, check_elem_owner);
 
   weights.clear();
   id_3D_elements.clear();
@@ -404,16 +404,16 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
 
     for (int j = 0; j < 3; j++) {
 
-      midpoint[j] = coord[j] + (((double)i_s / (double)N_s) * (length_edge)) *
-                               direction[j];
+      midpoint[j] = coord[j] + (((double) i_s / (double) N_s) * (length_edge)) *
+                                 direction[j];
     }
 
     for (int i_theta = 0; i_theta < N_theta; i_theta++) {
 
-      theta = ((double)i_theta) / ((double)N_theta) * 2.0 * M_PI;
+      theta = ((double) i_theta) / ((double) N_theta) * 2.0 * M_PI;
 
       std::vector<double> cylinder_node =
-          computeNodesOnCylinders(direction, rotator, midpoint, radius, theta);
+        computeNodesOnCylinders(direction, rotator, midpoint, radius, theta);
 
       if (isCenterInDomain(cylinder_node, 2.0)) {
 
@@ -421,7 +421,7 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
 
         // check if element is owned by processor
         if (check_elem_owner and mesh.elem_ptr(elementIndex)->processor_id() !=
-                                 mesh.processor_id())
+                                   mesh.processor_id())
           continue;
 
         // Compute weights and element ids
@@ -439,7 +439,7 @@ void util::unet::determineWeightsAndIdsLineSource(int N_s, int N_theta, int N_3D
                                                   double length_edge,
                                                   std::vector<double> &weights,
                                                   std::vector<int> &id_3D_elements,
-                                                  const int & integration_method,
+                                                  const int &integration_method,
                                                   const MeshBase &mesh,
                                                   bool check_elem_owner) {
 
@@ -461,7 +461,7 @@ void util::unet::determineWeightsAndIdsLineSource(int N_s, int N_theta, int N_3D
     for (int j = 0; j < 3; j++) {
 
       midpoint[j] = coord[j] + length_edge * (double(i_s + 0.5) / double(N_s)) *
-                               direction[j];
+                                 direction[j];
     }
 
     if (isCenterInDomain(midpoint, 2.0)) {
@@ -470,11 +470,11 @@ void util::unet::determineWeightsAndIdsLineSource(int N_s, int N_theta, int N_3D
 
       // check if element is owned by processor
       if (check_elem_owner and mesh.elem_ptr(elementIndex)->processor_id() !=
-                               mesh.processor_id())
+                                 mesh.processor_id())
         continue;
 
       // Compute weights and element ids
-      weights.push_back(1./double(N_s));
+      weights.push_back(1. / double(N_s));
       id_3D_elements.push_back(elementIndex);
     }
   }
@@ -493,9 +493,9 @@ std::vector<double> util::unet::getCenterFromIndex(int index, int N_3D,
 
   int i = index - (j * N_3D);
 
-  center[0] = (double)i * h_3D + 0.5 * h_3D;
-  center[1] = (double)j * h_3D + 0.5 * h_3D;
-  center[2] = (double)k * h_3D + 0.5 * h_3D;
+  center[0] = (double) i * h_3D + 0.5 * h_3D;
+  center[1] = (double) j * h_3D + 0.5 * h_3D;
+  center[2] = (double) k * h_3D + 0.5 * h_3D;
 
   return center;
 }

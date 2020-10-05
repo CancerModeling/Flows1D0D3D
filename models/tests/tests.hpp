@@ -46,7 +46,7 @@ void rotation(int argc, char **argv, Parallel::Communicator *comm);
  * @param L Length of cylinder
  */
 void cylinder(int argc, char **argv, Parallel::Communicator *comm, Point x0,
-    Point a, double R, double L);
+              Point a, double R, double L);
 
 /*!
  * @brief Generate cylinder cross section at multiple points on cylinder
@@ -57,7 +57,7 @@ void cylinder(int argc, char **argv, Parallel::Communicator *comm, Point x0,
  * @param L Length of cylinder
  */
 void point_in_cylinder(int argc, char **argv, Parallel::Communicator *comm,
-    Point x0, Point a, double R, double L);
+                       Point x0, Point a, double R, double L);
 
 /*!
  * @brief Generate cylinder cross section at multiple points on cylinder
@@ -112,7 +112,7 @@ void add_node_elem_eq_sys_test(int argc, char **argv,
                                Parallel::Communicator *comm);
 
 void add_node_elem_eq_sys_test_2(int argc, char **argv,
-                               Parallel::Communicator *comm);
+                                 Parallel::Communicator *comm);
 
 /*!
  * @brief Run test: Same as add_node_elem_eq_sys_test() but now we add
@@ -188,7 +188,7 @@ void eq_sys_assemble(int argc, char **argv, Parallel::Communicator *comm);
  * @param p_in Dirichlet bc at first vertex
  */
 void eq_sys_assemble_2(int argc, char **argv, double p_in,
-    Parallel::Communicator *comm);
+                       Parallel::Communicator *comm);
 
 /*!
  * @brief Run test: Similar to eq_sys_assemble_2() with only third step
@@ -228,7 +228,7 @@ void eq_sys_assemble_3(int argc, char **argv, double p_in,
  * @param p_in Dirichlet bc at first vertex
  */
 void eq_sys_assemble_transient(int argc, char **argv, std::string test_case,
-    unsigned int num_steps,
+                               unsigned int num_steps,
                                double p_in, Parallel::Communicator *comm);
 
 void elem_id_numbering(int argc, char **argv, Parallel::Communicator *comm);
@@ -247,14 +247,14 @@ namespace fv {
  * elements
  */
 void run(int argc, char **argv, Parallel::Communicator *comm,
-    double pressure_in, bool branch);
+         double pressure_in, bool branch);
 
 /*!
  * @brief Check deletion of element, adding new element at mid point etc
  */
 void add_and_delete(int argc, char **argv, Parallel::Communicator *comm,
-         double pressure_in, bool branch);
+                    double pressure_in, bool branch);
 
-}
+} // namespace fv
 
 } // namespace test

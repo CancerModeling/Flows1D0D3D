@@ -62,6 +62,10 @@ void util::ModelDeck::read_parameters(const std::string &filename) {
   d_seed = input("seed", -1);
 
   d_coupled_1d3d = input("coupled_1d3d", false);
+
+  d_solve_ecm = input("solve_ecm", true);
+
+  d_solve_pres_with_net_update = input("solve_pres_with_net_update", false);
 }
 
 void util::ModelDeck::print(unsigned int level) {}
@@ -176,7 +180,7 @@ void util::SolverDeck::read_parameters(const std::string &filename) {
   d_nonlin_tol = input("nonlinear_solver_tol", 1.e-6);
 
   d_project_solution_to_physical_range =
-      input("project_solution_to_phyiscal_range", false);
+    input("project_solution_to_phyiscal_range", false);
 }
 
 void util::SolverDeck::print(unsigned int level) {}
@@ -322,7 +326,7 @@ void util::ECMDeck::read_parameters(const std::string &filename) {
 
   for (unsigned int i = 0; i < num_params; i++)
     d_ecm_ic_data.d_geom_params.push_back(
-        input("ECM_ic_params_" + std::to_string(i + 1), 0.));
+      input("ECM_ic_params_" + std::to_string(i + 1), 0.));
 }
 
 void util::ECMDeck::print(unsigned int level) {}
@@ -525,12 +529,12 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   d_branch_angle = input("network_branch_angle", M_PI / 8.);
   d_vessel_no_taf_effect_dist = input("network_vessel_no_taf_dist", 5);
   d_nonlocal_direction_search_num_points =
-      input("network_nonlocal_search_num_points", 2);
+    input("network_nonlocal_search_num_points", 2);
   d_nonlocal_direction_search_length =
-      input("network_nonlocal_search_length_factor", 10.);
+    input("network_nonlocal_search_length_factor", 10.);
   d_network_local_search = input("network_local_search", true);
   d_network_no_new_node_search_factor =
-      input("network_no_new_node_search_factor", 0.5);
+    input("network_no_new_node_search_factor", 0.5);
   d_net_direction_lambda_g = input("vessel_lambda_g", 0.);
   d_net_length_R_factor = input("vessel_R_factor", 0.);
 }

@@ -21,7 +21,7 @@ namespace util {
  * @param b Value b
  * @return Result true if approximately equal else false
  */
-inline bool approximatelyEqual(const double &a, const double &b){
+inline bool approximatelyEqual(const double &a, const double &b) {
   return std::abs(a - b) <=
          ((std::abs(a) < std::abs(b) ? std::abs(b) : std::abs(a)) *
           COMPARE_EPS);
@@ -33,7 +33,7 @@ inline bool approximatelyEqual(const double &a, const double &b){
  * @param b Value b
  * @return Result true if essentially equal else false
  */
-inline bool essentiallyEqual(const double &a, const double &b){
+inline bool essentiallyEqual(const double &a, const double &b) {
   return std::abs(a - b) <=
          ((std::abs(a) > std::abs(b) ? std::abs(b) : std::abs(a)) *
           COMPARE_EPS);
@@ -45,7 +45,7 @@ inline bool essentiallyEqual(const double &a, const double &b){
  * @param b Value b
  * @return Result true if a is definitely greater than b
  */
-inline bool definitelyGreaterThan(const double &a, const double &b){
+inline bool definitelyGreaterThan(const double &a, const double &b) {
   return (a - b) > ((std::abs(a) < std::abs(b) ? std::abs(b) : std::abs(a)) *
                     COMPARE_EPS);
 }
@@ -57,7 +57,7 @@ inline bool definitelyGreaterThan(const double &a, const double &b){
  * @param b Value b
  * @return Result true if a is definitely less than b
  */
-inline bool definitelyLessThan(const double &a, const double &b){
+inline bool definitelyLessThan(const double &a, const double &b) {
   return (b - a) > ((std::abs(a) < std::abs(b) ? std::abs(b) : std::abs(a)) *
                     COMPARE_EPS);
 }

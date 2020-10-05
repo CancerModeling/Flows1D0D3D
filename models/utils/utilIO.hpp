@@ -49,7 +49,7 @@ inline std::string printStr(const Point &x, int nt = 0, std::string delim = ", "
   return oss.str();
 }
 
-template <class T>
+template<class T>
 inline std::string printStr(const std::vector<T> &list, int nt = 0, std::string delim = ", ") {
 
   auto tabS = getTabS(nt);
@@ -66,7 +66,7 @@ inline std::string printStr(const std::vector<T> &list, int nt = 0, std::string 
   return oss.str();
 }
 
-template <class T>
+template<class T>
 inline std::string printStr(const std::vector<std::vector<T>> &list,
                             int nt = 0, std::string delim = ", ") {
 
@@ -91,7 +91,7 @@ inline std::string printStr(const std::vector<std::vector<T>> &list,
   return oss.str();
 }
 
-template <>
+template<>
 inline std::string printStr(const std::vector<Point> &list, int nt, std::string delim) {
 
   auto tabS = getTabS(nt);
@@ -109,8 +109,8 @@ inline std::string printStr(const std::vector<Point> &list, int nt, std::string 
 }
 
 
-
-template <class T> inline void print(const std::vector<T> &list, int nt = 0, std::string delim = ", ") {
+template<class T>
+inline void print(const std::vector<T> &list, int nt = 0, std::string delim = ", ") {
 
   std::cout << printStr(list, nt, delim);
 }
@@ -122,7 +122,8 @@ bool read_network_file(std::string filename, std::vector<Point> &nodes,
                        std::vector<double> &elem_radius,
                        std::vector<double> &elem_viscosity);
 
-template <class T> inline void printFile(std::string filename, const std::vector<T> &list, int nt = 0, std::string delim = ", ") {
+template<class T>
+inline void printFile(std::string filename, const std::vector<T> &list, int nt = 0, std::string delim = ", ") {
 
   std::ofstream off(filename);
   off << printStr(list, nt, delim);

@@ -15,13 +15,13 @@ int elem_N_count = 0;
 double get_exact_source(const Point &p) {
 
   return std::sin(2. * M_PI * p(0)) * std::sin(2. * M_PI * p(1)) *
-         std::sin(2.* M_PI * p(2));
+         std::sin(2. * M_PI * p(2));
 }
-}
+} // namespace
 
 Number netfv::initial_condition_pres(const Point &p, const Parameters &es,
-                                      const std::string &system_name,
-                                      const std::string &var_name) {
+                                     const std::string &system_name,
+                                     const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Pressure");
 
@@ -87,7 +87,7 @@ void netfv::PressureAssembly::assemble_1d_coupling() {
     const auto &network = d_model_p->get_network();
     auto pointer = network.get_mesh().getHead();
 
-    DenseMatrix<Number> Ke(1,1);
+    DenseMatrix<Number> Ke(1, 1);
     DenseVector<Number> Fe(1);
 
     while (pointer) {
@@ -112,13 +112,13 @@ void netfv::PressureAssembly::assemble_1d_coupling() {
           auto p_t_k = get_current_sol(0);
 
           // implicit for p_t in source
-          Ke(0,0) = factor_p * deck.d_coupling_method_theta * pointer->L_p[i] *
+          Ke(0, 0) = factor_p * deck.d_coupling_method_theta * pointer->L_p[i] *
                      J_b_data.half_cyl_surf *
                      e_w;
 
           // explicit for p_v in source
           Fe(0) = factor_p * pointer->L_p[i] * J_b_data.half_cyl_surf * e_w *
-                   (p_v_k - (1. - deck.d_coupling_method_theta) * p_t_k);
+                  (p_v_k - (1. - deck.d_coupling_method_theta) * p_t_k);
 
           //          if (pointer->index < 10 and i == 0 and e < 5)
           //            out << "index: " << pointer->index << ", p_v: " << p_v_k
@@ -182,7 +182,7 @@ void netfv::PressureAssembly::assemble_face() {
   Real compute_mat = 0.;
 
   // Looping through elements
-  for (const auto & elem : d_mesh.active_local_element_ptr_range()) {
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
     init_dof(elem);
     tum.init_dof(elem);
@@ -215,7 +215,7 @@ void netfv::PressureAssembly::assemble_face() {
 
         // get coefficient
         compute_mat = factor_p * deck.d_tissue_flow_rho *
-                            deck.d_tissue_flow_coeff * deck.d_face_by_h;
+                      deck.d_tissue_flow_coeff * deck.d_face_by_h;
 
         // diffusion
         util::add_unique(get_global_dof_id(0), compute_mat, Ke_dof_col,
@@ -225,14 +225,14 @@ void netfv::PressureAssembly::assemble_face() {
 
         // div(chem_tum * grad(tum)) term
         tum_neigh_cur =
-            tum.get_current_sol_var(0, 0, dof_indices_tum_var_neigh);
+          tum.get_current_sol_var(0, 0, dof_indices_tum_var_neigh);
         chem_tum_neigh_cur =
-            tum.get_current_sol_var(0, 1, dof_indices_tum_var_neigh);
+          tum.get_current_sol_var(0, 1, dof_indices_tum_var_neigh);
 
         compute_rhs = 0.;
         if (std::abs(chem_tum_cur + chem_tum_neigh_cur) > 1.0e-12)
           compute_rhs = 2. * compute_mat * chem_tum_cur * chem_tum_neigh_cur /
-                             (chem_tum_cur + chem_tum_neigh_cur);
+                        (chem_tum_cur + chem_tum_neigh_cur);
 
         Fe(0) += compute_rhs * (tum_cur - tum_neigh_cur);
       } // elem neighbor is not null
@@ -248,11 +248,11 @@ void netfv::PressureAssembly::assemble_face() {
     // add to vector
     d_sys.rhs->add_vector(Fe, Ke_dof_row);
 
-//    // Debug
-//    if (Ke_dof_row[0] == 0)
-//      elem_0_count += 1;
-//    if (Ke_dof_row[0] == d_mesh.n_elem() - 1)
-//      elem_N_count += 1;
+    //    // Debug
+    //    if (Ke_dof_row[0] == 0)
+    //      elem_0_count += 1;
+    //    if (Ke_dof_row[0] == d_mesh.n_elem() - 1)
+    //      elem_N_count += 1;
   } // element loop
 }
 

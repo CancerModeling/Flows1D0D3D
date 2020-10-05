@@ -8,9 +8,9 @@
 #include "../model.hpp"
 
 Number netfv::initial_condition_nec(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                    const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"Necrotic");
+  libmesh_assert_equal_to(system_name, "Necrotic");
 
   return 0.;
 }
@@ -36,13 +36,13 @@ void netfv::NecAssembly::assemble_1() {
   // auto &nec = d_model_p->get_nec_assembly();
   auto &nut = d_model_p->get_nut_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
-  
+
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
   const Real dt = d_model_p->d_dt;
 
   // local matrix and vector
-  DenseMatrix<Number> Ke(1,1);
+  DenseMatrix<Number> Ke(1, 1);
   DenseVector<Number> Fe(1);
 
   // Store current and old solution
@@ -61,9 +61,9 @@ void netfv::NecAssembly::assemble_1() {
     init_dof(elem);
     nut.init_dof(elem);
     hyp.init_dof(elem);
-    
+
     // reset matrix and force
-    Ke(0,0) = 0.;
+    Ke(0, 0) = 0.;
     Fe(0) = 0.;
 
     // get solution in this element
@@ -73,8 +73,8 @@ void netfv::NecAssembly::assemble_1() {
 
     if (deck.d_assembly_method == 1) {
       compute_rhs =
-          deck.d_elem_size *
-          (nec_old + dt * deck.d_lambda_HN *
+        deck.d_elem_size *
+        (nec_old + dt * deck.d_lambda_HN *
                      util::heaviside(deck.d_sigma_HN - nut_cur) *
                      hyp_cur);
     } else {
@@ -83,14 +83,14 @@ void netfv::NecAssembly::assemble_1() {
       nut_proj = util::project_concentration(nut_cur);
 
       compute_rhs =
-          deck.d_elem_size *
-          (nec_old + dt * deck.d_lambda_HN *
+        deck.d_elem_size *
+        (nec_old + dt * deck.d_lambda_HN *
                      util::heaviside(deck.d_sigma_HN - nut_proj) *
                      hyp_proj);
     }
 
     // add
-    Ke(0,0) += deck.d_elem_size;
+    Ke(0, 0) += deck.d_elem_size;
 
     // previous time step term
     Fe(0) += compute_rhs;

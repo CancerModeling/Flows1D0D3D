@@ -266,7 +266,7 @@ struct ECMICData {
   double d_val;
   std::vector<double> d_geom_params;
 
-  ECMICData() : d_val(0.) {};
+  ECMICData() : d_val(0.){};
 };
 
 struct ECMDeck {
@@ -304,7 +304,7 @@ struct MDEDeck {
 
   explicit MDEDeck(const std::string &filename = "")
       : d_D_MDE(0.), d_delta_MDE(0.), d_lambda_MDE_D(0.), d_lambda_MDE_P(0.),
-      d_mde_ic_val(0.) {
+        d_mde_ic_val(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -470,13 +470,13 @@ struct Flow1DDeck {
   double d_blood_density;
   double d_D_sigma_v;
   double d_osmotic_sigma;
-  
+
   std::string d_scenario;
 
   explicit Flow1DDeck(const std::string &filename = "")
       : d_init_vessel_mu(0.), d_in_pressure(0.), d_in_nutrient(0.),
-          d_blood_density(1.),
-      d_D_sigma_v(1.), d_in_nutrient_vein(0.), d_osmotic_sigma(0.) {
+        d_blood_density(1.),
+        d_D_sigma_v(1.), d_in_nutrient_vein(0.), d_osmotic_sigma(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -487,7 +487,6 @@ struct Flow1DDeck {
 
   //
   void print(unsigned int level = 0);
-
 };
 
 struct FlowDeck {
@@ -506,22 +505,20 @@ struct FlowDeck {
   double d_pressure_bc_val;
   double d_pressure_ic_val;
   double d_mmhgFactor;
-  double d_omega;  
+  double d_omega;
 
   int d_N_newton;
 
-  explicit FlowDeck(const std::string &filename = ""): d_tissue_flow_mu(0.),  d_tissue_flow_K(0.),  d_tissue_flow_rho(1.),
-                                                       d_tissue_flow_L_p(0.), d_tissue_nut_L_s(0.), d_pressure_bc_north(false),
-                                                       d_pressure_bc_south(false), d_pressure_bc_east(false),
-                                                       d_pressure_bc_west(false), d_pressure_bc_val(0.),
-                                                       d_pressure_ic_val(0.), d_mmhgFactor(133.322), d_omega(0.0), d_N_newton(0) {
+  explicit FlowDeck(const std::string &filename = "") : d_tissue_flow_mu(0.), d_tissue_flow_K(0.), d_tissue_flow_rho(1.),
+                                                        d_tissue_flow_L_p(0.), d_tissue_nut_L_s(0.), d_pressure_bc_north(false),
+                                                        d_pressure_bc_south(false), d_pressure_bc_east(false),
+                                                        d_pressure_bc_west(false), d_pressure_bc_val(0.),
+                                                        d_pressure_ic_val(0.), d_mmhgFactor(133.322), d_omega(0.0), d_N_newton(0) {
 
-           if (!filename.empty()){
+    if (!filename.empty()) {
 
-               read_parameters(filename);
-
-           }
-
+      read_parameters(filename);
+    }
   };
 
   //
@@ -562,9 +559,9 @@ public:
         FlowDeck(filename){};
 
   //
-  void print(unsigned int level = 0) {
+  void print(unsigned int level = 0){
 
-      {ModelDeck *deck = this;
+    {ModelDeck *deck = this;
   deck->print();
 }
 

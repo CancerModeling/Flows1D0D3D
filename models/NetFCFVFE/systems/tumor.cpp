@@ -16,15 +16,15 @@ void netfcfvfe::TumAssembly::solve_custom() {
 
   Real tum_cur = 0.;
 
-  for (auto node: d_mesh.local_node_ptr_range()) {
+  for (auto node : d_mesh.local_node_ptr_range()) {
     auto tum_dof = node->dof_number(d_sys.number(), 0, 0);
     auto pro_dof = node->dof_number(pro.d_sys.number(), 0, 0);
     auto hyp_dof = node->dof_number(hyp.d_sys.number(), 0, 0);
     auto nec_dof = node->dof_number(nec.d_sys.number(), 0, 0);
 
     tum_cur = pro.d_sys.current_solution(pro_dof) +
-        hyp.d_sys.current_solution(hyp_dof) +
-        nec.d_sys.current_solution(nec_dof);
+              hyp.d_sys.current_solution(hyp_dof) +
+              nec.d_sys.current_solution(nec_dof);
 
     d_sys.solution->set(tum_dof, tum_cur);
   }
@@ -66,7 +66,9 @@ void netfcfvfe::TumAssembly::assemble_1() {
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
       // Computing solution
-      pro_cur = 0.; hyp_cur = 0.; nec_cur = 0.;
+      pro_cur = 0.;
+      hyp_cur = 0.;
+      nec_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         pro_cur += d_phi[l][qp] * pro.get_current_sol_var(l, 0);
@@ -93,7 +95,7 @@ void netfcfvfe::TumAssembly::assemble_1() {
     } // loop over quadrature points
 
     d_dof_map_sys.heterogenously_constrain_element_matrix_and_vector(
-        d_Ke, d_Fe, d_dof_indices_sys);
+      d_Ke, d_Fe, d_dof_indices_sys);
     d_sys.matrix->add_matrix(d_Ke, d_dof_indices_sys);
     d_sys.rhs->add_vector(d_Fe, d_dof_indices_sys);
   }

@@ -107,25 +107,28 @@ void netfvfe::VelAssembly::assemble() {
     // loop over quadrature points
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
-      chem_pro_cur = 0.; chem_hyp_cur = 0.;
-      pro_grad = 0.; hyp_grad = 0.;
-      ecm_cur = 0.; ecm_proj = 0.;
-      for (unsigned int l = 0; l < d_phi_face.size(); l++) {
+      chem_pro_cur = 0.;
+      chem_hyp_cur = 0.;
+      pro_grad = 0.;
+      hyp_grad = 0.;
+      ecm_cur = 0.;
+      ecm_proj = 0.;
+      for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         chem_pro_cur +=
-            d_phi_face[l][qp] * pro.get_current_sol_var(l, 1);
+          d_phi[l][qp] * pro.get_current_sol_var(l, 1);
 
-        pro_grad.add_scaled(d_dphi_face[l][qp],
+        pro_grad.add_scaled(d_dphi[l][qp],
                             pro.get_current_sol_var(l, 0));
 
         chem_hyp_cur +=
-            d_phi_face[l][qp] * hyp.get_current_sol_var(l, 1);
+          d_phi[l][qp] * hyp.get_current_sol_var(l, 1);
 
-        hyp_grad.add_scaled(d_dphi_face[l][qp],
+        hyp_grad.add_scaled(d_dphi[l][qp],
                             hyp.get_current_sol_var(l, 0));
 
         ecm_cur +=
-            d_phi_face[l][qp] * ecm.get_current_sol(l);
+          d_phi[l][qp] * ecm.get_current_sol(l);
       }
 
       ecm_proj = util::project_concentration(ecm_cur);
@@ -133,34 +136,34 @@ void netfvfe::VelAssembly::assemble() {
       if (deck.d_assembly_method == 1) {
         Sp = (chem_pro_cur + deck.d_chi_c * nut_cur +
               deck.d_chi_h * ecm_cur) *
-             pro_grad +
+               pro_grad +
              (chem_hyp_cur + deck.d_chi_c * nut_cur +
               deck.d_chi_h * ecm_cur) *
-             hyp_grad;
+               hyp_grad;
       } else {
         Sp = (chem_pro_cur + deck.d_chi_c * nut_proj +
               deck.d_chi_h * ecm_proj) *
-             pro_grad +
+               pro_grad +
              (chem_hyp_cur + deck.d_chi_c * nut_proj +
               deck.d_chi_h * ecm_proj) *
-             hyp_grad;
+               hyp_grad;
       }
 
       compute_rhs =
-          d_JxW[qp] * factor_p *
-          (-deck.d_tissue_flow_coeff * (pres_grad - Sp));
+        d_JxW[qp] * factor_p *
+        (-deck.d_tissue_flow_coeff * (pres_grad - Sp));
 
       // Assembling matrix
       for (unsigned int i = 0; i < d_phi.size(); i++) {
 
-        for (unsigned int d=0; d<deck.d_dim; d++)
+        for (unsigned int d = 0; d < deck.d_dim; d++)
           d_Fe_var[d](i) += compute_rhs(d) * d_phi[i][qp];
 
         for (unsigned int j = 0; j < d_phi.size(); j++) {
 
-          for (unsigned int d=0; d<deck.d_dim; d++)
+          for (unsigned int d = 0; d < deck.d_dim; d++)
             d_Ke_var[d][d](i, j) +=
-                d_JxW[qp] * factor_p * d_phi[j][qp] * d_phi[i][qp];
+              d_JxW[qp] * factor_p * d_phi[j][qp] * d_phi[i][qp];
         }
       }
     } // loop over quadrature points

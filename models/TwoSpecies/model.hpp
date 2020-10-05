@@ -47,22 +47,21 @@ public:
     else if (system == "Tumor")
       return d_tum_assembly;
   }
-  NutAssembly &get_nut_assembly() {return d_nut_assembly;}
-  TumAssembly &get_tum_assembly() {return d_tum_assembly;}
+  NutAssembly &get_nut_assembly() { return d_nut_assembly; }
+  TumAssembly &get_tum_assembly() { return d_tum_assembly; }
 
   /*! @brief Run model */
-  void run() override ;
+  void run() override;
 
 private:
-
   /*! @brief Output results of tumor system and network system */
-  void write_system(const unsigned int &t_step) override ;
+  void write_system(const unsigned int &t_step) override;
 
   /*! @brief Solves tumor system */
-  void solve_system() override ;
+  void solve_system() override;
 
   /*! @brief Compute quantity of interest */
-  void compute_qoi() override ;
+  void compute_qoi() override;
 
   /*! @brief Assembly objects */
   TumAssembly d_tum_assembly;

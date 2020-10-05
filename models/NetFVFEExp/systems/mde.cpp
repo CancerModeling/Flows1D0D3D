@@ -8,9 +8,9 @@
 #include "../model.hpp"
 
 Number netfvfeexp::initial_condition_mde(const Point &p, const Parameters &es,
-                                    const std::string &system_name, const std::string &var_name){
+                                         const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"MDE");
+  libmesh_assert_equal_to(system_name, "MDE");
 
   if (var_name == "mde") {
 
@@ -74,7 +74,10 @@ void netfvfeexp::MdeAssembly::assemble_1() {
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
       // Computing solution
-      mde_old = 0.; pro_cur = 0.; hyp_cur = 0.; ecm_cur = 0.;
+      mde_old = 0.;
+      pro_cur = 0.;
+      hyp_cur = 0.;
+      ecm_cur = 0.;
       vel_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
@@ -83,7 +86,7 @@ void netfvfeexp::MdeAssembly::assemble_1() {
         hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
         ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
 
-        for (unsigned int ll=0; ll<d_mesh.mesh_dimension(); ll++)
+        for (unsigned int ll = 0; ll < d_mesh.mesh_dimension(); ll++)
           vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
       }
 
@@ -122,11 +125,11 @@ void netfvfeexp::MdeAssembly::assemble_1() {
 
           // gradient term
           d_Ke(i, j) +=
-              d_JxW[qp] * dt * deck.d_D_MDE * d_dphi[j][qp] * d_dphi[i][qp];
+            d_JxW[qp] * dt * deck.d_D_MDE * d_dphi[j][qp] * d_dphi[i][qp];
 
           // advection of mde
           d_Ke(i, j) -=
-              advection_factor * d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
+            advection_factor * d_JxW[qp] * dt * d_phi[j][qp] * vel_cur * d_dphi[i][qp];
         }
       }
     } // loop over quadrature points

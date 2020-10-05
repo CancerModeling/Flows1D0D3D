@@ -31,13 +31,17 @@ struct ModelDeck {
 
   bool d_coupled_1d3d;
 
+  bool d_solve_ecm;
+
+  bool d_solve_pres_with_net_update;
+
   int d_seed;
 
   explicit ModelDeck(const std::string &filename = "")
       : d_dim(2), d_domain_type("hyper_cuboid"),
         d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2),
-        d_test_name(""), d_advection_active(false), d_decouple_nutrients
-        (false), d_seed(-1), d_coupled_1d3d(false) {
+        d_test_name(""), d_advection_active(false), d_decouple_nutrients(false), d_seed(-1), d_coupled_1d3d(false), d_solve_ecm(true),
+        d_solve_pres_with_net_update(false) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -207,8 +211,7 @@ struct TumorDeck {
   double d_epsilon_P;
 
   explicit TumorDeck(const std::string &filename = "")
-      : d_bar_M_P(0.), d_bar_E_phi_T(0.), d_epsilon_T(0.)
-      , d_bar_E_phi_P(0.), d_epsilon_P(0.){
+      : d_bar_M_P(0.), d_bar_E_phi_T(0.), d_epsilon_T(0.), d_bar_E_phi_P(0.), d_epsilon_P(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -236,7 +239,7 @@ struct HypoxicDeck {
   explicit HypoxicDeck(const std::string &filename = "")
       : d_bar_M_H(0.), d_lambda_HP(0.), d_lambda_PH(0.), d_lambda_HN(0.),
         d_sigma_PH(0.), d_sigma_HP(0.), d_sigma_HN(0.),
-  d_bar_E_phi_H(0.), d_epsilon_H(0.){
+        d_bar_E_phi_H(0.), d_epsilon_H(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -304,7 +307,7 @@ struct ECMICData {
   double d_val;
   std::vector<double> d_geom_params;
 
-  ECMICData() : d_val(0.) {};
+  ECMICData() : d_val(0.){};
 };
 
 struct ECMDeck {
@@ -342,7 +345,7 @@ struct MDEDeck {
 
   explicit MDEDeck(const std::string &filename = "")
       : d_D_MDE(0.), d_delta_MDE(0.), d_lambda_MDE_D(0.), d_lambda_MDE_P(0.),
-      d_mde_ic_val(0.) {
+        d_mde_ic_val(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -487,7 +490,7 @@ struct NetworkDeck {
 
   explicit NetworkDeck(const std::string &filename = "")
       : network_active(false), d_net_direction_lambda_g(0.),
-        d_net_length_R_factor(0.), 
+        d_net_length_R_factor(0.),
         d_network_update(true),
         d_network_update_interval(1),
         d_log_normal_mean(0.), d_log_normal_std_dev(0.),
@@ -535,10 +538,10 @@ struct Flow1DDeck {
 
   explicit Flow1DDeck(const std::string &filename = "")
       : d_init_vessel_mu(0.), d_in_pressure(0.), d_in_nutrient(0.),
-          d_blood_density(1.),
-      d_D_sigma_v(1.), d_in_nutrient_vein(0.), d_osmotic_sigma(0.),
+        d_blood_density(1.),
+        d_D_sigma_v(1.), d_in_nutrient_vein(0.), d_osmotic_sigma(0.),
         d_outlet_apply_neumann(false), d_outlet_neumann_val(0.),
-        d_inlet_apply_neumann(false), d_inlet_neumann_val(0.){
+        d_inlet_apply_neumann(false), d_inlet_neumann_val(0.) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -577,9 +580,9 @@ struct FlowDeck {
 
   explicit FlowDeck(const std::string &filename = "")
       : d_tissue_flow_mu(0.), d_tissue_flow_K(0.), d_tissue_flow_coeff(0.),
-      d_tissue_flow_rho(1.),
-      d_tissue_flow_L_p(0.), d_tissue_nut_L_s(0.),
-      d_pressure_bc_north(false),
+        d_tissue_flow_rho(1.),
+        d_tissue_flow_L_p(0.), d_tissue_nut_L_s(0.),
+        d_pressure_bc_north(false),
         d_pressure_bc_south(false), d_pressure_bc_east(false),
         d_pressure_bc_west(false), d_pressure_bc_val(0.),
         d_pressure_ic_val(0.), d_mmhgFactor(133.322), d_omega(0.0), d_N_newton(0) {
@@ -626,9 +629,9 @@ public:
         FlowDeck(filename){};
 
   //
-  void print(unsigned int level = 0) {
+  void print(unsigned int level = 0){
 
-      {ModelDeck *deck = this;
+    {ModelDeck *deck = this;
   deck->print();
 }
 
@@ -721,8 +724,9 @@ public:
   FlowDeck *deck = this;
   deck->print();
 }
-};
-};
+}; // namespace util
+}
+;
 
 } // namespace util
 

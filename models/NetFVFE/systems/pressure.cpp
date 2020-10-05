@@ -100,22 +100,22 @@ void netfvfe::PressureAssembly::assemble_1d_coupling() {
     double p_v = 0.;
     unsigned int assembly_cases;
 
-    for (unsigned int i=0; i<network.d_numSegments; i++) {
+    for (unsigned int i = 0; i < network.d_numSegments; i++) {
 
-      nodes[0] = network.d_segments[2*i + 0];
-      nodes[1] = network.d_segments[2*i + 1];
+      nodes[0] = network.d_segments[2 * i + 0];
+      nodes[1] = network.d_segments[2 * i + 1];
       radius = network.d_segmentData[i];
-      for (unsigned int j=0; j<3; j++) {
-        coords[0][j] = network.d_vertices[3*nodes[0] + j];
-        coords[1][j] = network.d_vertices[3*nodes[1] + j];
+      for (unsigned int j = 0; j < 3; j++) {
+        coords[0][j] = network.d_vertices[3 * nodes[0] + j];
+        coords[1][j] = network.d_vertices[3 * nodes[1] + j];
       }
       length = util::dist_between_points(coords[0], coords[1]);
 
-      for (unsigned int j=0; j<2; j++) {
+      for (unsigned int j = 0; j < 2; j++) {
 
         node_proc = 0;
         node_neigh = 1;
-        if (j==1) {
+        if (j == 1) {
           node_proc = 1;
           node_neigh = 0;
         }
@@ -128,10 +128,10 @@ void netfvfe::PressureAssembly::assemble_1d_coupling() {
           // Surface area of cylinder
           surface_area = 2.0 * M_PI * (0.5 * length) * radius;
           util::unet::determineWeightsAndIds(
-              deck.d_num_points_length, deck.d_num_points_angle, N_3D, coords[node_proc],
-              coords[node_neigh], radius, h_3D, 0.5 * length, weights,
-              id_3D_elements,
-              deck.d_coupling_3d1d_integration_method, d_mesh, true);
+            deck.d_num_points_length, deck.d_num_points_angle, N_3D, coords[node_proc],
+            coords[node_neigh], radius, h_3D, 0.5 * length, weights,
+            id_3D_elements,
+            deck.d_coupling_3d1d_integration_method, d_mesh, true);
 
           // Add coupling entry
           numberOfElements = id_3D_elements.size();
@@ -157,8 +157,8 @@ void netfvfe::PressureAssembly::assemble_1d_coupling() {
               }
             }
           } // loop over 3D elements
-        } // if not dirichlet
-      } // segment's node loop
+        }   // if not dirichlet
+      }     // segment's node loop
 
     } // loop over segments
   }
@@ -252,26 +252,29 @@ void netfvfe::PressureAssembly::assemble_face() {
         // loop over quadrature points
         for (unsigned int qp = 0; qp < pro.d_qrule_face.n_points(); qp++) {
 
-          chem_pro_cur = 0.; chem_hyp_cur = 0.;
-          pro_grad = 0.; hyp_grad = 0.;
-          ecm_cur = 0.; ecm_proj = 0.;
+          chem_pro_cur = 0.;
+          chem_hyp_cur = 0.;
+          pro_grad = 0.;
+          hyp_grad = 0.;
+          ecm_cur = 0.;
+          ecm_proj = 0.;
           for (unsigned int l = 0; l < pro.d_phi_face.size(); l++) {
 
             chem_pro_cur +=
-                pro.d_phi_face[l][qp] * pro.get_current_sol_var(l, 1);
+              pro.d_phi_face[l][qp] * pro.get_current_sol_var(l, 1);
 
             pro_grad.add_scaled(pro.d_dphi_face[l][qp],
                                 pro.get_current_sol_var(l, 0));
 
             chem_hyp_cur +=
-                pro.d_phi_face[l][qp] * hyp.get_current_sol_var(l, 1);
+              pro.d_phi_face[l][qp] * hyp.get_current_sol_var(l, 1);
 
             hyp_grad.add_scaled(pro.d_dphi_face[l][qp],
                                 hyp.get_current_sol_var(l, 0));
 
 
             ecm_cur +=
-                pro.d_phi_face[l][qp] * ecm.get_current_sol(l);
+              pro.d_phi_face[l][qp] * ecm.get_current_sol(l);
           }
 
           ecm_proj = util::project_concentration(ecm_cur);
@@ -279,17 +282,17 @@ void netfvfe::PressureAssembly::assemble_face() {
           if (deck.d_assembly_method == 1) {
             Sp = (chem_pro_cur + deck.d_chi_c * nut_cur +
                   deck.d_chi_h * ecm_cur) *
-                     pro_grad +
+                   pro_grad +
                  (chem_hyp_cur + deck.d_chi_c * nut_cur +
                   deck.d_chi_h * ecm_cur) *
-                     hyp_grad;
+                   hyp_grad;
           } else {
             Sp = (chem_pro_cur + deck.d_chi_c * nut_proj +
                   deck.d_chi_h * ecm_proj) *
-                 pro_grad +
+                   pro_grad +
                  (chem_hyp_cur + deck.d_chi_c * nut_proj +
                   deck.d_chi_h * ecm_proj) *
-                 hyp_grad;
+                   hyp_grad;
           }
 
           // add to force

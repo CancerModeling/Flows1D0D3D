@@ -13,21 +13,22 @@
 namespace {
 
 float time_diff(std::chrono::steady_clock::time_point begin,
-                       std::chrono::steady_clock::time_point end) {
+                std::chrono::steady_clock::time_point end) {
 
   return std::chrono::duration_cast<std::chrono::microseconds>(end -
-                                                               begin).count();
+                                                               begin)
+    .count();
 }
 
 int locate_in_set(const std::string &key, const std::vector<std::string> &set) {
 
-  for (int i =0; i<set.size(); i++)
+  for (int i = 0; i < set.size(); i++)
     if (set[i] == key)
       return i;
 
   return -1;
 }
-}
+} // namespace
 
 namespace util {
 
@@ -52,7 +53,7 @@ struct TimePair {
       return d_dt;
     else
       return std::chrono::duration_cast<std::chrono::microseconds>(d_end -
-                                                                 d_begin)
+                                                                   d_begin)
         .count();
   }
 
@@ -69,7 +70,6 @@ struct TimePair {
 class TimeStepLog {
 
 public:
-
   /*! @brief Total systems */
   int d_n;
 
@@ -155,9 +155,9 @@ public:
       d_sys_assembly_time[i] = time_pair;
   }
 
-  void add_cur_time(const float &time) {d_times[d_cur_step] = time;}
+  void add_cur_time(const float &time) { d_times[d_cur_step] = time; }
 
-  void add_solve_time(TimePair time_pair) {d_solve_time[d_cur_step] = time_pair;}
+  void add_solve_time(TimePair time_pair) { d_solve_time[d_cur_step] = time_pair; }
 
   void add_sys_solve_time(TimePair time_pair, const std::string &sys_name) {
 
@@ -172,33 +172,34 @@ public:
   }
 
   void add_sys_solve_time(const std::vector<steady_clock::time_point>
-      &sys_clocks, const int &n) {
+                            &sys_clocks,
+                          const int &n) {
 
     d_sys_solve_time[d_cur_step][n].add_dt(
-        time_diff(sys_clocks[n], steady_clock::now()));
+      time_diff(sys_clocks[n], steady_clock::now()));
   }
 
   void add_sys_solve_time(const steady_clock::time_point
-                          &sys_clock, const int &n) {
+                            &sys_clock,
+                          const int &n) {
 
     d_sys_solve_time[d_cur_step][n].add_dt(
-        time_diff(sys_clock, steady_clock::now()));
+      time_diff(sys_clock, steady_clock::now()));
   }
 
-  void add_pres_solve_time(TimePair time_pair) {d_pres_solve_time[d_cur_step]
-                                                = time_pair;}
+  void add_pres_solve_time(TimePair time_pair) { d_pres_solve_time[d_cur_step] = time_pair; }
 
-  void add_update_net_time(TimePair time_pair) {d_update_network_time[d_cur_step] =
-                                                    time_pair;}
+  void add_update_net_time(TimePair time_pair) { d_update_network_time[d_cur_step] =
+                                                   time_pair; }
 
-  void add_nonlin_iter(const int &i) {d_nonlinear_iters[d_cur_step] = i;}
+  void add_nonlin_iter(const int &i) { d_nonlinear_iters[d_cur_step] = i; }
 
-  void add_pres_nonlin_iter(const int &i) {d_pres_nonlinear_iters[d_cur_step] = i;}
+  void add_pres_nonlin_iter(const int &i) { d_pres_nonlinear_iters[d_cur_step] = i; }
 
   std::vector<float> get_delta_t_vec(const std::vector<TimePair> &list) {
 
     auto delta_t = std::vector<float>(list.size(), 0.);
-    for (size_t i=0; i<list.size(); i++)
+    for (size_t i = 0; i < list.size(); i++)
       delta_t[i] = list[i].time_diff();
 
     return delta_t;
@@ -211,7 +212,6 @@ public:
 class Logger : public TimeStepLog {
 
 public:
-
   Logger(const std::string &log_file, Parallel::Communicator *comm,
          bool screen_out = true);
 
@@ -293,7 +293,7 @@ public:
   }
 
   void log_ts_all() {
-    for (int i=0; i<d_solve_time.size(); i++) {
+    for (int i = 0; i < d_solve_time.size(); i++) {
       if (d_comm_p->rank() == 0)
         d_ts_file << log_ts_base(i, 0) << std::flush;
     }
@@ -303,7 +303,7 @@ public:
 
     std::ostringstream oss;
     oss << "time ";
-    for (unsigned int i =0; i< qoi_names.size(); i++) {
+    for (unsigned int i = 0; i < qoi_names.size(); i++) {
       oss << qoi_names[i];
       if (i < qoi_names.size() - 1)
         oss << " ";
@@ -326,7 +326,7 @@ public:
 
     std::ostringstream oss;
     oss << time << " ";
-    for (unsigned int i =0; i< qoi.size(); i++) {
+    for (unsigned int i = 0; i < qoi.size(); i++) {
       oss << qoi[i];
       if (i < qoi.size() - 1)
         oss << " ";

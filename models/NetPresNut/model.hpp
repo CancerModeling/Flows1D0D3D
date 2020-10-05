@@ -62,22 +62,21 @@ public:
     else
       libmesh_error_msg("Error: system = " + system + " does not exist");
   }
-  PressureAssembly &get_pres_assembly() {return d_pres_assembly;}
-  NutAssembly &get_nut_assembly() {return d_nut_assembly;}
+  PressureAssembly &get_pres_assembly() { return d_pres_assembly; }
+  NutAssembly &get_nut_assembly() { return d_nut_assembly; }
 
   /*! @brief Run model */
-  void run() override ;
+  void run() override;
 
 private:
-
   /*! @brief Output results of tumor system and network system */
-  void write_system(const unsigned int &t_step) override ;
+  void write_system(const unsigned int &t_step) override;
 
   /*! @brief Solves tumor system */
-  void solve_system() override ;
+  void solve_system() override;
 
   /*! @brief Compute quantity of interest */
-  void compute_qoi() override ;
+  void compute_qoi() override;
 
   /*! @brief Solves 1D-3D pressure system
    * At given time step, it solves for 1D and 3D pressure in a nonlinear loop

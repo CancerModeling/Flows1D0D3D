@@ -9,9 +9,9 @@
 #include "../model.hpp"
 
 Number netfc::initial_condition_ecm(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                    const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"ECM");
+  libmesh_assert_equal_to(system_name, "ECM");
 
   if (var_name == "ecm") {
 
@@ -22,8 +22,8 @@ Number netfc::initial_condition_ecm(const Point &p, const Parameters &es,
       return 0.;
     else if (ic_data.d_type == "spherical") {
 
-      Point dx = p - Point(ic_data.d_geom_params[0],ic_data.d_geom_params[1],
-          ic_data.d_geom_params[2]);
+      Point dx = p - Point(ic_data.d_geom_params[0], ic_data.d_geom_params[1],
+                           ic_data.d_geom_params[2]);
       double r = ic_data.d_geom_params[3];
 
       if (dx.norm() < r - 1.0E-12)
@@ -32,10 +32,9 @@ Number netfc::initial_condition_ecm(const Point &p, const Parameters &es,
         return 0.;
     } else if (ic_data.d_type == "elliptical") {
 
-      Point xc = Point(ic_data.d_geom_params[0],ic_data.d_geom_params[1],
+      Point xc = Point(ic_data.d_geom_params[0], ic_data.d_geom_params[1],
                        ic_data.d_geom_params[2]);
-      std::vector<double> r = {ic_data.d_geom_params[3], ic_data
-                               .d_geom_params[4], ic_data.d_geom_params[5]};
+      std::vector<double> r = {ic_data.d_geom_params[3], ic_data.d_geom_params[4], ic_data.d_geom_params[5]};
       const Point dx = p - xc;
 
       // transform ellipse into ball of radius
@@ -45,7 +44,7 @@ Number netfc::initial_condition_ecm(const Point &p, const Parameters &es,
       ball_r = std::sqrt(ball_r);
 
       Point p_ball = util::ellipse_to_ball(p, xc, r,
-                                                 deck->d_dim, ball_r);
+                                           deck->d_dim, ball_r);
 
       if (p_ball.norm() < ball_r - 1.0E-12) {
 
@@ -55,9 +54,9 @@ Number netfc::initial_condition_ecm(const Point &p, const Parameters &es,
 
     } else if (ic_data.d_type == "box") {
 
-      Point x1 = Point(ic_data.d_geom_params[0],ic_data.d_geom_params[1],
-                           ic_data.d_geom_params[2]);
-      Point x2 = Point(ic_data.d_geom_params[3],ic_data.d_geom_params[4],
+      Point x1 = Point(ic_data.d_geom_params[0], ic_data.d_geom_params[1],
+                       ic_data.d_geom_params[2]);
+      Point x2 = Point(ic_data.d_geom_params[3], ic_data.d_geom_params[4],
                        ic_data.d_geom_params[5]);
 
       if (util::is_inside_box(p, {x1, x2}))
@@ -96,7 +95,7 @@ void netfc::EcmAssembly::assemble_1() {
 
   // Nutrient system
   auto &nut =
-      es.get_system<TransientLinearImplicitSystem>("Nutrient");
+    es.get_system<TransientLinearImplicitSystem>("Nutrient");
   const unsigned int v_nut = nut.variable_number("nutrient");
   const DofMap &nut_map = nut.get_dof_map();
   std::vector<unsigned int> dof_indices_nut;
@@ -164,12 +163,12 @@ void netfc::EcmAssembly::assemble_1() {
       }
 
       Number compute_rhs = JxW[qp] * (ecm_old + dt * deck->d_lambda_ECM_P *
-          nut_cur * util::heaviside(ecm_cur - deck->d_bar_phi_ECM_P));
+                                                  nut_cur * util::heaviside(ecm_cur - deck->d_bar_phi_ECM_P));
 
       Number compute_mat =
-          JxW[qp] * (1. + dt * deck->d_lambda_ECM_D * mde_cur +
-                     dt * deck->d_lambda_ECM_P * nut_cur *
-                         util::heaviside(ecm_cur - deck->d_bar_phi_ECM_P));
+        JxW[qp] * (1. + dt * deck->d_lambda_ECM_D * mde_cur +
+                   dt * deck->d_lambda_ECM_P * nut_cur *
+                     util::heaviside(ecm_cur - deck->d_bar_phi_ECM_P));
 
       // Assembling matrix
       for (unsigned int i = 0; i < phi.size(); i++) {
@@ -197,7 +196,7 @@ void netfc::EcmAssembly::assemble_2() {
 
   // Nutrient system
   auto &nut =
-      es.get_system<TransientLinearImplicitSystem>("Nutrient");
+    es.get_system<TransientLinearImplicitSystem>("Nutrient");
   const unsigned int v_nut = nut.variable_number("nutrient");
   const DofMap &nut_map = nut.get_dof_map();
   std::vector<unsigned int> dof_indices_nut;
@@ -270,11 +269,11 @@ void netfc::EcmAssembly::assemble_2() {
       Number mde_proj = util::project_concentration(mde_cur);
 
       Number compute_rhs = JxW[qp] * (ecm_old + dt * deck->d_lambda_ECM_P *
-                                                nut_proj * util::heaviside(ecm_proj - deck->d_bar_phi_ECM_P));
+                                                  nut_proj * util::heaviside(ecm_proj - deck->d_bar_phi_ECM_P));
 
       Number compute_mat =
-          JxW[qp] * (1. + dt * deck->d_lambda_ECM_D * mde_proj +
-                     dt * deck->d_lambda_ECM_P * nut_proj *
+        JxW[qp] * (1. + dt * deck->d_lambda_ECM_D * mde_proj +
+                   dt * deck->d_lambda_ECM_P * nut_proj *
                      util::heaviside(ecm_proj - deck->d_bar_phi_ECM_P));
 
       // Assembling matrix
@@ -303,7 +302,7 @@ void netfc::EcmAssembly::assemble_3() {
 
   // Nutrient system
   auto &nut =
-      es.get_system<TransientLinearImplicitSystem>("Nutrient");
+    es.get_system<TransientLinearImplicitSystem>("Nutrient");
   const unsigned int v_nut = nut.variable_number("nutrient");
   const DofMap &nut_map = nut.get_dof_map();
   std::vector<unsigned int> dof_indices_nut;
@@ -376,10 +375,8 @@ void netfc::EcmAssembly::assemble_3() {
       Number mde_proj = util::project_concentration(mde_cur);
 
       Number compute_rhs =
-          JxW[qp] *
-          (ecm_old + dt * deck->d_lambda_ECM_P * nut_proj * (1. - ecm_proj) *
-                         util::heaviside(ecm_proj - deck->d_bar_phi_ECM_P)
-           - dt * deck->d_lambda_ECM_D * mde_proj * ecm_proj);
+        JxW[qp] *
+        (ecm_old + dt * deck->d_lambda_ECM_P * nut_proj * (1. - ecm_proj) * util::heaviside(ecm_proj - deck->d_bar_phi_ECM_P) - dt * deck->d_lambda_ECM_D * mde_proj * ecm_proj);
 
       Number compute_mat = JxW[qp];
 

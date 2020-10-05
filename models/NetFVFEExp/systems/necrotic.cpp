@@ -8,9 +8,9 @@
 #include "../model.hpp"
 
 Number netfvfeexp::initial_condition_nec(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                         const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"Necrotic");
+  libmesh_assert_equal_to(system_name, "Necrotic");
 
   return 0.;
 }
@@ -25,7 +25,7 @@ void netfvfeexp::NecAssembly::assemble_1() {
   // Get required system alias
   auto &nut = d_model_p->get_nut_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
-  
+
   // Model parameters
   const auto &deck = d_model_p->get_input_deck();
   const Real dt = d_model_p->d_dt;
@@ -57,7 +57,8 @@ void netfvfeexp::NecAssembly::assemble_1() {
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
       // Computing solution
-      nec_old = 0.; hyp_cur = 0.;
+      nec_old = 0.;
+      hyp_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
 
         nec_old += d_phi[l][qp] * get_old_sol(l);
@@ -66,17 +67,17 @@ void netfvfeexp::NecAssembly::assemble_1() {
 
       if (deck.d_assembly_method == 1) {
         compute_rhs =
-            d_JxW[qp] *
-            (nec_old + dt * deck.d_lambda_HN *
-                           util::heaviside(deck.d_sigma_HN - nut_cur) *
-                           hyp_cur);
+          d_JxW[qp] *
+          (nec_old + dt * deck.d_lambda_HN *
+                       util::heaviside(deck.d_sigma_HN - nut_cur) *
+                       hyp_cur);
       } else {
 
         hyp_proj = util::project_concentration(hyp_cur);
 
         compute_rhs =
-            d_JxW[qp] *
-            (nec_old + dt * deck.d_lambda_HN *
+          d_JxW[qp] *
+          (nec_old + dt * deck.d_lambda_HN *
                        util::heaviside(deck.d_sigma_HN - nut_proj) *
                        hyp_proj);
       }
@@ -84,7 +85,7 @@ void netfvfeexp::NecAssembly::assemble_1() {
       // Assembling matrix
       for (unsigned int i = 0; i < d_phi.size(); i++) {
 
-        d_Fe(i) +=  compute_rhs * d_phi[i][qp];
+        d_Fe(i) += compute_rhs * d_phi[i][qp];
 
         for (unsigned int j = 0; j < d_phi.size(); j++) {
 
@@ -94,7 +95,7 @@ void netfvfeexp::NecAssembly::assemble_1() {
     } // loop over quadrature points
 
     d_dof_map_sys.heterogenously_constrain_element_matrix_and_vector(d_Ke, d_Fe,
-                                                               d_dof_indices_sys);
+                                                                     d_dof_indices_sys);
     d_sys.matrix->add_matrix(d_Ke, d_dof_indices_sys);
     d_sys.rhs->add_vector(d_Fe, d_dof_indices_sys);
   }

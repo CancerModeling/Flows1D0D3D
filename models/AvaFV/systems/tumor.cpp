@@ -8,9 +8,9 @@
 #include "../model.hpp"
 
 Number avafv::initial_condition_tum(const Point &p, const Parameters &es,
-                              const std::string &system_name, const std::string &var_name){
+                                    const std::string &system_name, const std::string &var_name) {
 
-  libmesh_assert_equal_to(system_name,"Tumor");
+  libmesh_assert_equal_to(system_name, "Tumor");
 
   if (var_name == "tumor") {
 
@@ -25,7 +25,7 @@ Number avafv::initial_condition_tum(const Point &p, const Parameters &es,
 
       auto data = deck->d_tum_ic_data[ic];
 
-      const std::string type =data.d_ic_type;
+      const std::string type = data.d_ic_type;
       const Point xc = Point(data.d_ic_center[0], data.d_ic_center[1],
                              data.d_ic_center[2]);
       const Point dx = p - xc;
@@ -40,7 +40,7 @@ Number avafv::initial_condition_tum(const Point &p, const Parameters &es,
             return 1.;
           else
             return util::exp_decay_function(dx.norm() / data.d_tum_ic_radius[0],
-                                          4.);
+                                            4.);
         }
       } else if (type == "tumor_elliptical" or
                  type == "tumor_hypoxic_elliptical") {
@@ -146,8 +146,8 @@ void avafv::TumAssembly::assemble_face() {
     pro_proj = util::project_concentration(tum_cur - hyp.get_current_sol(0) - nec.get_current_sol(0));
 
     mobility_elem =
-          deck.d_bar_M_P * pow(pro_proj, 2) * pow(1. - pro_proj, 2) +
-          deck.d_bar_M_H * pow(hyp_proj, 2) * pow(1. - hyp_proj, 2);
+      deck.d_bar_M_P * pow(pro_proj, 2) * pow(1. - pro_proj, 2) +
+      deck.d_bar_M_H * pow(hyp_proj, 2) * pow(1. - hyp_proj, 2);
 
     // loop over sides of the element
     for (auto side : elem->side_index_range()) {
@@ -161,9 +161,9 @@ void avafv::TumAssembly::assemble_face() {
         init_var_dof(neighbor, dof_indices_tum_neigh, dof_indices_tum_var_neigh);
 
         tum_neigh_cur = get_current_sol_var(0, 0,
-                                                     dof_indices_tum_var_neigh);
+                                            dof_indices_tum_var_neigh);
         chem_tum_neigh_cur = get_current_sol_var(0, 1,
-                                                          dof_indices_tum_var_neigh);
+                                                 dof_indices_tum_var_neigh);
 
         // hyp
         hyp.init_dof(neighbor, dof_indices_hyp_neigh);
@@ -173,22 +173,22 @@ void avafv::TumAssembly::assemble_face() {
 
         // mobility in neighboring element
         hyp_neigh_proj = util::project_concentration(
-            hyp.get_current_sol(0, dof_indices_hyp_neigh));
+          hyp.get_current_sol(0, dof_indices_hyp_neigh));
         pro_neigh_proj = util::project_concentration(
-            tum_neigh_cur - hyp.get_current_sol(0, dof_indices_hyp_neigh) -
-            nec.get_current_sol(0, dof_indices_nec_neigh));
+          tum_neigh_cur - hyp.get_current_sol(0, dof_indices_hyp_neigh) -
+          nec.get_current_sol(0, dof_indices_nec_neigh));
         mobility_neighbor = deck.d_bar_M_P * pow(pro_neigh_proj, 2) *
-                                pow(1. - pro_neigh_proj, 2) +
+                              pow(1. - pro_neigh_proj, 2) +
                             deck.d_bar_M_H * pow(hyp_neigh_proj, 2) *
-                                pow(1. - hyp_neigh_proj, 2);
+                              pow(1. - hyp_neigh_proj, 2);
 
         // mobility term due to div(grad(mu))
         // Goes to row corresponding to phi and columns corresponding to mu
         compute_mat = 0.;
         if (mobility_elem + mobility_neighbor > 1.E-12)
           compute_mat = dt * 2. * deck.d_face_by_h * mobility_elem *
-                           mobility_neighbor /
-                           (mobility_elem + mobility_neighbor);
+                        mobility_neighbor /
+                        (mobility_elem + mobility_neighbor);
         util::add_unique(get_var_global_dof_id(0, 1), compute_mat,
                          Ke_phi_dof_col, Ke_phi_val_col);
         util::add_unique(dof_indices_tum_var_neigh[1][0], -compute_mat,
@@ -197,7 +197,7 @@ void avafv::TumAssembly::assemble_face() {
         // interface term in cahn-hilliard
         // Goes to row corresponding to mu and columns corresponding to phi
         compute_mat = deck.d_epsilon_T * deck.d_epsilon_T *
-            deck.d_face_by_h;
+                      deck.d_face_by_h;
         util::add_unique(get_var_global_dof_id(0, 0), -compute_mat,
                          Ke_mu_dof_col, Ke_mu_val_col);
         util::add_unique(dof_indices_tum_var_neigh[0][0], compute_mat,
@@ -236,7 +236,7 @@ void avafv::TumAssembly::assemble_1() {
   std::vector<unsigned int> Ke_dof_row(2, 0);
 
   // local matrix and vector
-  DenseMatrix<Number> Ke(2,2);
+  DenseMatrix<Number> Ke(2, 2);
   DenseVector<Number> Fe(2);
 
   // Store current and old solution
@@ -271,7 +271,7 @@ void avafv::TumAssembly::assemble_1() {
     // reset matrix and force
     Ke_dof_row[0] = get_var_global_dof_id(0, 0);
     Ke_dof_row[1] = get_var_global_dof_id(0, 1);
-    Ke.resize(2,2);
+    Ke.resize(2, 2);
     Fe.resize(2);
 
     // get solution in this element
@@ -295,34 +295,34 @@ void avafv::TumAssembly::assemble_1() {
 
       // compute quantities independent of dof loop
       compute_rhs_tum =
-          deck.d_elem_size * (tum_old + dt * deck.d_lambda_P * nut_cur * pro_cur +
-                       dt * deck.d_lambda_A * nec_cur);
+        deck.d_elem_size * (tum_old + dt * deck.d_lambda_P * nut_cur * pro_cur +
+                            dt * deck.d_lambda_A * nec_cur);
 
       compute_rhs_mu =
-          deck.d_elem_size * (deck.d_bar_E_phi_T * tum_old *
-                       (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) -
-                       deck.d_chi_c * nut_cur);
+        deck.d_elem_size * (deck.d_bar_E_phi_T * tum_old *
+                              (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) -
+                            deck.d_chi_c * nut_cur);
 
       compute_mat_tum =
-          deck.d_elem_size * (1. + dt * deck.d_lambda_A +
-                       dt * deck.d_lambda_P * nut_cur * pro_cur);
+        deck.d_elem_size * (1. + dt * deck.d_lambda_A +
+                            dt * deck.d_lambda_P * nut_cur * pro_cur);
     } else {
 
       nut_proj = util::project_concentration(nut_cur);
 
       // compute quantities independent of dof loop
       compute_rhs_tum =
-          deck.d_elem_size * (tum_old + dt * deck.d_lambda_P * nut_proj * pro_proj +
-                       dt * deck.d_lambda_A * nec_proj);
+        deck.d_elem_size * (tum_old + dt * deck.d_lambda_P * nut_proj * pro_proj +
+                            dt * deck.d_lambda_A * nec_proj);
 
       compute_rhs_mu =
-          deck.d_elem_size * (deck.d_bar_E_phi_T * tum_old *
-                       (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) -
-                       deck.d_chi_c * nut_proj);
+        deck.d_elem_size * (deck.d_bar_E_phi_T * tum_old *
+                              (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) -
+                            deck.d_chi_c * nut_proj);
 
       compute_mat_tum =
-          deck.d_elem_size * (1. + dt * deck.d_lambda_A +
-                       dt * deck.d_lambda_P * nut_proj * pro_proj);
+        deck.d_elem_size * (1. + dt * deck.d_lambda_A +
+                            dt * deck.d_lambda_P * nut_proj * pro_proj);
     }
 
     // implicit part of double-well
@@ -330,12 +330,12 @@ void avafv::TumAssembly::assemble_1() {
 
     // tumor: Ke(0,0), Ke(0,1), Fe(0)
     Ke(0, 0) += compute_mat_tum;
-    Ke(0,1) += 0.;
+    Ke(0, 1) += 0.;
     Fe(0) += compute_rhs_tum;
 
     // mu: Ke(1,0), Ke(1,1), Fe(1)
-    Ke(1,0) += compute_mat_mu_tum;
-    Ke(1,1) += deck.d_elem_size;
+    Ke(1, 0) += compute_mat_mu_tum;
+    Ke(1, 1) += deck.d_elem_size;
     Fe(1) += compute_rhs_mu;
 
     // add to matrix
