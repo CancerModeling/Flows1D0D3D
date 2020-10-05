@@ -21,7 +21,7 @@ void netfc::Network::assemble3DSystemForTAF() {
 
   // 3D-1D TAF problem on a cube
   std::cout << " " << std::endl;
-  std::cout << "3D TAF problem on a cube \Omega = (0," << L_x << ")^3" << std::endl;
+  std::cout << "3D TAF problem on a cube \\Omega = (0," << L_x << ")^3" << std::endl;
 
   double vol_elem = h_3D * h_3D * h_3D;
 

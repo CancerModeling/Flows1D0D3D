@@ -109,13 +109,6 @@ struct Matrix {
   }
 
   double det() const {
-
-    if (d_size > 3) {
-      libmesh_error_msg("Determinant of matrix above size 3 is not "
-                        "implemented\n");
-      exit(1);
-    }
-
     if (d_size == 1)
       return (*this)(0, 0);
     else if (d_size == 2)
@@ -127,16 +120,12 @@ struct Matrix {
                               (*this)(2, 0) * (*this)(1, 2)) +
              (*this)(0, 2) * ((*this)(1, 0) * (*this)(2, 1) -
                               (*this)(2, 0) * (*this)(1, 1));
+
+    libmesh_error_msg("Determinant of matrix above size 3 is not implemented\n");
+    exit(1);
   }
 
   Matrix inv() {
-
-    if (d_size > 3) {
-      libmesh_error_msg("Inverse of matrix above size 3 is not "
-                        "implemented\n");
-      exit(1);
-    }
-
     if (d_size == 1) {
       Matrix n(d_size);
       n(0, 0) = 1. / (*this)(0, 0);
@@ -183,6 +172,9 @@ struct Matrix {
 
       return n;
     }
+
+    libmesh_error_msg("Inverse of matrix above size 3 is not implemented\n");
+    exit(1);
   }
 
   Matrix pow(int a) {

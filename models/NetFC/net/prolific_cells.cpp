@@ -21,7 +21,7 @@ void netfc::Network::solve3DProlificCellProblem(int timeStep, double time) {
 
   // 3D ProlificCellProblem on a cube
   std::cout << " " << std::endl;
-  std::cout << "Solve 3D ProlificCellProblem on a cube \Omega = (0," << L_x << ")^3" << std::endl;
+  std::cout << "Solve 3D ProlificCellProblem on a cube \\Omega = (0," << L_x << ")^3" << std::endl;
 
   // time step size
   double dt = d_model_p->d_dt;
