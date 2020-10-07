@@ -565,7 +565,7 @@ void netfvfe::Model::solve_system() {
   d_log(" \n", "solve sys");
   d_log.add_nonlin_iter(d_nonlinear_step);
 
-  if (d_is_growth_step or d_is_output_step) {
+  //if (d_is_growth_step or d_is_output_step) {
     // solve taf
     reset_clock();
     d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
@@ -586,7 +586,7 @@ void netfvfe::Model::solve_system() {
     d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
     d_tum.solve_custom();
     d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
-  }
+  //}
 
   d_log(" \n", "solve sys");
 }
