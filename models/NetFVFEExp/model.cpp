@@ -497,7 +497,7 @@ void netfvfeexp::Model::solve_system_explicit() {
   }
 
   // solve taf and tumor only if it is either growth step or output step
-  if (d_is_growth_step or d_is_output_step) {
+  //if (d_is_growth_step or d_is_output_step) {
     // solve taf
     reset_clock();
     d_log("|" + d_taf.d_sys_name + "| -> ", "solve sys");
@@ -518,7 +518,7 @@ void netfvfeexp::Model::solve_system_explicit() {
     d_log("|" + d_tum.d_sys_name + "| \n", "solve sys");
     d_tum.solve_custom();
     d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
-  }
+  //}
 
   d_log(" \n", "solve sys");
 }
@@ -673,7 +673,7 @@ void netfvfeexp::Model::solve_system_implicit() {
   d_log(" \n", "solve sys");
   d_log.add_nonlin_iter(d_nonlinear_step);
 
-  if (d_is_growth_step or d_is_output_step) {
+  //if (d_is_growth_step or d_is_output_step) {
 
     // solve taf
     reset_clock();
@@ -695,7 +695,7 @@ void netfvfeexp::Model::solve_system_implicit() {
     d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
     d_tum.solve_custom();
     d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
-  }
+  //}
 
   d_log(" \n", "solve sys");
 }
@@ -814,7 +814,7 @@ void netfvfeexp::Model::solve_system_nutrient_explicit() {
   d_log(" \n", "solve sys");
   d_log.add_nonlin_iter(d_nonlinear_step);
 
-  if (d_is_growth_step or d_is_output_step) {
+  //if (d_is_growth_step or d_is_output_step) {
 
     // solve taf
     reset_clock();
@@ -836,7 +836,7 @@ void netfvfeexp::Model::solve_system_nutrient_explicit() {
     d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
     d_tum.solve_custom();
     d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
-  }
+  //}
 
   d_log(" \n", "solve sys");
 }
