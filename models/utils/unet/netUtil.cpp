@@ -321,56 +321,6 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
                                         double radius, double h_3D,
                                         double length_edge,
                                         std::vector<double> &weights,
-                                        std::vector<int> &id_3D_elements) {
-
-  std::vector<double> direction, rotator;
-
-  for (int j = 0; j < 3; j++) {
-
-    direction.push_back(coord_neighbor[j] - coord[j]);
-  }
-
-  rotator = determineRotator(direction);
-
-  double length_rotator = normVector(rotator);
-
-  for (int i_s = 1; i_s < N_s - 1; i_s++) {
-
-    std::vector<double> midpoint(3);
-
-    double theta = 0.0;
-
-    for (int j = 0; j < 3; j++) {
-
-      midpoint[j] = coord[j] + (((double) i_s / (double) N_s) * (length_edge)) *
-                                 direction[j];
-    }
-
-    for (int i_theta = 0; i_theta < N_theta; i_theta++) {
-
-      theta = ((double) i_theta) / ((double) N_theta) * 2.0 * M_PI;
-
-      std::vector<double> cylinder_node =
-        computeNodesOnCylinders(direction, rotator, midpoint, radius, theta);
-
-      if (isCenterInDomain(cylinder_node, 2.0)) {
-
-        int elementIndex = getElementIndex(cylinder_node, h_3D, N_3D);
-
-        // Compute weights and element ids
-        updateWeightsAndIds(N_s - 2, N_theta, elementIndex, weights,
-                            id_3D_elements);
-      }
-    }
-  }
-}
-
-void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
-                                        std::vector<double> coord,
-                                        std::vector<double> coord_neighbor,
-                                        double radius, double h_3D,
-                                        double length_edge,
-                                        std::vector<double> &weights,
                                         std::vector<int> &id_3D_elements,
                                         const int &integration_method,
                                         const MeshBase &mesh,

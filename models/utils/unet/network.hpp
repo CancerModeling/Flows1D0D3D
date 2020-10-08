@@ -159,12 +159,7 @@ public:
    */
   /**@{*/
 
-  void update_old_concentration() {
-    if (d_coupled_solver)
-      phi_sigma_old = phi_sigma;
-    else
-      C_v_old = C_v;
-  };
+  void update_old_concentration() { C_v_old = C_v; };
 
   void update_old_concentration_3D1D() { phi_sigma_old = phi_sigma; };
 
@@ -251,7 +246,7 @@ public:
   gmm::row_matrix<gmm::wsvector<double>> A_flow_3D1D;
 
   /*! @brief System matrix for 3D1D nutrient model*/
-  gmm::row_matrix<gmm::wsvector<double>> A_nut_3D1D;
+  //gmm::row_matrix<gmm::wsvector<double>> A_nut_3D1D;
 
   /*! @brief System force for vessel pressure */
   std::vector<double> b;
@@ -290,7 +285,8 @@ public:
   std::vector<double> phi_sigma_3D;
 
   /*! @brief Current TAF concentration */
-  std::vector<double> phi_TAF;
+  std::vector<double> phi_TAF_3D;
+  ;
 
   double mu;
 
