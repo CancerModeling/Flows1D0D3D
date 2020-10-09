@@ -13,6 +13,7 @@
 #include "umodel/model.hpp"
 #include "unet/network.hpp"
 #include "usystem/ghosting_functor.hpp"
+#include "unet/NetworkVTKWriter.h"
 
 // typedef network
 typedef util::unet::Network Net;
@@ -132,6 +133,8 @@ private:
 
   /*! @brief Network class */
   Net d_network;
+
+  util::unet::NetworkVTKWriter d_networkVtkWriter;
 
   /*! @brief Assembly objects */
   TumAssembly d_tum;
