@@ -92,12 +92,12 @@ void netfvfeexp::EcmAssembly::assemble_1() {
 
         compute_rhs =
           d_JxW[qp] *
-          (ecm_old + dt * deck.d_lambda_ECM_P * nut_proj *
+          (ecm_old + dt * deck.d_lambda_ECM_P * nut_cur *
                        util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
 
         compute_mat =
-          d_JxW[qp] * (1. + dt * deck.d_lambda_ECM_D * mde_proj +
-                       dt * deck.d_lambda_ECM_P * nut_proj *
+          d_JxW[qp] * (1. + dt * deck.d_lambda_ECM_D * mde_cur +
+                       dt * deck.d_lambda_ECM_P * nut_cur *
                          util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
       }
 
