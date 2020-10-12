@@ -318,6 +318,23 @@ void netfvfeexp::Model::run() {
   d_tum_sys.parameters.set<unsigned int>("linear solver maximum iterations") =
     d_input.d_linear_max_iters;
 
+  // find solver type and set assembly type for each system
+    if (d_input.d_test_name == "solve_explicit") {
+        d_pro.d_implicit_assembly = false;
+        d_hyp.d_implicit_assembly = false;
+        d_nec.d_implicit_assembly = false;
+        d_ecm.d_implicit_assembly = false;
+        d_mde.d_implicit_assembly = false;
+        d_taf.d_implicit_assembly = false;
+    }
+    else if (d_input.d_test_name == "solve_nutrient_explicit")
+        solve_system_nutrient_explicit();
+    else if (d_input.d_test_name == "solve_implicit")
+        solve_system_implicit();
+    else
+        libmesh_error_msg("Test name is not valid. Try solve_explicit, "
+                          "solve_nutrient_explicit or solve_implicit.");
+
   //
   // Solve step
   //
