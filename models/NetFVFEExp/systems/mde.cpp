@@ -25,6 +25,7 @@ void netfvfeexp::MdeAssembly::assemble() {
 void netfvfeexp::MdeAssembly::assemble_1() {
 
   // Get required system alias
+  auto &mde = d_model_p->get_mde_assembly();
   auto &nut = d_model_p->get_nut_assembly();
   auto &pro = d_model_p->get_pro_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
@@ -43,10 +44,9 @@ void netfvfeexp::MdeAssembly::assemble_1() {
   Real hyp_cur = 0.;
   Real ecm_cur = 0.;
 
-  Real nut_proj = 0.;
-  Real pro_proj = 0.;
-  Real hyp_proj = 0.;
-  Real ecm_proj = 0.;
+  Real pro_old = 0.;
+  Real hyp_old = 0.;
+  Real ecm_old = 0.;
 
   Gradient vel_cur = 0.;
 
@@ -56,7 +56,7 @@ void netfvfeexp::MdeAssembly::assemble_1() {
   // Looping through elements
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
-    init_dof(elem);
+    mde.init_dof(elem);
     nut.init_dof(elem);
     pro.init_dof(elem);
     hyp.init_dof(elem);
@@ -64,45 +64,32 @@ void netfvfeexp::MdeAssembly::assemble_1() {
     vel.init_dof(elem);
 
     // init fe and element matrix and vector
-    init_fe(elem);
+    mde.init_fe(elem);
 
     // get finite-volume quantities
     nut_cur = nut.get_current_sol(0);
-    nut_proj = util::project_concentration(nut_cur);
 
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
-      // Computing solution
-      mde_old = 0.;
-      pro_cur = 0.;
-      hyp_cur = 0.;
-      ecm_cur = 0.;
-      vel_cur = 0.;
-      for (unsigned int l = 0; l < d_phi.size(); l++) {
+      if (d_implicit_assembly) {
+        // required
+        // old: mde
+        // new: nut, vel, pro, hyp, ecm
+        mde_old = 0.;
+        pro_cur = 0.;
+        hyp_cur = 0.;
+        ecm_cur = 0.;
+        vel_cur = 0.;
+        for (unsigned int l = 0; l < d_phi.size(); l++) {
 
-        mde_old += d_phi[l][qp] * get_old_sol(l);
-        pro_cur += d_phi[l][qp] * pro.get_current_sol_var(l, 0);
-        hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
-        ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
+          mde_old += d_phi[l][qp] * mde.get_old_sol(l);
+          pro_cur += d_phi[l][qp] * pro.get_current_sol_var(l, 0);
+          hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
+          ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
 
-        for (unsigned int ll = 0; ll < d_mesh.mesh_dimension(); ll++)
-          vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
-      }
-
-      if (deck.d_assembly_method == 1) {
-
-        Real aux_1 = deck.d_lambda_MDE_P * (pro_cur + hyp_cur) * ecm_cur *
-                     deck.d_sigma_HP / (deck.d_sigma_HP + nut_cur);
-
-        compute_rhs = d_JxW[qp] * (mde_old + dt * aux_1);
-
-        compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_MDE_D + dt * aux_1 +
-                                   dt * deck.d_lambda_ECM_D * ecm_cur);
-      } else {
-
-        pro_proj = util::project_concentration(pro_cur);
-        hyp_proj = util::project_concentration(hyp_cur);
-        ecm_proj = util::project_concentration(ecm_cur);
+          for (unsigned int ll = 0; ll < d_mesh.mesh_dimension(); ll++)
+            vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
+        }
 
         Real aux_1 = deck.d_lambda_MDE_P * (pro_cur + hyp_cur) *
                      ecm_cur * deck.d_sigma_HP / (deck.d_sigma_HP + nut_cur);
@@ -111,6 +98,33 @@ void netfvfeexp::MdeAssembly::assemble_1() {
 
         compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_MDE_D + dt * aux_1 +
                                    dt * deck.d_lambda_ECM_D * ecm_cur);
+
+      } else {
+        // required
+        // old: mde, pro, hyp, ecm
+        // new: nut, vel
+        mde_old = 0.;
+        pro_old = 0.;
+        hyp_old = 0.;
+        ecm_old = 0.;
+        vel_cur = 0.;
+        for (unsigned int l = 0; l < d_phi.size(); l++) {
+
+          mde_old += d_phi[l][qp] * mde.get_old_sol(l);
+          pro_old += d_phi[l][qp] * pro.get_old_sol_var(l, 0);
+          hyp_old += d_phi[l][qp] * hyp.get_old_sol_var(l, 0);
+          ecm_old += d_phi[l][qp] * ecm.get_old_sol(l);
+
+          for (unsigned int ll = 0; ll < d_mesh.mesh_dimension(); ll++)
+            vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
+        }
+
+        Real aux_1 = deck.d_lambda_MDE_P * (pro_old + hyp_old) *
+                     ecm_old * deck.d_sigma_HP / (deck.d_sigma_HP + nut_cur);
+
+        compute_rhs = d_JxW[qp] * (mde_old + dt * aux_1 - dt * deck.d_lambda_ECM_D * ecm_old);
+
+        compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_MDE_D + dt * aux_1);
       }
 
       // Assembling matrix
