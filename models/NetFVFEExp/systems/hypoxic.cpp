@@ -145,23 +145,23 @@ void netfvfeexp::HypAssembly::assemble_1() {
 
         // compute quantities independent of dof loop
         compute_rhs_hyp =
-          d_JxW[qp] * (hyp_old + dt * deck.d_lambda_PH * util::heaviside(deck.d_sigma_PH - nut_proj) * pro_proj);
+          d_JxW[qp] * (hyp_old + dt * deck.d_lambda_PH * util::heaviside(deck.d_sigma_PH - nut_cur) * pro_cur);
 
         compute_rhs_mu =
           d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
                          (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) +
                        deck.d_bar_E_phi_H * hyp_old *
                          (4.0 * pow(hyp_old, 2) - 6.0 * hyp_old - 1.) +
-                       3. * deck.d_bar_E_phi_T * (pro_proj + nec_proj) -
-                       deck.d_chi_c * nut_proj - deck.d_chi_h * ecm_proj);
+                       3. * deck.d_bar_E_phi_T * (pro_cur + nec_cur) -
+                       deck.d_chi_c * nut_cur - deck.d_chi_h * ecm_cur);
 
         compute_mat_hyp =
           d_JxW[qp] * (1. + dt * deck.d_lambda_A -
                        dt * deck.d_lambda_Ph * nut_cur * (1. - tum_proj) +
                        dt * deck.d_lambda_HP *
-                         util::heaviside(nut_proj - deck.d_sigma_HP) +
+                         util::heaviside(nut_cur - deck.d_sigma_HP) +
                        dt * deck.d_lambda_HN *
-                         util::heaviside(deck.d_sigma_HN - nut_proj));
+                         util::heaviside(deck.d_sigma_HN - nut_cur));
       }
 
       // Assembling matrix

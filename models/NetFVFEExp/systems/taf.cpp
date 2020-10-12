@@ -99,8 +99,8 @@ void netfvfeexp::TafAssembly::assemble_1() {
 
         hyp_proj = util::project_concentration(hyp_cur);
 
-        compute_rhs = d_JxW[qp] * (taf_old + dt * deck.d_lambda_TAF * hyp_proj);
-        compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_TAF * hyp_proj);
+        compute_rhs = d_JxW[qp] * (taf_old + dt * deck.d_lambda_TAF * hyp_cur);
+        compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_TAF * hyp_cur);
       }
 
       // add artificial source if any

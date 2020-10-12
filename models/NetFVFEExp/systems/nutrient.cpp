@@ -366,21 +366,12 @@ void netfvfeexp::NutAssembly::assemble_face() {
 
           ecm_old_proj = util::project_concentration(ecm_old);
 
-          if (deck.d_assembly_method == 1) {
-            Sp_old = (chem_pro_old + deck.d_chi_c * nut_old +
+          Sp_old = (chem_pro_old + deck.d_chi_c * nut_old +
                       deck.d_chi_h * ecm_old) *
                        pro_old_grad +
                      (chem_hyp_old + deck.d_chi_c * nut_old +
                       deck.d_chi_h * ecm_old) *
                        hyp_old_grad;
-          } else {
-            Sp_old = (chem_pro_old + deck.d_chi_c * nut_old_proj +
-                      deck.d_chi_h * ecm_old_proj) *
-                       pro_old_grad +
-                     (chem_hyp_old + deck.d_chi_c * nut_old_proj +
-                      deck.d_chi_h * ecm_old_proj) *
-                       hyp_old_grad;
-          }
 
           // chemotactic term
           Fe(0) += -factor_nut * pro.d_JxW_face[qp] * dt * deck.d_chi_c *
@@ -499,13 +490,13 @@ void netfvfeexp::NutAssembly::assemble_1() {
         hyp_proj = util::project_concentration(hyp_cur);
 
         compute_rhs =
-          hyp.d_JxW[qp] * dt * (deck.d_lambda_A * (pro_proj + hyp_proj) + deck.d_lambda_ECM_D * ecm_proj * mde_proj);
+          hyp.d_JxW[qp] * dt * (deck.d_lambda_A * (pro_cur + hyp_cur) + deck.d_lambda_ECM_D * ecm_cur * mde_cur);
 
         compute_mat = hyp.d_JxW[qp] * dt *
-                      (deck.d_lambda_P * pro_proj +
-                       deck.d_lambda_Ph * hyp_proj +
-                       deck.d_lambda_ECM_P * (1. - ecm_proj) *
-                         util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
+                      (deck.d_lambda_P * pro_cur +
+                       deck.d_lambda_Ph * hyp_cur +
+                       deck.d_lambda_ECM_P * (1. - ecm_cur) *
+                         util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
       }
 
       // add rhs
