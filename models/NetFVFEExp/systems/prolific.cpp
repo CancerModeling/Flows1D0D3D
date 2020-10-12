@@ -157,7 +157,7 @@ void netfvfeexp::ProAssembly::assemble_1() {
       ecm_proj = util::project_concentration(ecm_cur);
       tum_proj = util::project_concentration(pro_proj + hyp_proj + nec_proj);
 
-      mobility = deck.d_bar_M_P * pow(pro_proj, 2) * pow(1. - tum_proj, 2);
+      mobility = 1.e-8 + deck.d_bar_M_P * pow(pro_proj, 2) * pow(1. - tum_proj, 2);
 
       if (deck.d_assembly_method == 1) {
 
