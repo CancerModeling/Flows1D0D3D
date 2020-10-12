@@ -280,11 +280,11 @@ void netfvfeexp::PressureAssembly::assemble_face() {
           ecm_proj = util::project_concentration(ecm_cur);
 
           Sp = (chem_pro_cur + deck.d_chi_c * nut_cur +
-                  deck.d_chi_h * ecm_cur) *
-                   pro_grad +
-                 (chem_hyp_cur + deck.d_chi_c * nut_cur +
-                  deck.d_chi_h * ecm_cur) *
-                   hyp_grad;
+                deck.d_chi_h * ecm_cur) *
+                 pro_grad +
+               (chem_hyp_cur + deck.d_chi_c * nut_cur +
+                deck.d_chi_h * ecm_cur) *
+                 hyp_grad;
 
           // add to force
           Fe(0) += -factor_p * pro.d_JxW_face[qp] * deck.d_tissue_flow_coeff * Sp * pro.d_qface_normals[qp];

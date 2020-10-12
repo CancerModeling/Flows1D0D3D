@@ -319,21 +319,17 @@ void netfvfeexp::Model::run() {
     d_input.d_linear_max_iters;
 
   // find solver type and set assembly type for each system
-    if (d_input.d_test_name == "solve_explicit") {
-        d_pro.d_implicit_assembly = false;
-        d_hyp.d_implicit_assembly = false;
-        d_nec.d_implicit_assembly = false;
-        d_ecm.d_implicit_assembly = false;
-        d_mde.d_implicit_assembly = false;
-        d_taf.d_implicit_assembly = false;
-    }
-    else if (d_input.d_test_name == "solve_nutrient_explicit")
-        solve_system_nutrient_explicit();
-    else if (d_input.d_test_name == "solve_implicit")
-        solve_system_implicit();
-    else
-        libmesh_error_msg("Test name is not valid. Try solve_explicit, "
-                          "solve_nutrient_explicit or solve_implicit.");
+  if (d_input.d_test_name == "solve_explicit") {
+    d_nut.d_implicit_assembly = false;
+    d_pro.d_implicit_assembly = false;
+    d_hyp.d_implicit_assembly = false;
+    d_nec.d_implicit_assembly = false;
+    d_ecm.d_implicit_assembly = false;
+    d_mde.d_implicit_assembly = false;
+    d_taf.d_implicit_assembly = false;
+  } else if (d_input.d_test_name == "solve_nutrient_explicit") {
+    d_nut.d_implicit_assembly = false;
+  }
 
   //
   // Solve step
@@ -515,26 +511,26 @@ void netfvfeexp::Model::solve_system_explicit() {
 
   // solve taf and tumor only if it is either growth step or output step
   //if (d_is_growth_step or d_is_output_step) {
-    // solve taf
+  // solve taf
+  reset_clock();
+  d_log("|" + d_taf.d_sys_name + "| -> ", "solve sys");
+  d_taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+
+  // Note: Grad TAF is not really used in growth algorithm
+  // so we disable it
+  if (false) {
+    // solve for grad taf
     reset_clock();
-    d_log("|" + d_taf.d_sys_name + "| -> ", "solve sys");
-    d_taf.solve();
-    d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+    d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
+    d_grad_taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
+  }
 
-    // Note: Grad TAF is not really used in growth algorithm
-    // so we disable it
-    if (false) {
-      // solve for grad taf
-      reset_clock();
-      d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
-      d_grad_taf.solve();
-      d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
-    }
-
-    // solve for tumor
-    d_log("|" + d_tum.d_sys_name + "| \n", "solve sys");
-    d_tum.solve_custom();
-    d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
+  // solve for tumor
+  d_log("|" + d_tum.d_sys_name + "| \n", "solve sys");
+  d_tum.solve_custom();
+  d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
   //}
 
   d_log(" \n", "solve sys");
@@ -692,26 +688,26 @@ void netfvfeexp::Model::solve_system_implicit() {
 
   //if (d_is_growth_step or d_is_output_step) {
 
-    // solve taf
+  // solve taf
+  reset_clock();
+  d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
+  d_taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+
+  // Note: Grad TAF is not really used in growth algorithm
+  // so we disable it
+  if (false) {
+    // solve for grad taf
     reset_clock();
-    d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
-    d_taf.solve();
-    d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+    d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
+    d_grad_taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
+  }
 
-    // Note: Grad TAF is not really used in growth algorithm
-    // so we disable it
-    if (false) {
-      // solve for grad taf
-      reset_clock();
-      d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
-      d_grad_taf.solve();
-      d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
-    }
-
-    // solve for tumor
-    d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
-    d_tum.solve_custom();
-    d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
+  // solve for tumor
+  d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
+  d_tum.solve_custom();
+  d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
   //}
 
   d_log(" \n", "solve sys");
@@ -833,26 +829,26 @@ void netfvfeexp::Model::solve_system_nutrient_explicit() {
 
   //if (d_is_growth_step or d_is_output_step) {
 
-    // solve taf
+  // solve taf
+  reset_clock();
+  d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
+  d_taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+
+  // Note: Grad TAF is not really used in growth algorithm
+  // so we disable it
+  if (false) {
+    // solve for grad taf
     reset_clock();
-    d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
-    d_taf.solve();
-    d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+    d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
+    d_grad_taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
+  }
 
-    // Note: Grad TAF is not really used in growth algorithm
-    // so we disable it
-    if (false) {
-      // solve for grad taf
-      reset_clock();
-      d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
-      d_grad_taf.solve();
-      d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
-    }
-
-    // solve for tumor
-    d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
-    d_tum.solve_custom();
-    d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
+  // solve for tumor
+  d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
+  d_tum.solve_custom();
+  d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
   //}
 
   d_log(" \n", "solve sys");

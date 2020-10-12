@@ -567,8 +567,8 @@ public:
   std::unique_ptr<NumericVector<Number>> d_localized_sol;
   std::vector<Number> d_localized_sol_std;
 
-    /*! @brief Assembly type (implicit or explicit) */
-    bool d_implicit_assembly;
+  /*! @brief Assembly type (implicit or explicit) */
+  bool d_implicit_assembly;
 };
 
 } // namespace util
