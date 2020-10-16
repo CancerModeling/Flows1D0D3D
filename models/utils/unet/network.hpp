@@ -82,8 +82,6 @@ public:
 
   void printDataVGM();
 
-  void writeDataToVTKTimeStep_VGM(int timeStep);
-
   void writeDataToVTK_3D(std::vector<double> P_3D, int N_3D, double h_3D);
 
   void writeDataToVTK3D_Pressure(std::vector<double> P_3D, std::vector<std::vector<double>> V_3D, int N_3D, double h_3D, int timeStep);

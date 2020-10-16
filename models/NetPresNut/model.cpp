@@ -147,6 +147,8 @@ netpresnut::Model::Model(
   util::Logger &log)
     : util::BaseModel(comm, input, mesh, tum_sys, log, "NetPresNut"),
       d_network(this),
+      d_networkVtkWriter(comm, input.d_outfilename_net + "new_"),
+      d_networkVtkWriterOld(comm, input.d_outfilename_net + "old_"),
       d_nut_assembly(this, "Nutrient", d_mesh, nut),
       d_pres_assembly(this, "Pressure", d_mesh, pres),
       d_ghosting_fv(d_mesh) {
@@ -221,7 +223,8 @@ void netpresnut::Model::run() {
       write_system(0);
 
     // network
-    d_network.writeDataToVTKTimeStep_VGM(0);
+    d_networkVtkWriterOld.write( d_network.VGM, 0 );
+    d_networkVtkWriter.write( d_network.VGM, 0 );
   }
 
   // set time parameters
@@ -252,7 +255,9 @@ void netpresnut::Model::run() {
 
     // write tumor solution
     write_system(1);
-    d_network.writeDataToVTKTimeStep_VGM(1);
+    d_networkVtkWriterOld.write( d_network.VGM, 1. );
+    d_networkVtkWriter.write( d_network.VGM, 1 );
+
     return;
   }
 
@@ -291,8 +296,11 @@ void netpresnut::Model::run() {
       // write tumor solution
       write_system((d_step - d_input.d_init_step) /
                    d_input.d_dt_output_interval);
-      d_network.writeDataToVTKTimeStep_VGM((d_step - d_input.d_init_step) /
-                                           d_input.d_dt_output_interval);
+
+      const int timeStep = static_cast< int >((d_step - d_input.d_init_step) / d_input.d_dt_output_interval);
+
+      d_networkVtkWriterOld.write( d_network.VGM, timeStep );
+      d_networkVtkWriter.write( d_network.VGM, timeStep );
     }
 
     // output qoi
