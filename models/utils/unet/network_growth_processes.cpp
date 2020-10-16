@@ -28,7 +28,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
       libmesh_error_msg("Must pass TAF system to update network.");
 
     // get TAF at element centroid
-    taf_sys.localize_solution_with_elem_id_numbering_non_const_elem(phi_TAF_3D,
+    taf_sys.localize_solution_with_elem_id_numbering_non_const_elem(phi_TAF,
                                                                     {0}, false);
 
     if (d_procRank == 0) {
@@ -455,7 +455,7 @@ void util::unet::Network::markApicalGrowth() {
 
         int index = getElementIndex(coord, h_3D, N_3D);
 
-        double taf_node = phi_TAF_3D[index];
+        double taf_node = phi_TAF[index];
 
         if (taf_node > input.d_network_update_taf_threshold) {
 
@@ -513,7 +513,7 @@ void util::unet::Network::processApicalGrowth() {
         getNeighboringElementIndices(element_index, N_3D, h_3D, L_x);
       std::vector<double> TAF_neighbors;
 
-      double TAF_point = phi_TAF_3D[element_index];
+      double TAF_point = phi_TAF[element_index];
 
       double TAF_max = 0.0;
       double TAF_max_2 = 0.0;
@@ -592,7 +592,7 @@ void util::unet::Network::processApicalGrowth() {
 
             int index_cone = getElementIndex(cylinder_node, h_3D, N_3D);
 
-            double TAF = phi_TAF_3D[index_cone];
+            double TAF = phi_TAF[index_cone];
 
             if (TAF_max < 1.0e-16) {
 
@@ -679,7 +679,7 @@ void util::unet::Network::processApicalGrowth() {
       std::cout << "new_point: " << new_point_1 << "\n";
       std::cout << "TAF_point: " << TAF_point << "\n";
 
-      double global_max_TAF = gmm::vect_norminf(phi_TAF_3D);
+      double global_max_TAF = gmm::vect_norminf(phi_TAF);
       /*
                      std::cout << "global_max_TAF: " << global_max_TAF << "\n";
                      std::cout << "TAF_max: " << TAF_max << "\n";
@@ -1369,7 +1369,7 @@ void util::unet::Network::markSproutingGrowth() {
 
         int element_index = getElementIndex(mid_point, h_3D, N_3D);
 
-        double TAF = phi_TAF_3D[element_index];
+        double TAF = phi_TAF[element_index];
 
         double TAF_th = input.d_network_update_taf_threshold;
 
@@ -1383,7 +1383,7 @@ void util::unet::Network::markSproutingGrowth() {
                          std::sqrt(2.0 * input.d_log_normal_std_dev *
                                    input.d_log_normal_std_dev));
 
-        double global_max_TAF = gmm::vect_norminf(phi_TAF_3D);
+        double global_max_TAF = gmm::vect_norminf(phi_TAF);
 
         std::cout << "sproutingProbability: " << sproutingProbability
                   << std::endl;
@@ -1543,7 +1543,7 @@ void util::unet::Network::processSproutingGrowth() {
 
               int index = getElementIndex(cylinder_node, h_3D, N_3D);
 
-              double TAF = phi_TAF_3D[index];
+              double TAF = phi_TAF[index];
 
               TAF_vessel_surf = TAF_vessel_surf + TAF;
 
@@ -1587,7 +1587,7 @@ void util::unet::Network::processSproutingGrowth() {
 
             int index_cone = getElementIndex(cylinder_node, h_3D, N_3D);
 
-            double TAF = phi_TAF_3D[index_cone];
+            double TAF = phi_TAF[index_cone];
 
             if (TAF_max < 1.0e-16) {
 

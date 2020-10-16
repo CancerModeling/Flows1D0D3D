@@ -290,8 +290,7 @@ public:
   std::vector<double> phi_sigma_3D;
 
   /*! @brief Current TAF concentration */
-  std::vector<double> phi_TAF_3D;
-  ;
+  std::vector<double> phi_TAF;
 
   double mu;
 

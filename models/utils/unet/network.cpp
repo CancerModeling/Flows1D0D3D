@@ -113,7 +113,7 @@ void util::unet::Network::create_initial_network() {
   if (d_procRank == 0) {
     P_3D = std::vector<double>(N_tot_3D, 0.0);
     phi_sigma_3D = std::vector<double>(N_tot_3D, 0.0);
-    phi_TAF_3D = std::vector<double>(N_tot_3D, 0.0);
+    phi_TAF = std::vector<double>(N_tot_3D, 0.0);
   }
 
   // initialize matrix and vector
@@ -169,7 +169,7 @@ void util::unet::Network::create_initial_network() {
   // initialize nutrient as one in artery
   // Only on processor zero
   //if (d_procRank == 0) {
-  if (scenario == "two_vessels") {
+  if (scenario == "two_vessels" and d_procRank == 0) {
 
     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
