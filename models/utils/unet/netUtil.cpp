@@ -315,7 +315,6 @@ void util::unet::updateWeightsAndIds(int N_s, int N_theta, int elementIndex,
   }
 }
 
-
 void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
                                         std::vector<double> coord,
                                         std::vector<double> coord_neighbor,
