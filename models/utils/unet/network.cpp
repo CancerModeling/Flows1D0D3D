@@ -30,9 +30,8 @@ void util::unet::Network::create_initial_network() {
   //  - Right hand side
   //
 
-  const auto &input = d_model_p->get_input_deck();
-  d_coupled_solver =
-    d_model_p->d_name == "NetFCFVFE" or d_model_p->d_name == "NetFV";
+  auto &input = d_model_p->get_input_deck();
+  d_coupled_solver = d_model_p->d_name == "NetFCFVFE" or input.d_coupled_1d3d;
 
   if (d_procSize > 1 and d_coupled_solver)
     libmesh_error_msg(
@@ -74,6 +73,25 @@ void util::unet::Network::create_initial_network() {
   // create data of vertices and segments in processor zero
   // and communicate with other processors
   prepare_and_communicate_network();
+
+  // get minimum length of vessel segments and set it as minimum length
+  // for sprouting
+  if (d_procRank == 0) {
+    double min_vessel_length = 100. * input.d_domain_params[1];
+    std::shared_ptr<VGNode> pointer = VGM.getHead();
+    while (pointer) {
+      for (int i = 0; i < pointer->neighbors.size(); i++) {
+        double length = util::dist_between_points(pointer->coord, pointer->neighbors[i]->coord);
+        if (min_vessel_length > length)
+          min_vessel_length = length;
+      }
+      pointer = pointer->global_successor;
+    } // loop over vertices
+
+    // if user did not specify min length, set now
+    if (input.d_min_length_for_sprouting < 1.e-12)
+      input.d_min_length_for_sprouting = 0.9 * min_vessel_length;
+  }
 
   // Initialize common data
   d_has_network_changed = true;
@@ -127,6 +145,8 @@ void util::unet::Network::create_initial_network() {
 
     P_3D1D = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
 
+    A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D + d_numVertices,
+                                                        N_tot_3D + d_numVertices);
     b_nut_3D1D = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
 
     phi_sigma = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
