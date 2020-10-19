@@ -27,11 +27,11 @@ public:
     head = tail = NULL;
   }
 
-  ~ListStructure() {}
+  ~ListStructure() = default;
 
   bool isEmpty() {
 
-    return (head == NULL) ? true : false;
+    return (head == NULL);
   }
 
   void attachNode(Node newNode) {
@@ -161,6 +161,8 @@ public:
 
       pointer = pointer->global_successor;
     }
+
+    throw std::runtime_error("could not find node with index " + std::to_string(indexOfNode));
   }
 };
 

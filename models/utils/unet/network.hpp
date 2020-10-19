@@ -82,8 +82,6 @@ public:
 
   void printDataVGM();
 
-  void writeDataToVTKTimeStep_VGM(int timeStep);
-
   void writeDataToVTK_3D(std::vector<double> P_3D, int N_3D, double h_3D);
 
   void writeDataToVTK3D_Pressure(std::vector<double> P_3D, std::vector<std::vector<double>> V_3D, int N_3D, double h_3D, int timeStep);
@@ -159,7 +157,12 @@ public:
    */
   /**@{*/
 
-  void update_old_concentration() { C_v_old = C_v; };
+  void update_old_concentration() {
+    if (d_coupled_solver)
+      phi_sigma_old = phi_sigma;
+    else
+      C_v_old = C_v;
+  };
 
   void update_old_concentration_3D1D() { phi_sigma_old = phi_sigma; };
 
@@ -246,7 +249,7 @@ public:
   gmm::row_matrix<gmm::wsvector<double>> A_flow_3D1D;
 
   /*! @brief System matrix for 3D1D nutrient model*/
-  //gmm::row_matrix<gmm::wsvector<double>> A_nut_3D1D;
+  gmm::row_matrix<gmm::wsvector<double>> A_nut_3D1D;
 
   /*! @brief System force for vessel pressure */
   std::vector<double> b;
@@ -285,8 +288,7 @@ public:
   std::vector<double> phi_sigma_3D;
 
   /*! @brief Current TAF concentration */
-  std::vector<double> phi_TAF_3D;
-  ;
+  std::vector<double> phi_TAF;
 
   double mu;
 

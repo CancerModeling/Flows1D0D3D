@@ -225,25 +225,25 @@ void util::unet::Network::assembleVGMSystemForNutrient(BaseAssembly &pres_sys,
                  assembly_cases & UNET_NUT_BDRY_VEIN_OUTLET) {
 
         // advection
-        A_VGM(indexOfNode, indexOfNode) += -dt * v_interface;
-        A_VGM(indexOfNode, indexNeighbor) += +dt * v_interface;
+        A_VGM(indexOfNode, indexOfNode) += -factor_c * dt * v_interface;
+        A_VGM(indexOfNode, indexNeighbor) += +factor_c * dt * v_interface;
 
       } else if (assembly_cases & UNET_NUT_BDRY_INNER_OUTLET or
                  assembly_cases & UNET_NUT_BDRY_INNER_INLET) {
 
         // advection
         if (v_interface > -1.0e-8)
-          A_VGM(indexOfNode, indexOfNode) += dt * v_interface;
+          A_VGM(indexOfNode, indexOfNode) += factor_c * dt * v_interface;
         else
-          A_VGM(indexOfNode, indexNeighbor) += dt * v_interface;
+          A_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
 
       } else if (assembly_cases & UNET_NUT_INNER) {
 
         // advection term
         if (v_interface > -1.0e-8)
-          A_VGM(indexOfNode, indexOfNode) += dt * v_interface;
+          A_VGM(indexOfNode, indexOfNode) += factor_c * dt * v_interface;
         else
-          A_VGM(indexOfNode, indexNeighbor) += dt * v_interface;
+          A_VGM(indexOfNode, indexNeighbor) += factor_c * dt * v_interface;
       }
 
       // common entries to various cases

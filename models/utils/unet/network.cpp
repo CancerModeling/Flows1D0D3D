@@ -30,9 +30,8 @@ void util::unet::Network::create_initial_network() {
   //  - Right hand side
   //
 
-  const auto &input = d_model_p->get_input_deck();
-  d_coupled_solver =
-    d_model_p->d_name == "NetFCFVFE" or d_model_p->d_name == "NetFV";
+  auto &input = d_model_p->get_input_deck();
+  d_coupled_solver = d_model_p->d_name == "NetFCFVFE" or input.d_coupled_1d3d;
 
   if (d_procSize > 1 and d_coupled_solver)
     libmesh_error_msg(
@@ -75,6 +74,25 @@ void util::unet::Network::create_initial_network() {
   // and communicate with other processors
   prepare_and_communicate_network();
 
+  // get minimum length of vessel segments and set it as minimum length
+  // for sprouting
+  if (d_procRank == 0) {
+    double min_vessel_length = 100. * input.d_domain_params[1];
+    std::shared_ptr<VGNode> pointer = VGM.getHead();
+    while (pointer) {
+      for (int i = 0; i < pointer->neighbors.size(); i++) {
+        double length = util::dist_between_points(pointer->coord, pointer->neighbors[i]->coord);
+        if (min_vessel_length > length)
+          min_vessel_length = length;
+      }
+      pointer = pointer->global_successor;
+    } // loop over vertices
+
+    // if user did not specify min length, set now
+    if (input.d_min_length_for_sprouting < 1.e-12)
+      input.d_min_length_for_sprouting = 0.9 * min_vessel_length;
+  }
+
   // Initialize common data
   d_has_network_changed = true;
   d_update_interval = input.d_network_update_interval;
@@ -95,7 +113,7 @@ void util::unet::Network::create_initial_network() {
   if (d_procRank == 0) {
     P_3D = std::vector<double>(N_tot_3D, 0.0);
     phi_sigma_3D = std::vector<double>(N_tot_3D, 0.0);
-    phi_TAF_3D = std::vector<double>(N_tot_3D, 0.0);
+    phi_TAF = std::vector<double>(N_tot_3D, 0.0);
   }
 
   // initialize matrix and vector
@@ -127,6 +145,8 @@ void util::unet::Network::create_initial_network() {
 
     P_3D1D = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
 
+    A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(N_tot_3D + d_numVertices,
+                                                        N_tot_3D + d_numVertices);
     b_nut_3D1D = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
 
     phi_sigma = std::vector<double>(N_tot_3D + d_numVertices, 0.0);
@@ -149,7 +169,7 @@ void util::unet::Network::create_initial_network() {
   // initialize nutrient as one in artery
   // Only on processor zero
   //if (d_procRank == 0) {
-  if (scenario == "two_vessels") {
+  if (scenario == "two_vessels" and d_procRank == 0) {
 
     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
@@ -212,22 +232,9 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
 
   gmm::iteration iter(1.0E-10);
 
-  // gmm::identity_matrix PR;
-
-  // gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D,
-  // 50,
-  //                                                             1e-8);
-
-  // gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D,
-  // 50, 1e-4);
-
-  // gmm::ildlt_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
-
   gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
 
   gmm::gmres(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, restart, iter);
-
-  // gmm::bicgstab(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, iter);
 
   auto pointer = VGM.getHead();
 
