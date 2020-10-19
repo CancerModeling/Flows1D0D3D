@@ -122,7 +122,7 @@ void netfvfeexp::MdeAssembly::assemble_1() {
         Real aux_1 = deck.d_lambda_MDE_P * (pro_old + hyp_old) *
                      ecm_old * deck.d_sigma_HP / (deck.d_sigma_HP + nut_cur);
 
-        compute_rhs = d_JxW[qp] * (mde_old + dt * aux_1 - dt * deck.d_lambda_ECM_D * ecm_old);
+        compute_rhs = d_JxW[qp] * (mde_old + dt * aux_1 - dt * deck.d_lambda_ECM_D * ecm_old * mde_old);
 
         compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_MDE_D + dt * aux_1);
       }
