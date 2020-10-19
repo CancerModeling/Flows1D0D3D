@@ -388,11 +388,8 @@ void netfcfvfe::Model::write_system(const unsigned int &t_step) {
     return;
 
   // write network simulation
-  if (d_is_growth_step)
-  {
-    d_network.writeDataToVTKTimeStep_VGM(t_step);
-    d_networkVtkWriter.write( d_network.VGM, t_step );
-  }
+  d_network.writeDataToVTKTimeStep_VGM(t_step);
+  d_networkVtkWriter.write( d_network.VGM, t_step );
 
   // write tumor simulation
   rw::VTKIO(d_mesh).write_equation_systems(
