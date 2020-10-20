@@ -37,6 +37,9 @@ void util::unet::Network::create_initial_network() {
     libmesh_error_msg(
       "Fully 1D-3D coupled solver only works in serial execution");
 
+  scenario = input.d_scenario;
+  oss << "Scenario: " << scenario << std::endl;
+
   // read file and create initial network
   // Do this only on first processor
   if (d_procRank == 0) {
@@ -44,11 +47,6 @@ void util::unet::Network::create_initial_network() {
     std::vector<double> pressures;
     std::vector<double> radii;
     std::vector<std::vector<unsigned int>> elements;
-
-    scenario = input.d_scenario;
-
-    // std::cout << " " << std::endl;
-    oss << "Scenario: " << scenario << std::endl;
 
     readData(vertices, pressures, radii, elements);
 
@@ -160,7 +158,6 @@ void util::unet::Network::create_initial_network() {
     }
 
     for (int i = 0; i < d_numVertices; i++) {
-
       phi_sigma_old[N_tot_3D + i] = 0.0;
       phi_sigma[N_tot_3D + i] = 0.0;
     }
@@ -200,10 +197,8 @@ void util::unet::Network::create_initial_network() {
       }
 
       pointer = pointer->global_successor;
-
     } // loop over vertices
-
-  } // if processor zero
+  }   // if processor zero
 }
 
 void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
@@ -290,9 +285,9 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
   // gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D,
   // 70, 1e-8);
 
-  gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
+  gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D);
 
-  gmm::gmres(A_flow_3D1D, phi_sigma, b_nut_3D1D, PR, restart, iter);
+  gmm::gmres(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, restart, iter);
 
   // gmm::bicgstab(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, iter);
 
@@ -303,17 +298,7 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
     int indexOfNode = pointer->index;
 
     pointer->c_v = phi_sigma[N_tot_3D + indexOfNode];
-    /*
-    if (phi_sigma[N_tot_3D + indexOfNode] > 1.0) {
 
-      pointer->c_v = 1.0;
-      phi_sigma[N_tot_3D + indexOfNode] = 1.0;
-    }
-    
-        std::cout << "index: " << pointer->index << " c_v: " << pointer->c_v
-                  << " p_v: " << pointer->p_v << " coord: " << pointer->coord
-                  << std::endl;
-    */
     pointer = pointer->global_successor;
   }
 
@@ -505,6 +490,93 @@ std::vector<double> util::unet::Network::compute_qoi() {
 
   if (d_procRank > 0)
     return {};
+
+  // For Tobias analysis
+  // TODO remove in final merge
+  {
+    // report 1D data
+    auto pointer = VGM.getHead();
+
+    int numberOfBifurcations = 0;
+
+    int numberOfVessels = 0;
+
+    double total_length = 0.0;
+
+    double total_volume = 0.0;
+
+    while (pointer) {
+
+      int numberOfNeighbors = pointer->neighbors.size();
+
+      if (numberOfNeighbors > 2) {
+
+        numberOfBifurcations++;
+      }
+
+      for (int i = 0; i < numberOfNeighbors; i++) {
+
+        if (pointer->edge_touched[i] == false) {
+
+          double length = util::dist_between_points(pointer->coord, pointer->neighbors[i]->coord);
+
+          total_length = total_length + length;
+
+          total_volume = total_volume + length * pointer->radii[i] * pointer->radii[i] * M_PI;
+
+          numberOfVessels++;
+
+          int localIndex = pointer->neighbors[i]->getLocalIndexOfNeighbor(pointer);
+
+          pointer->edge_touched[i] = true;
+
+          pointer->neighbors[i]->edge_touched[localIndex] = true;
+        }
+      }
+
+      pointer = pointer->global_successor;
+    }
+
+
+    pointer = VGM.getHead();
+
+    while (pointer) {
+
+      int numberOfEdges = pointer->neighbors.size();
+
+      for (int i = 0; i < numberOfEdges; i++) {
+
+        pointer->edge_touched[i] = false;
+        pointer->sprouting_edge[i] = false;
+      }
+
+      pointer = pointer->global_successor;
+    }
+
+    std::string path_number_bifurcations = "two_vessels_number_bifurcations.txt";
+
+    std::fstream file_number_bifurcations;
+    file_number_bifurcations.open(path_number_bifurcations, std::ios::out | std::ios::app);
+    file_number_bifurcations << numberOfBifurcations << std::endl;
+
+    std::string path_total_length = "two_vessels_total_length.txt";
+
+    std::fstream file_total_length;
+    file_total_length.open(path_total_length, std::ios::out | std::ios::app);
+    file_total_length << total_length << std::endl;
+
+    std::string path_number_of_vessels = "two_vessels_number_of_vessels.txt";
+
+    std::fstream file_number_of_vessels;
+    file_number_of_vessels.open(path_number_of_vessels, std::ios::out | std::ios::app);
+    file_number_of_vessels << numberOfVessels << std::endl;
+
+    std::string path_total_volume = "two_vessels_total_volume.txt";
+
+    std::fstream file_total_volume;
+    file_total_volume.open(path_total_volume, std::ios::out | std::ios::app);
+    file_total_volume << total_volume << std::endl;
+  }
 
   // 0 - r_v_mean             1 - r_v_std
   // 2 - l_v_mean             3 - l_v_std         4 - l_v_total
