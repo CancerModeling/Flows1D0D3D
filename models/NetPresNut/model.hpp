@@ -11,10 +11,10 @@
 #include "modelUtil.hpp"
 #include "systems/systems.hpp"
 #include "umodel/model.hpp"
-#include "unet/network.hpp"
-#include "usystem/ghosting_functor.hpp"
 #include "unet/NetworkVTKWriter.h"
 #include "unet/NetworkVTKWriterOld.h"
+#include "unet/network.hpp"
+#include "usystem/ghosting_functor.hpp"
 
 // typedef network
 typedef util::unet::Network Net;

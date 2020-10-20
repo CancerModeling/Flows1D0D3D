@@ -389,10 +389,9 @@ void netfcfvfe::Model::write_system(const unsigned int &t_step) {
     return;
 
   // write network simulation
-  if (d_is_growth_step)
-  {
-    d_networkVtkWriterOld.write( d_network.VGM, t_step );
-    d_networkVtkWriter.write( d_network.VGM, t_step );
+  if (d_is_growth_step) {
+    d_networkVtkWriterOld.write(d_network.VGM, t_step);
+    d_networkVtkWriter.write(d_network.VGM, t_step);
   }
 
   // write tumor simulation
@@ -564,26 +563,26 @@ void netfcfvfe::Model::solve_system() {
   d_log.add_nonlin_iter(d_nonlinear_step);
 
   //if (d_is_growth_step or d_is_output_step) {
-    // solve taf
+  // solve taf
+  reset_clock();
+  d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
+  d_taf.solve();
+  d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+
+  // Note: Grad TAF is not really used in growth algorithm
+  // so we disable it
+  if (false) {
+    // solve for grad taf
     reset_clock();
-    d_log("      Solving |" + d_taf.d_sys_name + "| \n", "solve sys");
-    d_taf.solve();
-    d_log.add_sys_solve_time(clock_begin, d_taf.d_sys.number());
+    d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
+    d_grad_taf.solve();
+    d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
+  }
 
-    // Note: Grad TAF is not really used in growth algorithm
-    // so we disable it
-    if (false) {
-      // solve for grad taf
-      reset_clock();
-      d_log("      Solving |" + d_grad_taf.d_sys_name + "| \n", "solve sys");
-      d_grad_taf.solve();
-      d_log.add_sys_solve_time(clock_begin, d_grad_taf.d_sys.number());
-    }
-
-    // solve for tumor
-    d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
-    d_tum.solve_custom();
-    d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
+  // solve for tumor
+  d_log("      Solving |" + d_tum.d_sys_name + "| \n", "solve sys");
+  d_tum.solve_custom();
+  d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
   //}
 
   d_log(" \n", "solve sys");
