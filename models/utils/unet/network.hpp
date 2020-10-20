@@ -136,6 +136,8 @@ public:
 
   void linkTerminalVessels();
 
+  bool linkToNearestNetworkNode(std::shared_ptr<VGNode> &pointer);
+
   bool testCollision(std::vector<double> point);
 
   bool testIntersection(std::vector<double> point_1, std::vector<double> point_2, double radius, std::shared_ptr<VGNode> &pointer_test);
