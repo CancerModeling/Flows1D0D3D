@@ -223,8 +223,8 @@ void netpresnut::Model::run() {
       write_system(0);
 
     // network
-    d_networkVtkWriterOld.write( d_network.VGM, 0 );
-    d_networkVtkWriter.write( d_network.VGM, 0 );
+    d_networkVtkWriterOld.write(d_network.VGM, 0);
+    d_networkVtkWriter.write(d_network.VGM, 0);
   }
 
   // set time parameters
@@ -255,8 +255,8 @@ void netpresnut::Model::run() {
 
     // write tumor solution
     write_system(1);
-    d_networkVtkWriterOld.write( d_network.VGM, 1. );
-    d_networkVtkWriter.write( d_network.VGM, 1 );
+    d_networkVtkWriterOld.write(d_network.VGM, 1.);
+    d_networkVtkWriter.write(d_network.VGM, 1);
 
     return;
   }
@@ -297,10 +297,10 @@ void netpresnut::Model::run() {
       write_system((d_step - d_input.d_init_step) /
                    d_input.d_dt_output_interval);
 
-      const int timeStep = static_cast< int >((d_step - d_input.d_init_step) / d_input.d_dt_output_interval);
+      const int timeStep = static_cast<int>((d_step - d_input.d_init_step) / d_input.d_dt_output_interval);
 
-      d_networkVtkWriterOld.write( d_network.VGM, timeStep );
-      d_networkVtkWriter.write( d_network.VGM, timeStep );
+      d_networkVtkWriterOld.write(d_network.VGM, timeStep);
+      d_networkVtkWriter.write(d_network.VGM, timeStep);
     }
 
     // output qoi

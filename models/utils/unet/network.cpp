@@ -156,6 +156,11 @@ void util::unet::Network::create_initial_network() {
       phi_sigma_old[i] = input.d_nut_ic_value;
       phi_sigma[i] = input.d_nut_ic_value;
     }
+
+    for (int i = 0; i < d_numVertices; i++) {
+      phi_sigma_old[N_tot_3D + i] = 0.0;
+      phi_sigma[N_tot_3D + i] = 0.0;
+    }
   }
 
   // initialize nutrient as one in artery
