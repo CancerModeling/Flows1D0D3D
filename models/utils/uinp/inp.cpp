@@ -55,6 +55,8 @@ void util::ModelDeck::read_parameters(const std::string &filename) {
 
   d_test_name = input("test_name", "");
 
+    d_scheme_name = input("scheme_name", "");
+
   d_advection_active = input("advection_active", true);
 
   d_decouple_nutrients = input("network_decouple_nutrients", true);
