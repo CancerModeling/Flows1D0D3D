@@ -229,7 +229,10 @@ netfcfvfe::Model::Model(
   TransientLinearImplicitSystem &vel, TransientLinearImplicitSystem &tum,
   util::Logger &log)
     : util::BaseModel(comm, input, mesh, tum_sys, log, "NetFCFVFE"),
-      d_network(this), d_nec(this, "Necrotic", d_mesh, nec),
+      d_network(this),
+      d_networkVtkWriter(comm, input.d_outfilename_net + "new_"),
+      d_networkVtkWriterOld(comm, input.d_outfilename_net + "old_"),
+      d_nec(this, "Necrotic", d_mesh, nec),
       d_pro(this, "Prolific", d_mesh, pro),
       d_nut(this, "Nutrient", d_mesh, nut), d_hyp(this, "Hypoxic", d_mesh, hyp),
       d_taf(this, "TAF", d_mesh, taf), d_ecm(this, "ECM", d_mesh, ecm),
@@ -386,8 +389,8 @@ void netfcfvfe::Model::write_system(const unsigned int &t_step) {
     return;
 
   // write network simulation
-  if (d_is_growth_step)
-    d_network.writeDataToVTKTimeStep_VGM(t_step);
+  d_networkVtkWriterOld.write( d_network.VGM, t_step );
+  d_networkVtkWriter.write( d_network.VGM, t_step );
 
   // write tumor simulation
   rw::VTKIO(d_mesh).write_equation_systems(

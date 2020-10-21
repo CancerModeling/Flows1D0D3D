@@ -213,6 +213,8 @@ netfv::Model::Model(
   util::Logger &log)
     : util::BaseModel(comm, input, mesh, tum_sys, log, "NetFV"),
       d_network(this),
+      d_networkVtkWriter(comm, input.d_outfilename_net + "new_"),
+      d_networkVtkWriterOld(comm, input.d_outfilename_net + "old_"),
       d_nec_assembly(this, "Necrotic", d_mesh, nec),
       d_tum_assembly(this, "Tumor", d_mesh, tum),
       d_nut_assembly(this, "Nutrient", d_mesh, nut),
@@ -480,7 +482,8 @@ void netfv::Model::write_system(const unsigned int &t_step) {
     return;
 
   // write network simulation
-  d_network.writeDataToVTKTimeStep_VGM(t_step);
+  d_networkVtkWriter.write(d_network.VGM, t_step);
+  d_networkVtkWriterOld.write(d_network.VGM, t_step);
 
   // write tumor simulation
   rw::VTKIO(d_mesh).write_equation_systems(

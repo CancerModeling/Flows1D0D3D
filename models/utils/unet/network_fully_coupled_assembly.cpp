@@ -906,8 +906,7 @@ void util::unet::Network::assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, 
 
         double v_interface = -(radius * radius * M_PI) / (8.0 * length * mu) * (p_neighbor - p_v);
 
-        if (pointer->neighbors[i]->neighbors.size() == 1 && pointer->typeOfVGNode == TypeOfNode::DirichletNode && v_interface > 0.0) {
-
+        if (pointer->neighbors[i]->neighbors.size() == 1 && pointer->neighbors[i]->typeOfVGNode == TypeOfNode::DirichletNode && v_interface > 0.0) {
           length_edge = length;
         }
 
