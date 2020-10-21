@@ -319,7 +319,7 @@ void netfvfeexp::Model::run() {
     d_input.d_linear_max_iters;
 
   // find solver type and set assembly type for each system
-  if (d_input.d_test_name == "solve_explicit") {
+  if (d_input.d_scheme_name == "solve_explicit") {
     d_nut.d_implicit_assembly = false;
     d_pro.d_implicit_assembly = false;
     d_hyp.d_implicit_assembly = false;
@@ -327,7 +327,7 @@ void netfvfeexp::Model::run() {
     d_ecm.d_implicit_assembly = false;
     d_mde.d_implicit_assembly = false;
     d_taf.d_implicit_assembly = false;
-  } else if (d_input.d_test_name == "solve_nutrient_explicit") {
+  } else if (d_input.d_scheme_name == "solve_nutrient_explicit") {
     d_nut.d_implicit_assembly = false;
   }
 
@@ -441,14 +441,14 @@ void netfvfeexp::Model::compute_qoi() {
 
 void netfvfeexp::Model::solve_system() {
 
-  if (d_input.d_test_name == "solve_explicit")
+  if (d_input.d_scheme_name == "solve_explicit")
     solve_system_explicit();
-  else if (d_input.d_test_name == "solve_nutrient_explicit")
+  else if (d_input.d_scheme_name == "solve_nutrient_explicit")
     solve_system_nutrient_explicit();
-  else if (d_input.d_test_name == "solve_implicit")
+  else if (d_input.d_scheme_name == "solve_implicit")
     solve_system_implicit();
   else
-    libmesh_error_msg("Test name is not valid. Try solve_explicit, "
+    libmesh_error_msg("Scheme name is not valid. Try solve_explicit, "
                       "solve_nutrient_explicit or solve_implicit.");
 }
 
