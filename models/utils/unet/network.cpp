@@ -156,6 +156,11 @@ void util::unet::Network::create_initial_network() {
       phi_sigma_old[i] = input.d_nut_ic_value;
       phi_sigma[i] = input.d_nut_ic_value;
     }
+
+    for (int i = 0; i < d_numVertices; i++) {
+      phi_sigma_old[N_tot_3D + i] = 0.0;
+      phi_sigma[N_tot_3D + i] = 0.0;
+    }
   }
 
   // initialize nutrient as one in artery
@@ -220,19 +225,11 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
     P_3D1D = b_flow_3D1D;
   }
 
-  gmm::iteration iter(1.0E-10, 2);
+  gmm::iteration iter(1.0E-10);
 
-  gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50, 1e-8);
-
-  //gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50, 1e-4);
-
-  //gmm::ildlt_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
-
-  // gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
+  gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
 
   gmm::gmres(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, restart, iter);
-
-  //gmm::bicgstab(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, iter);
 
   auto pointer = VGM.getHead();
 
@@ -280,9 +277,19 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
 
   gmm::iteration iter(1.0E-10);
 
+  // gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D,
+  // 50, 1e-4);
+
+  // gmm::identity_matrix PR;
+
+  // gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D,
+  // 70, 1e-8);
+
   gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D);
 
   gmm::gmres(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, restart, iter);
+
+  // gmm::bicgstab(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, iter);
 
   auto pointer = VGM.getHead();
 

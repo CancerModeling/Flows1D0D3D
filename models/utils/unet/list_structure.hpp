@@ -30,6 +30,7 @@ public:
   ~ListStructure() = default;
 
   bool isEmpty() {
+
     return (head == NULL);
   }
 

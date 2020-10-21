@@ -82,8 +82,6 @@ public:
 
   void printDataVGM();
 
-  void writeDataToVTKTimeStep_VGM(int timeStep);
-
   void writeDataToVTK_3D(std::vector<double> P_3D, int N_3D, double h_3D);
 
   void writeDataToVTK3D_Pressure(std::vector<double> P_3D, std::vector<std::vector<double>> V_3D, int N_3D, double h_3D, int timeStep);
@@ -137,6 +135,8 @@ public:
   void createALinkingNode(std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer);
 
   void linkTerminalVessels();
+
+  bool linkToNearestNetworkNode(std::shared_ptr<VGNode> &pointer);
 
   bool testCollision(std::vector<double> point);
 
