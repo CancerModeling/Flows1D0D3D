@@ -25,7 +25,7 @@ struct ModelDeck {
 
   std::string d_test_name;
 
-    std::string d_scheme_name;
+  std::string d_scheme_name;
 
   bool d_advection_active;
 

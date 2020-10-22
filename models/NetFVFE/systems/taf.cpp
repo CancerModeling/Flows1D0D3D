@@ -32,7 +32,7 @@ double get_taf_source(const std::string &test_name, const Point &x,
 } // namespace
 
 Number netfvfe::initial_condition_taf(const Point &p, const Parameters &es,
-                                         const std::string &system_name, const std::string &var_name) {
+                                      const std::string &system_name, const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "TAF");
 
