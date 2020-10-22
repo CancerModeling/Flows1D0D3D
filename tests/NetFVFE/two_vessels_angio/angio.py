@@ -22,12 +22,11 @@ class DefaultSimParams:
     def __init__(self):
         self.pp_tag = 't1'
         self.model_name = 'NetFVFE'
-        self.test_name = 'none'
+        self.scheme_name = 'solve_explicit'
         self.output_debug_info = True
-        self.advection_active = False
-        self.network_decouple_nutrients = False
-        self.coupled_1d3d = True
-        self.solve_ecm = False
+        self.advection_active = True
+        self.coupled_1d3d = False
+        self.solve_ecm = True
         self.solve_pres_with_net_update = True
         self.assembly_method = 2
         self.dimension = 3
@@ -37,9 +36,9 @@ class DefaultSimParams:
         ## domain, mesh, and time
         self.L = 2.
         self.num_elems = 16
-        self.final_time = 1.
+        self.final_time = 5.
         self.delta_t = 0.05
-        self.total_outputs = 4
+        self.total_outputs = 10
         self.dt_output = int(np.floor(self.final_time / self.delta_t) / self.total_outputs)
         if self.dt_output < 1:
             self.dt_output = 1
@@ -53,12 +52,12 @@ class DefaultSimParams:
         ## 3D tumor parameters
         self.chi_c = 0.
         self.chi_h = 0.
-        self.ic_nutrient_value = 0.5
+        self.ic_nutrient_value = 0.6
         self.ECM_ic_val = 1.
         self.MDE_ic_val = 0.
-        self.D_sigma = 3.
-        self.D_TAF = 5.0e-1
-        self.D_MDE = 1.
+        self.D_sigma = 1.
+        self.D_TAF = 5.e-1
+        self.D_MDE = 5.e-1
         self.bar_phi_ECM_P = 0.5
 
         ## lambda and sigma
@@ -69,10 +68,10 @@ class DefaultSimParams:
         self.lambda_HP = 1.
         self.lambda_HN = 1.
         self.lambda_TAF = 1.e+1
-        self.lambda_ECM_D = 0.
-        self.lambda_ECM_P = 0.
-        self.lambda_MDE_D = 0.2
-        self.lambda_MDE_P = 0.4
+        self.lambda_ECM_D = 5.
+        self.lambda_ECM_P = 0.01
+        self.lambda_MDE_D = 1.
+        self.lambda_MDE_P = 1.
         self.sigma_PH  = 0.55
         self.sigma_HP = 0.65
         self.sigma_HN = 0.44
@@ -81,12 +80,14 @@ class DefaultSimParams:
         self.mobility_P = 50.
         self.mobility_H = 0.5 * self.mobility_P
         self.E_phi_T = 0.045
+        self.E_phi_P = 0.0
+        self.E_phi_H = 0.0
         self.epsilon_P = 5.e-3
         self.epsilon_H = 5.e-3
 
         ## tumor ic
         self.tumor_ic_type = [1]
-        self.tumor_ic_center = [[0.5 * self.L, 0.4 * self.L, 0.5 * self.L]]
+        self.tumor_ic_center = [[0.5 * self.L, 0.5 * self.L, 0.5 * self.L]]
         self.tumor_ic_radius = [[0.15 * self.L, 0.15 * self.L, 0.15 * self.L]]
         self.tumor_ic_file = 'tum_ic_data_' + self.pp_tag + '.csv'
 
@@ -98,10 +99,10 @@ class DefaultSimParams:
         
         ## 1D vessel parameters
         self.vessel_D_sigma = 1.e-1
-        self.osmotic_coeff = 0.95
-        self.scenario = 'two_vessels'
+        self.osmotic_coeff = 1.
+        self.scenario = 'none'
         self.L_p = 1.e-7
-        self.L_s = 4.5
+        self.L_s = 10.
         self.vessel_in_nutrient = 1.
         self.vessel_in_nutrient_vein = 0.
         self.vessel_blood_density = 1.
@@ -113,10 +114,10 @@ class DefaultSimParams:
         self.discrete_cyl_length = 20
         self.discrete_cyl_angle = 20
         self.network_coupling_theta = 1.
-        self.vessel_pressures = [3000., 2000., 1100., 1600.]
-        self.vessel_radius = [0.046875, 0.0625]
-        self.vessel_line_1 = [0.1875, 0.1875, 0., 0.1875, 0.1875, 2.]
-        self.vessel_line_2 = [1.8125, 1.8125, 0., 1.8125, 1.8125, 2.]        
+        self.vessel_pressures = [10000., 5000., 1000., 2000.]
+        self.vessel_radius = [0.08, 0.1]
+        self.vessel_line_1 = [0.2, 0.2, 0., 0.2, 0.2, 2.]
+        self.vessel_line_2 = [1.8, 1.8, 0., 1.8, 1.8, 2.]        
         self.identify_vein_pressure = 0.99 * self.vessel_pressures[1]
         self.identify_artery_radius = self.vessel_radius[1]
         self.coupling_3d1d_integration_method = 2
@@ -130,7 +131,7 @@ class DefaultSimParams:
 
         ## growth params
         self.network_active = True
-        self.network_update_interval = 2
+        self.network_update_interval = 3
         self.network_update_TAF_th = 1.e-4
         self.log_normal_mean = 1.
         self.log_normal_std_dev = 0.2
@@ -140,7 +141,7 @@ class DefaultSimParams:
         self.network_sprout_prob = 0.93
         self.min_length_for_sprouting = 0.13
         self.seed = 100
-        self.network_update = True
+        self.network_update = False
 
         self.run_path = ''
 
@@ -177,9 +178,8 @@ class DefaultSimParams:
         space = 30 + 2
         strs += '{}= {}\n'.format('{0:{space}}'.format('model_name', space=space), self.model_name)
         strs += '{}= {}\n'.format('{0:{space}}'.format('pp_tag', space=space), self.pp_tag)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('test_name', space=space), self.test_name)
+        strs += '{}= {}\n'.format('{0:{space}}'.format('scheme_name', space=space), self.scheme_name)
         strs += '{}= {}\n'.format('{0:{space}}'.format('advection_active', space=space), bool_to_string(self.advection_active))
-        strs += '{}= {}\n'.format('{0:{space}}'.format('network_decouple_nutrients', space=space), bool_to_string(self.network_decouple_nutrients))
         strs += '{}= {}\n'.format('{0:{space}}'.format('coupled_1d3d', space=space), bool_to_string(self.coupled_1d3d))
         strs += '{}= {}\n'.format('{0:{space}}'.format('solve_ecm', space=space), bool_to_string(self.solve_ecm))
         strs += '{}= {}\n'.format('{0:{space}}'.format('solve_pres_with_net_update', space=space), bool_to_string(self.solve_pres_with_net_update))
@@ -246,6 +246,8 @@ class DefaultSimParams:
         strs += '{}= {}\n'.format('{0:{space}}'.format('bar_M_P', space=space), self.mobility_P)
         strs += '{}= {}\n'.format('{0:{space}}'.format('bar_M_H', space=space), self.mobility_H)
         strs += '{}= {}\n'.format('{0:{space}}'.format('bar_E_phi_T', space=space), self.E_phi_T)
+        strs += '{}= {}\n'.format('{0:{space}}'.format('bar_E_phi_P', space=space), self.E_phi_P)
+        strs += '{}= {}\n'.format('{0:{space}}'.format('bar_E_phi_H', space=space), self.E_phi_H)
         strs += '{}= {}\n'.format('{0:{space}}'.format('epsilon_P', space=space), self.epsilon_P)
         strs += '{}= {}\n'.format('{0:{space}}'.format('epsilon_H', space=space), self.epsilon_H)
 
@@ -419,8 +421,6 @@ def setup():
 
     # create sim params
     dp = SimParams()
-    dp.model_name = 'NetFCFVFE'
-    dp.test_name = 'none'
     dp.pp_tag = 'angio_' + str(i)
     dp.run_path = 'tests_sim/' + dp.model_name + '/' + dp.pp_tag + '/' 
 
@@ -431,7 +431,7 @@ def setup():
 def run():
 
   dps = setup()
-  run_screen = 1 # 1 - true, 0 - false
+  run_screen = 0 # 1 - true, 0 - false
 
   for dp in dps:
     print('setting up input parameters ... ')

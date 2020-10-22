@@ -222,7 +222,7 @@ void util::TumorDeck::read_parameters(const std::string &filename) {
   d_bar_E_phi_T = input("bar_E_phi_T", 0.045);
   d_epsilon_T = input("epsilon_T", 0.005);
 
-  d_bar_E_phi_P = input("bar_E_phi_P", 0.045);
+  d_bar_E_phi_P = input("bar_E_phi_P", 0.0);
   d_epsilon_P = input("epsilon_P", 0.005);
 }
 
@@ -244,7 +244,7 @@ void util::HypoxicDeck::read_parameters(const std::string &filename) {
   d_sigma_HP = input("sigma_HP", 0.5);
   d_sigma_HN = input("sigma_HN", 0.2);
 
-  d_bar_E_phi_H = input("bar_E_phi_H", 0.045);
+  d_bar_E_phi_H = input("bar_E_phi_H", 0.0);
   d_epsilon_H = input("epsilon_H", 0.005);
 }
 
