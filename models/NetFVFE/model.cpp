@@ -658,7 +658,7 @@ void netfvfe::Model::solve_system_implicit() {
     }
 
     // Nonlinear iteration error
-    double nonlinear_iter_error = d_err_check_pro->linfty_norm() + d_err_check_hyp->linfty_norm() + d_err_check_nec->linfty_norm() + d_err_check_nut->linfty_norm();
+    double nonlinear_iter_error = d_err_check_pro->linfty_norm() + d_err_check_hyp->linfty_norm() + d_err_check_nec->linfty_norm();
     if (d_input.d_solve_ecm)
       nonlinear_iter_error += d_err_check_mde->linfty_norm() + d_err_check_ecm->linfty_norm();
     if (!d_input.d_coupled_1d3d)
