@@ -8,7 +8,7 @@
 #include "../model.hpp"
 
 Number netfvfe::initial_condition_nec(const Point &p, const Parameters &es,
-                                      const std::string &system_name, const std::string &var_name) {
+                                         const std::string &system_name, const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Necrotic");
 
@@ -78,8 +78,8 @@ void netfvfe::NecAssembly::assemble_1() {
         compute_rhs =
           d_JxW[qp] *
           (nec_old + dt * deck.d_lambda_HN *
-                       util::heaviside(deck.d_sigma_HN - nut_proj) *
-                       hyp_proj);
+                       util::heaviside(deck.d_sigma_HN - nut_cur) *
+                       hyp_cur);
       }
 
       // Assembling matrix

@@ -32,7 +32,7 @@ double get_taf_source(const std::string &test_name, const Point &x,
 } // namespace
 
 Number netfvfe::initial_condition_taf(const Point &p, const Parameters &es,
-                                      const std::string &system_name, const std::string &var_name) {
+                                         const std::string &system_name, const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "TAF");
 
@@ -99,8 +99,8 @@ void netfvfe::TafAssembly::assemble_1() {
 
         hyp_proj = util::project_concentration(hyp_cur);
 
-        compute_rhs = d_JxW[qp] * (taf_old + dt * deck.d_lambda_TAF * hyp_proj);
-        compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_TAF * hyp_proj);
+        compute_rhs = d_JxW[qp] * (taf_old + dt * deck.d_lambda_TAF * hyp_cur);
+        compute_mat = d_JxW[qp] * (1. + dt * deck.d_lambda_TAF * hyp_cur);
       }
 
       // add artificial source if any
