@@ -17,8 +17,8 @@ double get_exact_source(const Point &p) {
 } // namespace
 
 Number netfvfe::initial_condition_pres(const Point &p, const Parameters &es,
-                                       const std::string &system_name,
-                                       const std::string &var_name) {
+                                          const std::string &system_name,
+                                          const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Pressure");
 
@@ -279,21 +279,12 @@ void netfvfe::PressureAssembly::assemble_face() {
 
           ecm_proj = util::project_concentration(ecm_cur);
 
-          if (deck.d_assembly_method == 1) {
-            Sp = (chem_pro_cur + deck.d_chi_c * nut_cur +
-                  deck.d_chi_h * ecm_cur) *
-                   pro_grad +
-                 (chem_hyp_cur + deck.d_chi_c * nut_cur +
-                  deck.d_chi_h * ecm_cur) *
-                   hyp_grad;
-          } else {
-            Sp = (chem_pro_cur + deck.d_chi_c * nut_proj +
-                  deck.d_chi_h * ecm_proj) *
-                   pro_grad +
-                 (chem_hyp_cur + deck.d_chi_c * nut_proj +
-                  deck.d_chi_h * ecm_proj) *
-                   hyp_grad;
-          }
+          Sp = (chem_pro_cur + deck.d_chi_c * nut_cur +
+                deck.d_chi_h * ecm_cur) *
+                 pro_grad +
+               (chem_hyp_cur + deck.d_chi_c * nut_cur +
+                deck.d_chi_h * ecm_cur) *
+                 hyp_grad;
 
           // add to force
           Fe(0) += -factor_p * pro.d_JxW_face[qp] * deck.d_tissue_flow_coeff * Sp * pro.d_qface_normals[qp];

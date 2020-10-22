@@ -27,8 +27,8 @@ double get_nut_source(const std::string &test_name, const Point &x,
 } // namespace
 
 Number netfvfe::initial_condition_nut(const Point &p, const Parameters &es,
-                                      const std::string &system_name,
-                                      const std::string &var_name) {
+                                         const std::string &system_name,
+                                         const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Nutrient");
 
@@ -250,9 +250,6 @@ void netfvfe::NutAssembly::assemble_face() {
   Real chem_pro_old = 0.;
   Real chem_hyp_old = 0.;
 
-  Real nut_old_proj = 0.;
-  Real ecm_old_proj = 0.;
-
   Gradient pro_grad = 0.;
   Gradient hyp_grad = 0.;
   Gradient nec_grad = 0.;
@@ -268,7 +265,7 @@ void netfvfe::NutAssembly::assemble_face() {
   // Looping through elements
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
-    init_dof(elem);
+    nut.init_dof(elem);
     pro.init_dof(elem);
     hyp.init_dof(elem);
     nec.init_dof(elem);
@@ -285,7 +282,6 @@ void netfvfe::NutAssembly::assemble_face() {
 
     // get finite-volume quantities
     nut_old = nut.get_old_sol(0);
-    nut_old_proj = util::project_concentration(nut_old);
     pres_cur = pres.get_current_sol(0);
 
     // loop over sides of the element
@@ -328,71 +324,107 @@ void netfvfe::NutAssembly::assemble_face() {
         // loop over quadrature points
         for (unsigned int qp = 0; qp < pro.d_qrule_face.n_points(); qp++) {
 
-          chem_pro_old = 0.;
-          chem_hyp_old = 0.;
-          pro_grad = 0.;
-          hyp_grad = 0.;
-          nec_grad = 0.;
-          pro_old_grad = 0.;
-          hyp_old_grad = 0.;
-          ecm_old = 0.;
-          ecm_old_proj = 0.;
-          for (unsigned int l = 0; l < pro.d_phi_face.size(); l++) {
+          if (d_implicit_assembly) {
+            // required
+            // old: pro_grad, hyp_grad, pro_chem, hyp_chem, nut, ecm
+            // new: pro_grad, hyp_grad
+            pro_old_grad = 0.;
+            hyp_old_grad = 0.;
+            chem_pro_old = 0.;
+            chem_hyp_old = 0.;
+            ecm_old = 0.;
+            pro_grad = 0.;
+            hyp_grad = 0.;
 
-            chem_pro_old +=
-              pro.d_phi_face[l][qp] * pro.get_old_sol_var(l, 1);
+            for (unsigned int l = 0; l < pro.d_phi_face.size(); l++) {
 
-            pro_grad.add_scaled(pro.d_dphi_face[l][qp],
-                                pro.get_current_sol_var(l, 0));
+              chem_pro_old +=
+                pro.d_phi_face[l][qp] * pro.get_old_sol_var(l, 1);
 
-            pro_old_grad.add_scaled(pro.d_dphi_face[l][qp],
-                                    pro.get_old_sol_var(l, 0));
+              pro_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                  pro.get_current_sol_var(l, 0));
 
-            chem_hyp_old +=
-              pro.d_phi_face[l][qp] * hyp.get_old_sol_var(l, 1);
+              pro_old_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                      pro.get_old_sol_var(l, 0));
 
-            hyp_grad.add_scaled(pro.d_dphi_face[l][qp],
-                                hyp.get_current_sol_var(l, 0));
+              chem_hyp_old +=
+                pro.d_phi_face[l][qp] * hyp.get_old_sol_var(l, 1);
 
-            hyp_old_grad.add_scaled(pro.d_dphi_face[l][qp],
-                                    hyp.get_old_sol_var(l, 0));
+              hyp_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                  hyp.get_current_sol_var(l, 0));
 
-            nec_grad.add_scaled(pro.d_dphi_face[l][qp],
-                                nec.get_current_sol(l));
+              hyp_old_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                      hyp.get_old_sol_var(l, 0));
 
-            ecm_old +=
-              pro.d_phi_face[l][qp] * ecm.get_old_sol(l);
-          }
+              ecm_old +=
+                pro.d_phi_face[l][qp] * ecm.get_old_sol(l);
+            }
 
-          ecm_old_proj = util::project_concentration(ecm_old);
-
-          if (deck.d_assembly_method == 1) {
             Sp_old = (chem_pro_old + deck.d_chi_c * nut_old +
                       deck.d_chi_h * ecm_old) *
                        pro_old_grad +
                      (chem_hyp_old + deck.d_chi_c * nut_old +
                       deck.d_chi_h * ecm_old) *
                        hyp_old_grad;
+
+            // chemotactic term
+            Fe(0) += -factor_nut * pro.d_JxW_face[qp] * dt * deck.d_chi_c *
+                     (pro_grad + hyp_grad) * pro.d_qface_normals[qp];
+
+            // advection term
+            Real v_mu = factor_nut * pro.d_JxW_face[qp] * dt *
+                        deck.d_tissue_flow_coeff * Sp_old *
+                        pro.d_qface_normals[qp];
+
+            // goes to the dof of element (not the neighbor)
+            util::add_unique(get_global_dof_id(0), v_mu, Ke_dof_col, Ke_val_col);
+
           } else {
-            Sp_old = (chem_pro_old + deck.d_chi_c * nut_old_proj +
-                      deck.d_chi_h * ecm_old_proj) *
+            // required
+            // old: pro_grad, hyp_grad, pro_chem, hyp_chem, nut, ecm
+            pro_old_grad = 0.;
+            hyp_old_grad = 0.;
+            chem_pro_old = 0.;
+            chem_hyp_old = 0.;
+            ecm_old = 0.;
+
+            for (unsigned int l = 0; l < pro.d_phi_face.size(); l++) {
+
+              chem_pro_old +=
+                pro.d_phi_face[l][qp] * pro.get_old_sol_var(l, 1);
+
+              pro_old_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                      pro.get_old_sol_var(l, 0));
+
+              chem_hyp_old +=
+                pro.d_phi_face[l][qp] * hyp.get_old_sol_var(l, 1);
+
+              hyp_old_grad.add_scaled(pro.d_dphi_face[l][qp],
+                                      hyp.get_old_sol_var(l, 0));
+
+              ecm_old +=
+                pro.d_phi_face[l][qp] * ecm.get_old_sol(l);
+            }
+
+            Sp_old = (chem_pro_old + deck.d_chi_c * nut_old +
+                      deck.d_chi_h * ecm_old) *
                        pro_old_grad +
-                     (chem_hyp_old + deck.d_chi_c * nut_old_proj +
-                      deck.d_chi_h * ecm_old_proj) *
+                     (chem_hyp_old + deck.d_chi_c * nut_old +
+                      deck.d_chi_h * ecm_old) *
                        hyp_old_grad;
+
+            // chemotactic term
+            Fe(0) += -factor_nut * pro.d_JxW_face[qp] * dt * deck.d_chi_c *
+                     (pro_old_grad + hyp_old_grad) * pro.d_qface_normals[qp];
+
+            // advection term
+            Real v_mu = factor_nut * pro.d_JxW_face[qp] * dt *
+                        deck.d_tissue_flow_coeff * Sp_old *
+                        pro.d_qface_normals[qp];
+
+            // goes to the dof of element (not the neighbor)
+            util::add_unique(get_global_dof_id(0), v_mu, Ke_dof_col, Ke_val_col);
           }
-
-          // chemotactic term
-          Fe(0) += -factor_nut * pro.d_JxW_face[qp] * dt * deck.d_chi_c *
-                   (pro_grad + hyp_grad) * pro.d_qface_normals[qp];
-
-          // advection term
-          Real v_mu = factor_nut * pro.d_JxW_face[qp] * dt *
-                      deck.d_tissue_flow_coeff * Sp_old *
-                      pro.d_qface_normals[qp];
-
-          // goes to the dof of element (not the neighbor)
-          util::add_unique(get_global_dof_id(0), v_mu, Ke_dof_col, Ke_val_col);
         } // loop over quadrature points on face
 
       } // elem neighbor is not null
@@ -413,6 +445,7 @@ void netfvfe::NutAssembly::assemble_face() {
 void netfvfe::NutAssembly::assemble_1() {
 
   // Get required system alias
+  auto &nut = d_model_p->get_nut_assembly();
   auto &pro = d_model_p->get_pro_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
   auto &nec = d_model_p->get_nec_assembly();
@@ -432,10 +465,10 @@ void netfvfe::NutAssembly::assemble_1() {
   Real ecm_cur = 0.;
   Real mde_cur = 0.;
 
-  Real pro_proj = 0.;
-  Real hyp_proj = 0.;
-  Real ecm_proj = 0.;
-  Real mde_proj = 0.;
+  Real pro_old = 0.;
+  Real hyp_old = 0.;
+  Real ecm_old = 0.;
+  Real mde_old = 0.;
 
   Real compute_rhs = 0.;
   Real compute_mat = 0.;
@@ -443,7 +476,7 @@ void netfvfe::NutAssembly::assemble_1() {
   // Looping through elements
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
-    init_dof(elem);
+    nut.init_dof(elem);
     pro.init_dof(elem);
     hyp.init_dof(elem);
     nec.init_dof(elem);
@@ -452,11 +485,11 @@ void netfvfe::NutAssembly::assemble_1() {
     mde.init_dof(elem);
 
     // init fe and element matrix and vector
-    init_fe(elem);
+    nut.init_fe(elem);
     hyp.init_fe(elem);
 
     // get finite-volume quantities
-    nut_old = get_old_sol(0);
+    nut_old = nut.get_old_sol(0);
 
     // add finite-volume contribution to matrix and vector
     d_Fe(0) += deck.d_elem_size * factor_nut * nut_old;
@@ -465,22 +498,21 @@ void netfvfe::NutAssembly::assemble_1() {
     // for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
     for (unsigned int qp = 0; qp < hyp.d_qrule.n_points(); qp++) {
 
-      // Computing solution
-      pro_cur = 0.;
-      hyp_cur = 0.;
-      ecm_cur = 0.;
-      mde_cur = 0.;
+      if (d_implicit_assembly) {
+        // required
+        // old: nut
+        // new: pro, hyp, ecm, mde
+        pro_cur = 0.;
+        hyp_cur = 0.;
+        ecm_cur = 0.;
+        mde_cur = 0.;
+        for (unsigned int l = 0; l < hyp.d_phi.size(); l++) {
 
-      // for (unsigned int l = 0; l < d_phi.size(); l++) {
-      for (unsigned int l = 0; l < hyp.d_phi.size(); l++) {
-
-        pro_cur += hyp.d_phi[l][qp] * pro.get_current_sol_var(l, 0);
-        hyp_cur += hyp.d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
-        ecm_cur += hyp.d_phi[l][qp] * ecm.get_current_sol(l);
-        mde_cur += hyp.d_phi[l][qp] * mde.get_current_sol(l);
-      }
-
-      if (deck.d_assembly_method == 1) {
+          pro_cur += hyp.d_phi[l][qp] * pro.get_current_sol_var(l, 0);
+          hyp_cur += hyp.d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
+          ecm_cur += hyp.d_phi[l][qp] * ecm.get_current_sol(l);
+          mde_cur += hyp.d_phi[l][qp] * mde.get_current_sol(l);
+        }
 
         compute_rhs =
           hyp.d_JxW[qp] * dt * (deck.d_lambda_A * (pro_cur + hyp_cur) + deck.d_lambda_ECM_D * ecm_cur * mde_cur);
@@ -492,20 +524,28 @@ void netfvfe::NutAssembly::assemble_1() {
                          util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
 
       } else {
+        // required
+        // old: nut, pro, hyp, ecm, mde
+        pro_old = 0.;
+        hyp_old = 0.;
+        ecm_old = 0.;
+        mde_old = 0.;
+        for (unsigned int l = 0; l < hyp.d_phi.size(); l++) {
 
-        mde_proj = util::project_concentration(mde_cur);
-        ecm_proj = util::project_concentration(ecm_cur);
-        pro_proj = util::project_concentration(pro_cur);
-        hyp_proj = util::project_concentration(hyp_cur);
+          pro_old += hyp.d_phi[l][qp] * pro.get_old_sol_var(l, 0);
+          hyp_old += hyp.d_phi[l][qp] * hyp.get_old_sol_var(l, 0);
+          ecm_old += hyp.d_phi[l][qp] * ecm.get_old_sol(l);
+          mde_old += hyp.d_phi[l][qp] * mde.get_old_sol(l);
+        }
 
         compute_rhs =
-          hyp.d_JxW[qp] * dt * (deck.d_lambda_A * (pro_proj + hyp_proj) + deck.d_lambda_ECM_D * ecm_proj * mde_proj);
+          hyp.d_JxW[qp] * dt * (deck.d_lambda_A * (pro_old + hyp_old) + deck.d_lambda_ECM_D * ecm_old * mde_old);
 
         compute_mat = hyp.d_JxW[qp] * dt *
-                      (deck.d_lambda_P * pro_proj +
-                       deck.d_lambda_Ph * hyp_proj +
-                       deck.d_lambda_ECM_P * (1. - ecm_proj) *
-                         util::heaviside(ecm_proj - deck.d_bar_phi_ECM_P));
+                      (deck.d_lambda_P * pro_old +
+                       deck.d_lambda_Ph * hyp_old +
+                       deck.d_lambda_ECM_P * (1. - ecm_old) *
+                         util::heaviside(ecm_old - deck.d_bar_phi_ECM_P));
       }
 
       // add rhs
