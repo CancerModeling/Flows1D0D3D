@@ -8,7 +8,7 @@
 #include "../model.hpp"
 
 Number netfvfe::initial_condition_nec(const Point &p, const Parameters &es,
-                                         const std::string &system_name, const std::string &var_name) {
+                                      const std::string &system_name, const std::string &var_name) {
 
   libmesh_assert_equal_to(system_name, "Necrotic");
 

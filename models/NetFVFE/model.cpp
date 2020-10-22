@@ -73,8 +73,8 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
 
 // Model setup and run
 void netfvfe::model_setup_run(int argc, char **argv,
-                                 const std::string &filename,
-                                 Parallel::Communicator *comm) {
+                              const std::string &filename,
+                              Parallel::Communicator *comm) {
 
   auto sim_begin = steady_clock::now();
 
