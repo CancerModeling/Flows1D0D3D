@@ -229,6 +229,7 @@ netfvfe::Model::Model(
       d_network(this),
       d_networkVtkWriter(comm, input.d_outfilename_net + "new_"),
       d_networkVtkWriterOld(comm, input.d_outfilename_net + "old_"),
+      d_networkDGFWriter(comm, input.d_outfilename_net + ""),
       d_nec(this, "Necrotic", d_mesh, nec),
       d_pro(this, "Prolific", d_mesh, pro),
       d_nut(this, "Nutrient", d_mesh, nut), d_hyp(this, "Hypoxic", d_mesh, hyp),
@@ -398,6 +399,7 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
   // write network simulation
   d_networkVtkWriterOld.write(d_network.VGM, t_step);
   d_networkVtkWriter.write(d_network.VGM, t_step);
+  d_networkDGFWriter.write(d_network.VGM);
 
   // write tumor simulation
   rw::VTKIO(d_mesh).write_equation_systems(d_input.d_outfilename + "_" +
