@@ -29,6 +29,7 @@ void netfvfe::EcmAssembly::assemble() {
 void netfvfe::EcmAssembly::assemble_1() {
 
   // Get required system alias
+  auto &ecm = d_model_p->get_ecm_assembly();
   auto &nut = d_model_p->get_nut_assembly();
   auto &mde = d_model_p->get_mde_assembly();
 
@@ -41,9 +42,7 @@ void netfvfe::EcmAssembly::assemble_1() {
   Real ecm_cur = 0.;
   Real nut_cur = 0.;
   Real mde_cur = 0.;
-
-  Real nut_proj = 0.;
-  Real mde_proj = 0.;
+  Real mde_old = 0.;
 
   Real compute_rhs = 0.;
   Real compute_mat = 0.;
@@ -51,31 +50,31 @@ void netfvfe::EcmAssembly::assemble_1() {
   // Looping through elements
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
-    init_dof(elem);
+    ecm.init_dof(elem);
     nut.init_dof(elem);
     mde.init_dof(elem);
 
     // init fe and element matrix and vector
-    init_fe(elem);
+    ecm.init_fe(elem);
 
     // get finite-volume quantities
     nut_cur = nut.get_current_sol(0);
-    nut_proj = util::project_concentration(nut_cur);
 
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
-      // Computing solution
-      ecm_cur = 0.;
-      ecm_old = 0.;
-      mde_cur = 0.;
-      for (unsigned int l = 0; l < d_phi.size(); l++) {
+      if (d_implicit_assembly) {
+        // required
+        // old: ecm
+        // new: nut, mde, ecm
+        ecm_old = 0.;
+        mde_cur = 0.;
+        ecm_cur = 0.;
+        for (unsigned int l = 0; l < d_phi.size(); l++) {
 
-        ecm_cur += d_phi[l][qp] * get_current_sol(l);
-        ecm_old += d_phi[l][qp] * get_old_sol(l);
-        mde_cur += d_phi[l][qp] * mde.get_current_sol(l);
-      }
-
-      if (deck.d_assembly_method == 1) {
+          ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
+          ecm_old += d_phi[l][qp] * ecm.get_old_sol(l);
+          mde_cur += d_phi[l][qp] * mde.get_current_sol(l);
+        }
 
         compute_rhs =
           d_JxW[qp] *
@@ -86,19 +85,24 @@ void netfvfe::EcmAssembly::assemble_1() {
           d_JxW[qp] * (1. + dt * deck.d_lambda_ECM_D * mde_cur +
                        dt * deck.d_lambda_ECM_P * nut_cur *
                          util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
-      } else {
 
-        mde_proj = util::project_concentration(mde_cur);
+      } else {
+        // required
+        // old: ecm, mde
+        // new: nut
+        ecm_old = 0.;
+        mde_old = 0.;
+        for (unsigned int l = 0; l < d_phi.size(); l++) {
+
+          ecm_old += d_phi[l][qp] * ecm.get_old_sol(l);
+          mde_old += d_phi[l][qp] * mde.get_old_sol(l);
+        }
 
         compute_rhs =
           d_JxW[qp] *
-          (ecm_old + dt * deck.d_lambda_ECM_P * nut_proj *
-                       util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+          (ecm_old + dt * deck.d_lambda_ECM_P * nut_cur * util::heaviside(ecm_old - deck.d_bar_phi_ECM_P) * (1. - ecm_old) - dt * deck.d_lambda_ECM_D * mde_old * ecm_old);
 
-        compute_mat =
-          d_JxW[qp] * (1. + dt * deck.d_lambda_ECM_D * mde_proj +
-                       dt * deck.d_lambda_ECM_P * nut_proj *
-                         util::heaviside(ecm_cur - deck.d_bar_phi_ECM_P));
+        compute_mat = d_JxW[qp];
       }
 
       // Assembling matrix

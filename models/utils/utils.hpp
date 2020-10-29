@@ -484,6 +484,11 @@ inline boost::mt19937 get_random_generator_boost(int seed) {
   }
 }
 
+inline double proj(double x) {
+  auto y = 1. < x ? 1. : x;
+  return 0. > y ? 0. : y;
+}
+
 } // namespace util
 
 #endif // UTILS_H

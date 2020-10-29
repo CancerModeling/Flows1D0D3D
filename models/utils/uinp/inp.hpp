@@ -25,6 +25,8 @@ struct ModelDeck {
 
   std::string d_test_name;
 
+  std::string d_scheme_name;
+
   bool d_advection_active;
 
   bool d_decouple_nutrients;
@@ -41,7 +43,7 @@ struct ModelDeck {
       : d_dim(2), d_domain_type("hyper_cuboid"),
         d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2),
         d_test_name(""), d_advection_active(false), d_decouple_nutrients(false), d_seed(-1), d_coupled_1d3d(false), d_solve_ecm(true),
-        d_solve_pres_with_net_update(false) {
+        d_solve_pres_with_net_update(false), d_scheme_name("solve_explicit") {
 
     if (!filename.empty())
       read_parameters(filename);

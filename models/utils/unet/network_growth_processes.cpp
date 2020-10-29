@@ -391,7 +391,7 @@ void util::unet::Network::linkTerminalVessels() {
 	  pointer_1->sprouting_edge.push_back(false);
 	  pointer_1->neighbors.push_back(pointer);
 	  pointer_1->tau_w_initial.push_back(tau_w_ini);
-  
+
           break;
         }
 
@@ -564,12 +564,11 @@ void util::unet::Network::processApicalGrowth() {
 
       for (int j = 0; j < N_3D; j++) {
 
-           if( P_3D[ j ] > p_min ){
+        if (P_3D[j] > p_min) {
 
-               p_min = P_3D[ j ];
-
-           }
-      } 
+          p_min = P_3D[j];
+        }
+      }
 
       for (int i_theta = 0; i_theta < N_theta; i_theta++) {
 
@@ -616,12 +615,11 @@ void util::unet::Network::processApicalGrowth() {
               min_vec = cylinder_node;
             }
 
-            if (p_t<p_min + 1.0e-8) {
+            if (p_t < p_min + 1.0e-8) {
 
               p_min = p_t;
 
               min_vec_pt = cylinder_node;
-
             }
           }
         }
@@ -634,7 +632,7 @@ void util::unet::Network::processApicalGrowth() {
 
         for (int i = 0; i < 3; i++) {
 
-          direction[i] = ( max_vec[i] - coord[i] ) + (0.5 * normal_plane[i]);
+          direction[i] = (max_vec[i] - coord[i]) + (0.5 * normal_plane[i]);
         }
 
       } else {
@@ -675,7 +673,8 @@ void util::unet::Network::processApicalGrowth() {
 
       double prob = 0.5 + 0.5 * std::erf((std::log(log_dist) - input.d_log_normal_mean) / std::sqrt(2.0 * input.d_log_normal_std_dev * input.d_log_normal_std_dev));
 
-      std::cout << " " << "\n";
+      std::cout << " "
+                << "\n";
       std::cout << "prob: " << prob << "\n";
       std::cout << "total_length: " << total_length << "\n";
       std::cout << "input.d_network_bifurcate_prob: " << input.d_network_bifurcate_prob << "\n";
@@ -695,7 +694,8 @@ void util::unet::Network::processApicalGrowth() {
 
       } else if (bifurcate && radius_p > input.d_min_radius) {
 
-        std::cout << "Create bifuraction" << "\n";
+        std::cout << "Create bifuraction"
+                  << "\n";
 
         double gamma = input.d_net_radius_exponent_gamma;
         double R_c = std::pow(2.0, -1.0 / gamma) * radius_p;
@@ -808,7 +808,7 @@ void util::unet::Network::processApicalGrowth() {
                   coord[i] + (length_2 * diff_2[i] / length_diff_2);
               }
             }
-/*
+            /*
             std::cout << "rotation_axis: " << rotation_axis << "\n";
             std::cout << "branch_angle: " << branch_angle << "\n";
             std::cout << "length_1: " << length_1 << "\n";
@@ -893,7 +893,7 @@ bool util::unet::Network::testIntersection(
             util::dist_between_points(point_1, point_p2) < 1.0e-11 ||
             util::dist_between_points(point_2, point_p2) < 1.0e-11) {
 
-            isIntersecting = false;
+          isIntersecting = false;
 
         } else {
 
@@ -911,8 +911,8 @@ bool util::unet::Network::testIntersection(
 
           for (int j = 0; j < 3; j++) {
 
-            dir_p[j] = dir_p[j]/length_p;
-            dir_test[j] = dir_test[j]/length_test;
+            dir_p[j] = dir_p[j] / length_p;
+            dir_test[j] = dir_test[j] / length_test;
           }
 
           for (int j = 1; j < 65; j++) {
@@ -929,13 +929,14 @@ bool util::unet::Network::testIntersection(
             }
 
             if (util::dist_between_points(new_point_p, new_point_test) <
+
                 1.25 * (radius + radius_p) ) {
 
-              isIntersecting = true;
+                isIntersecting = true;
 
-              std::cout << "Vessel is intersecting" << std::endl;
+                std::cout << "Vessel is intersecting" << std::endl;
 
-              break;
+                break;
             }
           }
         }
@@ -1163,14 +1164,12 @@ void util::unet::Network::removeRedundantTerminalVessels() {
 
     if (numberOfNeighbors == 1 && pointer->notUpdated > 2) {
 
-        vesselLinked = linkToNearestNetworkNode(pointer);
-
+      vesselLinked = linkToNearestNetworkNode(pointer);
     }
 
-    if( vesselLinked == true ){
+    if (vesselLinked == true) {
 
-        continue;
-
+      continue;
     }
 
     if (numberOfNeighbors == 1 && pointer->notUpdated > 2) {
@@ -1393,7 +1392,6 @@ void util::unet::Network::markSproutingGrowth() {
         } else {
 
           pointer->sprouting_edge[i] = false;
-
         }
 
         pointer->neighbors[i]->edge_touched[local_index] = true;
@@ -1441,7 +1439,7 @@ void util::unet::Network::processSproutingGrowth() {
 
     for (int i = 0; i < numberOfEdges; i++) {
 
-      if( pointer->sprouting_edge[i] == true ){ //(pointer->is_sprouting_node && pointer->sprouting_edge[i] == true ){ 
+      if (pointer->sprouting_edge[i] == true) { //(pointer->is_sprouting_node && pointer->sprouting_edge[i] == true ){
 
         std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
 
@@ -1644,7 +1642,7 @@ void util::unet::Network::processSproutingGrowth() {
 
           new_point[j] =
             max_vessel_point[j] +
-            length_new * dir_new_vessel[j]; 
+            length_new * dir_new_vessel[j];
         }
 
         bool isColliding = testCollision(new_point);
@@ -1654,7 +1652,7 @@ void util::unet::Network::processSproutingGrowth() {
         std::cout << "min_sprouting_length: " << input.d_min_length_for_sprouting << std::endl;
         std::cout << "total_length: " << total_length << std::endl;
 
-        if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 && length_vessel > input.d_min_length_for_sprouting) && total_length<0.7) {
+        if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 && length_vessel > input.d_min_length_for_sprouting && total_length<0.7) {
 
           int index_old_neighbor = pointer->neighbors[i]->index;
           int index_pointer = pointer->index;
@@ -1857,7 +1855,7 @@ void util::unet::Network::processSproutingGrowth() {
   }
 }
 
-bool util::unet::Network::linkToNearestNetworkNode(std::shared_ptr<VGNode> &pointer){
+bool util::unet::Network::linkToNearestNetworkNode(std::shared_ptr<VGNode> &pointer) {
 
   const auto &input = d_model_p->get_input_deck();
 
@@ -1957,13 +1955,13 @@ bool util::unet::Network::linkToNearestNetworkNode(std::shared_ptr<VGNode> &poin
 
            return vesselLinked;
         }
+
     }
 
     pointer_1 = pointer_1->global_successor;
   }
 
   return vesselLinked;
-
 }
 
 std::vector<double> util::unet::Network::findNearNetworkNode(std::vector<double> coord, std::vector<double> normal_plane) {
@@ -1995,7 +1993,7 @@ std::vector<double> util::unet::Network::findNearNetworkNode(std::vector<double>
       dist_plane += normal_plane[i] * diff[i];
     }
 
-    if (dist_plane > 0.0 && dist_min>dist) {
+    if (dist_plane > 0.0 && dist_min > dist) {
 
       dist_min = dist;
 

@@ -78,8 +78,8 @@ void netfvfe::NecAssembly::assemble_1() {
         compute_rhs =
           d_JxW[qp] *
           (nec_old + dt * deck.d_lambda_HN *
-                       util::heaviside(deck.d_sigma_HN - nut_proj) *
-                       hyp_proj);
+                       util::heaviside(deck.d_sigma_HN - nut_cur) *
+                       hyp_cur);
       }
 
       // Assembling matrix

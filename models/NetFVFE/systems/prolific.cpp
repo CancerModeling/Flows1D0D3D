@@ -64,6 +64,7 @@ void netfvfe::ProAssembly::assemble() {
 void netfvfe::ProAssembly::assemble_1() {
 
   // Get required system alias
+  auto &pro = d_model_p->get_pro_assembly();
   auto &nut = d_model_p->get_nut_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
   auto &nec = d_model_p->get_nec_assembly();
@@ -87,13 +88,7 @@ void netfvfe::ProAssembly::assemble_1() {
   Real hyp_old = 0.;
   Real nec_old = 0.;
   Real pro_old = 0.;
-
-  Real tum_proj = 0.;
-  Real nut_proj = 0.;
-  Real nec_proj = 0.;
-  Real hyp_proj = 0.;
-  Real pro_proj = 0.;
-  Real ecm_proj = 0.;
+  Real ecm_old = 0.;
 
   Real mobility = 0.;
 
@@ -106,7 +101,7 @@ void netfvfe::ProAssembly::assemble_1() {
   // Looping through elements
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
-    init_dof(elem);
+    pro.init_dof(elem);
     nut.init_dof(elem);
     hyp.init_dof(elem);
     nec.init_dof(elem);
@@ -114,54 +109,47 @@ void netfvfe::ProAssembly::assemble_1() {
     vel.init_dof(elem);
 
     // init fe and element matrix and vector
-    init_fe(elem);
+    pro.init_fe(elem);
 
     // get finite-volume quantities
     nut_cur = nut.get_current_sol(0);
-    nut_proj = util::project_concentration(nut_cur);
 
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
-      // Computing solution
-      pro_old = 0.;
-      pro_cur = 0.;
-      tum_cur = 0.;
-      hyp_cur = 0.;
-      nec_cur = 0.;
-      ecm_cur = 0.;
-      tum_old = 0.;
-      hyp_old = 0.;
-      nec_old = 0.;
-      vel_cur = 0.;
-      for (unsigned int l = 0; l < d_phi.size(); l++) {
+      if (d_implicit_assembly) {
+        // require
+        // old: pro, hyp, nec
+        // new: nut, vel, pro, hyp, nec, ecm
+        pro_old = 0.;
+        hyp_old = 0.;
+        nec_old = 0.;
+        tum_old = 0.;
+        vel_cur = 0.;
+        pro_cur = 0.;
+        hyp_cur = 0.;
+        nec_cur = 0.;
+        ecm_cur = 0.;
 
-        pro_old += d_phi[l][qp] * get_old_sol_var(l, 0);
-        pro_cur += d_phi[l][qp] * get_current_sol_var(l, 0);
-        hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
-        hyp_old += d_phi[l][qp] * hyp.get_old_sol_var(l, 0);
-        nec_cur += d_phi[l][qp] * nec.get_current_sol(l);
-        nec_old += d_phi[l][qp] * nec.get_old_sol(l);
-        ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
+        for (unsigned int l = 0; l < d_phi.size(); l++) {
 
-        for (unsigned int ll = 0; ll < d_mesh.mesh_dimension(); ll++)
-          vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
-      }
+          pro_old += d_phi[l][qp] * pro.get_old_sol_var(l, 0);
+          hyp_old += d_phi[l][qp] * hyp.get_old_sol_var(l, 0);
+          nec_old += d_phi[l][qp] * nec.get_old_sol(l);
 
-      tum_cur = pro_cur + hyp_cur + nec_cur;
-      tum_old = pro_old + hyp_old + nec_old;
+          pro_cur += d_phi[l][qp] * pro.get_current_sol_var(l, 0);
+          hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
+          nec_cur += d_phi[l][qp] * nec.get_current_sol(l);
+          ecm_cur += d_phi[l][qp] * ecm.get_current_sol(l);
 
-      // get projected solution
-      hyp_proj = util::project_concentration(hyp_cur);
-      pro_proj = util::project_concentration(pro_cur);
-      nec_proj = util::project_concentration(nec_cur);
-      ecm_proj = util::project_concentration(ecm_cur);
-      tum_proj = util::project_concentration(pro_proj + hyp_proj + nec_proj);
+          for (unsigned int ll = 0; ll < d_mesh.mesh_dimension(); ll++)
+            vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
+        }
 
-      mobility = deck.d_bar_M_P * pow(pro_proj, 2) * pow(1. - pro_proj, 2);
+        tum_old = pro_old + hyp_old + nec_old;
+        tum_cur = pro_cur + hyp_cur + nec_cur;
 
-      if (deck.d_assembly_method == 1) {
+        mobility = deck.d_bar_M_P * pow(util::proj(pro_cur) * util::proj(1. - tum_cur), 2);
 
-        // compute quantities independent of dof loop
         compute_rhs_pro =
           d_JxW[qp] * (pro_old + dt * deck.d_lambda_HP * util::heaviside(nut_cur - deck.d_sigma_HP) * hyp_cur);
 
@@ -175,28 +163,51 @@ void netfvfe::ProAssembly::assemble_1() {
 
         compute_mat_pro =
           d_JxW[qp] * (1. + dt * deck.d_lambda_A -
-                       dt * deck.d_lambda_P * nut_cur * (1. - tum_cur) +
+                       dt * deck.d_lambda_P * nut_cur * util::proj(1. - tum_cur) +
                        dt * deck.d_lambda_PH *
                          util::heaviside(deck.d_sigma_PH - nut_cur));
-      } else {
 
-        // compute quantities independent of dof loop
+      } else {
+        // require
+        // old: pro, hyp, nec, ecm
+        // new: nut, vel
+        pro_old = 0.;
+        hyp_old = 0.;
+        nec_old = 0.;
+        ecm_old = 0.;
+        tum_old = 0.;
+        vel_cur = 0.;
+        for (unsigned int l = 0; l < d_phi.size(); l++) {
+
+          pro_old += d_phi[l][qp] * pro.get_old_sol_var(l, 0);
+          hyp_old += d_phi[l][qp] * hyp.get_old_sol_var(l, 0);
+          nec_old += d_phi[l][qp] * nec.get_old_sol(l);
+          ecm_old += d_phi[l][qp] * ecm.get_old_sol(l);
+
+          for (unsigned int ll = 0; ll < d_mesh.mesh_dimension(); ll++)
+            vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
+        }
+
+        tum_old = pro_old + hyp_old + nec_old;
+
+        mobility = deck.d_bar_M_P * pow(util::proj(pro_old) * util::proj(1. - tum_old), 2);
+
         compute_rhs_pro =
-          d_JxW[qp] * (pro_old + dt * deck.d_lambda_HP * util::heaviside(nut_cur - deck.d_sigma_HP) * hyp_proj);
+          d_JxW[qp] * (pro_old + dt * deck.d_lambda_HP * util::heaviside(nut_cur - deck.d_sigma_HP) * hyp_old);
 
         compute_rhs_mu =
           d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
                          (4.0 * pow(tum_old, 2) - 6.0 * tum_old - 1.) +
                        deck.d_bar_E_phi_P * pro_old *
                          (4.0 * pow(pro_old, 2) - 6.0 * pro_old - 1.) +
-                       3. * deck.d_bar_E_phi_T * (hyp_proj + nec_proj) -
-                       deck.d_chi_c * nut_proj - deck.d_chi_h * ecm_proj);
+                       3. * deck.d_bar_E_phi_T * (hyp_old + nec_old) -
+                       deck.d_chi_c * nut_cur - deck.d_chi_h * ecm_old);
 
         compute_mat_pro =
           d_JxW[qp] * (1. + dt * deck.d_lambda_A -
-                       dt * deck.d_lambda_P * nut_proj * (1. - tum_proj) +
+                       dt * deck.d_lambda_P * nut_cur * util::proj(1. - tum_old) +
                        dt * deck.d_lambda_PH *
-                         util::heaviside(deck.d_sigma_PH - nut_proj));
+                         util::heaviside(deck.d_sigma_PH - nut_cur));
       }
 
       // Assembling matrix

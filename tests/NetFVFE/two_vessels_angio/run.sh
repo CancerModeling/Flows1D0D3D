@@ -2,7 +2,7 @@
 MY_PWD=$(pwd)
 
 ## Fixed variable which should be changed less often
-EXEC_DIR="$MY_PWD/../../../../build/dbg/bin/"
+EXEC_DIR="$MY_PWD/../../../bin/"
 
 ## libmesh options
 LIBMESH_OPTS=" -ksp_type gmres -pc_type bjacobi -sub_pc_type ilu -sub_pc_factor_levels 10"

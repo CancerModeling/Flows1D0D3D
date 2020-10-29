@@ -24,36 +24,6 @@ include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/fast-cpp-csv-parser")
 # ****************************************************************************
 add_subdirectory(utils)
 
-if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
-        STREQUAL "Build_Prashant" OR "${LIBTG_BUILD_FLAG}" STREQUAL
-        "Build_AvaFV")
-    add_subdirectory(AvaFV)
-endif ()
-
-if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
-        STREQUAL "Build_Prashant" OR "${LIBTG_BUILD_FLAG}" STREQUAL
-        "Build_NetFV")
-    add_subdirectory(NetFV)
-endif ()
-
-if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
-        STREQUAL "Build_Prashant" OR "${LIBTG_BUILD_FLAG}" STREQUAL
-        "Build_NetFVFE")
-    add_subdirectory(NetFVFE)
-endif ()
-
-if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
-        STREQUAL "Build_Prashant" OR "${LIBTG_BUILD_FLAG}" STREQUAL
-        "Build_NetFCFVFE")
-    add_subdirectory(NetFCFVFE)
-endif ()
-
-if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
-        STREQUAL "Build_Tobias" OR "${LIBTG_BUILD_FLAG}" STREQUAL
-        "Build_NetFC")
-    add_subdirectory(NetFC)
-endif ()
-
 if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}" STREQUAL
         "Build_TwoSpecies")
     add_subdirectory(TwoSpecies)
@@ -67,8 +37,7 @@ if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}" STREQUAL
 
 endif ()
 
-if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}"
-        STREQUAL "Build_Prashant" OR "${LIBTG_BUILD_FLAG}" STREQUAL
-        "Build_NetFVFEExp")
-    add_subdirectory(NetFVFEExp)
+if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}" STREQUAL
+        "Build_NetFVFE")
+    add_subdirectory(NetFVFE)
 endif ()
