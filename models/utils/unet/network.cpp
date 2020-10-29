@@ -277,19 +277,9 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
 
   gmm::iteration iter(1.0E-10);
 
-  // gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D,
-  // 50, 1e-4);
-
-  // gmm::identity_matrix PR;
-
-  // gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D,
-  // 70, 1e-8);
-
   gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D);
 
   gmm::gmres(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, restart, iter);
-
-  // gmm::bicgstab(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, iter);
 
   auto pointer = VGM.getHead();
 
@@ -335,9 +325,6 @@ void util::unet::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
     assembleVGMSystemForPressure(pres_sys);
 
     gmm::iteration iter(10E-18);
-
-    //  gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> P(A_VGM, 50,
-    //  1e-5);
 
     gmm::identity_matrix P;
 

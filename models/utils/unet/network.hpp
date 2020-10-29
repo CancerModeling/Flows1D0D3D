@@ -43,7 +43,7 @@ class Network {
 public:
   /*! @brief Constructor */
   Network(util::BaseModel *model)
-      : d_has_network_changed(false), d_model_p(model), d_update_number(0), d_coupled_solver(false), d_comm_p(model->get_comm()), d_procRank(0), d_procSize(0) {
+      : d_has_network_changed(false), d_model_p(model), d_update_number(0), d_coupled_solver(false), d_comm_p(model->get_comm()), d_procRank(0), d_procSize(0), total_length(0.0) {
 
     // initialize random distribution samplers
     const auto &input = d_model_p->get_input_deck();
@@ -315,6 +315,8 @@ public:
 
   double L_p;
   double L_s;
+
+  double total_length;
 
   unsigned int d_update_number;
   unsigned int d_update_interval;
