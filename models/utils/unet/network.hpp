@@ -42,7 +42,7 @@ class Network {
 
 public:
   /*! @brief Constructor */
-  Network(util::BaseModel *model)
+  explicit Network(util::BaseModel *model)
       : d_has_network_changed(false), d_model_p(model), d_update_number(0), d_coupled_solver(false), d_comm_p(model->get_comm()), d_procRank(0), d_procSize(0), total_length(0.0) {
 
     // initialize random distribution samplers
@@ -59,9 +59,36 @@ public:
     d_uniformDist.init(0., 1., input.d_seed);
   }
 
-  const util::unet::ListStructure<util::unet::VGNode> &get_mesh() const { return VGM; }
+  const ListStructure<VGNode> &get_mesh() const { return VGM; }
 
-  util::unet::ListStructure<util::unet::VGNode> &get_mesh() { return VGM; }
+  ListStructure<VGNode> &get_mesh() { return VGM; }
+
+  /**
+   * @name Vector-Copy-Functions
+   * @brief Utility functions to copy data into and out of the network.
+   */
+  /**@{*/
+
+  /*! @brief Creates a correctly sized vector for the 1D-3D problem. */
+  std::vector<double> create_coupled_vector() const;
+
+  /*! @brief Creates a correctly sized vector for the 1D network. */
+  std::vector<double> create_1d_vector() const;
+
+  /*! @brief Creates a correctly sized vector for the 3D problem. */
+  std::vector<double> create_3d_vector() const;
+
+  /*! @brief Extracts from a mixed 1D-3D vector its 1D part. */
+  void vector_extract_1d(const std::vector<double> &src, std::vector<double> &dst) const;
+
+  /*! @brief Extracts from a mixed 1D-3D vector its 3D part. */
+  void vector_extract_3d(const std::vector<double> &src, std::vector<double> &dst) const;
+
+  /*! @brief Returns a copy of the 3D nutrient vector. */
+  std::vector<double> get_nutritient_3d_vector() const;
+
+  /*! @brief Returns a copy of the 1D nutrient vector. */
+  std::vector<double> get_nutritient_1d_vector() const;
 
   /**
    * @name Input-output
@@ -95,25 +122,28 @@ public:
    */
   /**@{*/
 
-  void assemble3D1DSystemForPressure(BaseAssembly
-                                       &pres_sys,
-                                     BaseAssembly &tum_sys);
+  /*! @brief Assembles the fully coupled 1D-3D pressure system */
+  void assemble3D1DSystemForPressure(BaseAssembly &pres_sys, BaseAssembly &tum_sys);
 
+  /*! @brief Assembles the fully coupled 1D-3D nutrient system */
   void assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
 
-  void solve3D1DFlowProblem(BaseAssembly
-                              &pres_sys,
-                            BaseAssembly &tum_sys);
+  /*! @brief Solves the fully coupled 1D-3D pressure problem */
+  void solve3D1DFlowProblem(BaseAssembly &pres_sys, BaseAssembly &tum_sys);
 
+  /*! @brief Solves the fully coupled 1D-3D nutrient problem */
   void solve3D1DNutrientProblem(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
 
-  /*! @brief Solve 1-d system */
+  /*! @brief Assembles the 1D pressure system */
   void assembleVGMSystemForPressure(BaseAssembly &pres_sys);
 
+  /*! @brief Solves one iteration of the decoupled 1D-3D pressure problem */
   void solveVGMforPressure(BaseAssembly &pres_sys);
 
+  /*! @brief Assembles the 1D nutrient system */
   void assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys);
 
+  /*! @brief Solves one iteration of the decoupled 1D-3D nutrient problem */
   void solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys);
 
   /** @}*/
