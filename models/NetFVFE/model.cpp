@@ -369,6 +369,18 @@ void netfvfe::Model::run() {
     // solve tumor-network system
     solve_system();
 
+    // output how much the nutrient variable changed
+    {
+      std::stringstream ss;
+      ss << std::scientific << std::setprecision(2);
+      ss << "Nutrient: absolute change 1d = " << d_nutrient_absolute_change_1d;
+      ss << ", relative change 1d = " << d_nutrient_relative_change_1d;
+      ss << ", absolute change 3d = " << d_nutrient_absolute_change_1d;
+      ss << ", relative change 1d = " << d_nutrient_relative_change_1d;
+      ss << std::endl;
+      d_log(ss.str());
+    }
+
     // update network
     if (d_is_growth_step)
       d_network.updateNetwork(d_taf, d_grad_taf);
@@ -585,6 +597,10 @@ void netfvfe::Model::solve_system_implicit() {
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
     d_input.d_linear_tol;
 
+  // save the previous nutrient solution
+  auto nut_before_1d = d_network.get_nutritient_1d_vector();
+  auto nut_before_3d = d_nut.d_sys.old_local_solution->clone();
+
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
@@ -715,6 +731,18 @@ void netfvfe::Model::solve_system_implicit() {
   d_tum.solve_custom();
   d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
   //}
+
+  // get the current solution
+  auto nut_after_1d = d_network.get_nutritient_1d_vector();
+  auto &nut_after_3d = d_nut.d_sys.current_local_solution;
+
+  // calculate how much the nutrients changed
+  const double nut_before_3d_magnitude = nut_before_3d->l2_norm();
+  d_nutrient_absolute_change_1d = gmm::vect_dist2(nut_before_1d, nut_after_1d);
+  *nut_before_3d -= *nut_after_3d;
+  d_nutrient_absolute_change_3d = nut_before_3d->l2_norm();
+  d_nutrient_relative_change_1d = d_nutrient_absolute_change_1d / gmm::vect_norm2(nut_before_1d);
+  d_nutrient_relative_change_3d = d_nutrient_absolute_change_3d / nut_before_3d_magnitude;
 
   d_log(" \n", "solve sys");
 }
@@ -994,6 +1022,10 @@ void netfvfe::Model::solve_nutrient() {
 
   // coupled 1d-3d or iterative method
   if (d_input.d_coupled_1d3d) {
+    // save the previous solution
+    auto nut_before_1d = d_network.get_nutritient_1d_vector();
+    auto nut_before_3d = d_network.get_nutritient_3d_vector();
+
     // solver for 1D + 3D nutrient
     reset_clock();
     d_log("      Solving |Nutrient_1D + " + d_nut.d_sys_name + "| -> ", "solve nut");
@@ -1002,7 +1034,20 @@ void netfvfe::Model::solve_nutrient() {
       d_log.add_sys_solve_time(clock_begin, 1);
       d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
     }
+
+    // get the current solution
+    auto nut_after_1d = d_network.get_nutritient_1d_vector();
+    auto nut_after_3d = d_network.get_nutritient_3d_vector();
+
+    // calculate how much the nutrients changed
+    d_nutrient_absolute_change_1d = gmm::vect_dist2(nut_before_1d, nut_after_1d);
+    d_nutrient_absolute_change_3d = gmm::vect_dist2(nut_before_3d, nut_after_3d);
+    d_nutrient_relative_change_1d = d_nutrient_absolute_change_1d / gmm::vect_norm2(nut_before_1d);
+    d_nutrient_relative_change_3d = d_nutrient_absolute_change_3d / gmm::vect_norm2(nut_before_3d);
   } else {
+    // save the previous solution
+    auto nut_before_1d = d_network.get_nutritient_1d_vector();
+    auto nut_before_3d = d_nut.d_sys.old_local_solution->clone();
 
     // Nonlinear iteration loop
     d_tum_sys.parameters.set<Real>("linear solver tolerance") =
@@ -1064,6 +1109,18 @@ void netfvfe::Model::solve_nutrient() {
         break;
       }
     } // nonlinear solver loop
+
+    // get the current solution
+    auto nut_after_1d = d_network.get_nutritient_1d_vector();
+    auto &nut_after_3d = d_nut.d_sys.current_local_solution;
+
+    // calculate how much the nutrients changed
+    const double nut_before_3d_magnitude = nut_before_3d->l2_norm();
+    d_nutrient_absolute_change_1d = gmm::vect_dist2(nut_before_1d, nut_after_1d);
+    *nut_before_3d -= *nut_after_3d;
+    d_nutrient_absolute_change_3d = nut_before_3d->l2_norm();
+    d_nutrient_relative_change_1d = d_nutrient_absolute_change_1d / gmm::vect_norm2(nut_before_1d);
+    d_nutrient_relative_change_3d = d_nutrient_absolute_change_3d / nut_before_3d_magnitude;
 
     d_log(" \n", "solve nut");
   }
