@@ -75,3 +75,5 @@ src/Config.h
 */tests_sim/*
 */tests_sim*
 tests_sim/
+
+cmake-*/
