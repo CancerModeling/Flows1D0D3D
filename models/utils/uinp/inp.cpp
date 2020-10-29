@@ -274,6 +274,8 @@ void util::TAFDeck::read_parameters(const std::string &filename) {
   d_D_TAF = input("D_TAF", 10.);
   d_delta_TAF = input("delta_TAF", 1.);
   d_lambda_TAF = input("lambda_TAF", 10.);
+  d_sigma_HTAF = input("sigma_HTAF", 0.);
+  d_lambda_TAF_deg = input("lambda_TAF_deg", 0.);
 
   // see if taf source file is provided
   bool read_csv = false;
