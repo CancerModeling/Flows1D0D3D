@@ -277,6 +277,12 @@ struct TAFDeck {
   double d_delta_TAF;
   double d_lambda_TAF;
 
+  // lower threshold of hypoxic concentration necessary to trigger TAF production
+  double d_sigma_HTAF;
+
+  // natural decay of the TAF production
+  double d_lambda_TAF_deg;
+
   std::vector<int> d_taf_source_type;
   std::vector<std::vector<double>> d_taf_source_center;
   std::vector<double> d_taf_source_radius;
