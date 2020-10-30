@@ -15,6 +15,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
   std::cout << " " << std::endl;
   std::cout << "Update the network" << std::endl;
+  std::cout << "Reset the length: total_length = " << total_length << std::endl;
 
   total_length = 0.0;
 
@@ -24,7 +25,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
   std::cout << "Reset the length: total_length = " << total_length << std::endl;
   std::cout << "numberOfNodesOld: " << numberOfNodesOld << std::endl;
 
-  if (d_update_number % d_update_interval == 0 && numberOfNodesOld<500) {
+  if (d_update_number % d_update_interval == 0) {
 
     std::cout << " " << std::endl;
     std::cout << "Number of nodes: " << numberOfNodesOld << std::endl;
@@ -2079,7 +2080,7 @@ void util::unet::Network::adaptRadius() {
 
         double c_neighbor = pointer->neighbors[i]->c_v;
 
-        double J_m = std::pow(0.5*(c_node+c_neighbor),2.0);//std::pow(1.0-0.5*(c_node+c_neighbor),2.0);
+        double J_m = std::pow(0.5*(c_node+c_neighbor),2.0);
 
         double k_m = 1.0;
 
@@ -2098,9 +2099,9 @@ void util::unet::Network::adaptRadius() {
           S_e = k_p * std::log(tau_e);
         }
 
-        if (1.0 + tau_w > 0.0) {
+        if (0.75 + tau_w > 0.0) {
 
-          S_WSS = std::log(0.8+ tau_w);
+          S_WSS = std::log(0.75+ tau_w);
         }
 
         if (1.0+( J_m/(Q+Q_ref) )>0.0) {
@@ -2108,7 +2109,7 @@ void util::unet::Network::adaptRadius() {
           S_m = std::log(1.0+( J_m/(Q+Q_ref) ) );
         }
 
-        double S_tot = 0.05*(k_WSS * S_WSS - S_e + k_m * S_m - k_s);
+        double S_tot = 30.0*(k_WSS * S_WSS); //- S_e + k_m * S_m - k_s);
         double delta_r = input.d_network_update_interval * dt * radius * S_tot;
 
         double radius_new = radius + delta_r;
@@ -2128,18 +2129,18 @@ void util::unet::Network::adaptRadius() {
         int numberOfNeighbors_Neighbor =
           pointer->neighbors[i]->neighbors.size();
 
-        if ( radius < input.d_min_radius ){ //(radius < input.d_min_radius && numberOfNeighbors < 3) || (numberOfNeighbors_Neighbor == 1 && numberOfNeighbors == 1)) {
-
-          radius_new = input.d_min_radius;
+        if ( radius_new < input.d_min_radius ){
 
           std::cout << "Remove vessel with index: " << i << std::endl;
 
           edgesToBeRemoved.push_back(i);
 
           remove_edge[i] = true;
+    
+          continue;
         }
 
-        if (radius_new < 1.2 * radius && radius_new > 0.0) {
+        if (radius_new < 1.1 * pointer->radii_initial[i] && radius_new > 0.0) {
 
           pointer->radii[i] = radius_new;
         }
