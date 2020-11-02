@@ -24,7 +24,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
   std::cout << "Reset the length: total_length = " << total_length << std::endl;
   std::cout << "numberOfNodesOld: " << numberOfNodesOld << std::endl;
 
-  if (d_update_number % d_update_interval == 0 && numberOfNodesOld < 500) {
+  if (d_update_number % d_update_interval == 0) {
 
     std::cout << " " << std::endl;
     std::cout << "Number of nodes: " << numberOfNodesOld << std::endl;
