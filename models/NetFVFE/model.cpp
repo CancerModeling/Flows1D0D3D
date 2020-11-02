@@ -375,15 +375,40 @@ void netfvfe::Model::run() {
       ss << std::scientific << std::setprecision(2);
       ss << "Nutrient: absolute change 1d = " << d_nutrient_absolute_change_1d;
       ss << ", relative change 1d = " << d_nutrient_relative_change_1d;
-      ss << ", absolute change 3d = " << d_nutrient_absolute_change_1d;
-      ss << ", relative change 1d = " << d_nutrient_relative_change_1d;
+      ss << ", absolute change 3d = " << d_nutrient_absolute_change_3d;
+      ss << ", relative change 3d = " << d_nutrient_relative_change_3d;
       ss << std::endl;
       d_log(ss.str());
     }
 
-    // update network
+    // check if the nutrient concentration is sufficiently stationary to allow an update
+    const bool nutAbsoluteThreshold1d = (d_nutrient_absolute_change_1d < d_input.d_network_update_absolute_upper_threshold_1d);
+    const bool nutAbsoluteThreshold3d = (d_nutrient_absolute_change_3d < d_input.d_network_update_absolute_upper_threshold_3d);
+    const bool nutRelativeThreshold1d = (d_nutrient_relative_change_1d < d_input.d_network_update_relative_upper_threshold_1d);
+    const bool nutRelativeThreshold3d = (d_nutrient_relative_change_3d < d_input.d_network_update_relative_upper_threshold_3d);
+
+    const bool nutrientsSufficientlyStationary = nutAbsoluteThreshold1d && nutAbsoluteThreshold3d && nutRelativeThreshold1d && nutRelativeThreshold3d;
+
     if (d_is_growth_step)
-      d_network.updateNetwork(d_taf, d_grad_taf);
+    {
+      // log why the now growth does not take place:
+      if (!nutrientsSufficientlyStationary)
+      {
+        if (nutAbsoluteThreshold1d)
+          d_log("No growth step since absolute threshold 1d too large " + std::to_string(d_nutrient_absolute_change_1d) + ".\n");
+        if (nutAbsoluteThreshold3d)
+          d_log("No growth step since absolute threshold 3d too large " + std::to_string(d_nutrient_absolute_change_3d) + ".\n");
+        if (nutRelativeThreshold1d)
+          d_log("No growth step since relative threshold 1d too large " + std::to_string(d_nutrient_relative_change_1d) + ".\n");
+        if (nutRelativeThreshold3d)
+          d_log("No growth step since relative threshold 3d too large " + std::to_string(d_nutrient_relative_change_3d) + ".\n");
+      }
+      // trigger growth by updating the network
+      else
+      {
+        d_network.updateNetwork(d_taf, d_grad_taf);
+      }
+    }
 
     // write tumor solution
     write_system((d_step - d_input.d_init_step) / d_input.d_dt_output_interval);

@@ -527,6 +527,11 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   d_min_radius = input("network_min_radius", 8.5e-3);
   d_sprouting_prob = input("network_sprouting_prob", 0.9);
 
+  d_network_update_absolute_upper_threshold_1d = input("network_update_absolute_upper_threshold_1d", std::numeric_limits<double>::max());
+  d_network_update_absolute_upper_threshold_3d = input("network_update_absolute_upper_threshold_3d", std::numeric_limits<double>::max());
+  d_network_update_relative_upper_threshold_1d = input("network_update_relative_upper_threshold_1d", std::numeric_limits<double>::max());
+  d_network_update_relative_upper_threshold_3d = input("network_update_relative_upper_threshold_3d", std::numeric_limits<double>::max());
+
   // parameters which are not used currently
   d_no_branch_dist = input("network_no_branch_dist", 1);
   d_new_vessel_max_angle = input("network_new_veesel_max_angle", M_PI / 4.);
