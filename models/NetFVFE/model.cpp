@@ -623,7 +623,11 @@ void netfvfe::Model::solve_system_implicit() {
     d_input.d_linear_tol;
 
   // save the previous nutrient solution
-  auto nut_before_1d = d_network.get_nutritient_1d_vector();
+  std::vector< double > nut_before_1d;
+  if (d_input.d_coupled_1d3d)
+    nut_before_1d = d_network.get_nutritient_1d_vector();
+  else
+    nut_before_1d = d_network.C_v_old;
   auto nut_before_3d = d_nut.d_sys.old_local_solution->clone();
 
   // nonlinear loop
@@ -758,7 +762,11 @@ void netfvfe::Model::solve_system_implicit() {
   //}
 
   // get the current solution
-  auto nut_after_1d = d_network.get_nutritient_1d_vector();
+  std::vector< double > nut_after_1d;
+  if (d_input.d_coupled_1d3d)
+    nut_after_1d = d_network.get_nutritient_1d_vector();
+  else
+    nut_after_1d = d_network.C_v;
   auto &nut_after_3d = d_nut.d_sys.current_local_solution;
 
   // calculate how much the nutrients changed
