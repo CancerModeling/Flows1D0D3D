@@ -58,8 +58,7 @@ void util::unet::Network::vector_extract_3d(const std::vector<double> &src, std:
     dst[i] = src[i];
 }
 
-void util::unet::Network::unmark_network_nodes()
-{
+void util::unet::Network::unmark_network_nodes() {
   std::shared_ptr<VGNode> pointer = VGM.getHead();
   while (pointer) {
     pointer->node_marked = false;
@@ -69,34 +68,28 @@ void util::unet::Network::unmark_network_nodes()
 }
 
 /// Simple depth first search in the graph
-void depth_first_search(std::shared_ptr< util::unet::VGNode > pointer)
-{
+void depth_first_search(std::shared_ptr<util::unet::VGNode> pointer) {
   pointer->node_marked = true;
 
-  for (auto &neighborPtr : pointer->neighbors)
-  {
-    if (!neighborPtr->node_marked)
-    {
+  for (auto &neighborPtr : pointer->neighbors) {
+    if (!neighborPtr->node_marked) {
       depth_first_search(neighborPtr);
     }
   }
 }
 
-void util::unet::Network::mark_nodes_connected_with_initial_nodes()
-{
+void util::unet::Network::mark_nodes_connected_with_initial_nodes() {
   std::shared_ptr<VGNode> pointer = VGM.getHead();
   while (pointer) {
-    if (pointer->is_initial_node && !pointer->node_marked)
-    {
-      depth_first_search( pointer );
+    if (pointer->is_initial_node && !pointer->node_marked) {
+      depth_first_search(pointer);
     }
 
     pointer = pointer->global_successor;
   } // loop over vertices
 }
 
-void util::unet::Network::delete_unmarked_nodes()
-{
+void util::unet::Network::delete_unmarked_nodes() {
   // make sure we have at least one node
   if (VGM.isEmpty())
     return;
@@ -105,10 +98,10 @@ void util::unet::Network::delete_unmarked_nodes()
   {
     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
-    auto notMarkedFunctional = [](std::shared_ptr< VGNode > & node) { return !node->node_marked; };
+    auto notMarkedFunctional = [](std::shared_ptr<VGNode> &node) { return !node->node_marked; };
 
     while (pointer) {
-      auto& neighbors = pointer->neighbors;
+      auto &neighbors = pointer->neighbors;
 
       // remove all the marked nodes from the neighbors list
       neighbors.erase(std::remove_if(neighbors.begin(), neighbors.end(), notMarkedFunctional), neighbors.end());
@@ -125,32 +118,26 @@ void util::unet::Network::delete_unmarked_nodes()
       auto predecessor = pointer->global_predecessor;
       auto successor = pointer->global_successor;
 
-      if (!pointer->node_marked)
-      {
+      if (!pointer->node_marked) {
         // case: we were the last node in the graph
-        if(predecessor == nullptr && successor == nullptr)
-        {
+        if (predecessor == nullptr && successor == nullptr) {
           VGM.setHead(nullptr);
           VGM.setTail(nullptr);
         }
 
-        if(predecessor != nullptr)
-        {
+        if (predecessor != nullptr) {
           predecessor->global_successor = successor;
         }
         // case: we were the first node
-        else
-        {
+        else {
           VGM.setHead(successor);
         }
 
-        if(successor != nullptr)
-        {
+        if (successor != nullptr) {
           successor->global_predecessor = predecessor;
         }
         // case: we were the last node
-        else
-        {
+        else {
           VGM.setTail(predecessor);
         }
       }

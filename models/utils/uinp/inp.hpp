@@ -516,10 +516,10 @@ struct NetworkDeck {
         d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
         d_identify_vein_pres(0.), d_compute_elem_weights(false),
         d_network_bifurcate_prob(0.9), d_min_radius(8.5e-3), d_sprouting_prob(0.9),
-        d_network_update_absolute_upper_threshold_1d(std::numeric_limits< double >::max()),
-        d_network_update_absolute_upper_threshold_3d(std::numeric_limits< double >::max()),
-        d_network_update_relative_upper_threshold_1d(std::numeric_limits< double >::max()),
-        d_network_update_relative_upper_threshold_3d(std::numeric_limits< double >::max()),
+        d_network_update_absolute_upper_threshold_1d(std::numeric_limits<double>::max()),
+        d_network_update_absolute_upper_threshold_3d(std::numeric_limits<double>::max()),
+        d_network_update_relative_upper_threshold_1d(std::numeric_limits<double>::max()),
+        d_network_update_relative_upper_threshold_3d(std::numeric_limits<double>::max()),
         d_identify_artery_radius(0.), d_coupling_3d1d_integration_method(0), d_disable_remove_redundant_vessel(false),
         d_min_length_for_sprouting(0.) {
 
