@@ -90,6 +90,21 @@ public:
   /*! @brief Returns a copy of the 1D nutrient vector. */
   std::vector<double> get_nutritient_1d_vector() const;
 
+  /*! @brief Unmarks all the nodes in the network by setting the node_marked attribute to false. */
+  void unmark_network_nodes();
+
+  /*! @brief Marks all the nodes connected to an initial node by setting the node_marked attribute to true. */
+  void mark_nodes_connected_with_initial_nodes();
+
+  /*! @brief Deletes nodes with a node_marked attribute set to true. */
+  void delete_unmarked_nodes();
+
+  /*! @brief Renumbers the network dofs. Must be called after deleting nodes. */
+  void renumer_dofs();
+
+  /*! @brief Removes all the nodes which are not connected with the initial network. */
+  void delete_unconnected_nodes();
+
   /**
    * @name Input-output
    */

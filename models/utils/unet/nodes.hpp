@@ -109,7 +109,8 @@ public:
    */
   VGNode() : index(0), p_v(0.0), c_v(0.0), p_boundary(0.0),
              c_boundary(0.0), edge_touched(false), sprouting_edge(false), apicalGrowth(false),
-             coord(0.0), radii(0.0), radii_initial(0.0), tau_w_initial(0.0), L_p(0.0), notUpdated(0), is_initial_node(false), is_sprouting_node(false) {}
+             coord(0.0), radii(0.0), radii_initial(0.0), tau_w_initial(0.0), L_p(0.0), notUpdated(0), is_initial_node(false), is_sprouting_node(false),
+             node_marked(false) {}
 
   int index, notUpdated;
 
@@ -132,6 +133,9 @@ public:
   std::vector<ElemWeights> J_b_points;
 
   bool is_initial_node;
+
+  /*! @brief Generic attribute to mark the node to simplify algorithms on the graph. */
+  bool node_marked;
 
   void markEdge(int index) {
 
@@ -246,17 +250,15 @@ public:
     std::cout << "radii_initial: " << radii_initial << std::endl;
     std::cout << "tau_w_initial: " << tau_w_initial << std::endl;
     std::cout << "is_sprouting_node: " << is_sprouting_node << std::endl;
-  
-    if( global_successor){
 
-        std::cout << "global_successor: " << global_successor->index << std::endl;
+    if (global_successor) {
 
+      std::cout << "global_successor: " << global_successor->index << std::endl;
     }
 
-    if( global_predecessor ){
+    if (global_predecessor) {
 
-        std::cout << "global_predecessor: " << global_predecessor->index << std::endl;
-
+      std::cout << "global_predecessor: " << global_predecessor->index << std::endl;
     }
 
     int numberOfNeighbors = neighbors.size();

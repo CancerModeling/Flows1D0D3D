@@ -74,9 +74,12 @@ public:
   }
 
 
-  void setHead(std::shared_ptr<Node>& _head) {
-
+  void setHead(const std::shared_ptr<Node>& _head) {
     head = _head;
+  }
+
+  void setTail(const std::shared_ptr<Node>& _tail) {
+    tail = _tail;
   }
 
   const std::shared_ptr<Node> getHead() const {
