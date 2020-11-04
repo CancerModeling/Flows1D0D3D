@@ -98,13 +98,12 @@ void util::unet::Network::delete_unmarked_nodes() {
   {
     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
-    auto notMarkedFunctional = [](std::shared_ptr<VGNode> &node) { return !node->node_marked; };
+    auto notMarkedFunctional = [](const VGNode &node) -> bool { return !node.node_marked; };
 
     while (pointer) {
-      auto &neighbors = pointer->neighbors;
-
       // remove all the marked nodes from the neighbors list
-      neighbors.erase(std::remove_if(neighbors.begin(), neighbors.end(), notMarkedFunctional), neighbors.end());
+      // note we have to change several lists at once
+      pointer->remove(notMarkedFunctional);
 
       pointer = pointer->global_successor;
     } // loop over vertices
@@ -115,6 +114,7 @@ void util::unet::Network::delete_unmarked_nodes() {
     std::shared_ptr<VGNode> pointer = VGM.getHead();
 
     while (pointer) {
+
       auto predecessor = pointer->global_predecessor;
       auto successor = pointer->global_successor;
 
