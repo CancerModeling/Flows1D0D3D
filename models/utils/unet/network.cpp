@@ -210,11 +210,14 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
 
   const auto &input = d_model_p->get_input_deck();
 
+  std::cout << " " << std::endl;
+  std::cout << "Assemble system of equations (pressure)" << std::endl;
+
   assemble3D1DSystemForPressure(pres_sys, tum_sys);
 
   // Solve linear system of equations
-  // std::cout << " " << std::endl;
-  // std::cout << "Solve linear system of equations (pressure)" << std::endl;
+  std::cout << " " << std::endl;
+  std::cout << "Solve linear system of equations (pressure)" << std::endl;
 
   // gmm::iteration iter(10E-11, 2);
 
@@ -319,10 +322,13 @@ void util::unet::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
   pres_sys.localize_solution_with_elem_id_numbering_const_elem(P_3D, {0},
                                                                false);
 
+  std::cout << "pressure step 1" << std::endl;
   // solve only on processor zero and then communicate to all other processors
   if (d_procRank == 0) {
 
     assembleVGMSystemForPressure(pres_sys);
+
+    std::cout << "pressure step assembly" << std::endl;
 
     gmm::iteration iter(10E-18);
 
@@ -331,6 +337,8 @@ void util::unet::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
     P_v = b;
 
     gmm::bicgstab(A_VGM, P_v, b, P, iter);
+
+    std::cout << "pressure step solve" << std::endl;
 
     std::shared_ptr<VGNode> pointer = VGM.getHead();
 

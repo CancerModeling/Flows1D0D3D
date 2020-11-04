@@ -198,6 +198,8 @@ public:
   void update_and_communicate_bdry_flag();
   void check_vessel_length();
 
+  void removeSingleEdges();
+
   /** @}*/
 
   /*! @brief Did we change network from last step */

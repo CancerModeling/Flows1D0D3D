@@ -246,6 +246,18 @@ public:
     std::cout << "radii_initial: " << radii_initial << std::endl;
     std::cout << "tau_w_initial: " << tau_w_initial << std::endl;
     std::cout << "is_sprouting_node: " << is_sprouting_node << std::endl;
+  
+    if( global_successor){
+
+        std::cout << "global_successor: " << global_successor->index << std::endl;
+
+    }
+
+    if( global_predecessor ){
+
+        std::cout << "global_predecessor: " << global_predecessor->index << std::endl;
+
+    }
 
     int numberOfNeighbors = neighbors.size();
     std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;

@@ -73,6 +73,12 @@ public:
     return head;
   }
 
+
+  void setHead(std::shared_ptr<Node>& _head) {
+
+    head = _head;
+  }
+
   const std::shared_ptr<Node> getHead() const {
 
     return head;

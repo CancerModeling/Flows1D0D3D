@@ -864,6 +864,7 @@ void netfvfe::Model::solve_pressure() {
 
   // If d_solve_pres_with_net_update = true, solve for pressure only after
   // the network update
+/*
   bool solve_pres = false;
   if (d_input.d_solve_pres_with_net_update) {
     // two cases: network update is allowed or network is static
@@ -888,8 +889,10 @@ void netfvfe::Model::solve_pressure() {
 
   auto solve_clock = steady_clock::now();
   reset_clock();
+*/
+  d_network.solve3D1DFlowProblem(d_pres, d_tum);
 
-  // coupled 1d-3d or iterative method
+/*  // coupled 1d-3d or iterative method
   if (d_input.d_coupled_1d3d) {
     // call fully coupled 1D-3D solver (this will update the 3D pressure system
     // in libmesh
@@ -974,7 +977,7 @@ void netfvfe::Model::solve_pressure() {
       d_log.add_pres_nonlin_iter(d_nonlinear_step);
     }
   }
-
+*/
   // Note: Solving for velocity takes unusually long time so we disable it
   //  if the advection effects are disabled
   if (d_input.d_advection_active) {
