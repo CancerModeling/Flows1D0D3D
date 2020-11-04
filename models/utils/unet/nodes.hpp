@@ -274,6 +274,36 @@ public:
     }
   }
 
+  void remove(const std::function< bool(const VGNode&) > & predicate)
+  {
+    std::vector<double> radii_new, L_p_new, L_s_new, radii_initial_new, tau_w_initial_new;
+    std::vector<bool> edge_touched_new, sprouting_edge_new;
+    std::vector<std::shared_ptr<VGNode>> neighbors_new;
+
+    for (int i = 0; i < neighbors.size(); i++) {
+      if (!predicate(*neighbors[i]))
+      {
+        radii_new.push_back(radii[i]);
+        L_p_new.push_back(L_p[i]);
+        L_s_new.push_back(L_s[i]);
+        radii_initial_new.push_back(radii_initial[i]);
+        tau_w_initial_new.push_back(tau_w_initial[i]);
+        edge_touched_new.push_back(edge_touched[i]);
+        sprouting_edge_new.push_back(sprouting_edge[i]);
+        neighbors_new.push_back(neighbors[i]);
+      }
+    }
+
+    radii = radii_new;
+    L_p = L_p_new;
+    L_s = L_s_new;
+    radii_initial = radii_initial_new;
+    tau_w_initial = tau_w_initial_new;
+    edge_touched = edge_touched_new;
+    sprouting_edge = sprouting_edge_new;
+    neighbors = neighbors_new;
+  }
+
   void removeComponent(int comp) {
 
     int numberOfComponents = neighbors.size();
