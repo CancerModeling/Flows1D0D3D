@@ -12,6 +12,52 @@
 #include "network_growth_processes.cpp"
 #include "network_semi_coupled_assembly.cpp"
 
+std::vector<double> util::unet::Network::create_coupled_vector() const {
+  return std::vector<double>(N_tot_3D + d_numVertices, 0);
+}
+
+std::vector<double> util::unet::Network::create_1d_vector() const {
+  return std::vector<double>(d_numVertices, 0);
+}
+
+std::vector<double> util::unet::Network::create_3d_vector() const {
+  return std::vector<double>(N_tot_3D, 0);
+}
+
+std::vector<double> util::unet::Network::get_nutritient_3d_vector() const {
+  auto nut_1d = create_1d_vector();
+  vector_extract_1d(phi_sigma, nut_1d);
+  return nut_1d;
+}
+
+std::vector<double> util::unet::Network::get_nutritient_1d_vector() const {
+  auto nut_3d = create_3d_vector();
+  vector_extract_3d(phi_sigma, nut_3d);
+  return nut_3d;
+}
+
+void util::unet::Network::vector_extract_1d(const std::vector<double> &src, std::vector<double> &dst) const {
+  if (src.size() != N_tot_3D + d_numVertices)
+    throw std::runtime_error("src is not a mixed vector");
+
+  dst.resize(d_numVertices);
+
+  const int offset_to_1d_dofs = N_tot_3D;
+
+  for (int i = 0; i < d_numVertices; i += 1)
+    dst[i] = src[offset_to_1d_dofs + i];
+}
+
+void util::unet::Network::vector_extract_3d(const std::vector<double> &src, std::vector<double> &dst) const {
+  if (src.size() != N_tot_3D + d_numVertices)
+    throw std::runtime_error("src is not a mixed vector");
+
+  dst.resize(N_tot_3D);
+
+  for (int i = 0; i < N_tot_3D; i += 1)
+    dst[i] = src[i];
+}
+
 void util::unet::Network::create_initial_network() {
 
   //

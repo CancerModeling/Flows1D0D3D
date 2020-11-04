@@ -179,6 +179,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
           const auto &coord = pointer->coord;
 
           std::cout << "Set inner node to boundary node" << std::endl;
+
           pointer->typeOfVGNode = TypeOfNode::NeumannNode;
         }
 
@@ -389,50 +390,50 @@ void util::unet::Network::linkTerminalVessels() {
 
           std::cout << " " << std::endl;
           std::cout << "dist: " << dist << "\n";
-	  std::cout << "index: " << index << "\n";
-	  std::cout << "index_1: " << index_1 << "\n";
-	  std::cout << "Update pointer"
-		      << "\n";
+          std::cout << "index: " << index << "\n";
+          std::cout << "index_1: " << index_1 << "\n";
+          std::cout << "Update pointer"
+                    << "\n";
 
-	  pointer->p_boundary = 0.0;
-	  pointer->c_boundary = 0.0;
-	  pointer->typeOfVGNode = TypeOfNode::InnerNode;
-	  pointer->apicalGrowth = false;
-	  pointer->radii.push_back(radius);
-	  pointer->radii_initial.push_back(radius);
-	  pointer->L_p.push_back(input.d_tissue_flow_L_p);
-	  pointer->L_s.push_back(input.d_tissue_nut_L_s);
-	  pointer->edge_touched.push_back(true);
-	  pointer->sprouting_edge.push_back(false);
-	  pointer->neighbors.push_back(pointer_1);
+          pointer->p_boundary = 0.0;
+          pointer->c_boundary = 0.0;
+          pointer->typeOfVGNode = TypeOfNode::InnerNode;
+          pointer->apicalGrowth = false;
+          pointer->radii.push_back(radius);
+          pointer->radii_initial.push_back(radius);
+          pointer->L_p.push_back(input.d_tissue_flow_L_p);
+          pointer->L_s.push_back(input.d_tissue_nut_L_s);
+          pointer->edge_touched.push_back(true);
+          pointer->sprouting_edge.push_back(false);
+          pointer->neighbors.push_back(pointer_1);
 
-	  double length =
-	      util::dist_between_points(pointer->coord, pointer_1->coord);
+          double length =
+            util::dist_between_points(pointer->coord, pointer_1->coord);
 
           total_length += length;
 
-	  double p_node = pointer->p_v;
-	  double p_neighbor = pointer_1->p_v;
-	  double delta_p = p_neighbor - p_node;
-	  double tau_w_ini = (radius * std::abs(delta_p)) / (2.0 * length);
+          double p_node = pointer->p_v;
+          double p_neighbor = pointer_1->p_v;
+          double delta_p = p_neighbor - p_node;
+          double tau_w_ini = (radius * std::abs(delta_p)) / (2.0 * length);
 
-	  pointer->tau_w_initial.push_back(tau_w_ini);
+          pointer->tau_w_initial.push_back(tau_w_ini);
 
-	  std::cout << "Update pointer 1"
-		      << "\n";
+          std::cout << "Update pointer 1"
+                    << "\n";
 
-	  pointer_1->p_boundary = 0.0;
-	  pointer_1->c_boundary = 0.0;
-	  pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
-	  pointer_1->apicalGrowth = false;
-	  pointer_1->radii.push_back(radius);
-	  pointer_1->radii_initial.push_back(radius);
-	  pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
-	  pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
-	  pointer_1->edge_touched.push_back(true);
-	  pointer_1->sprouting_edge.push_back(false);
-	  pointer_1->neighbors.push_back(pointer);
-	  pointer_1->tau_w_initial.push_back(tau_w_ini);
+          pointer_1->p_boundary = 0.0;
+          pointer_1->c_boundary = 0.0;
+          pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
+          pointer_1->apicalGrowth = false;
+          pointer_1->radii.push_back(radius);
+          pointer_1->radii_initial.push_back(radius);
+          pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
+          pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
+          pointer_1->edge_touched.push_back(true);
+          pointer_1->sprouting_edge.push_back(false);
+          pointer_1->neighbors.push_back(pointer);
+          pointer_1->tau_w_initial.push_back(tau_w_ini);
 
           break;
         }
@@ -738,7 +739,6 @@ void util::unet::Network::processApicalGrowth() {
       if (!bifurcate && length_d > 0.0 && length > 0.0) {
 
         if (!isIntersecting && total_length<0.6) {
-
           createASingleNode(new_point_1, radius_p, pointer);
           counter++;
         }
@@ -859,15 +859,9 @@ void util::unet::Network::processApicalGrowth() {
                   coord[i] + (length_2 * diff_2[i] / length_diff_2);
               }
             }
-            /*
-            std::cout << "rotation_axis: " << rotation_axis << "\n";
-            std::cout << "branch_angle: " << branch_angle << "\n";
-            std::cout << "length_1: " << length_1 << "\n";
-            std::cout << "length_2: " << length_2 << "\n";
-            std::cout << "new_point_1: " << new_point_1 << "\n";
-            std::cout << "new_point_2: " << new_point_2 << "\n";
-*/
+
             if (gmm::vect_norm2(direction) > 0.0 && length_diff_2 > 0.0 && length_diff_1 > 0.0 && total_length<0.6) {
+
 
               bool isIntersecting_1 =
                 testIntersection(coord, new_point_1, radius_p, pointer);
@@ -981,13 +975,13 @@ bool util::unet::Network::testIntersection(
 
             if (util::dist_between_points(new_point_p, new_point_test) <
 
-                1.25 * (radius + radius_p) ) {
+                1.25 * (radius + radius_p)) {
 
-                isIntersecting = true;
+              isIntersecting = true;
 
-                std::cout << "Vessel is intersecting" << std::endl;
+              std::cout << "Vessel is intersecting" << std::endl;
 
-                break;
+              break;
             }
           }
         }
@@ -1098,7 +1092,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
     new_node.p_boundary = 0.95 * pointer->p_v;
     new_node.p_v = 0.95 * pointer->p_v;
     new_node.c_boundary = 0.0;
-    new_node.c_v = pointer->c_v; 
+    new_node.c_v = pointer->c_v;
     new_node.apicalGrowth = false;
     new_node.radii.push_back(radius);
     new_node.radii_initial.push_back(radius);
@@ -1111,7 +1105,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
     new_node.typeOfVGNode = TypeOfNode::NeumannNode;
 
     double length = util::dist_between_points(pointer->coord, new_point);
-  
+
     total_length += length;
 
     double p_node = pointer->p_v;
@@ -1388,7 +1382,7 @@ void util::unet::Network::markSproutingGrowth() {
 
       int numberOfEdges_neighbor = pointer->neighbors[i]->neighbors.size();
 
-      if (pointer->edge_touched[i] == false && numberOfEdges > 1 && numberOfEdges_neighbor > 1 ){ 
+      if (pointer->edge_touched[i] == false && numberOfEdges > 1 && numberOfEdges_neighbor > 1) {
 
         double radius = pointer->radii[i];
 
@@ -1423,7 +1417,7 @@ void util::unet::Network::markSproutingGrowth() {
           0.5 * std::erf((std::log(log_dist) - input.d_log_normal_mean) /
                          std::sqrt(2.0 * input.d_log_normal_std_dev *
                                    input.d_log_normal_std_dev));
-/*
+        /*
         std::cout << "sproutingProbability: " << sproutingProbability
                   << std::endl;
         std::cout << "input.d_sprouting_prob: " << input.d_sprouting_prob
@@ -1934,7 +1928,7 @@ bool util::unet::Network::linkToNearestNetworkNode(std::shared_ptr<VGNode> &poin
 
     normal_plane[i] = dir_term_vessel[i] / length_dir;
   }
-  
+
   double p_v = pointer->p_v;
 
   while (pointer_1) {
@@ -1959,54 +1953,54 @@ bool util::unet::Network::linkToNearestNetworkNode(std::shared_ptr<VGNode> &poin
 
     double pv_1 = pointer_1->p_v;
 
-    if (dist_plane > 0.002 && 0.085>dist && pv_1-p_v < 0.0) {
+    if (dist_plane > 0.002 && 0.085 > dist && pv_1 - p_v < 0.0) {
 
-        bool isIntersecting = testIntersection(coord, coord_near_node, radius, pointer);
+      bool isIntersecting = testIntersection(coord, coord_near_node, radius, pointer);
 
-        if (!isIntersecting) {
+      if (!isIntersecting) {
 
-           vesselLinked = true;
-           std::cout << "Update pointer" << "\n";
+        vesselLinked = true;
+        std::cout << "Update pointer"
+                  << "\n";
 
-           pointer->p_boundary = 0.0;
-           pointer->c_boundary = 0.0;
-           pointer->typeOfVGNode = TypeOfNode::InnerNode;
-           pointer->apicalGrowth = false;
-           pointer->radii.push_back(radius);
-           pointer->radii_initial.push_back(radius);
-           pointer->L_p.push_back(input.d_tissue_flow_L_p);
-           pointer->L_s.push_back(input.d_tissue_nut_L_s);
-           pointer->edge_touched.push_back(true);
-           pointer->sprouting_edge.push_back(false);
-           pointer->neighbors.push_back(pointer_1);
+        pointer->p_boundary = 0.0;
+        pointer->c_boundary = 0.0;
+        pointer->typeOfVGNode = TypeOfNode::InnerNode;
+        pointer->apicalGrowth = false;
+        pointer->radii.push_back(radius);
+        pointer->radii_initial.push_back(radius);
+        pointer->L_p.push_back(input.d_tissue_flow_L_p);
+        pointer->L_s.push_back(input.d_tissue_nut_L_s);
+        pointer->edge_touched.push_back(true);
+        pointer->sprouting_edge.push_back(false);
+        pointer->neighbors.push_back(pointer_1);
 
-           double length = util::dist_between_points(pointer->coord, pointer_1->coord);
-           double p_node = pointer->p_v;
-           double p_neighbor = pointer_1->p_v;
-           double delta_p = p_neighbor - p_node;
-           double tau_w_ini = (radius * std::abs(delta_p)) / (2.0 * length);
+        double length = util::dist_between_points(pointer->coord, pointer_1->coord);
+        double p_node = pointer->p_v;
+        double p_neighbor = pointer_1->p_v;
+        double delta_p = p_neighbor - p_node;
+        double tau_w_ini = (radius * std::abs(delta_p)) / (2.0 * length);
 
-           pointer->tau_w_initial.push_back(tau_w_ini);
+        pointer->tau_w_initial.push_back(tau_w_ini);
 
-           std::cout << "Update pointer 1"
-                     << "\n";
+        std::cout << "Update pointer 1"
+                  << "\n";
 
-           pointer_1->p_boundary = 0.0;
-           pointer_1->c_boundary = 0.0;
-           pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
-           pointer_1->apicalGrowth = false;
-           pointer_1->radii.push_back(radius);
-           pointer_1->radii_initial.push_back(radius);
-           pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
-           pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
-           pointer_1->edge_touched.push_back(true);
-           pointer_1->sprouting_edge.push_back(false);
-           pointer_1->neighbors.push_back(pointer);
-           pointer_1->tau_w_initial.push_back(tau_w_ini);
+        pointer_1->p_boundary = 0.0;
+        pointer_1->c_boundary = 0.0;
+        pointer_1->typeOfVGNode = TypeOfNode::InnerNode;
+        pointer_1->apicalGrowth = false;
+        pointer_1->radii.push_back(radius);
+        pointer_1->radii_initial.push_back(radius);
+        pointer_1->L_p.push_back(input.d_tissue_flow_L_p);
+        pointer_1->L_s.push_back(input.d_tissue_nut_L_s);
+        pointer_1->edge_touched.push_back(true);
+        pointer_1->sprouting_edge.push_back(false);
+        pointer_1->neighbors.push_back(pointer);
+        pointer_1->tau_w_initial.push_back(tau_w_ini);
 
-           return vesselLinked;
-        }
-
+        return vesselLinked;
+      }
     }
 
     pointer_1 = pointer_1->global_successor;
@@ -2122,6 +2116,7 @@ void util::unet::Network::adaptRadius() {
         }
 
         double S_tot = k_WSS * S_WSS - k_s; 
+
         double delta_r = input.d_network_update_interval * dt * radius * S_tot;
 
         double radius_new = radius + delta_r;

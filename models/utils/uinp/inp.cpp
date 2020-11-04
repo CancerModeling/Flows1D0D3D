@@ -274,6 +274,8 @@ void util::TAFDeck::read_parameters(const std::string &filename) {
   d_D_TAF = input("D_TAF", 10.);
   d_delta_TAF = input("delta_TAF", 1.);
   d_lambda_TAF = input("lambda_TAF", 10.);
+  d_sigma_HTAF = input("sigma_HTAF", 0.);
+  d_lambda_TAF_deg = input("lambda_TAF_deg", 0.);
 
   // see if taf source file is provided
   bool read_csv = false;
@@ -524,6 +526,11 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   d_network_bifurcate_prob = input("network_bifurcate_probability", 0.9);
   d_min_radius = input("network_min_radius", 8.5e-3);
   d_sprouting_prob = input("network_sprouting_prob", 0.9);
+
+  d_network_update_absolute_upper_threshold_1d = input("network_update_absolute_upper_threshold_1d", std::numeric_limits<double>::max());
+  d_network_update_absolute_upper_threshold_3d = input("network_update_absolute_upper_threshold_3d", std::numeric_limits<double>::max());
+  d_network_update_relative_upper_threshold_1d = input("network_update_relative_upper_threshold_1d", std::numeric_limits<double>::max());
+  d_network_update_relative_upper_threshold_3d = input("network_update_relative_upper_threshold_3d", std::numeric_limits<double>::max());
 
   // parameters which are not used currently
   d_no_branch_dist = input("network_no_branch_dist", 1);
