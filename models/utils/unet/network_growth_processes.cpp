@@ -15,7 +15,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
   std::cout << " " << std::endl;
   std::cout << "Update the network" << std::endl;
-  std::cout << "Reset the length: total_length = " << total_length << std::endl;
+  std::cout << "Reset the length: length = " << total_length << std::endl;
 
   total_length = 0.0;
 
@@ -88,6 +88,11 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
       d_model_p->d_log("Adapt radius \n", "net update");
       adaptRadius();
+      adaptRadius();
+      adaptRadius();
+
+      //d_model_p->d_log("Remove single edges \n", "net update");
+      //removeSingleEdges();
 
       auto pointer = VGM.getHead();
 
@@ -118,6 +123,8 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
         pointer = pointer->global_successor;
       }
 
+      std::cout << " " << std::endl;
+      std::cout << "Remove single nodes" << std::endl;
       pointer = VGM.getHead();
 
       while (pointer) {
@@ -126,7 +133,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
         if (numberOfEdges == 0) {
 
-          std::cout << "Remove node" << std::endl;
+          std::cout << "Remove node: " << pointer->index << std::endl;
 
           std::shared_ptr<VGNode> old_pointer = pointer;
 
@@ -138,6 +145,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
           } else {
 
             pointer->global_successor->global_predecessor = NULL;
+            VGM.setHead(pointer->global_successor);
           }
 
           if (pointer->global_successor) {
@@ -169,13 +177,9 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
         if (numberOfNeighbors == 1 && pointer->typeOfVGNode == TypeOfNode::InnerNode) {
 
           const auto &coord = pointer->coord;
-/*
-          // if node is near the boundary, we do not process Omega = (0,L)^3
-          if (0.00001 > coord[0] || coord[0] > L_x - 0.00001 ||
-              0.00001 > coord[1] || coord[1] > L_x - 0.00001 ||
-              0.00001 > coord[2] || coord[2] > L_x - 0.00001) {
-*/
-            pointer->typeOfVGNode = TypeOfNode::NeumannNode;
+
+          std::cout << "Set inner node to boundary node" << std::endl;
+          pointer->typeOfVGNode = TypeOfNode::NeumannNode;
         }
 
         pointer = pointer->global_successor;
@@ -200,6 +204,21 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
       numberOfNodes = VGM.getNumberOfNodes();
 
+      std::cout << "new numberOfNodes: " << numberOfNodes << std::endl;
+
+      d_model_p->d_log("Renumber vertices \n", "net update");
+      
+      pointer = VGM.getHead();
+
+      int counter_index = 0;
+
+      while (pointer) {
+
+        pointer->index = counter_index;
+        counter_index = counter_index+1;
+        pointer = pointer->global_successor;
+      }
+
       d_model_p->d_log("Rescale the 1D matrices and vectors \n", "net update");
       if (!d_coupled_solver and numberOfNodesOld != numberOfNodes) {
         A_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes,
@@ -216,7 +235,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
         b_c.resize(numberOfNodes);
       } // update matrix and vector
 
-      if (d_coupled_solver and numberOfNodesOld != numberOfNodes) {
+      if (d_coupled_solver) {
 
         A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
           N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
@@ -244,15 +263,15 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
         int indexOfNode = pointer->index;
 
-        if (d_coupled_solver) {
+   //     if (d_coupled_solver) {
           phi_sigma[N_tot_3D + indexOfNode] = pointer->c_v;
           phi_sigma_old[N_tot_3D + indexOfNode] = pointer->c_v;
           P_3D1D[N_tot_3D + indexOfNode] = pointer->p_v;
-        } else {
+ /*       } else {
           C_v[indexOfNode] = pointer->c_v;
           C_v_old[indexOfNode] = pointer->c_v;
           P_v[indexOfNode] = pointer->p_v;
-        }
+        }*/
 
         pointer = pointer->global_successor;
       } // loop for update solution in network
@@ -288,7 +307,7 @@ void util::unet::Network::linkTerminalVessels() {
 
   while (pointer) {
 
-    if (pointer->neighbors.size() == 1) {
+    if (pointer->neighbors.size() == 1 && pointer->typeOfVGNode == TypeOfNode::NeumannNode) {
 
       std::vector<double> coord = pointer->coord;
 
@@ -318,6 +337,15 @@ void util::unet::Network::linkTerminalVessels() {
 
       int numberOfNeighbors = pointer->neighbors.size();
 
+      bool isNodeOfSingleEdge = false;
+
+      int numberOfNeighbors_Neighbor = pointer->neighbors[0]->neighbors.size();
+
+      if( numberOfNeighbors_Neighbor <= 1 ){
+
+          isNodeOfSingleEdge = true;
+      }
+
       while (pointer_1) {
 
         std::vector<double> coord_1 = pointer_1->coord;
@@ -344,7 +372,20 @@ void util::unet::Network::linkTerminalVessels() {
 
         int numberOfNeighbors_1 = pointer_1->neighbors.size();
 
-        if (dist_plane > 0.03 && index != index_1 && dist < 0.08 && dist > 0.0 && length_dir > 0.0 ){ //&& std::abs(pv_1-p_v)<0.95){ 
+        bool is_pv_1_single_edge = false;
+
+        if ( numberOfNeighbors_1 == 1 ){
+
+             int numberOfNeighbors_Neighbor_1 = pointer_1->neighbors[0]->neighbors.size();
+
+             if( numberOfNeighbors_Neighbor_1 <= 1 ){
+
+               is_pv_1_single_edge = true;
+             }
+        }
+
+        if (dist_plane > 0.03 && index != index_1 && dist < 0.08 && dist > 0.0 && length_dir > 0.0 && pointer->typeOfVGNode != TypeOfNode::DirichletNode 
+                 && !is_pv_1_single_edge && !isNodeOfSingleEdge){ 
 
           std::cout << " " << std::endl;
           std::cout << "dist: " << dist << "\n";
@@ -436,22 +477,31 @@ void util::unet::Network::markApicalGrowth() {
 
     int numberOfNeighbors = pointer->neighbors.size();
 
-    if (numberOfNeighbors == 1) {
+    pointer->apicalGrowth = false;
+
+    bool isNodeOfSingleEdge = false;
+
+    if ( numberOfNeighbors == 1 ){
+
+         int numberOfNeighbors_Neighbor = pointer->neighbors[0]->neighbors.size();
+
+         if( numberOfNeighbors_Neighbor <= 1 ){
+
+             isNodeOfSingleEdge = true;
+         }
+    }
+
+    if (numberOfNeighbors == 1 and pointer->typeOfVGNode == TypeOfNode::NeumannNode and !isNodeOfSingleEdge) {
 
       const auto &coord = pointer->coord;
 
-      // if node is a Dirichlet node, we do not mark the node
-      if (pointer->typeOfVGNode != TypeOfNode::DirichletNode &&
-          pointer->typeOfVGNode != TypeOfNode::InnerNode) {
+      int index = getElementIndex(coord, h_3D, N_3D);
 
-        int index = getElementIndex(coord, h_3D, N_3D);
+      double taf_node = phi_TAF[index];
 
-        double taf_node = phi_TAF[index];
-
-        if (taf_node > input.d_network_update_taf_threshold) {
+      if (taf_node > input.d_network_update_taf_threshold) {
 
           pointer->apicalGrowth = true;
-        }
       }
     }
 
@@ -687,7 +737,7 @@ void util::unet::Network::processApicalGrowth() {
 
       if (!bifurcate && length_d > 0.0 && length > 0.0) {
 
-        if (!isIntersecting && total_length<0.7) {
+        if (!isIntersecting && total_length<0.6) {
 
           createASingleNode(new_point_1, radius_p, pointer);
           counter++;
@@ -817,7 +867,7 @@ void util::unet::Network::processApicalGrowth() {
             std::cout << "new_point_1: " << new_point_1 << "\n";
             std::cout << "new_point_2: " << new_point_2 << "\n";
 */
-            if (gmm::vect_norm2(direction) > 0.0 && length_diff_2 > 0.0 && length_diff_1 > 0.0 && total_length<0.7) {
+            if (gmm::vect_norm2(direction) > 0.0 && length_diff_2 > 0.0 && length_diff_1 > 0.0 && total_length<0.6) {
 
               bool isIntersecting_1 =
                 testIntersection(coord, new_point_1, radius_p, pointer);
@@ -1073,7 +1123,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
 
     auto sp_newNode = std::make_shared<VGNode>(new_node);
 
-    pointer->p_boundary = 0.0;
+    pointer->p_boundary = p_node;
     pointer->c_boundary = 0.0;
     pointer->typeOfVGNode = TypeOfNode::InnerNode;
     pointer->apicalGrowth = false;
@@ -1440,7 +1490,7 @@ void util::unet::Network::processSproutingGrowth() {
 
     for (int i = 0; i < numberOfEdges; i++) {
 
-      if (pointer->sprouting_edge[i] == true) { //(pointer->is_sprouting_node && pointer->sprouting_edge[i] == true ){
+      if (pointer->sprouting_edge[i] == true) { 
 
         std::vector<double> coord_neighbor = pointer->neighbors[i]->coord;
 
@@ -1653,7 +1703,7 @@ void util::unet::Network::processSproutingGrowth() {
         std::cout << "min_sprouting_length: " << input.d_min_length_for_sprouting << std::endl;
         std::cout << "total_length: " << total_length << std::endl;
 
-        if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 && length_vessel > input.d_min_length_for_sprouting && total_length<0.7) {
+        if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 && length_vessel > input.d_min_length_for_sprouting && total_length<0.6) {
 
           int index_old_neighbor = pointer->neighbors[i]->index;
           int index_pointer = pointer->index;
@@ -1662,8 +1712,8 @@ void util::unet::Network::processSproutingGrowth() {
           VGNode new_node_1;
 
           new_node_1.index = VGM.getNumberOfNodes();
-          new_node_1.coord = max_vessel_point; // mid_point;
-          new_node_1.p_boundary = 0.0;
+          new_node_1.coord = max_vessel_point; 
+          new_node_1.p_boundary = pointer->p_v;
           new_node_1.p_v = pointer->p_v;
           new_node_1.c_boundary = 0.0;
           new_node_1.c_v = pointer->c_v;
@@ -2038,13 +2088,9 @@ void util::unet::Network::adaptRadius() {
   while (pointer) {
 
     int numberOfNeighbors = pointer->neighbors.size();
-
-    std::vector<bool> remove_edge(numberOfNeighbors, false);
     std::vector<int> edgesToBeRemoved;
 
     for (int i = 0; i < numberOfNeighbors; i++) {
-
-      if (pointer->edge_touched[i] == false) {
 
         int local_index =
           pointer->neighbors[i]->getLocalIndexOfNeighbor(pointer);
@@ -2064,88 +2110,46 @@ void util::unet::Network::adaptRadius() {
 
         double tau_w = (radius * std::abs(delta_p)) / (2.0 * length);
 
-        double tau_e = 100.0 - 86.0 * std::exp(-1.0 * std::pow(std::log(std::log( 0.5*(p_neighbor + p_node)/100.0 ) ),1.5) );
-
-        double k_WSS = 0.07;
+        double k_WSS = 0.4;
 
         double S_WSS = 0.0;
 
-        double k_p = 0.35;
+        double k_s = 0.15;
 
-        double S_e = 0.0;
+        if (0.025 + tau_w > 0.0) {
 
-        double k_s = 0.002;
-
-        double c_node = pointer->c_v;
-
-        double c_neighbor = pointer->neighbors[i]->c_v;
-
-        double J_m = std::pow(0.5*(c_node+c_neighbor),2.0);
-
-        double k_m = 1.0;
-
-        double Q_ref = 0.001;
-
-        double L_p = pointer->L_p[i];
-
-        double K_1D = getK1D(0.0, L_p, radius);
-
-        double Q = std::abs(- K_1D / length * delta_p);
-
-        double S_m = 0.0;
-
-        if(tau_e>0.0){
-
-          S_e = k_p * std::log(tau_e);
+          S_WSS = std::log(0.025 + tau_w);
         }
 
-        if (0.75 + tau_w > 0.0) {
-
-          S_WSS = std::log(0.75+ tau_w);
-        }
-
-        if (1.0+( J_m/(Q+Q_ref) )>0.0) {
-
-          S_m = std::log(1.0+( J_m/(Q+Q_ref) ) );
-        }
-
-        double S_tot = 30.0*(k_WSS * S_WSS); //- S_e + k_m * S_m - k_s);
+        double S_tot = k_WSS * S_WSS - k_s; 
         double delta_r = input.d_network_update_interval * dt * radius * S_tot;
 
         double radius_new = radius + delta_r;
-
-        std::cout << "Adapt radius: " << std::endl;
-        std::cout << "S_WSS: " << S_WSS << std::endl;
-        std::cout << "S_e: " << S_e << std::endl;
-        std::cout << "S_m: " << S_m << std::endl;
-        std::cout << "tau_e: " << tau_e << std::endl;
-        std::cout << "tau_w: " << tau_w << std::endl;
-        std::cout << "Q: " << Q << std::endl;
-        std::cout << "c_node: " << c_node << std::endl;
-        std::cout << "S_tot: " << S_tot << std::endl;
-        std::cout << "radius_new: " << radius_new << std::endl;
-        std::cout << "radius: " << radius << std::endl;
-
-        int numberOfNeighbors_Neighbor =
-          pointer->neighbors[i]->neighbors.size();
 
         if ( radius_new < input.d_min_radius ){
 
           std::cout << "Remove vessel with index: " << i << std::endl;
 
-          edgesToBeRemoved.push_back(i);
+          pointer->printInformationOfNode();
 
-          remove_edge[i] = true;
-    
-          continue;
+          std::cout << " " << std::endl;
+          std::cout << "Adapt radius: " << std::endl;
+          std::cout << "S_WSS: " << S_WSS << std::endl;
+          std::cout << "tau_w: " << tau_w << std::endl;
+          std::cout << "S_tot: " << S_tot << std::endl;
+          std::cout << "radius_new: " << radius_new << std::endl;
+          std::cout << "radius: " << radius << std::endl;
+
+          edgesToBeRemoved.push_back(i);
         }
 
         if (radius_new < 1.1 * pointer->radii_initial[i] && radius_new > 0.0) {
 
           pointer->radii[i] = radius_new;
         }
-      }
     }
+
+    pointer->removeComponents(edgesToBeRemoved);
 
     pointer = pointer->global_successor;
   }
@@ -2168,6 +2172,47 @@ void util::unet::Network::adaptRadius() {
 
       pointer->edge_touched[i] = false;
       pointer->sprouting_edge[i] = false;
+    }
+
+    pointer = pointer->global_successor;
+  }
+}
+
+void util::unet::Network::removeSingleEdges(){
+
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  std::cout << " " << std::endl;
+  std::cout << "removeSingleEdges " << std::endl;
+
+  while (pointer) {
+
+    int numberOfNeighbors = pointer->neighbors.size();
+
+    std::vector<bool> remove_edge(numberOfNeighbors, false);
+    std::vector<int> edgesToBeRemoved(0,0);
+
+    for (int i = 0; i < numberOfNeighbors; i++) {
+
+        int numberOfNeighbors = pointer->neighbors.size();
+
+        int numberOfNeighbors_Neighbor =
+          pointer->neighbors[i]->neighbors.size();
+
+        if ( numberOfNeighbors_Neighbor <= 1 && numberOfNeighbors <= 1 ){
+
+          std::cout << "Remove vessel with index: " << i << " for node: " << pointer->index << std::endl;
+          std::cout << "Index of neighbor: " << pointer->neighbors[0]->index << std::endl;
+
+          edgesToBeRemoved.push_back(i);
+        }
+    }
+
+    pointer->removeComponents(edgesToBeRemoved);
+
+    if( numberOfNeighbors<=1 && edgesToBeRemoved.size()>0 ){
+   
+       pointer->p_boundary = 1000.0;
+       pointer->typeOfVGNode = TypeOfNode::DirichletNode;
     }
 
     pointer = pointer->global_successor;

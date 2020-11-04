@@ -188,8 +188,8 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys, B
 
     int indexOfNode = pointer->index;
 
-    // std::cout << "\n----------------------------------------------\n";
-    // std::cout << "indexOfNode: " << indexOfNode << std::endl;
+    //std::cout << "\n----------------------------------------------\n";
+    //std::cout << "indexOfNode: " << indexOfNode << std::endl;
 
     int numberOfNeighbors = pointer->neighbors.size();
     std::vector<double> coord = pointer->coord;
@@ -205,14 +205,17 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys, B
 
         double radius = pointer->radii[0];
 
+        //pointer->printInformationOfNode();
         //std::cout << "radius: " << radius << std::endl;
+        //std::cout << "numberOfNodes: " << VGM.getNumberOfNodes() << std::endl;
+        //std::cout << "A_flow_3D1D: " << A_flow_3D1D.size() << std::endl;
 
         // Assemble coupling terms (nutrients)
         std::vector<double> coord_neighbor = pointer->neighbors[0]->coord;
-        //std::cout << "coord_neighbor: " << coord_neighbor << std::endl;
         int N_s = input.d_num_points_length;
         int N_theta = input.d_num_points_angle;
         int indexNeighbor = pointer->neighbors[0]->index;
+        //std::cout << "indexNeighbor: " << indexNeighbor << std::endl;
 
         std::vector<double> weights;
         std::vector<int> id_3D_elements;
@@ -221,10 +224,13 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys, B
         double L_p = pointer->L_p[0];
         double length = util::dist_between_points(coord, coord_neighbor);
         double K_1D = getK1D(0.5 * (coord[2] + coord_neighbor[2]), L_p, radius);
+        //std::cout << "N_tot_3D+indexOfNode: " << N_tot_3D+indexOfNode << std::endl;
+        //std::cout << "gmm::mat_nrows(A_flow_3D1D): " << gmm::mat_nrows(A_flow_3D1D) << std::endl;
 
         // diffusion term
         A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) =
           A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) + K_1D / length;
+        //std::cout << "A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode): " << A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexOfNode) << std::endl;
 
         A_flow_3D1D(N_tot_3D + indexOfNode, N_tot_3D + indexNeighbor) = -K_1D / length;
 
@@ -241,6 +247,7 @@ void util::unet::Network::assemble3D1DSystemForPressure(BaseAssembly &nut_sys, B
 
         // Add coupling entry to 3D3D as well as 3D1D and 1D3D matrix
         int numberOfElements = id_3D_elements.size();
+        //std::cout << "numberOfElements: " << numberOfElements << std::endl;
 
         for (int j = 0; j < numberOfElements; j++) {
 
