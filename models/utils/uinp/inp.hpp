@@ -277,6 +277,12 @@ struct TAFDeck {
   double d_delta_TAF;
   double d_lambda_TAF;
 
+  // lower threshold of hypoxic concentration necessary to trigger TAF production
+  double d_sigma_HTAF;
+
+  // natural decay of the TAF production
+  double d_lambda_TAF_deg;
+
   std::vector<int> d_taf_source_type;
   std::vector<std::vector<double>> d_taf_source_center;
   std::vector<double> d_taf_source_radius;
@@ -477,6 +483,10 @@ struct NetworkDeck {
   double d_network_bifurcate_prob;
   double d_min_radius;
   double d_sprouting_prob;
+  double d_network_update_absolute_upper_threshold_1d;
+  double d_network_update_absolute_upper_threshold_3d;
+  double d_network_update_relative_upper_threshold_1d;
+  double d_network_update_relative_upper_threshold_3d;
 
   // parameters below are not used currently
   int d_no_branch_dist;
@@ -506,6 +516,10 @@ struct NetworkDeck {
         d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
         d_identify_vein_pres(0.), d_compute_elem_weights(false),
         d_network_bifurcate_prob(0.9), d_min_radius(8.5e-3), d_sprouting_prob(0.9),
+        d_network_update_absolute_upper_threshold_1d(std::numeric_limits< double >::max()),
+        d_network_update_absolute_upper_threshold_3d(std::numeric_limits< double >::max()),
+        d_network_update_relative_upper_threshold_1d(std::numeric_limits< double >::max()),
+        d_network_update_relative_upper_threshold_3d(std::numeric_limits< double >::max()),
         d_identify_artery_radius(0.), d_coupling_3d1d_integration_method(0), d_disable_remove_redundant_vessel(false),
         d_min_length_for_sprouting(0.) {
 
