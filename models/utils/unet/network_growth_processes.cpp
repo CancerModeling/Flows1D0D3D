@@ -88,8 +88,6 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
       d_model_p->d_log("Adapt radius \n", "net update");
       adaptRadius();
-      adaptRadius();
-      adaptRadius();
 
       //d_model_p->d_log("Remove single edges \n", "net update");
       //removeSingleEdges();
@@ -1092,7 +1090,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
     new_node.p_boundary = 0.95 * pointer->p_v;
     new_node.p_v = 0.95 * pointer->p_v;
     new_node.c_boundary = 0.0;
-    new_node.c_v = pointer->c_v;
+    new_node.c_v = 0.0; //pointer->c_v;
     new_node.apicalGrowth = false;
     new_node.radii.push_back(radius);
     new_node.radii_initial.push_back(radius);
@@ -1767,7 +1765,7 @@ void util::unet::Network::processSproutingGrowth() {
           new_node_2.p_boundary = pointer->p_v;
           new_node_2.p_v = pointer->p_v;
           new_node_2.c_boundary = 0.0;
-          new_node_2.c_v = pointer->c_v;
+          new_node_2.c_v = 0.0; //pointer->c_v;
           new_node_2.apicalGrowth = false;
           new_node_2.radii.push_back(radius_new);
           new_node_2.radii_initial.push_back(radius_new);
@@ -2108,7 +2106,7 @@ void util::unet::Network::adaptRadius() {
 
         double S_WSS = 0.0;
 
-        double k_s = 0.15;
+        double k_s = 0.25;
 
         if (0.025 + tau_w > 0.0) {
 
