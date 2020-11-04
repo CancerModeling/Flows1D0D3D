@@ -220,6 +220,9 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
         pointer = pointer->global_successor;
       }
 
+      // delete all the unconnected nodes
+      delete_unconnected_nodes();
+
       d_model_p->d_log("Rescale the 1D matrices and vectors \n", "net update");
       if (!d_coupled_solver and numberOfNodesOld != numberOfNodes) {
         A_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes,
