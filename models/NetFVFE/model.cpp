@@ -389,11 +389,9 @@ void netfvfe::Model::run() {
 
     const bool nutrientsSufficientlyStationary = nutAbsoluteThreshold1d && nutAbsoluteThreshold3d && nutRelativeThreshold1d && nutRelativeThreshold3d;
 
-    if (d_is_growth_step)
-    {
+    if (d_is_growth_step) {
       // log why the now growth does not take place:
-      if (!nutrientsSufficientlyStationary)
-      {
+      if (!nutrientsSufficientlyStationary) {
         if (nutAbsoluteThreshold1d)
           d_log("No growth step since absolute threshold 1d too large " + std::to_string(d_nutrient_absolute_change_1d) + ".\n");
         if (nutAbsoluteThreshold3d)
@@ -404,8 +402,7 @@ void netfvfe::Model::run() {
           d_log("No growth step since relative threshold 3d too large " + std::to_string(d_nutrient_relative_change_3d) + ".\n");
       }
       // trigger growth by updating the network
-      else
-      {
+      else {
         d_network.updateNetwork(d_taf, d_grad_taf);
       }
     }
@@ -623,7 +620,7 @@ void netfvfe::Model::solve_system_implicit() {
     d_input.d_linear_tol;
 
   // save the previous nutrient solution
-  std::vector< double > nut_before_1d;
+  std::vector<double> nut_before_1d;
   if (d_input.d_coupled_1d3d)
     nut_before_1d = d_network.get_nutritient_1d_vector();
   else
@@ -762,7 +759,7 @@ void netfvfe::Model::solve_system_implicit() {
   //}
 
   // get the current solution
-  std::vector< double > nut_after_1d;
+  std::vector<double> nut_after_1d;
   if (d_input.d_coupled_1d3d)
     nut_after_1d = d_network.get_nutritient_1d_vector();
   else
@@ -925,7 +922,7 @@ void netfvfe::Model::solve_pressure() {
 
   // If d_solve_pres_with_net_update = true, solve for pressure only after
   // the network update
-/*
+  /*
   bool solve_pres = false;
   if (d_input.d_solve_pres_with_net_update) {
     // two cases: network update is allowed or network is static
@@ -953,7 +950,7 @@ void netfvfe::Model::solve_pressure() {
 */
   d_network.solve3D1DFlowProblem(d_pres, d_tum);
 
-/*  // coupled 1d-3d or iterative method
+  /*  // coupled 1d-3d or iterative method
   if (d_input.d_coupled_1d3d) {
     // call fully coupled 1D-3D solver (this will update the 3D pressure system
     // in libmesh
