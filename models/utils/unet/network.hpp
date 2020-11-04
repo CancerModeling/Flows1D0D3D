@@ -99,8 +99,8 @@ public:
   /*! @brief Deletes nodes with a node_marked attribute set to true. */
   void delete_unmarked_nodes();
 
-  /*! @brief Renumbers the network dofs. Must be called after deleting nodes. */
-  void renumer_dofs();
+  /*! @brief Reenumerates the network dofs. Must be called after deleting nodes. */
+  void reenumerate_dofs();
 
   /*! @brief Removes all the nodes which are not connected with the initial network. */
   void delete_unconnected_nodes();

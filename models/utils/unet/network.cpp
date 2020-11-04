@@ -147,7 +147,7 @@ void util::unet::Network::delete_unmarked_nodes() {
   }
 }
 
-void util::unet::Network::renumer_dofs() {
+void util::unet::Network::reenumerate_dofs() {
   int next_index = 0;
   std::shared_ptr<VGNode> pointer = VGM.getHead();
   while (pointer) {
@@ -162,7 +162,7 @@ void util::unet::Network::delete_unconnected_nodes() {
   unmark_network_nodes();
   mark_nodes_connected_with_initial_nodes();
   delete_unmarked_nodes();
-  renumer_dofs();
+  reenumerate_dofs();
 }
 
 void util::unet::Network::create_initial_network() {
