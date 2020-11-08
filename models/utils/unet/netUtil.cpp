@@ -231,26 +231,36 @@ double util::unet::normVector(std::vector<double> &vec) {
 
 std::vector<double> util::unet::determineRotator(std::vector<double> dir) {
 
-  std::vector<double> rotator;
+  std::vector<double> rotator(3, 0.);
 
-  if (std::abs(dir[0]) < 1.0e-13 && std::abs(dir[1]) < 1.0e-13) {
+  if (std::abs(dir[0]) < 1.0e-13) {
 
-    rotator.push_back(1.0);
-    rotator.push_back(0.0);
-    rotator.push_back(0.0);
+    // if (std::abs(dir[1]) < 1.0e-13) z-axis
+    // if (std::abs(dir[2]) < 1.0e-13) y-axis
+    // else line in yz-plane
+
+    rotator[0] = 1.0;
+
+  } else if (std::abs(dir[1]) < 1.0e-13) {
+
+    // if (std::abs(dir[0]) < 1.0e-13) z-axis
+    // if (std::abs(dir[2]) < 1.0e-13) x-axis
+    // else line in xz-plane
+
+    rotator[1] = 1.0;
+
+  } else if (std::abs(dir[2]) < 1.0e-13) {
+
+    // if (std::abs(dir[0]) < 1.0e-13) y-axis
+    // if (std::abs(dir[1]) < 1.0e-13) x-axis
+    // else line in xy-plane
+
+    rotator[2] = 1.0;
 
   } else {
 
-    rotator.push_back(-dir[1]);
-    rotator.push_back(dir[0]);
-    rotator.push_back(0.0);
-  }
-
-  double length_rotator = normVector(rotator);
-
-  for (int j = 0; j < 3; j++) {
-
-    rotator[j] = rotator[j] / length_rotator;
+    rotator[0] = -dir[1] / std::sqrt(2);
+    rotator[1] = dir[0] / std::sqrt(2);
   }
 
   return rotator;
@@ -324,31 +334,37 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
                                         std::vector<int> &id_3D_elements) {
 
   std::vector<double> direction, rotator;
+  double length = 0.;
+  double dx = 0.;
 
   for (int j = 0; j < 3; j++) {
 
-    direction.push_back(coord_neighbor[j] - coord[j]);
+    dx = coord_neighbor[j] - coord[j];
+    direction.push_back(dx);
+    length += dx * dx;
   }
+
+  length = std::sqrt(length);
+  for (int j = 0; j < 3; j++)
+    direction[j] = direction[j] / length;
 
   rotator = determineRotator(direction);
 
-  double length_rotator = normVector(rotator);
+  //double length_rotator = normVector(rotator);
 
-  for (int i_s = 1; i_s < N_s - 1; i_s++) {
+  double s = 0.;
+  double theta = 0.0;
 
+  for (int i_s = 0; i_s < N_s; i_s++) {
+
+    s = ((i_s + 0.5) / (double) N_s) * length_edge;
     std::vector<double> midpoint(3);
-
-    double theta = 0.0;
-
-    for (int j = 0; j < 3; j++) {
-
-      midpoint[j] = coord[j] + (((double) i_s / (double) N_s) * (length_edge)) *
-                                 direction[j];
-    }
+    for (int j = 0; j < 3; j++)
+      midpoint[j] = coord[j] + s * direction[j];
 
     for (int i_theta = 0; i_theta < N_theta; i_theta++) {
 
-      theta = ((double) i_theta) / ((double) N_theta) * 2.0 * M_PI;
+      theta = ((i_theta + 0.5) / (double) N_theta) * 2.0 * M_PI;
 
       std::vector<double> cylinder_node =
         computeNodesOnCylinders(direction, rotator, midpoint, radius, theta);
@@ -358,7 +374,7 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
         int elementIndex = getElementIndex(cylinder_node, h_3D, N_3D);
 
         // Compute weights and element ids
-        updateWeightsAndIds(N_s - 2, N_theta, elementIndex, weights,
+        updateWeightsAndIds(N_s, N_theta, elementIndex, weights,
                             id_3D_elements);
       }
     }
@@ -386,31 +402,37 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
   id_3D_elements.clear();
 
   std::vector<double> direction, rotator;
+  double length = 0.;
+  double dx = 0.;
 
   for (int j = 0; j < 3; j++) {
 
-    direction.push_back(coord_neighbor[j] - coord[j]);
+    dx = coord_neighbor[j] - coord[j];
+    direction.push_back(dx);
+    length += dx * dx;
   }
+
+  length = std::sqrt(length);
+  for (int j = 0; j < 3; j++)
+    direction[j] = direction[j] / length;
 
   rotator = determineRotator(direction);
 
-  double length_rotator = normVector(rotator);
+  //double length_rotator = normVector(rotator);
 
-  for (int i_s = 1; i_s < N_s - 1; i_s++) {
+  double s = 0.;
+  double theta = 0.0;
 
+  for (int i_s = 0; i_s < N_s; i_s++) {
+
+    s = ((i_s + 0.5) / (double) N_s) * length_edge;
     std::vector<double> midpoint(3);
-
-    double theta = 0.0;
-
-    for (int j = 0; j < 3; j++) {
-
-      midpoint[j] = coord[j] + (((double) i_s / (double) N_s) * (length_edge)) *
-                                 direction[j];
-    }
+    for (int j = 0; j < 3; j++)
+      midpoint[j] = coord[j] + s * direction[j];
 
     for (int i_theta = 0; i_theta < N_theta; i_theta++) {
 
-      theta = ((double) i_theta) / ((double) N_theta) * 2.0 * M_PI;
+      theta = ((i_theta + 0.5) / (double) N_theta) * 2.0 * M_PI;
 
       std::vector<double> cylinder_node =
         computeNodesOnCylinders(direction, rotator, midpoint, radius, theta);
@@ -425,7 +447,7 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
           continue;
 
         // Compute weights and element ids
-        updateWeightsAndIds(N_s - 2, N_theta, elementIndex, weights,
+        updateWeightsAndIds(N_s, N_theta, elementIndex, weights,
                             id_3D_elements);
       }
     }
@@ -446,23 +468,30 @@ void util::unet::determineWeightsAndIdsLineSource(int N_s, int N_theta, int N_3D
   weights.clear();
   id_3D_elements.clear();
 
-  std::vector<double> direction, rotator;
+  std::vector<double> direction;
+  double length = 0.;
+  double dx = 0.;
 
   for (int j = 0; j < 3; j++) {
 
-    direction.push_back(coord_neighbor[j] - coord[j]);
+    dx = coord_neighbor[j] - coord[j];
+    direction.push_back(dx);
+    length += dx * dx;
   }
+
+  length = std::sqrt(length);
+  for (int j = 0; j < 3; j++)
+    direction[j] = direction[j] / length;
+
+  double s = 0.;
 
   // N_s interval with quadrature point at the mid point of interval
   for (int i_s = 0; i_s < N_s; i_s++) {
 
+    s = ((i_s + 0.5) / (double) N_s) * length_edge;
     std::vector<double> midpoint(3);
-
-    for (int j = 0; j < 3; j++) {
-
-      midpoint[j] = coord[j] + length_edge * (double(i_s + 0.5) / double(N_s)) *
-                                 direction[j];
-    }
+    for (int j = 0; j < 3; j++)
+      midpoint[j] = coord[j] + s * direction[j];
 
     if (isCenterInDomain(midpoint, 2.0)) {
 
@@ -499,6 +528,7 @@ std::vector<double> util::unet::getCenterFromIndex(int index, int N_3D,
 
   return center;
 }
+
 std::vector<int> util::unet::getNeighboringElementIndices(int index, int N_3D,
                                                           double h_3D,
                                                           double L_x) {
