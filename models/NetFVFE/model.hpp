@@ -11,9 +11,9 @@
 #include "modelUtil.hpp"
 #include "systems/systems.hpp"
 #include "umodel/model.hpp"
+#include "unet/NetworkDGFWriter.h"
 #include "unet/NetworkVTKWriter.h"
 #include "unet/NetworkVTKWriterOld.h"
-#include "unet/NetworkDGFWriter.h"
 #include "unet/network.hpp"
 #include "usystem/ghosting_functor.hpp"
 
