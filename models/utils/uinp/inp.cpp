@@ -546,6 +546,10 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
     input("network_no_new_node_search_factor", 0.5);
   d_net_direction_lambda_g = input("vessel_lambda_g", 0.);
   d_net_length_R_factor = input("vessel_R_factor", 0.);
+
+  d_k_WSS = input("k_WSS", 0.45);
+  d_k_s= input("k_s", 0.25);
+  d_offset_tau= input("offset_tau", 0.02);
 }
 
 void util::NetworkDeck::print(unsigned int level) {}

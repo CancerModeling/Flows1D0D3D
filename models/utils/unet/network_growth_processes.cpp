@@ -2101,16 +2101,11 @@ void util::unet::Network::adaptRadius() {
 
       double tau_w = (radius * std::abs(delta_p)) / (2.0 * length);
 
-      double k_WSS = 0.45;
+      double k_WSS = input.d_k_WSS;
 
-      double S_WSS = 0.0;
+      double k_s = input.d_k_s;
 
-      double k_s = 0.25;
-
-      if (0.02 + tau_w > 0.0) {
-
-        S_WSS = std::log(0.02 + tau_w);
-      }
+      double S_WSS = std::log(input.d_offset_tau + tau_w);
 
       double S_tot = k_WSS * S_WSS - k_s;
 
