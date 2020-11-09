@@ -488,6 +488,10 @@ struct NetworkDeck {
   double d_network_update_relative_upper_threshold_1d;
   double d_network_update_relative_upper_threshold_3d;
 
+  double d_k_WSS;
+  double d_k_s;
+  double d_offset_tau;
+
   // parameters below are not used currently
   int d_no_branch_dist;
   double d_new_vessel_max_angle;
