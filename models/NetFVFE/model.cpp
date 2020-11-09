@@ -348,6 +348,7 @@ void netfvfe::Model::run() {
 
     // check if this is output step
     d_is_output_step = false;
+
     if ((d_step >= d_input.d_dt_output_interval and
          (d_step % d_input.d_dt_output_interval == 0)) or
         d_step == 0)
@@ -947,10 +948,9 @@ void netfvfe::Model::solve_pressure() {
 
   auto solve_clock = steady_clock::now();
   reset_clock();
-*/
-  d_network.solve3D1DFlowProblem(d_pres, d_tum);
+  */
 
-  /*  // coupled 1d-3d or iterative method
+  // coupled 1d-3d or iterative method
   if (d_input.d_coupled_1d3d) {
     // call fully coupled 1D-3D solver (this will update the 3D pressure system
     // in libmesh
@@ -1035,7 +1035,7 @@ void netfvfe::Model::solve_pressure() {
       d_log.add_pres_nonlin_iter(d_nonlinear_step);
     }
   }
-*/
+
   // Note: Solving for velocity takes unusually long time so we disable it
   //  if the advection effects are disabled
   if (d_input.d_advection_active) {
