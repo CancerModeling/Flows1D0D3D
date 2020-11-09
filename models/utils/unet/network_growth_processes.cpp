@@ -89,9 +89,6 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
       d_model_p->d_log("Adapt radius \n", "net update");
       adaptRadius();
 
-      //d_model_p->d_log("Remove single edges \n", "net update");
-      //removeSingleEdges();
-
       auto pointer = VGM.getHead();
 
       while (pointer) {
@@ -2104,15 +2101,15 @@ void util::unet::Network::adaptRadius() {
 
       double tau_w = (radius * std::abs(delta_p)) / (2.0 * length);
 
-      double k_WSS = 0.4;
+      double k_WSS = 0.45;
 
       double S_WSS = 0.0;
 
       double k_s = 0.25;
 
-      if (0.025 + tau_w > 0.0) {
+      if (0.02 + tau_w > 0.0) {
 
-        S_WSS = std::log(0.025 + tau_w);
+        S_WSS = std::log(0.02 + tau_w);
       }
 
       double S_tot = k_WSS * S_WSS - k_s;
@@ -2173,43 +2170,3 @@ void util::unet::Network::adaptRadius() {
   }
 }
 
-void util::unet::Network::removeSingleEdges() {
-
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
-  std::cout << " " << std::endl;
-  std::cout << "removeSingleEdges " << std::endl;
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    std::vector<bool> remove_edge(numberOfNeighbors, false);
-    std::vector<int> edgesToBeRemoved(0, 0);
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      int numberOfNeighbors = pointer->neighbors.size();
-
-      int numberOfNeighbors_Neighbor =
-        pointer->neighbors[i]->neighbors.size();
-
-      if (numberOfNeighbors_Neighbor <= 1 && numberOfNeighbors <= 1) {
-
-        std::cout << "Remove vessel with index: " << i << " for node: " << pointer->index << std::endl;
-        std::cout << "Index of neighbor: " << pointer->neighbors[0]->index << std::endl;
-
-        edgesToBeRemoved.push_back(i);
-      }
-    }
-
-    pointer->removeComponents(edgesToBeRemoved);
-
-    if (numberOfNeighbors <= 1 && edgesToBeRemoved.size() > 0) {
-
-      pointer->p_boundary = 1000.0;
-      pointer->typeOfVGNode = TypeOfNode::DirichletNode;
-    }
-
-    pointer = pointer->global_successor;
-  }
-}

@@ -419,11 +419,16 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
   const auto &input = d_model_p->get_input_deck();
   const auto timeStep = d_model_p->d_step;
 
+  for (int i = 0; i < phi_sigma_old.size(); i++) {
+
+    if( phi_sigma_old[i]>1.0 )
+     phi_sigma_old[i] =1.0;
+  }
+
   assemble3D1DSystemForNutrients(nut_sys, tum_sys);
 
   // if this is first call inside nonlinear loop, we guess current
   // concentration as old concentration
-
   if (d_model_p->d_nonlinear_step == 0)
     phi_sigma = phi_sigma_old;
   if (d_model_p->d_step == 1)
@@ -444,6 +449,11 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
     int indexOfNode = pointer->index;
 
     pointer->c_v = phi_sigma[N_tot_3D + indexOfNode];
+
+    if( pointer->c_v>1.0 ){
+
+        pointer->c_v = 1.0;
+    }
 
     pointer = pointer->global_successor;
   }
