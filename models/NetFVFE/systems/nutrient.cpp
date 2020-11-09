@@ -159,11 +159,11 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
           // Add coupling entry
           numberOfElements = id_3D_elements.size();
 
-          for (int j = 0; j < numberOfElements; j++) {
+          for (int k = 0; k < numberOfElements; k++) {
 
-            if (id_3D_elements[j] > -1) {
+            if (id_3D_elements[k] > -1) {
 
-              const auto *elem = d_mesh.elem_ptr(id_3D_elements[j]);
+              const auto *elem = d_mesh.elem_ptr(id_3D_elements[k]);
               if (elem->processor_id() == d_model_p->get_comm()->rank()) {
 
                 // get 3d pressure
@@ -174,10 +174,10 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
                 init_dof(elem);
 
                 // implicit for c_t in source
-                Ke(0, 0) = dt * factor_nut * L_s * surface_area * weights[j];
+                Ke(0, 0) = dt * factor_nut * L_s * surface_area * weights[k];
 
                 // explicit for c_v in source
-                Fe(0) = dt * factor_nut * L_s * surface_area * weights[j] * c_v;
+                Fe(0) = dt * factor_nut * L_s * surface_area * weights[k] * c_v;
 
                 // osmotic reflection term
                 if (p_v - p_t > 0.0) {
@@ -186,7 +186,7 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
                   // 2pi R (p_v - p_t) phi_v term in right hand side of 3D
                   // equation
                   Fe(0) += dt * factor_nut * (1. - osmotic_sigma) * L_p *
-                           surface_area * weights[j] * (p_v - p_t) * c_v;
+                           surface_area * weights[k] * (p_v - p_t) * c_v;
 
                 } else {
 
@@ -194,7 +194,7 @@ void netfvfe::NutAssembly::assemble_1d_coupling() {
                   // 2pi R (p_v - p_t) phi_sigma term in right hand side of 3D
                   // equation
                   Ke(0, 0) += -dt * factor_nut * (1. - osmotic_sigma) * L_p *
-                              surface_area * weights[j] * (p_v - p_t);
+                              surface_area * weights[k] * (p_v - p_t);
                 }
 
                 // update matrix
