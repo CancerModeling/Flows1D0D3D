@@ -9,6 +9,7 @@
 #define NETFVFE_HYPOXIC_H
 
 #include "usystem/abstraction.hpp"
+#include "usystem/stochastic_noise_assembly.hpp"
 
 namespace netfvfe {
 
@@ -24,19 +25,23 @@ class HypAssembly : public util::BaseAssembly {
 
 public:
   /*! @brief Constructor */
-  HypAssembly(Model *model, const std::string system_name, MeshBase &mesh,
-              TransientLinearImplicitSystem &sys)
-      : util::BaseAssembly(system_name, mesh, sys, 2,
-                           {sys.variable_number("hypoxic"),
-                            sys.variable_number("chemical_hypoxic")}),
-        d_model_p(model) {}
+  HypAssembly(Model *model,
+              const std::string &system_name,
+              MeshBase &mesh,
+              TransientLinearImplicitSystem &sys);
 
   /*! @brief Assembly function. Overrides the default assembly function */
   void assemble() override;
 
+  /*! @brief Calculates new stochastic coefficients for our cylindrical Wiener process. */
+  void calculate_new_stochastic_coefficients(double dt);
+
 public:
   /*! @brief Pointer reference to model */
   Model *d_model_p;
+
+  /*! @brief Assembles the noise from the cylindrical Wiener process. */
+  util::StochasticNoiseAssembly d_noise_assembly;
 
 private:
   /*! @brief Assembly */

@@ -6,14 +6,14 @@ StochasticNoiseAssembly::StochasticNoiseAssembly(unsigned int num_eigenfunctions
                                                  unsigned int seed,
                                                  double scale,
                                                  double length,
-                                                 double nutrient_lower_bound,
-                                                 double nutrient_upper_bound)
+                                                 double lower_bound,
+                                                 double upper_bound)
     : d_num_eigenfunctions(num_eigenfunctions),
       d_generator(seed),
       d_scale(scale),
       d_length(length),
-      d_lower_bound(nutrient_lower_bound),
-      d_upper_bound(nutrient_upper_bound) {}
+      d_lower_bound(lower_bound),
+      d_upper_bound(upper_bound) {}
 
 void StochasticNoiseAssembly::assemble(BaseAssembly &assembly) const {
   const auto &quad_points = assembly.d_fe->get_xyz();
