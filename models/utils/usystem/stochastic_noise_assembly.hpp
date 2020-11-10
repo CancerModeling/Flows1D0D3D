@@ -12,8 +12,8 @@ public:
                           unsigned int seed,
                           double scale,
                           double length,
-                          double nutrient_lower_bound,
-                          double nutrient_upper_bound);
+                          double lower_bound,
+                          double upper_bound);
 
   /*! @brief Assembles noise from a cylindrical Wiener process for the current timestep. */
   void assemble(BaseAssembly &assembly) const;

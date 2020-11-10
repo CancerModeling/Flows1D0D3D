@@ -226,6 +226,28 @@ struct TumorDeck {
   void print(unsigned int level = 0);
 };
 
+struct ProlificDeck {
+  unsigned int d_pro_noise_num_eigenfunctions;
+  unsigned int d_pro_noise_seed;
+  double d_pro_noise_scale;
+  double d_pro_noise_lower_bound;
+  double d_pro_noise_upper_bound;
+
+  explicit ProlificDeck(const std::string &filename = "")
+      : d_pro_noise_num_eigenfunctions(0),
+        d_pro_noise_seed(4242),
+        d_pro_noise_scale(0),
+        d_pro_noise_lower_bound(0),
+        d_pro_noise_upper_bound(1) {
+    if (!filename.empty())
+      read_parameters(filename);
+  }
+
+  void read_parameters(const std::string &filename);
+
+  void print(unsigned int level = 0);
+};
+
 struct HypoxicDeck {
   double d_bar_M_H;
   double d_lambda_HP;
@@ -238,10 +260,20 @@ struct HypoxicDeck {
   double d_bar_E_phi_H;
   double d_epsilon_H;
 
+  unsigned int d_hyp_noise_num_eigenfunctions;
+  unsigned int d_hyp_noise_seed;
+  double d_hyp_noise_scale;
+  double d_hyp_noise_lower_bound;
+  double d_hyp_noise_upper_bound;
+
   explicit HypoxicDeck(const std::string &filename = "")
       : d_bar_M_H(0.), d_lambda_HP(0.), d_lambda_PH(0.), d_lambda_HN(0.),
         d_sigma_PH(0.), d_sigma_HP(0.), d_sigma_HN(0.),
-        d_bar_E_phi_H(0.), d_epsilon_H(0.) {
+        d_bar_E_phi_H(0.), d_epsilon_H(0.),
+        d_hyp_noise_num_eigenfunctions(0),
+        d_hyp_noise_seed(4242),
+        d_hyp_noise_scale(0),
+        d_hyp_noise_lower_bound(0), d_hyp_noise_upper_bound(1) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -627,6 +659,7 @@ struct InputDeck : public ModelDeck,
                    public NutrientDeck,
                    public TumorDeck,
                    public HypoxicDeck,
+                   public ProlificDeck,
                    public NecroticDeck,
                    public TAFDeck,
                    public ECMDeck,
@@ -643,10 +676,10 @@ public:
       : ModelDeck(filename), RestartDeck(filename), MeshDeck(filename),
         TimeDeck(filename), SolverDeck(filename), OutputDeck(filename),
         NutrientDeck(filename), TumorDeck(filename), HypoxicDeck(filename),
-        NecroticDeck(filename), TAFDeck(filename), ECMDeck(filename),
-        MDEDeck(filename), NutrientICDeck(filename), TumorICDeck(filename),
-        NutrientBCDeck(filename), NetworkDeck(filename), Flow1DDeck(filename),
-        FlowDeck(filename){};
+        ProlificDeck(filename), NecroticDeck(filename), TAFDeck(filename),
+        ECMDeck(filename), MDEDeck(filename), NutrientICDeck(filename),
+        TumorICDeck(filename), NutrientBCDeck(filename), NetworkDeck(filename),
+        Flow1DDeck(filename), FlowDeck(filename){};
 
   //
   void print(unsigned int level = 0){
@@ -692,6 +725,11 @@ public:
 
 {
   HypoxicDeck *deck = this;
+  deck->print();
+}
+
+{
+  ProlificDeck *deck = this;
   deck->print();
 }
 
