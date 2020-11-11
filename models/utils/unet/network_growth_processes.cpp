@@ -1248,7 +1248,6 @@ void util::unet::Network::removeRedundantTerminalVessels() {
       std::vector<double> new_tau_w_initial;
 
       for (int i = 0; i < numberOfNeighbors_neighbor; i++) {
-
         if (index != pointer->neighbors[0]->neighbors[i]->index) {
           // gather statistical data about edge removal:
           auto length = util::dist_between_points(pointer->coord, pointer->neighbors[0]->coord);
@@ -1257,10 +1256,25 @@ void util::unet::Network::removeRedundantTerminalVessels() {
           total_removed_volume += length*r*r*M_PI;
 
           // remove edge:
-          pointer->neighbors[0]->removeComponent(i);
-          break;
+          new_neighbors.push_back(pointer->neighbors[0]->neighbors[i]);
+          new_edge_touched.push_back(pointer->neighbors[0]->edge_touched[i]);
+          new_sprouting_edge.push_back(pointer->neighbors[0]->sprouting_edge[i]);
+          new_radii.push_back(pointer->neighbors[0]->radii[i]);
+          new_L_p.push_back(pointer->neighbors[0]->L_p[i]);
+          new_L_s.push_back(pointer->neighbors[0]->L_s[i]);
+          new_tau_w_initial.push_back(pointer->neighbors[0]->tau_w_initial[i]);
         }
       }
+
+      pointer->neighbors[0]->neighbors = new_neighbors;
+      pointer->neighbors[0]->edge_touched = new_edge_touched;
+      pointer->neighbors[0]->sprouting_edge = new_sprouting_edge;
+      pointer->neighbors[0]->radii = new_radii;
+      pointer->neighbors[0]->radii_initial = new_radii;
+      pointer->neighbors[0]->tau_w_initial = new_tau_w_initial;
+      pointer->neighbors[0]->L_p = new_L_p;
+      pointer->neighbors[0]->L_s = new_L_s;
+      pointer->neighbors[0]->notUpdated = 0;
 
       if (numberOfNeighbors_neighbor == 2) {
 
