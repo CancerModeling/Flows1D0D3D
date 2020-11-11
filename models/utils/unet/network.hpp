@@ -96,6 +96,11 @@ public:
   /*! @brief Marks all the nodes connected to an initial node by setting the node_marked attribute to true. */
   void mark_nodes_connected_with_initial_nodes();
 
+  /*! @brief Adds the volume and length of all vessels in contact with unmarked vertices.
+   *         This function call normally precedes a call which deletes the unmarked to gather statistics about edge removal.
+   */
+  void add_lengths_and_volumes_of_unmarked_network(double &length, double &volume);
+
   /*! @brief Deletes nodes with a node_marked attribute set to true. */
   void delete_unmarked_nodes();
 
