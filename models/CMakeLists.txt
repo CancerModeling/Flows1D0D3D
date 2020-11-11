@@ -41,3 +41,8 @@ if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}" STREQUAL
         "Build_NetFVFE")
     add_subdirectory(NetFVFE)
 endif ()
+
+if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}" STREQUAL
+        "Build_NoisyCH")
+    add_subdirectory(NoisyCH)
+endif ()
