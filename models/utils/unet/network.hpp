@@ -69,27 +69,6 @@ public:
    */
   /**@{*/
 
-  /*! @brief Creates a correctly sized vector for the 1D-3D problem. */
-  std::vector<double> create_coupled_vector() const;
-
-  /*! @brief Creates a correctly sized vector for the 1D network. */
-  std::vector<double> create_1d_vector() const;
-
-  /*! @brief Creates a correctly sized vector for the 3D problem. */
-  std::vector<double> create_3d_vector() const;
-
-  /*! @brief Extracts from a mixed 1D-3D vector its 1D part. */
-  void vector_extract_1d(const std::vector<double> &src, std::vector<double> &dst) const;
-
-  /*! @brief Extracts from a mixed 1D-3D vector its 3D part. */
-  void vector_extract_3d(const std::vector<double> &src, std::vector<double> &dst) const;
-
-  /*! @brief Returns a copy of the 3D nutrient vector. */
-  std::vector<double> get_nutritient_3d_vector() const;
-
-  /*! @brief Returns a copy of the 1D nutrient vector. */
-  std::vector<double> get_nutritient_1d_vector() const;
-
   /*! @brief Unmarks all the nodes in the network by setting the node_marked attribute to false. */
   void unmark_network_nodes();
 
