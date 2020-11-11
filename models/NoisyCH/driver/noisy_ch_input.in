@@ -1,5 +1,7 @@
 # random or circle.
 initial_solution = random
+size_x = 6
+size_y = 6
 
 cubic_root_num_eigenfunctions = 5
 seed = 42
