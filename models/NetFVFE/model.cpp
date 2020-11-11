@@ -228,7 +228,6 @@ netfvfe::Model::Model(
     : util::BaseModel(comm, input, mesh, tum_sys, log, "NetFVFE"),
       d_network(this),
       d_networkVtkWriter(comm, input.d_outfilename_net + "new_"),
-      d_networkVtkWriterOld(comm, input.d_outfilename_net + "old_"),
       d_networkDGFWriter(comm, input.d_outfilename_net + ""),
       d_nec(this, "Necrotic", d_mesh, nec),
       d_pro(this, "Prolific", d_mesh, pro),
@@ -432,7 +431,6 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
     return;
 
   // write network simulation
-  d_networkVtkWriterOld.write(d_network.VGM, t_step);
   d_networkVtkWriter.write(d_network.VGM, t_step);
   d_networkDGFWriter.write(d_network.VGM);
 
