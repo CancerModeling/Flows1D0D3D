@@ -15,14 +15,14 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
   std::cout << " " << std::endl;
   std::cout << "Update the network" << std::endl;
-  std::cout << "Reset the length: length = " << total_length << std::endl;
+  std::cout << "Reset the length: length = " << total_added_length << std::endl;
 
-  total_length = 0.0;
+  total_added_length = 0.0;
 
   int numberOfNodesOld = VGM.getNumberOfNodes();
 
   std::cout << " " << std::endl;
-  std::cout << "Reset the length: total_length = " << total_length << std::endl;
+  std::cout << "Reset the length: total_added_length = " << total_added_length << std::endl;
   std::cout << "numberOfNodesOld: " << numberOfNodesOld << std::endl;
 
   if (d_update_number % d_update_interval == 0) {
@@ -407,7 +407,7 @@ void util::unet::Network::linkTerminalVessels() {
           double length =
             util::dist_between_points(pointer->coord, pointer_1->coord);
 
-          total_length += length;
+          total_added_length += length;
 
           double p_node = pointer->p_v;
           double p_neighbor = pointer_1->p_v;
@@ -725,7 +725,7 @@ void util::unet::Network::processApicalGrowth() {
       std::cout << " "
                 << "\n";
       std::cout << "prob: " << prob << "\n";
-      std::cout << "total_length: " << total_length << "\n";
+      std::cout << "total_added_length: " << total_added_length << "\n";
       std::cout << "input.d_network_bifurcate_prob: " << input.d_network_bifurcate_prob << "\n";
 
       if (prob > input.d_network_bifurcate_prob) {
@@ -735,7 +735,7 @@ void util::unet::Network::processApicalGrowth() {
 
       if (!bifurcate && length_d > 0.0 && length > 0.0) {
 
-        if (!isIntersecting && total_length < 0.6) {
+        if (!isIntersecting && total_added_length < 0.6) {
           createASingleNode(new_point_1, radius_p, pointer);
           counter++;
         }
@@ -857,7 +857,7 @@ void util::unet::Network::processApicalGrowth() {
               }
             }
 
-            if (gmm::vect_norm2(direction) > 0.0 && length_diff_2 > 0.0 && length_diff_1 > 0.0 && total_length < 0.6) {
+            if (gmm::vect_norm2(direction) > 0.0 && length_diff_2 > 0.0 && length_diff_1 > 0.0 && total_added_length < 0.6) {
 
 
               bool isIntersecting_1 =
@@ -1089,7 +1089,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
     new_node.p_boundary = 0.95 * pointer->p_v;
     new_node.p_v = 0.95 * pointer->p_v;
     new_node.c_boundary = 0.0;
-    new_node.c_v = 0.0; //pointer->c_v;
+    new_node.c_v = pointer->c_v;
     new_node.apicalGrowth = false;
     new_node.radii.push_back(radius);
     new_node.radii_initial.push_back(radius);
@@ -1103,7 +1103,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
 
     double length = util::dist_between_points(pointer->coord, new_point);
 
-    total_length += length;
+    total_added_length += length;
 
     double p_node = pointer->p_v;
     double p_neighbor = 0.95 * pointer->p_v;
@@ -1692,9 +1692,9 @@ void util::unet::Network::processSproutingGrowth() {
         std::cout << "isColliding: " << isColliding << std::endl;
         std::cout << "length_vessel: " << length_vessel << std::endl;
         std::cout << "min_sprouting_length: " << input.d_min_length_for_sprouting << std::endl;
-        std::cout << "total_length: " << total_length << std::endl;
+        std::cout << "total_added_length: " << total_added_length << std::endl;
 
-        if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 && length_vessel > input.d_min_length_for_sprouting && total_length < 0.6) {
+        if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 && length_vessel > input.d_min_length_for_sprouting && total_added_length < 0.6) {
 
           int index_old_neighbor = pointer->neighbors[i]->index;
           int index_pointer = pointer->index;
@@ -1764,7 +1764,7 @@ void util::unet::Network::processSproutingGrowth() {
           new_node_2.p_boundary = pointer->p_v;
           new_node_2.p_v = pointer->p_v;
           new_node_2.c_boundary = 0.0;
-          new_node_2.c_v = 0.0; //pointer->c_v;
+          new_node_2.c_v = pointer->c_v;
           new_node_2.apicalGrowth = false;
           new_node_2.radii.push_back(radius_new);
           new_node_2.radii_initial.push_back(radius_new);
