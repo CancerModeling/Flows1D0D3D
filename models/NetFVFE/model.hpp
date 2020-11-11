@@ -13,7 +13,6 @@
 #include "umodel/model.hpp"
 #include "unet/NetworkDGFWriter.h"
 #include "unet/NetworkVTKWriter.h"
-#include "unet/NetworkVTKWriterOld.h"
 #include "unet/network.hpp"
 #include "usystem/ghosting_functor.hpp"
 
@@ -150,7 +149,6 @@ private:
 
   /*! @brief Saves the network as a vtk file. */
   util::unet::NetworkVTKWriter d_networkVtkWriter;
-  util::unet::NetworkVTKWriterOld d_networkVtkWriterOld;
   util::unet::NetworkDGFWriter d_networkDGFWriter;
 
   /*! @brief Assembly objects */
