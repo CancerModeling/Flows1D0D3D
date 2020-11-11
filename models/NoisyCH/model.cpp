@@ -79,6 +79,9 @@ void Model::run() {
 
     std::cout << "Time step: " << std::to_string(d_step) << ", time: " << std::to_string(d_time) << std::endl;
 
+    // Prepare solution for the current timestep
+    *(d_ch.d_sys.old_local_solution) = *(d_ch.d_sys.current_local_solution);
+
     // stochastic contributions from the cylindrical Wiener process
     d_ch.calculate_new_stochastic_coefficients(d_dt);
 
@@ -88,9 +91,6 @@ void Model::run() {
     // write tumor solution
     write_system(d_step);
 
-    // Prepare solution for the next timestep
-    *(d_ch.d_sys.old_local_solution) = *(d_ch.d_sys.current_local_solution);
-
   } while (d_step < d_steps);
 }
 
@@ -99,7 +99,7 @@ void Model::solve_system() {
   std::unique_ptr<NumericVector<Number>> diff = d_ch.d_sys.solution->zero_clone();
 
   // the old solution is our initial guess
-  // (*d_ch.d_sys.current_local_solution) = *d_ch.d_sys.old_local_solution;
+  (*d_ch.d_sys.current_local_solution) = *d_ch.d_sys.old_local_solution;
 
   // nonlinear loop
   for (unsigned int l = 0; l < d_nonlinear_max_iters; ++l) {
