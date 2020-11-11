@@ -32,9 +32,6 @@ public:
   void run();
 
 private:
-  /*! @brief Solves tumor system. */
-  void solve_system();
-
   void write_system(const unsigned int &t_step);
 
 private:
@@ -58,12 +55,6 @@ private:
 
   /*! @brief Current time step size. */
   double d_dt;
-
-  /*! @brief Number of nonlinear iterations for our fixed point scheme. */
-  std::size_t d_nonlinear_max_iters;
-
-  /*! @brief The change tolerance for the nonlinear scheme. */
-  double d_nonlinear_change_tol;
 };
 
 } // namespace noisych
