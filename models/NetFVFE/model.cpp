@@ -369,42 +369,9 @@ void netfvfe::Model::run() {
     // solve tumor-network system
     solve_system();
 
-    // output how much the nutrient variable changed
-    {
-      std::stringstream ss;
-      ss << std::scientific << std::setprecision(2);
-      ss << "Nutrient: absolute change 1d = " << d_nutrient_absolute_change_1d;
-      ss << ", relative change 1d = " << d_nutrient_relative_change_1d;
-      ss << ", absolute change 3d = " << d_nutrient_absolute_change_3d;
-      ss << ", relative change 3d = " << d_nutrient_relative_change_3d;
-      ss << std::endl;
-      d_log(ss.str());
-    }
-
-    // check if the nutrient concentration is sufficiently stationary to allow an update
-    const bool nutAbsoluteThreshold1d = (d_nutrient_absolute_change_1d < d_input.d_network_update_absolute_upper_threshold_1d);
-    const bool nutAbsoluteThreshold3d = (d_nutrient_absolute_change_3d < d_input.d_network_update_absolute_upper_threshold_3d);
-    const bool nutRelativeThreshold1d = (d_nutrient_relative_change_1d < d_input.d_network_update_relative_upper_threshold_1d);
-    const bool nutRelativeThreshold3d = (d_nutrient_relative_change_3d < d_input.d_network_update_relative_upper_threshold_3d);
-
-    const bool nutrientsSufficientlyStationary = nutAbsoluteThreshold1d && nutAbsoluteThreshold3d && nutRelativeThreshold1d && nutRelativeThreshold3d;
 
     if (d_is_growth_step) {
-      // log why the now growth does not take place:
-      if (!nutrientsSufficientlyStationary) {
-        if (nutAbsoluteThreshold1d)
-          d_log("No growth step since absolute threshold 1d too large " + std::to_string(d_nutrient_absolute_change_1d) + ".\n");
-        if (nutAbsoluteThreshold3d)
-          d_log("No growth step since absolute threshold 3d too large " + std::to_string(d_nutrient_absolute_change_3d) + ".\n");
-        if (nutRelativeThreshold1d)
-          d_log("No growth step since relative threshold 1d too large " + std::to_string(d_nutrient_relative_change_1d) + ".\n");
-        if (nutRelativeThreshold3d)
-          d_log("No growth step since relative threshold 3d too large " + std::to_string(d_nutrient_relative_change_3d) + ".\n");
-      }
-      // trigger growth by updating the network
-      else {
-        d_network.updateNetwork(d_taf, d_grad_taf);
-      }
+      d_network.updateNetwork(d_taf, d_grad_taf);
     }
 
     // write tumor solution
@@ -618,14 +585,6 @@ void netfvfe::Model::solve_system_implicit() {
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
     d_input.d_linear_tol;
 
-  // save the previous nutrient solution
-  std::vector<double> nut_before_1d;
-  if (d_input.d_coupled_1d3d)
-    nut_before_1d = d_network.get_nutritient_1d_vector();
-  else
-    nut_before_1d = d_network.C_v_old;
-  auto nut_before_3d = d_nut.d_sys.old_local_solution->clone();
-
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
@@ -756,22 +715,6 @@ void netfvfe::Model::solve_system_implicit() {
   d_tum.solve_custom();
   d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
   //}
-
-  // get the current solution
-  std::vector<double> nut_after_1d;
-  if (d_input.d_coupled_1d3d)
-    nut_after_1d = d_network.get_nutritient_1d_vector();
-  else
-    nut_after_1d = d_network.C_v;
-  auto &nut_after_3d = d_nut.d_sys.current_local_solution;
-
-  // calculate how much the nutrients changed
-  const double nut_before_3d_magnitude = nut_before_3d->l2_norm();
-  d_nutrient_absolute_change_1d = gmm::vect_dist2(nut_before_1d, nut_after_1d);
-  *nut_before_3d -= *nut_after_3d;
-  d_nutrient_absolute_change_3d = nut_before_3d->l2_norm();
-  d_nutrient_relative_change_1d = d_nutrient_absolute_change_1d / gmm::vect_norm2(nut_before_1d);
-  d_nutrient_relative_change_3d = d_nutrient_absolute_change_3d / nut_before_3d_magnitude;
 
   d_log(" \n", "solve sys");
 }
@@ -1053,10 +996,6 @@ void netfvfe::Model::solve_nutrient() {
 
   // coupled 1d-3d or iterative method
   if (d_input.d_coupled_1d3d) {
-    // save the previous solution
-    auto nut_before_1d = d_network.get_nutritient_1d_vector();
-    auto nut_before_3d = d_network.get_nutritient_3d_vector();
-
     // solver for 1D + 3D nutrient
     reset_clock();
     d_log("      Solving |Nutrient_1D + " + d_nut.d_sys_name + "| -> ", "solve nut");
@@ -1066,20 +1005,7 @@ void netfvfe::Model::solve_nutrient() {
       d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
     }
 
-    // get the current solution
-    auto nut_after_1d = d_network.get_nutritient_1d_vector();
-    auto nut_after_3d = d_network.get_nutritient_3d_vector();
-
-    // calculate how much the nutrients changed
-    d_nutrient_absolute_change_1d = gmm::vect_dist2(nut_before_1d, nut_after_1d);
-    d_nutrient_absolute_change_3d = gmm::vect_dist2(nut_before_3d, nut_after_3d);
-    d_nutrient_relative_change_1d = d_nutrient_absolute_change_1d / gmm::vect_norm2(nut_before_1d);
-    d_nutrient_relative_change_3d = d_nutrient_absolute_change_3d / gmm::vect_norm2(nut_before_3d);
   } else {
-    // save the previous solution
-    auto nut_before_1d = d_network.get_nutritient_1d_vector();
-    auto nut_before_3d = d_nut.d_sys.old_local_solution->clone();
-
     // Nonlinear iteration loop
     d_tum_sys.parameters.set<Real>("linear solver tolerance") =
       d_input.d_linear_tol;
@@ -1140,18 +1066,6 @@ void netfvfe::Model::solve_nutrient() {
         break;
       }
     } // nonlinear solver loop
-
-    // get the current solution
-    auto nut_after_1d = d_network.get_nutritient_1d_vector();
-    auto &nut_after_3d = d_nut.d_sys.current_local_solution;
-
-    // calculate how much the nutrients changed
-    const double nut_before_3d_magnitude = nut_before_3d->l2_norm();
-    d_nutrient_absolute_change_1d = gmm::vect_dist2(nut_before_1d, nut_after_1d);
-    *nut_before_3d -= *nut_after_3d;
-    d_nutrient_absolute_change_3d = nut_before_3d->l2_norm();
-    d_nutrient_relative_change_1d = d_nutrient_absolute_change_1d / gmm::vect_norm2(nut_before_1d);
-    d_nutrient_relative_change_3d = d_nutrient_absolute_change_3d / nut_before_3d_magnitude;
 
     d_log(" \n", "solve nut");
   }

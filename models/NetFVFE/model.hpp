@@ -175,30 +175,6 @@ private:
   UniquePtr<NumericVector<Number>> d_err_check_mde;
   UniquePtr<NumericVector<Number>> d_err_check_ecm;
   UniquePtr<NumericVector<Number>> d_err_check_pres;
-
-  /*!
-   * The absolute change of the nutrient value of the 3D system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_absolute_change_3d;
-
-  /*!
-   * The relative change of the nutrient value of the 3D system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_relative_change_3d;
-
-  /*!
-   * The absolute change of the nutrient value of the 1D network system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_absolute_change_1d;
-
-  /*!
-   * The relative change of the nutrient value of the 1D network system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_relative_change_1d;
 };
 
 } // namespace netfvfe
