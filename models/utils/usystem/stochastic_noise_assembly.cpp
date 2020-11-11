@@ -25,6 +25,7 @@ void StochasticNoiseAssembly::assemble(BaseAssembly &assembly) const {
 
   for (const auto &elem : assembly.d_mesh.active_local_element_ptr_range()) {
     assembly.init_dof(elem);
+    assembly.init_fe(elem);
     for (unsigned int qp = 0; qp < assembly.d_qrule.n_points(); qp++) {
       Real field_value_old = 0;
       for (unsigned int i = 0; i < phi.size(); i++) {
