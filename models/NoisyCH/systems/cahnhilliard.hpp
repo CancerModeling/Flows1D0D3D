@@ -48,6 +48,8 @@ public:
 
   double d_epsilon;
 
+  double d_mobility_constant;
+
 private:
   /*! @brief Assembly */
   void assemble_1();

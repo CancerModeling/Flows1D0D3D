@@ -32,15 +32,15 @@ void model_setup_run(const std::string &filename, Parallel::Communicator *comm) 
 
   auto sim_begin = steady_clock::now();
 
-  const std::size_t nelx = 8;
-  const std::size_t nely = 8;
+  const std::size_t nelx = 1 << 6;
+  const std::size_t nely = 1 << 6;
   Mesh mesh(*comm);
   MeshTools::Generation::build_square(mesh, nelx, nely, 0., 1, 0., 1, QUAD4);
 
   EquationSystems sys(mesh);
 
   // Add systems, variables and assemble
-  auto &ch= sys.add_system<TransientLinearImplicitSystem>("CahnHilliard");
+  auto &ch = sys.add_system<TransientLinearImplicitSystem>("CahnHilliard");
 
   ch.add_variable("concentration", FIRST);
   ch.add_variable("potential", FIRST);
@@ -65,13 +65,15 @@ Model::Model(const std::string &filename,
       d_step(0),
       d_time(0),
       d_dt(1e-2),
-      d_nonlinear_max_iters(50)
-{
+      d_nonlinear_max_iters(50) {
+  sys.parameters.set<unsigned int>("rank") = comm->rank();
   ch.attach_assemble_object(d_ch);
   sys.init();
 }
 
 void Model::run() {
+  write_system(0);
+
   do {
     // Prepare time step
     d_step++;
@@ -112,7 +114,7 @@ void Model::solve_system() {
 
     const auto change = diff->linfty_norm();
 
-    std::cout << "end nonlinear iteration " << l << " changed by " << change << std::endl;
+    std::cout << "end nonlinear iteration " << l << " changed by " << std::scientific << change << std::endl;
 
     if (change < d_nonlinear_change_tol)
       break;

@@ -8,6 +8,8 @@
 #include "cahnhilliard.hpp"
 #include "../model.hpp"
 
+#include <random>
+
 namespace noisych {
 
 
@@ -17,9 +19,16 @@ Number initial_condition_cahnhilliard(const Point &p,
                                       const std::string &var_name) {
   libmesh_assert_equal_to(system_name, "CahnHilliard");
 
+  static std::default_random_engine generator( 2 + es.get<unsigned int>("rank") );
+  const auto mean = 0.63;
+  const auto interval = 0.1;
+  std::uniform_real_distribution<double> distribution(mean-interval,mean+interval);
+
   if (var_name == "concentration") {
-    return 0.;
+    return distribution(generator);
   }
+
+  return 0;
 }
 
 CahnHilliardAssembly::CahnHilliardAssembly(const std::string &system_name,
@@ -29,13 +38,15 @@ CahnHilliardAssembly::CahnHilliardAssembly(const std::string &system_name,
       d_noise_assembly(
         5*5*5,
         42,
-        0.01,
+        0.05,
         1.,
-        0.,
-        1.),
-      d_dt(1e-2),
-      d_C_psi(1),
-      d_epsilon(1) {}
+        0.4,
+        0.6),
+      d_dt(5e-6),
+      d_C_psi(100),
+      d_epsilon(0.1),
+      d_mobility_constant(32.)
+{}
 
 void CahnHilliardAssembly::calculate_new_stochastic_coefficients(double dt) {
   d_noise_assembly.calculate_new_stochastic_coefficients(dt);
@@ -62,10 +73,12 @@ void CahnHilliardAssembly::assemble_1() {
         c_cur += d_phi[l][qp] * get_current_sol_var(l, 0);
       }
 
-      const Real mobility = pow(util::proj(c_old) * util::proj(1. - c_old), 2);
+      const Real mobility = d_mobility_constant * pow(util::proj(c_old) * util::proj(1. - c_old), 2);
+      // const Real mobility = 1.;
 
       const Real compute_rhs_c = d_JxW[qp] * (d_dt * c_old * (1 - c_old) + c_old);
-      const Real compute_rhs_mu = d_JxW[qp] * d_dt * c_old * d_C_psi * (4 * std::pow(c_old, 2) - 6 * c_old - 1);
+      // const Real compute_rhs_c = d_JxW[qp] * c_old;
+      const Real compute_rhs_mu = d_JxW[qp] * c_old * d_C_psi * (4 * std::pow(c_old, 2) - 6 * c_old - 1);
 
       // Assembling matrix
       for (unsigned int i = 0; i < d_phi.size(); i++) {
@@ -88,8 +101,8 @@ void CahnHilliardAssembly::assemble_1() {
           d_Ke_var[1][1](i, j) += d_JxW[qp] * d_phi[j][qp] * d_phi[i][qp];
 
           // potential-concentration
-          d_Ke_var[1][0](i, j) -= d_JxW[qp] * 3.0 * d_C_psi * d_phi[j][qp] * d_phi[i][qp];
-          d_Ke_var[1][0](i, j) -= d_JxW[qp] * pow(d_epsilon, 2) * d_dphi[j][qp] * d_dphi[i][qp];
+          d_Ke_var[1][0](i, j) += - d_JxW[qp] * 3.0 * d_C_psi * d_phi[j][qp] * d_phi[i][qp];
+          d_Ke_var[1][0](i, j) += - d_JxW[qp] * pow(d_epsilon, 2) * d_dphi[j][qp] * d_dphi[i][qp];
         }
       }
     } // loop over quadrature points
