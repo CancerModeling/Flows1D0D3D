@@ -18,6 +18,9 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
   std::cout << "Reset the length: length = " << total_added_length << std::endl;
 
   total_added_length = 0.0;
+  total_removed_length = 0.0;
+  total_added_volume = 0.0;
+  total_removed_volume = 0.0;
 
   int numberOfNodesOld = VGM.getNumberOfNodes();
 
@@ -1171,10 +1174,13 @@ void util::unet::Network::removeRedundantTerminalVessels() {
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
+  // we count how often we visit a terminal vessel without updating it
+  // for this we increate the notUpdated number of the terminal nodes
   while (pointer) {
 
     int numberOfNeighbors = pointer->neighbors.size();
 
+    // check if it is a dirichlet node
     if (numberOfNeighbors == 1) {
 
       const auto &coord = pointer->coord;
@@ -1204,16 +1210,17 @@ void util::unet::Network::removeRedundantTerminalVessels() {
 
     bool vesselLinked = false;
 
+    // try to link it
     if (numberOfNeighbors == 1 && pointer->notUpdated > 2) {
 
       vesselLinked = linkToNearestNetworkNode(pointer);
     }
 
-    if (vesselLinked == true) {
-
+    if (vesselLinked) {
       continue;
     }
 
+    // remove the node
     if (numberOfNeighbors == 1 && pointer->notUpdated > 2) {
 
       int index = pointer->index;
@@ -1243,27 +1250,17 @@ void util::unet::Network::removeRedundantTerminalVessels() {
       for (int i = 0; i < numberOfNeighbors_neighbor; i++) {
 
         if (index != pointer->neighbors[0]->neighbors[i]->index) {
+          // gather statistical data about edge removal:
+          auto length = util::dist_between_points(pointer->coord, pointer->neighbors[0]->coord);
+          auto r = pointer->radii[0];
+          total_removed_length += length;
+          total_removed_volume += length*r*r*M_PI;
 
-          new_neighbors.push_back(pointer->neighbors[0]->neighbors[i]);
-          new_edge_touched.push_back(pointer->neighbors[0]->edge_touched[i]);
-          new_sprouting_edge.push_back(
-            pointer->neighbors[0]->sprouting_edge[i]);
-          new_radii.push_back(pointer->neighbors[0]->radii[i]);
-          new_L_p.push_back(pointer->neighbors[0]->L_p[i]);
-          new_L_s.push_back(pointer->neighbors[0]->L_s[i]);
-          new_tau_w_initial.push_back(pointer->neighbors[0]->tau_w_initial[i]);
+          // remove edge:
+          pointer->neighbors[0]->removeComponent(i);
+          break;
         }
       }
-
-      pointer->neighbors[0]->neighbors = new_neighbors;
-      pointer->neighbors[0]->edge_touched = new_edge_touched;
-      pointer->neighbors[0]->sprouting_edge = new_sprouting_edge;
-      pointer->neighbors[0]->radii = new_radii;
-      pointer->neighbors[0]->radii_initial = new_radii;
-      pointer->neighbors[0]->tau_w_initial = new_tau_w_initial;
-      pointer->neighbors[0]->L_p = new_L_p;
-      pointer->neighbors[0]->L_s = new_L_s;
-      pointer->neighbors[0]->notUpdated = 0;
 
       if (numberOfNeighbors_neighbor == 2) {
 
@@ -2134,6 +2131,15 @@ void util::unet::Network::adaptRadius() {
 
         pointer->radii[i] = radius_new;
       }
+    }
+
+    // gather statistical data about the removed vessels
+    for (auto & edgeId: edgesToBeRemoved)
+    {
+      const auto r = pointer->radii[edgeId];
+      const auto lengthToRemove = util::dist_between_points(pointer->coord, pointer->neighbors[edgeId]->coord);
+      total_removed_length += lengthToRemove;
+      total_removed_volume += lengthToRemove*r*r*pi;
     }
 
     pointer->removeComponents(edgesToBeRemoved);
