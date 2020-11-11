@@ -24,3 +24,11 @@ target_link_libraries(${ProjectName} ${ProjectLib})
 #target_link_libraries(${ProjectName} ${ProjectLib}
 #        ${LIBMESH_LIBRARIES}
 #        ${PETSC_LIBRARIES} ${MPI_CXX_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+
+# ****************************************************************************
+# Create a default input file to execute
+# ****************************************************************************
+add_custom_command(
+        TARGET ${ProjectName} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/noisy_ch_input.in $<TARGET_FILE_DIR:${ProjectName}>/noisy_ch_input.in
+        COMMENT "Copying config file: ${CMAKE_CURRENT_SOURCE_DIR}/noisy_ch_input.in")

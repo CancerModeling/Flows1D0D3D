@@ -16,11 +16,38 @@ namespace noisych {
 // forward declare
 class Model;
 
-/*! @brief Initial condition for the concentration. */
-Number initial_condition_cahnhilliard(const Point &p,
-                                      const Parameters &es,
-                                      const std::string &system_name,
-                                      const std::string &var_name);
+/*! @brief Random initial condition for the concentration. */
+Number initial_condition_cahnhilliard_random(const Point &p,
+                                             const Parameters &es,
+                                             const std::string &system_name,
+                                             const std::string &var_name);
+
+/*! @brief Smooth circular initial condition for the concentration. */
+Number initial_condition_cahnhilliard_circle(const Point &p,
+                                             const Parameters &es,
+                                             const std::string &system_name,
+                                             const std::string &var_name);
+
+class CahnHilliardConfig {
+public:
+  unsigned int cubic_root_num_eigenfunctions;
+  unsigned int seed;
+  double scale;
+  double length;
+  double lower_bound;
+  double upper_bound;
+
+  double dt;
+  double C_psi;
+  double epsilon;
+  double mobility_constant;
+
+public:
+  static CahnHilliardConfig from_parameter_file(const std::string &filename);
+
+private:
+  CahnHilliardConfig();
+};
 
 /*! @brief Class to perform assembly of the cahn-hilliard equation. */
 class CahnHilliardAssembly : public util::BaseAssembly {
@@ -28,9 +55,10 @@ class CahnHilliardAssembly : public util::BaseAssembly {
 public:
   /*! @brief Constructor */
   CahnHilliardAssembly(
-              const std::string &system_name,
-              MeshBase &mesh,
-              TransientLinearImplicitSystem &sys);
+    const std::string &system_name,
+    MeshBase &mesh,
+    TransientLinearImplicitSystem &sys,
+    const CahnHilliardConfig &config);
 
   /*! @brief Assembly function. Overrides the default assembly function */
   void assemble() override;

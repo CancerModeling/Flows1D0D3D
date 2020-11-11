@@ -1,0 +1,14 @@
+# random or circle.
+initial_solution = random
+
+cubic_root_num_eigenfunctions = 5
+seed = 42
+scale = 0.05
+length = 1.
+lower_bound = 0.4
+upper_bound = 0.6
+
+dt = 5e-6
+C_psi = 100
+epsilon = 0.1
+mobility_constant = 32.
