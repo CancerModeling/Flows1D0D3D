@@ -19,7 +19,7 @@ void StochasticNoiseAssembly::assemble(BaseAssembly &assembly) const {
   const auto &quad_points = assembly.d_fe->get_xyz();
   const auto &phi = assembly.d_phi;
   const auto &JxW = assembly.d_JxW;
-  const auto &dof_indices_sys = assembly.d_dof_indices_sys;
+  const auto &dof_indices_sys = assembly.d_dof_indices_sys_var[0];
 
   libMesh::DenseVector<double> f;
 
