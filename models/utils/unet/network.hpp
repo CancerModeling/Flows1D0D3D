@@ -101,6 +101,12 @@ public:
    */
   void add_lengths_and_volumes_of_unmarked_network(double &length, double &volume);
 
+  /*! @brief Gets the overall volume and length of all vessels in the network. */
+  void get_length_and_volume_of_network(double &length, double &volume);
+
+  /*! @brief Returns the number of bifurcation in the network. */
+  int get_number_of_bifurcations();
+
   /*! @brief Deletes nodes with a node_marked attribute set to true. */
   void delete_unmarked_nodes();
 

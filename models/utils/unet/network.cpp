@@ -110,6 +110,42 @@ void util::unet::Network::add_lengths_and_volumes_of_unmarked_network(double &to
   } // loop over vertices
 }
 
+void util::unet::Network::get_length_and_volume_of_network(double &total_length, double &total_volume) {
+  total_length = 0;
+  total_volume = 0;
+
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+    for (std::size_t idx = 0; idx < pointer->neighbors.size(); idx += 1) {
+      const auto neighbor = pointer->neighbors[idx];
+      // to avoid counting every edge twice, we only count edges,
+      // where the index of our node is smaller than the neighbor index.
+      if (pointer->index < neighbor->index) {
+        const auto length = util::dist_between_points(pointer->coord, neighbor->coord);
+        const auto r = pointer->radii[idx];
+        total_length += length;
+        total_volume += length * r * r * M_PI;
+      }
+    }
+
+    pointer = pointer->global_successor;
+  } // loop over vertices
+}
+
+int util::unet::Network::get_number_of_bifurcations() {
+  int num_bifurcations = 0;
+
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+
+    if (pointer->neighbors.size() > 2)
+      num_bifurcations += 1;
+
+    pointer = pointer->global_successor;
+  } // loop over vertices
+}
+
+
 void util::unet::Network::delete_unmarked_nodes() {
   // make sure we have at least one node
   if (VGM.isEmpty())
