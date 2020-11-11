@@ -369,6 +369,12 @@ public:
   /*! @brief Counts how much vessel length is removed during a growth step. */
   double total_removed_length;
 
+  /*! @brief Counts how much vessel vessel volume is added during a growth step. */
+  double total_added_volume;
+
+  /*! @brief Counts how much vessel vessel volume is removed during a growth step. */
+  double total_removed_volume;
+
   unsigned int d_update_number;
   unsigned int d_update_interval;
 
