@@ -20,9 +20,18 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
 
   auto &sys = es.get_system<TransientLinearImplicitSystem>(system_name);
 
-  if (system_name == "CahnHilliard")
-    sys.project_solution(noisych::initial_condition_cahnhilliard, nullptr, es.parameters);
-  else {
+  GetPot input();
+
+  if (system_name == "CahnHilliard") {
+    auto initial_solution_type = es.parameters.get<std::string>("initial_solution");
+    if (initial_solution_type == "random") {
+      sys.project_solution(noisych::initial_condition_cahnhilliard_random, nullptr, es.parameters);
+    } else if (initial_solution_type == "circle") {
+      sys.project_solution(noisych::initial_condition_cahnhilliard_circle, nullptr, es.parameters);
+    } else {
+      throw std::runtime_error("unknown initial solution type " + initial_solution_type);
+    }
+  } else {
     return;
   }
 }
@@ -38,6 +47,10 @@ void model_setup_run(const std::string &filename, Parallel::Communicator *comm) 
   MeshTools::Generation::build_square(mesh, nelx, nely, 0., 1, 0., 1, QUAD4);
 
   EquationSystems sys(mesh);
+
+  GetPot input(filename);
+  sys.parameters.set<std::string>("config_filename") = filename;
+  sys.parameters.set<std::string>("initial_solution") = input("initial_solution", "undefined");
 
   // Add systems, variables and assemble
   auto &ch = sys.add_system<TransientLinearImplicitSystem>("CahnHilliard");
@@ -60,7 +73,7 @@ Model::Model(const std::string &filename,
              TransientLinearImplicitSystem &ch)
     : d_sys(sys),
       d_mesh(mesh),
-      d_ch("CahnHilliard", mesh, ch),
+      d_ch("CahnHilliard", mesh, ch, CahnHilliardConfig::from_parameter_file(filename)),
       d_steps(100),
       d_step(0),
       d_time(0),

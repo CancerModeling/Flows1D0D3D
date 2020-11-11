@@ -12,17 +12,16 @@
 
 namespace noisych {
 
-
-Number initial_condition_cahnhilliard(const Point &p,
-                                      const Parameters &es,
-                                      const std::string &system_name,
-                                      const std::string &var_name) {
+Number initial_condition_cahnhilliard_random(const Point &p,
+                                             const Parameters &es,
+                                             const std::string &system_name,
+                                             const std::string &var_name) {
   libmesh_assert_equal_to(system_name, "CahnHilliard");
 
-  static std::default_random_engine generator( 2 + es.get<unsigned int>("rank") );
+  static std::default_random_engine generator(2 + es.get<unsigned int>("rank"));
   const auto mean = 0.63;
   const auto interval = 0.1;
-  std::uniform_real_distribution<double> distribution(mean-interval,mean+interval);
+  std::uniform_real_distribution<double> distribution(mean - interval, mean + interval);
 
   if (var_name == "concentration") {
     return distribution(generator);
@@ -31,22 +30,67 @@ Number initial_condition_cahnhilliard(const Point &p,
   return 0;
 }
 
+Number initial_condition_cahnhilliard_circle(const Point &p,
+                                             const Parameters &es,
+                                             const std::string &system_name,
+                                             const std::string &var_name) {
+  // circle with middle point (1/2,1/2) and radius a
+  const auto a = 0.25;
+  const auto dist_squared = std::pow(p(0) - 0.5, 2) + std::pow(p(1) - 0.5, 2);
+
+  if (dist_squared < a * a)
+    return std::exp(1. - 1. / (1. - dist_squared / a * a));
+
+  return 0;
+}
+
+CahnHilliardConfig::CahnHilliardConfig()
+    : cubic_root_num_eigenfunctions(0),
+      seed(0),
+      scale(0),
+      length(1),
+      lower_bound(0),
+      upper_bound(1),
+      dt(1e-6),
+      C_psi(0),
+      epsilon(0),
+      mobility_constant(0) {}
+
+CahnHilliardConfig CahnHilliardConfig::from_parameter_file(const std::string &filename) {
+  CahnHilliardConfig config;
+
+  GetPot input(filename);
+
+  config.cubic_root_num_eigenfunctions = input("cubic_root_num_eigenfunctions", config.cubic_root_num_eigenfunctions);
+  config.seed = input("seed", config.seed);
+  config.scale = input("scale", config.scale);
+  config.length = input("length", config.length);
+  config.lower_bound = input("lower_bound", config.lower_bound);
+  config.upper_bound = input("upper_bound", config.upper_bound);
+  config.dt = input("dt", config.dt);
+  config.C_psi = input("C_psi", config.C_psi);
+  config.epsilon = input("epsilon", config.epsilon);
+  config.mobility_constant = input("mobility_constant", config.mobility_constant);
+
+  return config;
+}
+
 CahnHilliardAssembly::CahnHilliardAssembly(const std::string &system_name,
                                            MeshBase &mesh,
-                                           TransientLinearImplicitSystem &sys)
+                                           TransientLinearImplicitSystem &sys,
+                                           const CahnHilliardConfig &config)
     : util::BaseAssembly(system_name, mesh, sys, 2, {sys.variable_number("concentration"), sys.variable_number("potential")}),
       d_noise_assembly(
-        5*5*5,
-        42,
-        0.05,
-        1.,
-        0.4,
-        0.6),
-      d_dt(5e-6),
-      d_C_psi(100),
-      d_epsilon(0.1),
-      d_mobility_constant(32.)
-{}
+        std::pow(config.cubic_root_num_eigenfunctions, 3),
+        config.seed,
+        config.scale,
+        config.length,
+        config.lower_bound,
+        config.upper_bound),
+      d_dt(config.dt),
+      d_C_psi(config.C_psi),
+      d_epsilon(config.epsilon),
+      d_mobility_constant(config.mobility_constant) {}
 
 void CahnHilliardAssembly::calculate_new_stochastic_coefficients(double dt) {
   d_noise_assembly.calculate_new_stochastic_coefficients(dt);
@@ -101,8 +145,8 @@ void CahnHilliardAssembly::assemble_1() {
           d_Ke_var[1][1](i, j) += d_JxW[qp] * d_phi[j][qp] * d_phi[i][qp];
 
           // potential-concentration
-          d_Ke_var[1][0](i, j) += - d_JxW[qp] * 3.0 * d_C_psi * d_phi[j][qp] * d_phi[i][qp];
-          d_Ke_var[1][0](i, j) += - d_JxW[qp] * pow(d_epsilon, 2) * d_dphi[j][qp] * d_dphi[i][qp];
+          d_Ke_var[1][0](i, j) += -d_JxW[qp] * 3.0 * d_C_psi * d_phi[j][qp] * d_phi[i][qp];
+          d_Ke_var[1][0](i, j) += -d_JxW[qp] * pow(d_epsilon, 2) * d_dphi[j][qp] * d_dphi[i][qp];
         }
       }
     } // loop over quadrature points
