@@ -411,6 +411,7 @@ void util::unet::Network::linkTerminalVessels() {
             util::dist_between_points(pointer->coord, pointer_1->coord);
 
           total_added_length += length;
+          total_added_volume += length * radius * radius * M_PI;
 
           double p_node = pointer->p_v;
           double p_neighbor = pointer_1->p_v;
@@ -1107,6 +1108,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
     double length = util::dist_between_points(pointer->coord, new_point);
 
     total_added_length += length;
+    total_added_volume += length * radius * radius * M_PI;
 
     double p_node = pointer->p_v;
     double p_neighbor = 0.95 * pointer->p_v;

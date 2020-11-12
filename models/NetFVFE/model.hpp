@@ -9,12 +9,15 @@
 #define NETFVFE_MODEL_H
 
 #include "modelUtil.hpp"
+#include "rw/matlab_qoi_writer.hpp"
 #include "systems/systems.hpp"
 #include "umodel/model.hpp"
+
 #include "unet/NetworkDGFWriter.h"
 #include "unet/NetworkVTKWriter.h"
 #include "unet/network.hpp"
 #include "usystem/ghosting_functor.hpp"
+#include <utility>
 
 // typedef network
 typedef util::unet::Network Net;
@@ -25,6 +28,7 @@ typedef util::unet::Network Net;
  * docs/NetTum/network_and_tumor_model.pdf for more details.
  */
 namespace netfvfe {
+
 
 void model_setup_run(int argc,
                      char **argv,
@@ -150,6 +154,8 @@ private:
   /*! @brief Saves the network as a vtk file. */
   util::unet::NetworkVTKWriter d_networkVtkWriter;
   util::unet::NetworkDGFWriter d_networkDGFWriter;
+
+  util::MatlabQoIWriter d_qoi_writer;
 
   /*! @brief Assembly objects */
   TumAssembly d_tum;
