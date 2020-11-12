@@ -1,17 +1,17 @@
 # random or circle.
-initial_solution = circle
+initial_solution = random
 size_x = 5
 size_y = 5
 size_z = 5
 
-use3D = True
+use3D = False
 
 cubic_root_num_eigenfunctions = 8
 seed = 42
-scale = 0.1
+scale = 0.01
 length = 1.
-lower_bound = 0.4
-upper_bound = 0.6
+lower_bound = 0.1
+upper_bound = 0.9
 
 dt = 1e-2
 final_time = 1.

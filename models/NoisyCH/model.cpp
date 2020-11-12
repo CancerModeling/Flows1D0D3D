@@ -22,12 +22,21 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
 
   GetPot input();
 
+  auto use_3D = es.parameters.get<bool>("use_3D");
+
   if (system_name == "CahnHilliard") {
     auto initial_solution_type = es.parameters.get<std::string>("initial_solution");
     if (initial_solution_type == "random") {
       sys.project_solution(noisych::initial_condition_cahnhilliard_random, nullptr, es.parameters);
     } else if (initial_solution_type == "circle") {
-      sys.project_solution(noisych::initial_condition_cahnhilliard_circle, nullptr, es.parameters);
+      if (use_3D)
+      {
+        sys.project_solution(noisych::initial_condition_cahnhilliard_circle_3d, nullptr, es.parameters);
+      }
+      else
+      {
+        sys.project_solution(noisych::initial_condition_cahnhilliard_circle_2d, nullptr, es.parameters);
+      }
     } else {
       throw std::runtime_error("unknown initial solution type " + initial_solution_type);
     }
@@ -60,6 +69,7 @@ void model_setup_run(const std::string &filename, Parallel::Communicator *comm) 
 
   sys.parameters.set<std::string>("config_filename") = filename;
   sys.parameters.set<std::string>("initial_solution") = input("initial_solution", "undefined");
+  sys.parameters.set<bool>("use_3D") = input("use3D", false);
 
   // Add systems, variables and assemble
   auto &ch = sys.add_system<TransientLinearImplicitSystem>("CahnHilliard");

@@ -23,10 +23,15 @@ Number initial_condition_cahnhilliard_random(const Point &p,
                                              const std::string &var_name);
 
 /*! @brief Smooth circular initial condition for the concentration. */
-Number initial_condition_cahnhilliard_circle(const Point &p,
-                                             const Parameters &es,
-                                             const std::string &system_name,
-                                             const std::string &var_name);
+Number initial_condition_cahnhilliard_circle_2d(const Point &p,
+                                                const Parameters &es,
+                                                const std::string &system_name,
+                                                const std::string &var_name);
+
+Number initial_condition_cahnhilliard_circle_3d(const Point &p,
+                                                const Parameters &es,
+                                                const std::string &system_name,
+                                                const std::string &var_name);
 
 class CahnHilliardConfig {
 public:

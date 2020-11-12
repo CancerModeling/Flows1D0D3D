@@ -29,13 +29,27 @@ Number initial_condition_cahnhilliard_random(const Point &p,
   return 0;
 }
 
-Number initial_condition_cahnhilliard_circle(const Point &p,
-                                             const Parameters &es,
-                                             const std::string &system_name,
-                                             const std::string &var_name) {
+Number initial_condition_cahnhilliard_circle_3d(const Point &p,
+                                                const Parameters &es,
+                                                const std::string &system_name,
+                                                const std::string &var_name) {
   // circle with middle point (1/2,1/2) and radius a
   const auto a = 0.25;
   const auto dist_squared = std::pow(p(0) - 0.5, 2) + std::pow(p(1) - 0.5, 2) + std::pow(p(2) - 0.5, 2);
+
+  if (dist_squared < a * a)
+    return std::exp(1. - 1. / (1. - dist_squared / a * a));
+
+  return 0;
+}
+
+Number initial_condition_cahnhilliard_circle_2d(const Point &p,
+                                                const Parameters &es,
+                                                const std::string &system_name,
+                                                const std::string &var_name) {
+  // circle with middle point (1/2,1/2) and radius a
+  const auto a = 0.25;
+  const auto dist_squared = std::pow(p(0) - 0.5, 2) + std::pow(p(1) - 0.5, 2);
 
   if (dist_squared < a * a)
     return std::exp(1. - 1. / (1. - dist_squared / a * a));
