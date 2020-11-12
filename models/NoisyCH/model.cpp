@@ -45,8 +45,16 @@ void model_setup_run(const std::string &filename, Parallel::Communicator *comm) 
 
   const std::size_t nelx = 1u << static_cast<unsigned int>(input("size_x", 6));
   const std::size_t nely = 1u << static_cast<unsigned int>(input("size_y", 6));
+  const std::size_t nelz = 1u << static_cast<unsigned int>(input("size_z", 6));
   Mesh mesh(*comm);
-  MeshTools::Generation::build_square(mesh, nelx, nely, 0., 1, 0., 1, QUAD4);
+  if (input("use3D", false))
+  {
+    MeshTools::Generation::build_cube(mesh, nelx, nely, nelz, 0, 1, 0, 1, 0, 1, HEX8);
+  }
+  else
+  {
+    MeshTools::Generation::build_square(mesh, nelx, nely, 0., 1, 0., 1, QUAD4);
+  }
 
   EquationSystems sys(mesh);
 

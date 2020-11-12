@@ -35,7 +35,7 @@ Number initial_condition_cahnhilliard_circle(const Point &p,
                                              const std::string &var_name) {
   // circle with middle point (1/2,1/2) and radius a
   const auto a = 0.25;
-  const auto dist_squared = std::pow(p(0) - 0.5, 2) + std::pow(p(1) - 0.5, 2);
+  const auto dist_squared = std::pow(p(0) - 0.5, 2) + std::pow(p(1) - 0.5, 2) + std::pow(p(2) - 0.5, 2);
 
   if (dist_squared < a * a)
     return std::exp(1. - 1. / (1. - dist_squared / a * a));
