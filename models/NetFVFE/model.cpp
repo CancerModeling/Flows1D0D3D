@@ -229,6 +229,7 @@ netfvfe::Model::Model(
       d_network(this),
       d_networkVtkWriter(comm, input.d_outfilename_net + "new_"),
       d_networkDGFWriter(comm, input.d_outfilename_net + ""),
+      d_qoi_writer(comm, "qoi.m"),
       d_nec(this, "Necrotic", d_mesh, nec),
       d_pro(this, "Prolific", d_mesh, pro),
       d_nut(this, "Nutrient", d_mesh, nut), d_hyp(this, "Hypoxic", d_mesh, hyp),
@@ -410,14 +411,18 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
 void netfvfe::Model::compute_qoi() {
 
   // initialize qoi data
-  int N = 17;
+  const int N = 23;
   std::vector<double> qoi(N, 0.);
   if (d_qoi.d_vec.empty()) {
     d_qoi = util::QoIVec(
       {"tumor_mass", "hypoxic_mass", "necrotic_mass", "prolific_mass",
        "nutrient_mass", "tumor_l2", "hypoxic_l2", "necrotic_l2",
        "prolific_l2", "nutrient_l2", "r_v_mean", "r_v_std", "l_v_mean",
-       "l_v_std", "l_v_total", "vessel_vol", "vessel_density"});
+       "l_v_std", "l_v_total", "vessel_vol", "vessel_density",
+       "network_total_added_length", "network_total_removed_length",
+       "network_total_added_volume", "network_total_removed_volume",
+       "network_total_length", "network_total_volume"
+      });
 
     d_log.log_qoi_header(d_time, d_qoi.get_names());
   }
@@ -442,7 +447,28 @@ void netfvfe::Model::compute_qoi() {
   for (const auto &q : vessel_qoi)
     qoi[i++] = q;
 
+  // if it was a growth step we add statistical data how much the network changed
+  if (d_is_growth_step) {
+    qoi[i + 0] = d_network.total_added_length;
+    qoi[i + 1] = d_network.total_removed_length;
+    qoi[i + 2] = d_network.total_added_volume;
+    qoi[i + 3] = d_network.total_removed_volume;
+  } else {
+    qoi[i + 0] = 0;
+    qoi[i + 1] = 0;
+    qoi[i + 2] = 0;
+    qoi[i + 3] = 0;
+  }
+
+  // we add the length and volume of the 1D network
+  double length{0}, volume{0};
+  d_network.get_length_and_volume_of_network(length, volume);
+  qoi[i + 4] = length;
+  qoi[i + 5] = volume;
+
   d_qoi.add(qoi);
+
+  d_qoi_writer.write(d_qoi);
 }
 
 void netfvfe::Model::solve_system() {
