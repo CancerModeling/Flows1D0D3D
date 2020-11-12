@@ -25,7 +25,7 @@ void MatlabQoIWriter::write(const util::QoIVec &qoi) const {
   for (int qidx = 0; qidx < num_quantities; qidx += 1) {
     filematlab << names[qidx] << " = [ ";
     for (int tidx = 0; tidx < num_timesteps; tidx += 1) {
-      filematlab << data[tidx][qidx] << " ";
+      filematlab << std::scientific << data[tidx][qidx] << " ";
     }
     filematlab << "];" << std::endl;
   }
