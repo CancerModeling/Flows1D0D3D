@@ -13,9 +13,25 @@ StochasticNoiseAssembly::StochasticNoiseAssembly(unsigned int num_eigenfunctions
       d_scale(scale),
       d_length(length),
       d_lower_bound(lower_bound),
-      d_upper_bound(upper_bound) {}
+      d_upper_bound(upper_bound),
+      d_cached_rhs(nullptr),
+      d_reassemble(true)
+{}
 
 void StochasticNoiseAssembly::assemble(BaseAssembly &assembly) const {
+  // create cached vector if not present yet and reassemble vector only if necessary
+  if (d_cached_rhs == nullptr || d_reassemble)
+  {
+    d_cached_rhs = assembly.d_sys.rhs->zero_clone();
+    assemble(assembly, *d_cached_rhs);
+    d_reassemble = false;
+  }
+
+  // add stochastic contributions
+  assembly.d_sys.rhs->add(*d_cached_rhs);
+}
+
+void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, libMesh::NumericVector< Number >& rhs) const {
   const auto &quad_points = assembly.d_fe->get_xyz();
   const auto &phi = assembly.d_phi;
   const auto &JxW = assembly.d_JxW;
@@ -36,7 +52,7 @@ void StochasticNoiseAssembly::assemble(BaseAssembly &assembly) const {
       for (unsigned int i = 0; i < phi.size(); i++) {
         f(i) = JxW[qp] * d_scale * value_at_qp * phi[i][qp];
       }
-      assembly.d_sys.rhs->add_vector(f, dof_indices_sys);
+      rhs.add_vector(f, dof_indices_sys);
     }
   }
 }
@@ -53,6 +69,9 @@ void StochasticNoiseAssembly::calculate_new_stochastic_coefficients(const double
 
   for (int i = 0; i < N * N * N; i += 1)
     d_stochastic_coefficients[i] = gaussian(d_generator);
+
+  // set the flag to force a reassembly
+  d_reassemble = true;
 }
 
 double StochasticNoiseAssembly::eval_eigenfunctions_at_quadrature_point(const Point &p, const double field_value) const {
