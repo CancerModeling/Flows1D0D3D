@@ -15,14 +15,17 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
   std::cout << " " << std::endl;
   std::cout << "Update the network" << std::endl;
-  std::cout << "Reset the length: length = " << total_length << std::endl;
+  std::cout << "Reset the length: length = " << total_added_length << std::endl;
 
-  total_length = 0.0;
+  total_added_length = 0.0;
+  total_removed_length = 0.0;
+  total_added_volume = 0.0;
+  total_removed_volume = 0.0;
 
   int numberOfNodesOld = VGM.getNumberOfNodes();
 
   std::cout << " " << std::endl;
-  std::cout << "Reset the length: total_length = " << total_length << std::endl;
+  std::cout << "Reset the length: total_added_length = " << total_added_length << std::endl;
   std::cout << "numberOfNodesOld: " << numberOfNodesOld << std::endl;
 
   if (d_update_number % d_update_interval == 0) {
@@ -407,7 +410,7 @@ void util::unet::Network::linkTerminalVessels() {
           double length =
             util::dist_between_points(pointer->coord, pointer_1->coord);
 
-          total_length += length;
+          total_added_length += length;
 
           double p_node = pointer->p_v;
           double p_neighbor = pointer_1->p_v;
@@ -725,7 +728,7 @@ void util::unet::Network::processApicalGrowth() {
       std::cout << " "
                 << "\n";
       std::cout << "prob: " << prob << "\n";
-      std::cout << "total_length: " << total_length << "\n";
+      std::cout << "total_added_length: " << total_added_length << "\n";
       std::cout << "input.d_network_bifurcate_prob: " << input.d_network_bifurcate_prob << "\n";
 
       if (prob > input.d_network_bifurcate_prob) {
@@ -735,7 +738,7 @@ void util::unet::Network::processApicalGrowth() {
 
       if (!bifurcate && length_d > 0.0 && length > 0.0) {
 
-        if (!isIntersecting && total_length < 0.6) {
+        if (!isIntersecting && total_added_length < 0.6) {
           createASingleNode(new_point_1, radius_p, pointer);
           counter++;
         }
@@ -857,7 +860,7 @@ void util::unet::Network::processApicalGrowth() {
               }
             }
 
-            if (gmm::vect_norm2(direction) > 0.0 && length_diff_2 > 0.0 && length_diff_1 > 0.0 && total_length < 0.6) {
+            if (gmm::vect_norm2(direction) > 0.0 && length_diff_2 > 0.0 && length_diff_1 > 0.0 && total_added_length < 0.6) {
 
 
               bool isIntersecting_1 =
@@ -1089,7 +1092,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
     new_node.p_boundary = 0.95 * pointer->p_v;
     new_node.p_v = 0.95 * pointer->p_v;
     new_node.c_boundary = 0.0;
-    new_node.c_v = 0.0; //pointer->c_v;
+    new_node.c_v = pointer->c_v;
     new_node.apicalGrowth = false;
     new_node.radii.push_back(radius);
     new_node.radii_initial.push_back(radius);
@@ -1103,7 +1106,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
 
     double length = util::dist_between_points(pointer->coord, new_point);
 
-    total_length += length;
+    total_added_length += length;
 
     double p_node = pointer->p_v;
     double p_neighbor = 0.95 * pointer->p_v;
@@ -1171,10 +1174,13 @@ void util::unet::Network::removeRedundantTerminalVessels() {
 
   std::shared_ptr<VGNode> pointer = VGM.getHead();
 
+  // we count how often we visit a terminal vessel without updating it
+  // for this we increate the notUpdated number of the terminal nodes
   while (pointer) {
 
     int numberOfNeighbors = pointer->neighbors.size();
 
+    // check if it is a dirichlet node
     if (numberOfNeighbors == 1) {
 
       const auto &coord = pointer->coord;
@@ -1204,16 +1210,17 @@ void util::unet::Network::removeRedundantTerminalVessels() {
 
     bool vesselLinked = false;
 
+    // try to link it
     if (numberOfNeighbors == 1 && pointer->notUpdated > 2) {
 
       vesselLinked = linkToNearestNetworkNode(pointer);
     }
 
-    if (vesselLinked == true) {
-
+    if (vesselLinked) {
       continue;
     }
 
+    // remove the node
     if (numberOfNeighbors == 1 && pointer->notUpdated > 2) {
 
       int index = pointer->index;
@@ -1241,13 +1248,17 @@ void util::unet::Network::removeRedundantTerminalVessels() {
       std::vector<double> new_tau_w_initial;
 
       for (int i = 0; i < numberOfNeighbors_neighbor; i++) {
-
         if (index != pointer->neighbors[0]->neighbors[i]->index) {
+          // gather statistical data about edge removal:
+          auto length = util::dist_between_points(pointer->coord, pointer->neighbors[0]->coord);
+          auto r = pointer->radii[0];
+          total_removed_length += length;
+          total_removed_volume += length*r*r*M_PI;
 
+          // remove edge:
           new_neighbors.push_back(pointer->neighbors[0]->neighbors[i]);
           new_edge_touched.push_back(pointer->neighbors[0]->edge_touched[i]);
-          new_sprouting_edge.push_back(
-            pointer->neighbors[0]->sprouting_edge[i]);
+          new_sprouting_edge.push_back(pointer->neighbors[0]->sprouting_edge[i]);
           new_radii.push_back(pointer->neighbors[0]->radii[i]);
           new_L_p.push_back(pointer->neighbors[0]->L_p[i]);
           new_L_s.push_back(pointer->neighbors[0]->L_s[i]);
@@ -1692,9 +1703,9 @@ void util::unet::Network::processSproutingGrowth() {
         std::cout << "isColliding: " << isColliding << std::endl;
         std::cout << "length_vessel: " << length_vessel << std::endl;
         std::cout << "min_sprouting_length: " << input.d_min_length_for_sprouting << std::endl;
-        std::cout << "total_length: " << total_length << std::endl;
+        std::cout << "total_added_length: " << total_added_length << std::endl;
 
-        if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 && length_vessel > input.d_min_length_for_sprouting && total_length < 0.6) {
+        if (angle * 180.0 / M_PI > 10.0 && angle * 180.0 / M_PI < 170.0 && length_vessel > input.d_min_length_for_sprouting && total_added_length < 0.6) {
 
           int index_old_neighbor = pointer->neighbors[i]->index;
           int index_pointer = pointer->index;
@@ -1764,7 +1775,7 @@ void util::unet::Network::processSproutingGrowth() {
           new_node_2.p_boundary = pointer->p_v;
           new_node_2.p_v = pointer->p_v;
           new_node_2.c_boundary = 0.0;
-          new_node_2.c_v = 0.0; //pointer->c_v;
+          new_node_2.c_v = pointer->c_v;
           new_node_2.apicalGrowth = false;
           new_node_2.radii.push_back(radius_new);
           new_node_2.radii_initial.push_back(radius_new);
@@ -2134,6 +2145,15 @@ void util::unet::Network::adaptRadius() {
 
         pointer->radii[i] = radius_new;
       }
+    }
+
+    // gather statistical data about the removed vessels
+    for (auto & edgeId: edgesToBeRemoved)
+    {
+      const auto r = pointer->radii[edgeId];
+      const auto lengthToRemove = util::dist_between_points(pointer->coord, pointer->neighbors[edgeId]->coord);
+      total_removed_length += lengthToRemove;
+      total_removed_volume += lengthToRemove*r*r*pi;
     }
 
     pointer->removeComponents(edgesToBeRemoved);
