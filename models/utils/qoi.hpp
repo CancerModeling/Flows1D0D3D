@@ -32,6 +32,8 @@ struct QoI {
     }
   }
 
+  double operator[](std::size_t i) const { return d_data[i]; }
+
   const std::vector<double> &get_all() const { return d_data; }
   std::vector<double> &get_all() { return d_data; }
 };
@@ -79,7 +81,7 @@ struct QoIVec {
       auto data = std::vector<double>(d_vec.size(), 0.);
 
       for (unsigned int i = 0; i < d_vec.size(); i++) {
-        data[i] = d_vec[i].get_last();
+        data[i] = d_vec[i][n];
       }
 
       vec_data.emplace_back(data);
