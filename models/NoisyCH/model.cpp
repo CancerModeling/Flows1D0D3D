@@ -82,6 +82,11 @@ Model::Model(const std::string &filename,
   sys.parameters.set<unsigned int>("rank") = comm->rank();
   ch.attach_assemble_object(d_ch);
   sys.init();
+
+  GetPot input(filename);
+  d_dt = input("dt", 1e-2);
+  const auto final_time = input("final_time", 100*d_dt);
+  d_steps = std::ceil(final_time / d_dt);
 }
 
 void Model::run() {
@@ -111,7 +116,7 @@ void Model::run() {
 }
 
 void Model::write_system(const unsigned int &t_step) {
-  rw::VTKIO(d_mesh).write_equation_systems("cahnhilliard_" + std::to_string(t_step) + ".pvtu", d_sys);
+  rw::VTKIO(d_mesh).write_equation_systems("output/cahnhilliard_" + std::to_string(t_step) + ".pvtu", d_sys);
 }
 
 } // namespace noisych
