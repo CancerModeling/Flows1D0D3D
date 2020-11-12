@@ -32,3 +32,10 @@ add_custom_command(
         TARGET ${ProjectName} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/noisy_ch_input.in $<TARGET_FILE_DIR:${ProjectName}>/noisy_ch_input.in
         COMMENT "Copying config file: ${CMAKE_CURRENT_SOURCE_DIR}/noisy_ch_input.in")
+
+# ****************************************************************************
+# Create a directory for the output
+# ****************************************************************************
+add_custom_command(
+        TARGET ${ProjectName} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${ProjectName}>/output)
