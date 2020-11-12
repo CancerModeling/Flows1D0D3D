@@ -18,6 +18,9 @@ public:
   /*! @brief Assembles noise from a cylindrical Wiener process for the current timestep. */
   void assemble(BaseAssembly &assembly) const;
 
+  /*! @brief Assembles noise from a cylindrical Wiener process for the current timestep. */
+  void assemble(BaseAssembly &assembly, NumericVector<Number>& rhs) const;
+
   /*! @brief Calculates new stochastic coefficients for scaling our L2 basis.
    *         Should be called after every timestep.
    *
@@ -46,6 +49,12 @@ private:
 
   /*! @brief Saves all the (current) stochastic weights of the 3D equation. */
   std::vector<double> d_stochastic_coefficients;
+
+  /*! @brief Cached the last assembled contributions to the right hand side. Thus avoiding reassembly in a nonlinear loop. */
+  mutable std::unique_ptr<NumericVector<Number>> d_cached_rhs;
+
+  /*! @brief Flag indicating if the right hand side must be reassembled. */
+  mutable bool d_reassemble;
 
 private:
   /*! @brief Evaluates the sum
