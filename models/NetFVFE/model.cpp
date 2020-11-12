@@ -229,6 +229,7 @@ netfvfe::Model::Model(
       d_network(this),
       d_networkVtkWriter(comm, input.d_outfilename_net + "new_"),
       d_networkDGFWriter(comm, input.d_outfilename_net + ""),
+      d_qoi_writer(comm, "qoi.m"),
       d_nec(this, "Necrotic", d_mesh, nec),
       d_pro(this, "Prolific", d_mesh, pro),
       d_nut(this, "Nutrient", d_mesh, nut), d_hyp(this, "Hypoxic", d_mesh, hyp),
@@ -443,6 +444,8 @@ void netfvfe::Model::compute_qoi() {
     qoi[i++] = q;
 
   d_qoi.add(qoi);
+
+  d_qoi_writer.write(d_qoi);
 }
 
 void netfvfe::Model::solve_system() {
