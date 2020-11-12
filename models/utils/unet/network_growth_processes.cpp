@@ -151,9 +151,8 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
           } else {
 
             pointer->global_predecessor->global_successor = NULL;
+            break;
           }
-
-          pointer = pointer->global_successor;
 
           old_pointer.reset();
         }
@@ -383,7 +382,8 @@ void util::unet::Network::linkTerminalVessels() {
           }
         }
 
-        if (dist_plane > 0.03 && index != index_1 && dist < 0.08 && dist > 0.0 && length_dir > 0.0 && pointer->typeOfVGNode != TypeOfNode::DirichletNode && !is_pv_1_single_edge && !isNodeOfSingleEdge) {
+        if (dist_plane > 0.03 && index != index_1 && dist < 0.08 && dist > 0.0 && length_dir > 0.0
+             && pointer->typeOfVGNode != TypeOfNode::DirichletNode && !is_pv_1_single_edge && !isNodeOfSingleEdge) {
 
           std::cout << " " << std::endl;
           std::cout << "dist: " << dist << "\n";
