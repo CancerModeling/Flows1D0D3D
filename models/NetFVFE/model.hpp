@@ -13,7 +13,6 @@
 #include "umodel/model.hpp"
 #include "unet/NetworkDGFWriter.h"
 #include "unet/NetworkVTKWriter.h"
-#include "unet/NetworkVTKWriterOld.h"
 #include "unet/network.hpp"
 #include "usystem/ghosting_functor.hpp"
 
@@ -150,7 +149,6 @@ private:
 
   /*! @brief Saves the network as a vtk file. */
   util::unet::NetworkVTKWriter d_networkVtkWriter;
-  util::unet::NetworkVTKWriterOld d_networkVtkWriterOld;
   util::unet::NetworkDGFWriter d_networkDGFWriter;
 
   /*! @brief Assembly objects */
@@ -177,30 +175,6 @@ private:
   UniquePtr<NumericVector<Number>> d_err_check_mde;
   UniquePtr<NumericVector<Number>> d_err_check_ecm;
   UniquePtr<NumericVector<Number>> d_err_check_pres;
-
-  /*!
-   * The absolute change of the nutrient value of the 3D system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_absolute_change_3d;
-
-  /*!
-   * The relative change of the nutrient value of the 3D system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_relative_change_3d;
-
-  /*!
-   * The absolute change of the nutrient value of the 1D network system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_absolute_change_1d;
-
-  /*!
-   * The relative change of the nutrient value of the 1D network system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_relative_change_1d;
 };
 
 } // namespace netfvfe
