@@ -42,7 +42,7 @@ void StochasticNoiseAssembly::assemble(BaseAssembly &assembly) const {
 }
 
 void StochasticNoiseAssembly::calculate_new_stochastic_coefficients(const double dt) {
-  const int N = std::ceil(std::cbrt(d_num_eigenfunctions));
+  const int N = static_cast< int >(std::round(std::cbrt(d_num_eigenfunctions)));
 
   std::normal_distribution<double> gaussian(0, std::sqrt(dt));
 
@@ -56,7 +56,7 @@ void StochasticNoiseAssembly::calculate_new_stochastic_coefficients(const double
 }
 
 double StochasticNoiseAssembly::eval_eigenfunctions_at_quadrature_point(const Point &p, const double field_value) const {
-  const int N = std::ceil(std::cbrt(d_num_eigenfunctions));
+  const int N = static_cast<int>(std::round(std::cbrt(d_num_eigenfunctions)));
 
   if (std::abs(static_cast<double>(N * N * N) - d_num_eigenfunctions) > 1e-14)
     throw std::runtime_error("the number of eigenfunctions must be of the form N^3");
