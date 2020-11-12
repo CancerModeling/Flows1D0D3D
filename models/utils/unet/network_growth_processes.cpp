@@ -154,9 +154,8 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
           } else {
 
             pointer->global_predecessor->global_successor = NULL;
+            break;
           }
-
-          pointer = pointer->global_successor;
 
           old_pointer.reset();
         }
