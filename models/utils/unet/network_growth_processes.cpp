@@ -171,7 +171,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
         int numberOfNeighbors = pointer->neighbors.size();
 
-        if (numberOfNeighbors == 1 && pointer->typeOfVGNode == TypeOfNode::InnerNode) {
+        if (numberOfNeighbors == 1 && !pointer->is_given) {
 
           const auto &coord = pointer->coord;
 
@@ -1104,6 +1104,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
     new_node.neighbors.push_back(pointer);
     new_node.notUpdated = 0;
     new_node.typeOfVGNode = TypeOfNode::NeumannNode;
+    new_node.is_given = false;
 
     double length = util::dist_between_points(pointer->coord, new_point);
 
@@ -1183,12 +1184,7 @@ void util::unet::Network::removeRedundantTerminalVessels() {
     int numberOfNeighbors = pointer->neighbors.size();
 
     // check if it is a dirichlet node
-    if (numberOfNeighbors == 1) {
-
-      const auto &coord = pointer->coord;
-
-      // if node is near the boundary, we do not process Omega = (0,L)^3
-      if (pointer->typeOfVGNode != TypeOfNode::DirichletNode) {
+    if (numberOfNeighbors == 1 && !pointer->is_given) {
 
         int updateNumber = pointer->notUpdated;
 
@@ -1196,7 +1192,6 @@ void util::unet::Network::removeRedundantTerminalVessels() {
 
         std::cout << "pointer->notUpdated: " << pointer->notUpdated
                   << std::endl;
-      }
     }
 
     pointer = pointer->global_successor;
@@ -1723,6 +1718,7 @@ void util::unet::Network::processSproutingGrowth() {
           new_node_1.c_v = pointer->c_v;
           new_node_1.typeOfVGNode = TypeOfNode::InnerNode;
           new_node_1.apicalGrowth = false;
+          new_node_1.is_given = false;
 
           new_node_1.radii_initial.push_back(radius);
           new_node_1.radii_initial.push_back(radius);
@@ -1789,6 +1785,7 @@ void util::unet::Network::processSproutingGrowth() {
           new_node_2.notUpdated = 0;
           new_node_2.tau_w_initial.push_back(tau_w_ini_new);
           new_node_2.neighbors.push_back(sp_newNode_1);
+          new_node_2.is_given = false;
 
           auto sp_newNode_2 = std::make_shared<VGNode>(new_node_2);
 
