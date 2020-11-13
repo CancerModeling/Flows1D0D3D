@@ -40,7 +40,7 @@ void netfvfe::HypAssembly::calculate_new_stochastic_coefficients(double dt) {
 // Assembly class
 void netfvfe::HypAssembly::assemble() {
   assemble_1();
-  d_noise_assembly.assemble(*this);
+  d_noise_assembly.assemble(*this, d_model_p->get_tum_assembly());
 }
 
 void netfvfe::HypAssembly::assemble_1() {
