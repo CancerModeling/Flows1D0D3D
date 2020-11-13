@@ -18,12 +18,12 @@ StochasticNoiseAssembly::StochasticNoiseAssembly(unsigned int num_eigenfunctions
       d_reassemble(true)
 {}
 
-void StochasticNoiseAssembly::assemble(BaseAssembly &assembly) const {
+void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, BaseAssembly &total_assembly) const {
   // create cached vector if not present yet and reassemble vector only if necessary
   if (d_cached_rhs == nullptr || d_reassemble)
   {
     d_cached_rhs = assembly.d_sys.rhs->zero_clone();
-    assemble(assembly, *d_cached_rhs);
+    assemble(assembly, total_assembly, *d_cached_rhs);
     d_reassemble = false;
   }
 
@@ -31,7 +31,7 @@ void StochasticNoiseAssembly::assemble(BaseAssembly &assembly) const {
   assembly.d_sys.rhs->add(*d_cached_rhs);
 }
 
-void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, libMesh::NumericVector< Number >& rhs) const {
+void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, BaseAssembly &total_assembly, libMesh::NumericVector< Number >& rhs) const {
   // if the stochastic scaling factor is too small, we skip assembly,
   // since evaluation of the noise at each quadrature point is not really cheap.
   if (std::abs(d_scale) < 1e-14)
@@ -47,12 +47,15 @@ void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, libMesh::NumericV
   for (const auto &elem : assembly.d_mesh.active_local_element_ptr_range()) {
     assembly.init_dof(elem);
     assembly.init_fe(elem);
+    total_assembly.init_dof(elem);
     for (unsigned int qp = 0; qp < assembly.d_qrule.n_points(); qp++) {
       Real field_value_old = 0;
+      Real total_field_value_old = 0;
       for (unsigned int i = 0; i < phi.size(); i++) {
         field_value_old += phi[i][qp] * assembly.get_old_sol_var(i, 0);
+        total_field_value_old += phi[i][qp] * total_assembly.get_old_sol_var(i, 0);
       }
-      const auto value_at_qp = eval_eigenfunctions_at_quadrature_point(quad_points[qp], field_value_old);
+      const auto value_at_qp = eval_eigenfunctions_at_quadrature_point(quad_points[qp], field_value_old, total_field_value_old);
       f.resize(phi.size());
       for (unsigned int i = 0; i < phi.size(); i++) {
         f(i) = JxW[qp] * d_scale * value_at_qp * phi[i][qp];
@@ -79,7 +82,7 @@ void StochasticNoiseAssembly::calculate_new_stochastic_coefficients(const double
   d_reassemble = true;
 }
 
-double StochasticNoiseAssembly::eval_eigenfunctions_at_quadrature_point(const Point &p, const double field_value) const {
+double StochasticNoiseAssembly::eval_eigenfunctions_at_quadrature_point(const Point &p, const double field_value, const double total_field_value) const {
   const int N = static_cast<int>(std::round(std::cbrt(d_num_eigenfunctions)));
 
   if (std::abs(static_cast<double>(N * N * N) - d_num_eigenfunctions) > 1e-14)
@@ -90,6 +93,9 @@ double StochasticNoiseAssembly::eval_eigenfunctions_at_quadrature_point(const Po
 
   // quit if we are not in the interval
   if (field_value <= d_lower_bound || field_value >= d_upper_bound)
+    return 0;
+
+  if (total_field_value <= d_lower_bound || total_field_value >= d_upper_bound)
     return 0;
 
   double acc = 0;

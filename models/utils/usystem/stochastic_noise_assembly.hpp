@@ -15,18 +15,32 @@ public:
                           double lower_bound,
                           double upper_bound);
 
-  /*! @brief Assembles noise from a cylindrical Wiener process for the current timestep. */
-  void assemble(BaseAssembly &assembly) const;
-
-  /*! @brief Assembles noise from a cylindrical Wiener process for the current timestep. */
-  void assemble(BaseAssembly &assembly, NumericVector<Number>& rhs) const;
+  /*! @brief Assembles noise from a cylindrical Wiener process for the current time step.
+   *
+   *  @param assembly        The system to which we add the Wiener process.
+   *  @param assembly_total  The total (tumor) system. If its values are not within an interval, the noise is deactivated.
+   */
+  void assemble(BaseAssembly &assembly, BaseAssembly &assembly_total) const;
 
   /*! @brief Calculates new stochastic coefficients for scaling our L2 basis.
-   *         Should be called after every timestep.
+   *         Should be called after every time step.
    *
    * @param dt  The current time step size, which determines the standard deviation of our stochastic increments.
    */
   void calculate_new_stochastic_coefficients(double dt);
+
+  /*! @brief Evaluates the sum
+   *         sum_{i,j,k}^J sqrt(8/L) * beta_{i,j,k} * cos(i*pi*x/L) * cos(j*pi*y/L) * cos(k*pi*z/L)
+   *         where beta_{i,j,k} are our stochastic weights.
+   *         This function can be used, if the assembly should take place directly in another assembly function
+    *
+    * @param p                  The point at which we want to evaluate the Wiener process.
+    * @param field_value        The value of the field to which we add the noise.
+    * @param total_field_value  The total value of the (whole tumor) field. The noise is deactivated if its value
+    *                           is not within a certain interval.
+    * @return The value of the Wiener process at the given quadrature point.
+    */
+  double eval_eigenfunctions_at_quadrature_point(const Point &p, double field_value, double total_field_value) const;
 
 private:
   /*! @brief The number of eigenfuntions of our covariance matrix. */
@@ -57,11 +71,12 @@ private:
   mutable bool d_reassemble;
 
 private:
-  /*! @brief Evaluates the sum
-   *         sum_{i,j,k}^J sqrt(8/L) * beta_{i,j,k} * cos(i*pi*x/L) * cos(j*pi*y/L) * cos(k*pi*z/L)
-   *         where beta_{i,j,k} are our stochastic weights.
-   */
-  double eval_eigenfunctions_at_quadrature_point(const Point &p, double field_value) const;
+  /*! @brief Assembles noise from a cylindrical Wiener process for the current time step.
+   *  @param assembly        The system to which we add the Wiener process.
+   *  @param assembly_total  The total (tumor) system. If its values are not within an interval, the noise is deactivated.
+   *  @param rhs             The right hand side vector to which we add the noise
+   * */
+  void assemble(BaseAssembly &assembly, BaseAssembly &assembly_total, NumericVector<Number>& rhs) const;
 };
 
 } // namespace util

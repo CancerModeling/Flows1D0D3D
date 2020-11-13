@@ -1,5 +1,5 @@
 # random or circle.
-initial_solution = random
+initial_solution = circle
 size_x = 5
 size_y = 5
 size_z = 5

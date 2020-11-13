@@ -112,7 +112,7 @@ void CahnHilliardAssembly::calculate_new_stochastic_coefficients(double dt) {
 // Assembly class
 void CahnHilliardAssembly::assemble() {
   assemble_1();
-  d_noise_assembly.assemble(*this);
+  d_noise_assembly.assemble(*this, *this);
 }
 
 void CahnHilliardAssembly::assemble_1() {
