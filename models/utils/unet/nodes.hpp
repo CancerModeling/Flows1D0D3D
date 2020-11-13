@@ -110,11 +110,11 @@ public:
   VGNode() : index(0), p_v(0.0), c_v(0.0), p_boundary(0.0),
              c_boundary(0.0), edge_touched(false), sprouting_edge(false), apicalGrowth(false),
              coord(0.0), radii(0.0), radii_initial(0.0), tau_w_initial(0.0), L_p(0.0), notUpdated(0), is_initial_node(false), is_sprouting_node(false),
-             node_marked(false) {}
+             node_marked(false), is_given(false) {}
 
   int index, notUpdated;
 
-  bool apicalGrowth, is_sprouting_node;
+  bool apicalGrowth, is_sprouting_node, is_given;
 
   double p_v, c_v, p_boundary, c_boundary;
 
