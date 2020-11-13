@@ -34,7 +34,7 @@ void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, BaseAssembly &tot
 void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, BaseAssembly &total_assembly, libMesh::NumericVector< Number >& rhs) const {
   // if the stochastic scaling factor is too small, we skip assembly,
   // since evaluation of the noise at each quadrature point is not really cheap.
-  if (std::abs(d_scale) < 1e-14)
+  if (std::abs(d_scale) < 1e-14 || d_num_eigenfunctions == 0)
     return;
 
   const auto &quad_points = assembly.d_fe->get_xyz();
