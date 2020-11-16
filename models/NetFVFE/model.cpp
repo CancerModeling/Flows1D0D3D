@@ -228,8 +228,8 @@ netfvfe::Model::Model(
     : util::BaseModel(comm, input, mesh, tum_sys, log, "NetFVFE"),
       d_network(this),
       d_networkVtkWriter(comm, input.d_outfilename_net + "new_"),
-      d_networkVtkWriterOld(comm, input.d_outfilename_net + "old_"),
       d_networkDGFWriter(comm, input.d_outfilename_net + ""),
+      d_qoi_writer(comm, "qoi.m"),
       d_nec(this, "Necrotic", d_mesh, nec),
       d_pro(this, "Prolific", d_mesh, pro),
       d_nut(this, "Nutrient", d_mesh, nut), d_hyp(this, "Hypoxic", d_mesh, hyp),
@@ -374,42 +374,9 @@ void netfvfe::Model::run() {
     // solve tumor-network system
     solve_system();
 
-    // output how much the nutrient variable changed
-    {
-      std::stringstream ss;
-      ss << std::scientific << std::setprecision(2);
-      ss << "Nutrient: absolute change 1d = " << d_nutrient_absolute_change_1d;
-      ss << ", relative change 1d = " << d_nutrient_relative_change_1d;
-      ss << ", absolute change 3d = " << d_nutrient_absolute_change_3d;
-      ss << ", relative change 3d = " << d_nutrient_relative_change_3d;
-      ss << std::endl;
-      d_log(ss.str());
-    }
-
-    // check if the nutrient concentration is sufficiently stationary to allow an update
-    const bool nutAbsoluteThreshold1d = (d_nutrient_absolute_change_1d < d_input.d_network_update_absolute_upper_threshold_1d);
-    const bool nutAbsoluteThreshold3d = (d_nutrient_absolute_change_3d < d_input.d_network_update_absolute_upper_threshold_3d);
-    const bool nutRelativeThreshold1d = (d_nutrient_relative_change_1d < d_input.d_network_update_relative_upper_threshold_1d);
-    const bool nutRelativeThreshold3d = (d_nutrient_relative_change_3d < d_input.d_network_update_relative_upper_threshold_3d);
-
-    const bool nutrientsSufficientlyStationary = nutAbsoluteThreshold1d && nutAbsoluteThreshold3d && nutRelativeThreshold1d && nutRelativeThreshold3d;
 
     if (d_is_growth_step) {
-      // log why the now growth does not take place:
-      if (!nutrientsSufficientlyStationary) {
-        if (nutAbsoluteThreshold1d)
-          d_log("No growth step since absolute threshold 1d too large " + std::to_string(d_nutrient_absolute_change_1d) + ".\n");
-        if (nutAbsoluteThreshold3d)
-          d_log("No growth step since absolute threshold 3d too large " + std::to_string(d_nutrient_absolute_change_3d) + ".\n");
-        if (nutRelativeThreshold1d)
-          d_log("No growth step since relative threshold 1d too large " + std::to_string(d_nutrient_relative_change_1d) + ".\n");
-        if (nutRelativeThreshold3d)
-          d_log("No growth step since relative threshold 3d too large " + std::to_string(d_nutrient_relative_change_3d) + ".\n");
-      }
-      // trigger growth by updating the network
-      else {
-        d_network.updateNetwork(d_taf, d_grad_taf);
-      }
+      d_network.updateNetwork(d_taf, d_grad_taf);
     }
 
     // write tumor solution
@@ -436,7 +403,6 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
     return;
 
   // write network simulation
-  d_networkVtkWriterOld.write(d_network.VGM, t_step);
   d_networkVtkWriter.write(d_network.VGM, t_step);
   d_networkDGFWriter.write(d_network.VGM);
 
@@ -449,14 +415,18 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
 void netfvfe::Model::compute_qoi() {
 
   // initialize qoi data
-  int N = 17;
+  const int N = 23;
   std::vector<double> qoi(N, 0.);
   if (d_qoi.d_vec.empty()) {
     d_qoi = util::QoIVec(
       {"tumor_mass", "hypoxic_mass", "necrotic_mass", "prolific_mass",
        "nutrient_mass", "tumor_l2", "hypoxic_l2", "necrotic_l2",
        "prolific_l2", "nutrient_l2", "r_v_mean", "r_v_std", "l_v_mean",
-       "l_v_std", "l_v_total", "vessel_vol", "vessel_density"});
+       "l_v_std", "l_v_total", "vessel_vol", "vessel_density",
+       "network_total_added_length", "network_total_removed_length",
+       "network_total_added_volume", "network_total_removed_volume",
+       "network_total_length", "network_total_volume"
+      });
 
     d_log.log_qoi_header(d_time, d_qoi.get_names());
   }
@@ -481,7 +451,28 @@ void netfvfe::Model::compute_qoi() {
   for (const auto &q : vessel_qoi)
     qoi[i++] = q;
 
+  // if it was a growth step we add statistical data how much the network changed
+  if (d_is_growth_step) {
+    qoi[i + 0] = d_network.total_added_length;
+    qoi[i + 1] = d_network.total_removed_length;
+    qoi[i + 2] = d_network.total_added_volume;
+    qoi[i + 3] = d_network.total_removed_volume;
+  } else {
+    qoi[i + 0] = 0;
+    qoi[i + 1] = 0;
+    qoi[i + 2] = 0;
+    qoi[i + 3] = 0;
+  }
+
+  // we add the length and volume of the 1D network
+  double length{0}, volume{0};
+  d_network.get_length_and_volume_of_network(length, volume);
+  qoi[i + 4] = length;
+  qoi[i + 5] = volume;
+
   d_qoi.add(qoi);
+
+  d_qoi_writer.write(d_qoi);
 }
 
 void netfvfe::Model::solve_system() {
@@ -624,14 +615,6 @@ void netfvfe::Model::solve_system_implicit() {
   d_tum_sys.parameters.set<Real>("linear solver tolerance") =
     d_input.d_linear_tol;
 
-  // save the previous nutrient solution
-  std::vector<double> nut_before_1d;
-  if (d_input.d_coupled_1d3d)
-    nut_before_1d = d_network.get_nutritient_1d_vector();
-  else
-    nut_before_1d = d_network.C_v_old;
-  auto nut_before_3d = d_nut.d_sys.old_local_solution->clone();
-
   // nonlinear loop
   for (unsigned int l = 0; l < d_input.d_nonlin_max_iters; ++l) {
 
@@ -762,22 +745,6 @@ void netfvfe::Model::solve_system_implicit() {
   d_tum.solve_custom();
   d_log.add_sys_solve_time(clock_begin, d_tum.d_sys.number());
   //}
-
-  // get the current solution
-  std::vector<double> nut_after_1d;
-  if (d_input.d_coupled_1d3d)
-    nut_after_1d = d_network.get_nutritient_1d_vector();
-  else
-    nut_after_1d = d_network.C_v;
-  auto &nut_after_3d = d_nut.d_sys.current_local_solution;
-
-  // calculate how much the nutrients changed
-  const double nut_before_3d_magnitude = nut_before_3d->l2_norm();
-  d_nutrient_absolute_change_1d = gmm::vect_dist2(nut_before_1d, nut_after_1d);
-  *nut_before_3d -= *nut_after_3d;
-  d_nutrient_absolute_change_3d = nut_before_3d->l2_norm();
-  d_nutrient_relative_change_1d = d_nutrient_absolute_change_1d / gmm::vect_norm2(nut_before_1d);
-  d_nutrient_relative_change_3d = d_nutrient_absolute_change_3d / nut_before_3d_magnitude;
 
   d_log(" \n", "solve sys");
 }
@@ -1059,10 +1026,6 @@ void netfvfe::Model::solve_nutrient() {
 
   // coupled 1d-3d or iterative method
   if (d_input.d_coupled_1d3d) {
-    // save the previous solution
-    auto nut_before_1d = d_network.get_nutritient_1d_vector();
-    auto nut_before_3d = d_network.get_nutritient_3d_vector();
-
     // solver for 1D + 3D nutrient
     reset_clock();
     d_log("      Solving |Nutrient_1D + " + d_nut.d_sys_name + "| -> ", "solve nut");
@@ -1072,20 +1035,7 @@ void netfvfe::Model::solve_nutrient() {
       d_log.add_sys_solve_time(clock_begin, d_nut.d_sys.number());
     }
 
-    // get the current solution
-    auto nut_after_1d = d_network.get_nutritient_1d_vector();
-    auto nut_after_3d = d_network.get_nutritient_3d_vector();
-
-    // calculate how much the nutrients changed
-    d_nutrient_absolute_change_1d = gmm::vect_dist2(nut_before_1d, nut_after_1d);
-    d_nutrient_absolute_change_3d = gmm::vect_dist2(nut_before_3d, nut_after_3d);
-    d_nutrient_relative_change_1d = d_nutrient_absolute_change_1d / gmm::vect_norm2(nut_before_1d);
-    d_nutrient_relative_change_3d = d_nutrient_absolute_change_3d / gmm::vect_norm2(nut_before_3d);
   } else {
-    // save the previous solution
-    auto nut_before_1d = d_network.get_nutritient_1d_vector();
-    auto nut_before_3d = d_nut.d_sys.old_local_solution->clone();
-
     // Nonlinear iteration loop
     d_tum_sys.parameters.set<Real>("linear solver tolerance") =
       d_input.d_linear_tol;
@@ -1146,18 +1096,6 @@ void netfvfe::Model::solve_nutrient() {
         break;
       }
     } // nonlinear solver loop
-
-    // get the current solution
-    auto nut_after_1d = d_network.get_nutritient_1d_vector();
-    auto &nut_after_3d = d_nut.d_sys.current_local_solution;
-
-    // calculate how much the nutrients changed
-    const double nut_before_3d_magnitude = nut_before_3d->l2_norm();
-    d_nutrient_absolute_change_1d = gmm::vect_dist2(nut_before_1d, nut_after_1d);
-    *nut_before_3d -= *nut_after_3d;
-    d_nutrient_absolute_change_3d = nut_before_3d->l2_norm();
-    d_nutrient_relative_change_1d = d_nutrient_absolute_change_1d / gmm::vect_norm2(nut_before_1d);
-    d_nutrient_relative_change_3d = d_nutrient_absolute_change_3d / nut_before_3d_magnitude;
 
     d_log(" \n", "solve nut");
   }

@@ -12,52 +12,6 @@
 #include "network_growth_processes.cpp"
 #include "network_semi_coupled_assembly.cpp"
 
-std::vector<double> util::unet::Network::create_coupled_vector() const {
-  return std::vector<double>(N_tot_3D + d_numVertices, 0);
-}
-
-std::vector<double> util::unet::Network::create_1d_vector() const {
-  return std::vector<double>(d_numVertices, 0);
-}
-
-std::vector<double> util::unet::Network::create_3d_vector() const {
-  return std::vector<double>(N_tot_3D, 0);
-}
-
-std::vector<double> util::unet::Network::get_nutritient_3d_vector() const {
-  auto nut_1d = create_1d_vector();
-  vector_extract_1d(phi_sigma, nut_1d);
-  return nut_1d;
-}
-
-std::vector<double> util::unet::Network::get_nutritient_1d_vector() const {
-  auto nut_3d = create_3d_vector();
-  vector_extract_3d(phi_sigma, nut_3d);
-  return nut_3d;
-}
-
-void util::unet::Network::vector_extract_1d(const std::vector<double> &src, std::vector<double> &dst) const {
-  if (src.size() != N_tot_3D + d_numVertices)
-    throw std::runtime_error("src is not a mixed vector");
-
-  dst.resize(d_numVertices);
-
-  const int offset_to_1d_dofs = N_tot_3D;
-
-  for (int i = 0; i < d_numVertices; i += 1)
-    dst[i] = src[offset_to_1d_dofs + i];
-}
-
-void util::unet::Network::vector_extract_3d(const std::vector<double> &src, std::vector<double> &dst) const {
-  if (src.size() != N_tot_3D + d_numVertices)
-    throw std::runtime_error("src is not a mixed vector");
-
-  dst.resize(N_tot_3D);
-
-  for (int i = 0; i < N_tot_3D; i += 1)
-    dst[i] = src[i];
-}
-
 void util::unet::Network::unmark_network_nodes() {
   std::shared_ptr<VGNode> pointer = VGM.getHead();
   while (pointer) {
@@ -88,6 +42,63 @@ void util::unet::Network::mark_nodes_connected_with_initial_nodes() {
     pointer = pointer->global_successor;
   } // loop over vertices
 }
+
+void util::unet::Network::add_lengths_and_volumes_of_unmarked_network(double &total_length, double &total_volume) {
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+    for (std::size_t idx = 0; idx < pointer->neighbors.size(); idx += 1) {
+      const auto neighbor = pointer->neighbors[idx];
+      // we only count the edge if either the node or its neighbor is not marked:
+      bool one_is_unmarked = !pointer->node_marked || !neighbor->node_marked;
+      // to avoid counting every edge twice, we only count edges,
+      // where the index of our node is smaller than the neighbor index.
+      if (one_is_unmarked && pointer->index < neighbor->index) {
+        const auto length = util::dist_between_points(pointer->coord, neighbor->coord);
+        const auto r = pointer->radii[idx];
+        total_length += length;
+        total_volume += length * r * r * M_PI;
+      }
+    }
+
+    pointer = pointer->global_successor;
+  } // loop over vertices
+}
+
+void util::unet::Network::get_length_and_volume_of_network(double &total_length, double &total_volume) {
+  total_length = 0;
+  total_volume = 0;
+
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+    for (std::size_t idx = 0; idx < pointer->neighbors.size(); idx += 1) {
+      const auto neighbor = pointer->neighbors[idx];
+      // to avoid counting every edge twice, we only count edges,
+      // where the index of our node is smaller than the neighbor index.
+      if (pointer->index < neighbor->index) {
+        const auto length = util::dist_between_points(pointer->coord, neighbor->coord);
+        const auto r = pointer->radii[idx];
+        total_length += length;
+        total_volume += length * r * r * M_PI;
+      }
+    }
+
+    pointer = pointer->global_successor;
+  } // loop over vertices
+}
+
+int util::unet::Network::get_number_of_bifurcations() {
+  int num_bifurcations = 0;
+
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+
+    if (pointer->neighbors.size() > 2)
+      num_bifurcations += 1;
+
+    pointer = pointer->global_successor;
+  } // loop over vertices
+}
+
 
 void util::unet::Network::delete_unmarked_nodes() {
   // make sure we have at least one node
@@ -161,6 +172,7 @@ void util::unet::Network::reenumerate_dofs() {
 void util::unet::Network::delete_unconnected_nodes() {
   unmark_network_nodes();
   mark_nodes_connected_with_initial_nodes();
+  add_lengths_and_volumes_of_unmarked_network(total_removed_length, total_removed_volume);
   delete_unmarked_nodes();
   reenumerate_dofs();
 }
@@ -421,8 +433,8 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
 
   for (int i = 0; i < phi_sigma_old.size(); i++) {
 
-    if( phi_sigma_old[i]>1.0 )
-     phi_sigma_old[i] =1.0;
+    if (phi_sigma_old[i] > 1.0)
+      phi_sigma_old[i] = 1.0;
   }
 
   assemble3D1DSystemForNutrients(nut_sys, tum_sys);
@@ -450,9 +462,9 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
 
     pointer->c_v = phi_sigma[N_tot_3D + indexOfNode];
 
-    if( pointer->c_v>1.0 ){
+    if (pointer->c_v > 1.0) {
 
-        pointer->c_v = 1.0;
+      pointer->c_v = 1.0;
     }
 
     pointer = pointer->global_successor;
