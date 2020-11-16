@@ -156,8 +156,9 @@ void util::unet::Network::transferDataToVGM(std::vector<std::vector<double>> &ve
     pointer_1->neighbors.push_back(pointer_2);
     pointer_1->edge_touched.push_back(false);
     pointer_1->sprouting_edge.push_back(false);
-    pointer_1->tau_w_initial.push_back(0.); // we missed this
-
+    pointer_1->tau_w_initial.push_back(0.); 
+    pointer_1->is_given = true;
+  
     pointer_2->radii.push_back(radius);
     pointer_2->radii_initial.push_back(radius);
     pointer_2->L_p.push_back(input.d_tissue_flow_L_p);
@@ -165,7 +166,8 @@ void util::unet::Network::transferDataToVGM(std::vector<std::vector<double>> &ve
     pointer_2->neighbors.push_back(pointer_1);
     pointer_2->edge_touched.push_back(false);
     pointer_2->sprouting_edge.push_back(false);
-    pointer_2->tau_w_initial.push_back(0.); // we missed this
+    pointer_2->tau_w_initial.push_back(0.); 
+    pointer_2->is_given = true;
   }
 }
 
@@ -339,6 +341,8 @@ void util::unet::Network::refine1DMesh() {
         new_node.tau_w_initial.push_back(pointer->tau_w_initial[i]);
 
         new_node.typeOfVGNode = TypeOfNode::InnerNode;
+
+        new_node.is_given = true;
 
         std::shared_ptr<VGNode> pointer_new_node =
           std::make_shared<VGNode>(new_node);

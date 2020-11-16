@@ -9,13 +9,15 @@
 #define NETFVFE_MODEL_H
 
 #include "modelUtil.hpp"
+#include "rw/matlab_qoi_writer.hpp"
 #include "systems/systems.hpp"
 #include "umodel/model.hpp"
+
 #include "unet/NetworkDGFWriter.h"
 #include "unet/NetworkVTKWriter.h"
-#include "unet/NetworkVTKWriterOld.h"
 #include "unet/network.hpp"
 #include "usystem/ghosting_functor.hpp"
+#include <utility>
 
 // typedef network
 typedef util::unet::Network Net;
@@ -26,6 +28,7 @@ typedef util::unet::Network Net;
  * docs/NetTum/network_and_tumor_model.pdf for more details.
  */
 namespace netfvfe {
+
 
 void model_setup_run(int argc,
                      char **argv,
@@ -150,8 +153,9 @@ private:
 
   /*! @brief Saves the network as a vtk file. */
   util::unet::NetworkVTKWriter d_networkVtkWriter;
-  util::unet::NetworkVTKWriterOld d_networkVtkWriterOld;
   util::unet::NetworkDGFWriter d_networkDGFWriter;
+
+  util::MatlabQoIWriter d_qoi_writer;
 
   /*! @brief Assembly objects */
   TumAssembly d_tum;
@@ -177,30 +181,6 @@ private:
   UniquePtr<NumericVector<Number>> d_err_check_mde;
   UniquePtr<NumericVector<Number>> d_err_check_ecm;
   UniquePtr<NumericVector<Number>> d_err_check_pres;
-
-  /*!
-   * The absolute change of the nutrient value of the 3D system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_absolute_change_3d;
-
-  /*!
-   * The relative change of the nutrient value of the 3D system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_relative_change_3d;
-
-  /*!
-   * The absolute change of the nutrient value of the 1D network system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_absolute_change_1d;
-
-  /*!
-   * The relative change of the nutrient value of the 1D network system in the current time step measured in the l2-norm.
-   * This value is set directly after the nutrient system was solved (which depends on the model configuration).
-   */
-  double d_nutrient_relative_change_1d;
 };
 
 } // namespace netfvfe
