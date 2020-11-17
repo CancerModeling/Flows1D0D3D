@@ -29,12 +29,9 @@ void initial_condition(EquationSystems &es, const std::string &system_name) {
     if (initial_solution_type == "random") {
       sys.project_solution(noisych::initial_condition_cahnhilliard_random, nullptr, es.parameters);
     } else if (initial_solution_type == "circle") {
-      if (use_3D)
-      {
+      if (use_3D) {
         sys.project_solution(noisych::initial_condition_cahnhilliard_circle_3d, nullptr, es.parameters);
-      }
-      else
-      {
+      } else {
         sys.project_solution(noisych::initial_condition_cahnhilliard_circle_2d, nullptr, es.parameters);
       }
     } else {
@@ -56,12 +53,9 @@ void model_setup_run(const std::string &filename, Parallel::Communicator *comm) 
   const std::size_t nely = 1u << static_cast<unsigned int>(input("size_y", 6));
   const std::size_t nelz = 1u << static_cast<unsigned int>(input("size_z", 6));
   Mesh mesh(*comm);
-  if (input("use3D", false))
-  {
+  if (input("use3D", false)) {
     MeshTools::Generation::build_cube(mesh, nelx, nely, nelz, 0, 1, 0, 1, 0, 1, HEX8);
-  }
-  else
-  {
+  } else {
     MeshTools::Generation::build_square(mesh, nelx, nely, 0., 1, 0., 1, QUAD4);
   }
 
@@ -103,7 +97,7 @@ Model::Model(const std::string &filename,
 
   GetPot input(filename);
   d_dt = input("dt", 1e-2);
-  const auto final_time = input("final_time", 100*d_dt);
+  const auto final_time = input("final_time", 100 * d_dt);
   d_steps = std::ceil(final_time / d_dt);
 }
 

@@ -386,8 +386,7 @@ void util::unet::Network::linkTerminalVessels() {
           }
         }
 
-        if (dist_plane > 0.03 && index != index_1 && dist < 0.08 && dist > 0.0 && length_dir > 0.0
-             && pointer->typeOfVGNode != TypeOfNode::DirichletNode && !is_pv_1_single_edge && !isNodeOfSingleEdge) {
+        if (dist_plane > 0.03 && index != index_1 && dist < 0.08 && dist > 0.0 && length_dir > 0.0 && pointer->typeOfVGNode != TypeOfNode::DirichletNode && !is_pv_1_single_edge && !isNodeOfSingleEdge) {
 
           std::cout << " " << std::endl;
           std::cout << "dist: " << dist << "\n";
@@ -1187,12 +1186,12 @@ void util::unet::Network::removeRedundantTerminalVessels() {
     // check if it is a dirichlet node
     if (numberOfNeighbors == 1 && !pointer->is_given) {
 
-        int updateNumber = pointer->notUpdated;
+      int updateNumber = pointer->notUpdated;
 
-        pointer->notUpdated = updateNumber + 1;
+      pointer->notUpdated = updateNumber + 1;
 
-        std::cout << "pointer->notUpdated: " << pointer->notUpdated
-                  << std::endl;
+      std::cout << "pointer->notUpdated: " << pointer->notUpdated
+                << std::endl;
     }
 
     pointer = pointer->global_successor;
@@ -1251,7 +1250,7 @@ void util::unet::Network::removeRedundantTerminalVessels() {
           auto length = util::dist_between_points(pointer->coord, pointer->neighbors[0]->coord);
           auto r = pointer->radii[0];
           total_removed_length += length;
-          total_removed_volume += length*r*r*M_PI;
+          total_removed_volume += length * r * r * M_PI;
 
           // remove edge:
           new_neighbors.push_back(pointer->neighbors[0]->neighbors[i]);
@@ -2148,12 +2147,11 @@ void util::unet::Network::adaptRadius() {
     }
 
     // gather statistical data about the removed vessels
-    for (auto & edgeId: edgesToBeRemoved)
-    {
+    for (auto &edgeId : edgesToBeRemoved) {
       const auto r = pointer->radii[edgeId];
       const auto lengthToRemove = util::dist_between_points(pointer->coord, pointer->neighbors[edgeId]->coord);
       total_removed_length += lengthToRemove;
-      total_removed_volume += lengthToRemove*r*r*pi;
+      total_removed_volume += lengthToRemove * r * r * pi;
     }
 
     pointer->removeComponents(edgesToBeRemoved);
@@ -2184,4 +2182,3 @@ void util::unet::Network::adaptRadius() {
     pointer = pointer->global_successor;
   }
 }
-
