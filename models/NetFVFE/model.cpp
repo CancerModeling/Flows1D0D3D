@@ -376,7 +376,7 @@ void netfvfe::Model::run() {
     }
 
     // write tumor solution
-    write_system((d_step - d_input.d_init_step) / d_input.d_dt_output_interval);
+    write_system(d_step); //(d_step - d_input.d_init_step) / d_input.d_dt_output_interval);
   } while (d_step < d_input.d_steps);
 }
 
@@ -395,7 +395,7 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
   }
 
   // check if for writing to vtk files
-  if (!d_is_output_step)
+  if (!(t_step%3==0))
     return;
 
   // write network simulation
