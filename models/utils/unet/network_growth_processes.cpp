@@ -265,15 +265,15 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
         int indexOfNode = pointer->index;
 
-        //     if (d_coupled_solver) {
-        phi_sigma[N_tot_3D + indexOfNode] = pointer->c_v;
-        phi_sigma_old[N_tot_3D + indexOfNode] = pointer->c_v;
-        P_3D1D[N_tot_3D + indexOfNode] = pointer->p_v;
-        /*       } else {
+        if (d_coupled_solver) {
+          phi_sigma[N_tot_3D + indexOfNode] = pointer->c_v;
+          phi_sigma_old[N_tot_3D + indexOfNode] = pointer->c_v;
+          P_3D1D[N_tot_3D + indexOfNode] = pointer->p_v;
+        } else {
           C_v[indexOfNode] = pointer->c_v;
           C_v_old[indexOfNode] = pointer->c_v;
           P_v[indexOfNode] = pointer->p_v;
-        }*/
+        }
 
         pointer = pointer->global_successor;
       } // loop for update solution in network

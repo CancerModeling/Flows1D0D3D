@@ -246,9 +246,30 @@ void util::HypoxicDeck::read_parameters(const std::string &filename) {
 
   d_bar_E_phi_H = input("bar_E_phi_H", 0.0);
   d_epsilon_H = input("epsilon_H", 0.005);
+
+  d_hyp_noise_num_eigenfunctions = input("hyp_noise_num_eigenfunctions", 0);
+  d_hyp_noise_seed = input("hyp_noise_seed", 104020);
+  d_hyp_noise_scale = input("hyp_noise_scale", 0.1);
+  d_hyp_noise_lower_bound = input("hyp_noise_lower_bound", 0.0);
+  d_hyp_noise_upper_bound = input("hyp_noise_upper_bound", 1.0);
 }
 
 void util::HypoxicDeck::print(unsigned int level) {}
+
+void util::ProlificDeck::read_parameters(const std::string &filename) {
+  // Open file with model setup
+  if (filename.empty())
+    return;
+
+  GetPot input(filename);
+  d_pro_noise_num_eigenfunctions = input("pro_noise_num_eigenfunctions", 0);
+  d_pro_noise_seed = input("pro_noise_seed", 104020);
+  d_pro_noise_scale = input("pro_noise_scale", 0.1);
+  d_pro_noise_lower_bound = input("pro_noise_lower_bound", 0.0);
+  d_pro_noise_upper_bound = input("pro_noise_upper_bound", 1.0);
+}
+
+void util::ProlificDeck::print(unsigned int level) {}
 
 void util::NecroticDeck::read_parameters(const std::string &filename) {
 
@@ -548,8 +569,8 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   d_net_length_R_factor = input("vessel_R_factor", 0.);
 
   d_k_WSS = input("k_WSS", 0.45);
-  d_k_s= input("k_s", 0.25);
-  d_offset_tau= input("offset_tau", 0.02);
+  d_k_s = input("k_s", 0.25);
+  d_offset_tau = input("offset_tau", 0.02);
 }
 
 void util::NetworkDeck::print(unsigned int level) {}
