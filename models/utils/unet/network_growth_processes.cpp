@@ -154,6 +154,7 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
           } else {
 
             pointer->global_predecessor->global_successor = NULL;
+            VGM.setTail(pointer->global_predecessor);
             break;
           }
 
