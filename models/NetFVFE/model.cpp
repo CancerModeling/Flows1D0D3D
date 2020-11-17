@@ -227,7 +227,7 @@ netfvfe::Model::Model(
   TransientLinearImplicitSystem &tum, util::Logger &log)
     : util::BaseModel(comm, input, mesh, tum_sys, log, "NetFVFE"),
       d_network(this),
-      d_networkVtkWriter(comm, input.d_outfilename_net + "new_"),
+      d_networkVtkWriter(comm, input.d_outfilename_net + ""),
       d_networkDGFWriter(comm, input.d_outfilename_net + ""),
       d_qoi_writer(comm, "qoi.m"),
       d_nec(this, "Necrotic", d_mesh, nec),
@@ -399,7 +399,7 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
   }
 
   // check if for writing to vtk files
-  if (!(t_step%3==0))
+  if (!(t_step % 3 == 0))
     return;
 
   // write network simulation
@@ -425,8 +425,7 @@ void netfvfe::Model::compute_qoi() {
        "l_v_std", "l_v_total", "vessel_vol", "vessel_density",
        "network_total_added_length", "network_total_removed_length",
        "network_total_added_volume", "network_total_removed_volume",
-       "network_total_length", "network_total_volume"
-      });
+       "network_total_length", "network_total_volume"});
 
     d_log.log_qoi_header(d_time, d_qoi.get_names());
   }

@@ -76,7 +76,7 @@ private:
    *  @param assembly_total  The total (tumor) system. If its values are not within an interval, the noise is deactivated.
    *  @param rhs             The right hand side vector to which we add the noise
    * */
-  void assemble(BaseAssembly &assembly, BaseAssembly &assembly_total, NumericVector<Number>& rhs) const;
+  void assemble(BaseAssembly &assembly, BaseAssembly &assembly_total, NumericVector<Number> &rhs) const;
 };
 
 } // namespace util

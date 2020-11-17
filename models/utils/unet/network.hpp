@@ -53,8 +53,7 @@ public:
         total_added_length(0.0),
         total_removed_length(0.0),
         total_added_volume(0.0),
-        total_removed_volume(0.0)
-  {
+        total_removed_volume(0.0) {
 
     // initialize random distribution samplers
     const auto &input = d_model_p->get_input_deck();

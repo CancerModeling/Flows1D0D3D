@@ -15,13 +15,11 @@ StochasticNoiseAssembly::StochasticNoiseAssembly(unsigned int num_eigenfunctions
       d_lower_bound(lower_bound),
       d_upper_bound(upper_bound),
       d_cached_rhs(nullptr),
-      d_reassemble(true)
-{}
+      d_reassemble(true) {}
 
 void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, BaseAssembly &total_assembly) const {
   // create cached vector if not present yet and reassemble vector only if necessary
-  if (d_cached_rhs == nullptr || d_reassemble)
-  {
+  if (d_cached_rhs == nullptr || d_reassemble) {
     d_cached_rhs = assembly.d_sys.rhs->zero_clone();
     assemble(assembly, total_assembly, *d_cached_rhs);
     d_reassemble = false;
@@ -31,7 +29,7 @@ void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, BaseAssembly &tot
   assembly.d_sys.rhs->add(*d_cached_rhs);
 }
 
-void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, BaseAssembly &total_assembly, libMesh::NumericVector< Number >& rhs) const {
+void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, BaseAssembly &total_assembly, libMesh::NumericVector<Number> &rhs) const {
   // if the stochastic scaling factor is too small, we skip assembly,
   // since evaluation of the noise at each quadrature point is not really cheap.
   if (std::abs(d_scale) < 1e-14 || d_num_eigenfunctions == 0)
@@ -66,7 +64,7 @@ void StochasticNoiseAssembly::assemble(BaseAssembly &assembly, BaseAssembly &tot
 }
 
 void StochasticNoiseAssembly::calculate_new_stochastic_coefficients(const double dt) {
-  const int N = static_cast< int >(std::round(std::cbrt(d_num_eigenfunctions)));
+  const int N = static_cast<int>(std::round(std::cbrt(d_num_eigenfunctions)));
 
   std::normal_distribution<double> gaussian(0, std::sqrt(dt));
 
