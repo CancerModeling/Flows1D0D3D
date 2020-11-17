@@ -17,10 +17,30 @@ Number netfvfe::initial_condition_hyp(const Point &p, const Parameters &es,
   }
 }
 
+netfvfe::HypAssembly::HypAssembly(Model *model,
+                                  const std::string &system_name,
+                                  MeshBase &mesh,
+                                  TransientLinearImplicitSystem &sys)
+    : util::BaseAssembly(system_name, mesh, sys, 2,
+                         {sys.variable_number("hypoxic"),
+                          sys.variable_number("chemical_hypoxic")}),
+      d_model_p(model),
+      d_noise_assembly(
+        model->get_input_deck().d_hyp_noise_num_eigenfunctions,
+        model->get_input_deck().d_hyp_noise_seed,
+        model->get_input_deck().d_hyp_noise_scale,
+        model->get_input_deck().d_domain_params[1],
+        model->get_input_deck().d_hyp_noise_lower_bound,
+        model->get_input_deck().d_hyp_noise_upper_bound) {}
+
+void netfvfe::HypAssembly::calculate_new_stochastic_coefficients(double dt) {
+  d_noise_assembly.calculate_new_stochastic_coefficients(dt);
+}
+
 // Assembly class
 void netfvfe::HypAssembly::assemble() {
-
   assemble_1();
+  d_noise_assembly.assemble(*this, d_model_p->get_tum_assembly());
 }
 
 void netfvfe::HypAssembly::assemble_1() {

@@ -55,10 +55,31 @@ Number netfvfe::initial_condition_pro(const Point &p, const Parameters &es,
   return 0.;
 }
 
+netfvfe::ProAssembly::ProAssembly(Model *model,
+                                  const std::string &system_name,
+                                  MeshBase &mesh,
+                                  TransientLinearImplicitSystem &sys)
+    : util::BaseAssembly(system_name, mesh, sys, 2,
+                         {sys.variable_number("prolific"),
+                          sys.variable_number("chemical_prolific")}),
+      d_model_p(model),
+      d_noise_assembly(
+        model->get_input_deck().d_pro_noise_num_eigenfunctions,
+        model->get_input_deck().d_pro_noise_seed,
+        model->get_input_deck().d_pro_noise_scale,
+        model->get_input_deck().d_domain_params[1],
+        model->get_input_deck().d_pro_noise_lower_bound,
+        model->get_input_deck().d_pro_noise_upper_bound) {}
+
+void netfvfe::ProAssembly::calculate_new_stochastic_coefficients(double dt) {
+  d_noise_assembly.calculate_new_stochastic_coefficients(dt);
+}
+
+
 // Assembly class
 void netfvfe::ProAssembly::assemble() {
-
   assemble_1();
+  d_noise_assembly.assemble(*this, d_model_p->get_tum_assembly());
 }
 
 void netfvfe::ProAssembly::assemble_1() {

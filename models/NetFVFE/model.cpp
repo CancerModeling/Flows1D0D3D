@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 //  Copyright (c) 2019 Prashant K. Jha
 //
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -366,6 +366,10 @@ void netfvfe::Model::run() {
     d_log("Time step: " + std::to_string(d_step) +
             ", time: " + std::to_string(d_time) + "\n",
           "integrate");
+
+    // stochastic contributions from the cylindrical Wiener process
+    d_hyp.calculate_new_stochastic_coefficients(d_dt);
+    d_pro.calculate_new_stochastic_coefficients(d_dt);
 
     // solve tumor-network system
     solve_system();
