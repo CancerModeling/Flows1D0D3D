@@ -9,8 +9,8 @@
 #define NETFVFE_MODEL_H
 
 #include "modelUtil.hpp"
-#include "rw/matlab_qoi_writer.hpp"
 #include "rw/csv_qoi_writer.hpp"
+#include "rw/matlab_qoi_writer.hpp"
 #include "systems/systems.hpp"
 #include "umodel/model.hpp"
 

@@ -90,10 +90,10 @@ void netfvfe::TafAssembly::assemble_1() {
           vel_cur(ll) += d_phi[l][qp] * vel.get_current_sol_var(l, ll);
       }
 
-        compute_rhs = d_JxW[qp] * (taf_old + dt * deck.d_lambda_TAF * hyp_cur *
+      compute_rhs = d_JxW[qp] * (taf_old + dt * deck.d_lambda_TAF * hyp_cur *
                                              util::heaviside(hyp_cur - deck.d_sigma_HTAF));
-        compute_mat =
-                d_JxW[qp] * (1. + dt * deck.d_lambda_TAF * hyp_cur + dt * deck.d_lambda_TAF_deg);
+      compute_mat =
+        d_JxW[qp] * (1. + dt * deck.d_lambda_TAF * hyp_cur + dt * deck.d_lambda_TAF_deg);
 
       // add artificial source if any
       compute_rhs +=

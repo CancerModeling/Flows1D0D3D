@@ -25,7 +25,7 @@ void CSVQoIWriter::write(const util::QoIVec &qoi) const {
   // write header of csv file
   for (int qidx = 0; qidx < num_quantities; qidx += 1) {
     filecsv << names[qidx];
-    if(qidx < num_quantities-1)
+    if (qidx < num_quantities - 1)
       filecsv << ",";
     else
       filecsv << "\n";
@@ -34,7 +34,7 @@ void CSVQoIWriter::write(const util::QoIVec &qoi) const {
   for (int tidx = 0; tidx < num_timesteps; tidx += 1) {
     for (int qidx = 0; qidx < num_quantities; qidx += 1) {
       filecsv << std::scientific << data[tidx][qidx];
-      if(qidx < num_quantities-1)
+      if (qidx < num_quantities - 1)
         filecsv << ",";
       else
         filecsv << "\n";
