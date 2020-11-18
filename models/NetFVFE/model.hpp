@@ -10,6 +10,7 @@
 
 #include "modelUtil.hpp"
 #include "rw/matlab_qoi_writer.hpp"
+#include "rw/csv_qoi_writer.hpp"
 #include "systems/systems.hpp"
 #include "umodel/model.hpp"
 
@@ -156,6 +157,7 @@ private:
   util::unet::NetworkDGFWriter d_networkDGFWriter;
 
   util::MatlabQoIWriter d_qoi_writer;
+  util::CSVQoIWriter d_csv_qoi_writer;
 
   /*! @brief Assembly objects */
   TumAssembly d_tum;
