@@ -400,16 +400,26 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
   }
 
   // check if for writing to vtk files
-  if (!(t_step % 3 == 0))
+  //if (!(t_step % 3 == 0)) // hard-code --> specify interval in input file using 'output_interval'
+  d_is_output_step = false;
+  if ((d_step >= d_input.d_dt_output_interval and
+       (d_step % d_input.d_dt_output_interval == 0)) or
+      d_step == 0)
+    d_is_output_step = true;
+
+  if (!d_is_output_step)
     return;
 
+  unsigned int file_number = d_step; // using actual time step
+  // int file_number = (d_step - d_input.d_init_step) / d_input.d_dt_output_interval;
+
   // write network simulation
-  d_networkVtkWriter.write(d_network.VGM, t_step);
+  d_networkVtkWriter.write(d_network.VGM, file_number);
   d_networkDGFWriter.write(d_network.VGM);
 
   // write tumor simulation
   rw::VTKIO(d_mesh).write_equation_systems(d_input.d_outfilename + "_" +
-                                             std::to_string(t_step) + ".pvtu",
+                                             std::to_string(file_number) + ".pvtu",
                                            d_tum_sys);
 }
 
