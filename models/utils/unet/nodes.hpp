@@ -274,15 +274,13 @@ public:
     }
   }
 
-  void remove(const std::function< bool(const VGNode&) > & predicate)
-  {
+  void remove(const std::function<bool(const VGNode &)> &predicate) {
     std::vector<double> radii_new, L_p_new, L_s_new, radii_initial_new, tau_w_initial_new;
     std::vector<bool> edge_touched_new, sprouting_edge_new;
     std::vector<std::shared_ptr<VGNode>> neighbors_new;
 
     for (int i = 0; i < neighbors.size(); i++) {
-      if (!predicate(*neighbors[i]))
-      {
+      if (!predicate(*neighbors[i])) {
         radii_new.push_back(radii[i]);
         L_p_new.push_back(L_p[i]);
         L_s_new.push_back(L_s[i]);

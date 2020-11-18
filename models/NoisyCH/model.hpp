@@ -13,7 +13,7 @@
 
 namespace noisych {
 
-void model_setup_run( const std::string &filename, Parallel::Communicator *comm);
+void model_setup_run(const std::string &filename, Parallel::Communicator *comm);
 
 /*!
  * @brief Simple model for a simplified Cahn-Hilliard equation.
@@ -36,10 +36,10 @@ private:
 
 private:
   /*! @brief The equation system. */
-  EquationSystems& d_sys;
+  EquationSystems &d_sys;
 
   /*! @brief Current mesh. */
-  Mesh& d_mesh;
+  Mesh &d_mesh;
 
   /*! @brief Assembly objects. */
   CahnHilliardAssembly d_ch;
