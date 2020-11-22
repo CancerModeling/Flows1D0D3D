@@ -1296,6 +1296,8 @@ void util::unet::Network::removeRedundantTerminalVessels() {
       } else {
 
         pointer->global_successor->global_predecessor = NULL;
+        VGM.setHead(pointer->global_successor);
+
       }
 
       if (pointer->global_successor) {
@@ -1306,6 +1308,8 @@ void util::unet::Network::removeRedundantTerminalVessels() {
       } else {
 
         pointer->global_predecessor->global_successor = NULL;
+        VGM.setTail(pointer->global_predecessor);
+
       }
 
       pointer = pointer->global_successor;
