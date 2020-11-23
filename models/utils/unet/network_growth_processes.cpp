@@ -92,6 +92,10 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
       d_model_p->d_log("Adapt radius \n", "net update");
       adaptRadius();
 
+      // delete all the unconnected nodes
+      delete_unconnected_nodes();
+
+/*
       auto pointer = VGM.getHead();
 
       while (pointer) {
@@ -120,10 +124,10 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
         pointer = pointer->global_successor;
       }
-
+*/
       std::cout << " " << std::endl;
       std::cout << "Remove single nodes" << std::endl;
-      pointer = VGM.getHead();
+      auto pointer = VGM.getHead();
 
       while (pointer) {
 
@@ -217,9 +221,6 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
         counter_index = counter_index + 1;
         pointer = pointer->global_successor;
       }
-
-      // delete all the unconnected nodes
-      delete_unconnected_nodes();
 
       d_model_p->d_log("Rescale the 1D matrices and vectors \n", "net update");
       if (!d_coupled_solver and numberOfNodesOld != numberOfNodes) {
