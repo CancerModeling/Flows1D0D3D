@@ -95,7 +95,6 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
       // delete all the unconnected nodes
       delete_unconnected_nodes();
 
-/*
       auto pointer = VGM.getHead();
 
       while (pointer) {
@@ -124,10 +123,10 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
         pointer = pointer->global_successor;
       }
-*/
+
       std::cout << " " << std::endl;
       std::cout << "Remove single nodes" << std::endl;
-      auto pointer = VGM.getHead();
+      pointer = VGM.getHead();
 
       while (pointer) {
 
