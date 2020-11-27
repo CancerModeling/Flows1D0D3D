@@ -89,8 +89,11 @@ double StochasticNoiseAssembly::eval_eigenfunctions_at_quadrature_point(const Po
   if (d_stochastic_coefficients.size() != N * N * N)
     throw std::runtime_error("not enough stochastic coefficients precalculated");
 
+  const auto heavyside_value = util::heaviside(field_value - d_lower_bound) * util::heaviside(d_upper_bound - field_value) *
+                               util::heaviside(total_field_value - d_lower_bound) * util::heaviside(d_upper_bound - total_field_value);
+
   // quit if we are not in the interval
-  if (field_value <= d_lower_bound || field_value >= d_upper_bound)
+  if (heavyside_value < 1e-12)
     return 0;
 
   if (total_field_value <= d_lower_bound || total_field_value >= d_upper_bound)
@@ -105,7 +108,7 @@ double StochasticNoiseAssembly::eval_eigenfunctions_at_quadrature_point(const Po
       const double mul_y = std::cos(ky * M_PI / d_length * p(1));
       for (int kz = 0; kz < N; kz += 1) {
         const double mul_z = std::cos(kz * M_PI / d_length * p(2));
-        acc += d_stochastic_coefficients[N * N * kx + N * ky + kz] * normalization * mul_x * mul_y * mul_z;
+        acc += d_stochastic_coefficients[N * N * kx + N * ky + kz] * heavyside_value * normalization * mul_x * mul_y * mul_z;
       }
     }
   }
