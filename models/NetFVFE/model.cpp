@@ -426,7 +426,7 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
 void netfvfe::Model::compute_qoi() {
 
   // initialize qoi data
-  const int N = 23;
+  const int N = 31;
   std::vector<double> qoi(N, 0.);
   if (d_qoi.d_vec.empty()) {
     d_qoi = util::QoIVec(
@@ -436,7 +436,11 @@ void netfvfe::Model::compute_qoi() {
        "l_v_std", "l_v_total", "vessel_vol", "vessel_density",
        "network_total_added_length", "network_total_removed_length",
        "network_total_added_volume", "network_total_removed_volume",
-       "network_total_length", "network_total_volume"});
+       "network_total_length", "network_total_volume",
+       "min_tumor", "max_tumor",
+       "min_hypoxic", "max_hypoxic",
+       "min_prolific", "max_prolific",
+       "min_necrotic", "max_necrotic"});
 
     d_log.log_qoi_header(d_time, d_qoi.get_names());
   }
@@ -479,6 +483,44 @@ void netfvfe::Model::compute_qoi() {
   d_network.get_length_and_volume_of_network(length, volume);
   qoi[i + 4] = length;
   qoi[i + 5] = volume;
+
+  // we save the min and max values of the tumor, hypoxic and prolific concentrations.
+  i = i + 6;
+  {
+    auto min = d_tum.d_sys.solution->min();
+    d_mesh.comm().min(min);
+    auto max = d_tum.d_sys.solution->max();
+    d_mesh.comm().max(max);
+    qoi[i++] = min;
+    qoi[i++] = max;
+  }
+
+  {
+    auto min = d_hyp.d_sys.solution->min();
+    d_mesh.comm().min(min);
+    auto max = d_hyp.d_sys.solution->max();
+    d_mesh.comm().max(max);
+    qoi[i++] = min;
+    qoi[i++] = max;
+  }
+
+  {
+    auto min = d_pro.d_sys.solution->min();
+    d_mesh.comm().min(min);
+    auto max = d_pro.d_sys.solution->max();
+    d_mesh.comm().max(max);
+    qoi[i++] = min;
+    qoi[i++] = max;
+  }
+
+  {
+    auto min = d_nec.d_sys.solution->min();
+    d_mesh.comm().min(min);
+    auto max = d_nec.d_sys.solution->max();
+    d_mesh.comm().max(max);
+    qoi[i++] = min;
+    qoi[i++] = max;
+  }
 
   d_qoi.add(qoi);
 
