@@ -425,22 +425,24 @@ void netfvfe::Model::write_system(const unsigned int &t_step) {
 
 void netfvfe::Model::compute_qoi() {
 
+  std::vector<std::string> qoi_names =  {"tumor_mass", "hypoxic_mass", "necrotic_mass", "prolific_mass",
+                                         "nutrient_mass", "tumor_l2", "hypoxic_l2", "necrotic_l2",
+                                         "prolific_l2", "nutrient_l2", "r_v_mean", "r_v_std", "l_v_mean",
+                                         "l_v_std", "l_v_total", "vessel_vol", "vessel_density",
+                                         "network_total_added_length", "network_total_removed_length",
+                                         "network_total_added_volume", "network_total_removed_volume",
+                                         "network_total_length", "network_total_volume",
+                                         "min_tumor", "max_tumor",
+                                         "min_hypoxic", "max_hypoxic",
+                                         "min_prolific", "max_prolific",
+                                         "min_necrotic", "max_necrotic",
+                                         "time" };
+
   // initialize qoi data
-  const int N = 31;
+  const auto N = qoi_names.size();
   std::vector<double> qoi(N, 0.);
   if (d_qoi.d_vec.empty()) {
-    d_qoi = util::QoIVec(
-      {"tumor_mass", "hypoxic_mass", "necrotic_mass", "prolific_mass",
-       "nutrient_mass", "tumor_l2", "hypoxic_l2", "necrotic_l2",
-       "prolific_l2", "nutrient_l2", "r_v_mean", "r_v_std", "l_v_mean",
-       "l_v_std", "l_v_total", "vessel_vol", "vessel_density",
-       "network_total_added_length", "network_total_removed_length",
-       "network_total_added_volume", "network_total_removed_volume",
-       "network_total_length", "network_total_volume",
-       "min_tumor", "max_tumor",
-       "min_hypoxic", "max_hypoxic",
-       "min_prolific", "max_prolific",
-       "min_necrotic", "max_necrotic"});
+    d_qoi = util::QoIVec(qoi_names);
 
     d_log.log_qoi_header(d_time, d_qoi.get_names());
   }
@@ -521,6 +523,8 @@ void netfvfe::Model::compute_qoi() {
     qoi[i++] = min;
     qoi[i++] = max;
   }
+
+  qoi[i++] = d_time;
 
   d_qoi.add(qoi);
 
