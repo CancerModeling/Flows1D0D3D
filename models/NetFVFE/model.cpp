@@ -302,6 +302,10 @@ netfvfe::Model::Model(
   d_nut.init_localized_sol(*d_comm_p);
   d_taf.init_localized_sol(*d_comm_p);
 
+  // for velocity system, assembly matrix only once and then re-use
+  // this restricts libmesh from zeroing matrix and vector
+  d_vel.d_sys.zero_out_matrix_and_rhs = false;
+
   // save setup end time
   clock_end = steady_clock::now();
   d_log.d_setup_time = util::TimePair(clock_begin, clock_end);
@@ -948,6 +952,10 @@ void netfvfe::Model::solve_system_nutrient_explicit() {
 }
 
 void netfvfe::Model::solve_pressure() {
+
+  // disable matrix assembly for velocity
+  if (d_step > 1)
+    d_vel.d_assemble_matrix = false;
 
   // If d_solve_pres_with_net_update = true, solve for pressure only after
   // the network update

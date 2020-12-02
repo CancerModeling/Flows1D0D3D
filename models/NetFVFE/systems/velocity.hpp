@@ -39,6 +39,10 @@ public:
 public:
   /*! @brief Pointer reference to model */
   Model *d_model_p;
+
+private:
+  /*! @brief Assembly */
+  void assemble_1();
 };
 
 } // namespace netfvfe
