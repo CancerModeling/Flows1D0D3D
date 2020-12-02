@@ -40,7 +40,7 @@ public:
         d_qpoints_face(d_fe_face->get_xyz()), d_JxW_face(d_fe_face->get_JxW()),
         d_phi_face(d_fe_face->get_phi()), d_dphi_face(d_fe_face->get_dphi()),
         d_qface_normals(d_fe_face->get_normals()), d_localized_sol(nullptr),
-        d_implicit_assembly(true) {
+        d_assemble_matrix(true), d_implicit_assembly(true) {
 
     d_dof_indices_sys_var.resize(d_num_vars);
 
@@ -566,6 +566,9 @@ public:
   /*! @brief Localized solution vector */
   std::unique_ptr<NumericVector<Number>> d_localized_sol;
   std::vector<Number> d_localized_sol_std;
+
+  /*! @brief init assembly matrix */
+  bool d_assemble_matrix;
 
   /*! @brief Assembly type (implicit or explicit) */
   bool d_implicit_assembly;
