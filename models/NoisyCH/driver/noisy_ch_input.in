@@ -4,9 +4,9 @@ size_x = 5
 size_y = 5
 size_z = 5
 
-use3D = False
+use3D = True
 
-cubic_root_num_eigenfunctions = 8
+num_terms_bound = 9
 seed = 42
 scale = 0.01
 length = 1.
