@@ -128,6 +128,7 @@ void StochasticNoiseAssembly::calculate_new_stochastic_coefficients(const double
       }
     }
   }
+  local_avg = local_avg  / (std::pow(d_length, 3));
 
   // communicate with other processors
   Real global_avg = 0.;
