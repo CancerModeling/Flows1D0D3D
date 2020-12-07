@@ -34,7 +34,10 @@ netfvfe::HypAssembly::HypAssembly(Model *model,
         model->get_input_deck().d_hyp_noise_upper_bound) {}
 
 void netfvfe::HypAssembly::calculate_new_stochastic_coefficients(double dt) {
-  d_noise_assembly.calculate_new_stochastic_coefficients(dt, *this, d_model_p->get_tum_assembly());
+  if (d_model_p->get_input_deck().d_hyp_substract_avg_stoch)
+    d_noise_assembly.calculate_new_stochastic_coefficients(dt, *this, d_model_p->get_tum_assembly());
+  else
+    d_noise_assembly.calculate_new_stochastic_coefficients(dt);
 }
 
 // Assembly class
