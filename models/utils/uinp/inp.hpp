@@ -160,9 +160,11 @@ struct SolverDeck {
 
   bool d_project_solution_to_physical_range;
 
+  std::vector<std::string> d_project_fields;
+
   explicit SolverDeck(const std::string &filename = "")
       : d_linear_max_iters(0), d_linear_tol(0.), d_nonlin_max_iters(0),
-        d_nonlin_tol(0.), d_project_solution_to_physical_range(false) {
+        d_nonlin_tol(0.), d_project_solution_to_physical_range(false){
 
     if (!filename.empty())
       read_parameters(filename);

@@ -376,6 +376,16 @@ void netfvfe::Model::run() {
     d_hyp.calculate_new_stochastic_coefficients(d_dt);
     d_pro.calculate_new_stochastic_coefficients(d_dt);
 
+    // project prolific and hypoxic to physical range
+    if (util::locate_in_set<std::string>("hypoxic", d_input.d_project_fields))
+      d_hyp.project_physical_range();
+    if (util::locate_in_set<std::string>("prolific", d_input.d_project_fields))
+      d_pro.project_physical_range();
+    if (util::locate_in_set<std::string>("necrotic", d_input.d_project_fields))
+      d_nec.project_physical_range();
+    if (util::locate_in_set<std::string>("tumor", d_input.d_project_fields))
+      d_tum.project_physical_range();
+
     // solve tumor-network system
     solve_system();
 
