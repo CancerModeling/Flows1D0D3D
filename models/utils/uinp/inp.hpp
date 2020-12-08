@@ -234,13 +234,14 @@ struct ProlificDeck {
   double d_pro_noise_scale;
   double d_pro_noise_lower_bound;
   double d_pro_noise_upper_bound;
+  bool d_pro_substract_avg_stoch;
 
   explicit ProlificDeck(const std::string &filename = "")
       : d_pro_noise_num_eigenfunctions(0),
         d_pro_noise_seed(4242),
         d_pro_noise_scale(0),
         d_pro_noise_lower_bound(0),
-        d_pro_noise_upper_bound(1) {
+        d_pro_noise_upper_bound(1), d_pro_substract_avg_stoch(false) {
     if (!filename.empty())
       read_parameters(filename);
   }
@@ -267,6 +268,7 @@ struct HypoxicDeck {
   double d_hyp_noise_scale;
   double d_hyp_noise_lower_bound;
   double d_hyp_noise_upper_bound;
+  bool d_hyp_substract_avg_stoch;
 
   explicit HypoxicDeck(const std::string &filename = "")
       : d_bar_M_H(0.), d_lambda_HP(0.), d_lambda_PH(0.), d_lambda_HN(0.),
@@ -275,7 +277,7 @@ struct HypoxicDeck {
         d_hyp_noise_num_eigenfunctions(0),
         d_hyp_noise_seed(4242),
         d_hyp_noise_scale(0),
-        d_hyp_noise_lower_bound(0), d_hyp_noise_upper_bound(1) {
+        d_hyp_noise_lower_bound(0), d_hyp_noise_upper_bound(1), d_hyp_substract_avg_stoch(false) {
 
     if (!filename.empty())
       read_parameters(filename);

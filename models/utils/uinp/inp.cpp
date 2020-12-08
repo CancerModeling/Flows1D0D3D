@@ -269,6 +269,7 @@ void util::HypoxicDeck::read_parameters(const std::string &filename) {
   d_hyp_noise_scale = input("hyp_noise_scale", 0.1);
   d_hyp_noise_lower_bound = input("hyp_noise_lower_bound", 0.0);
   d_hyp_noise_upper_bound = input("hyp_noise_upper_bound", 1.0);
+  d_hyp_substract_avg_stoch = input("hyp_substract_avg_stoch", false);
 }
 
 void util::HypoxicDeck::print(unsigned int level) {}
@@ -284,6 +285,7 @@ void util::ProlificDeck::read_parameters(const std::string &filename) {
   d_pro_noise_scale = input("pro_noise_scale", 0.1);
   d_pro_noise_lower_bound = input("pro_noise_lower_bound", 0.0);
   d_pro_noise_upper_bound = input("pro_noise_upper_bound", 1.0);
+  d_pro_substract_avg_stoch = input("pro_substract_avg_stoch", false);
 }
 
 void util::ProlificDeck::print(unsigned int level) {}
