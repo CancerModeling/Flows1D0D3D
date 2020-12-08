@@ -58,7 +58,7 @@ Number initial_condition_cahnhilliard_circle_2d(const Point &p,
 }
 
 CahnHilliardConfig::CahnHilliardConfig()
-    : cubic_root_num_eigenfunctions(0),
+    : num_terms_bound(0),
       seed(0),
       scale(0),
       length(1),
@@ -74,7 +74,7 @@ CahnHilliardConfig CahnHilliardConfig::from_parameter_file(const std::string &fi
 
   GetPot input(filename);
 
-  config.cubic_root_num_eigenfunctions = input("cubic_root_num_eigenfunctions", config.cubic_root_num_eigenfunctions);
+  config.num_terms_bound = input("num_terms_bound", config.num_terms_bound);
   config.seed = input("seed", config.seed);
   config.scale = input("scale", config.scale);
   config.length = input("length", config.length);
@@ -94,7 +94,7 @@ CahnHilliardAssembly::CahnHilliardAssembly(const std::string &system_name,
                                            const CahnHilliardConfig &config)
     : util::BaseAssembly(system_name, mesh, sys, 2, {sys.variable_number("concentration"), sys.variable_number("potential")}),
       d_noise_assembly(
-        std::pow(config.cubic_root_num_eigenfunctions, 3),
+        config.num_terms_bound,
         config.seed,
         config.scale,
         config.length,
@@ -130,7 +130,20 @@ void CahnHilliardAssembly::assemble_1() {
         c_cur += d_phi[l][qp] * get_current_sol_var(l, 0);
       }
 
-      const Real mobility = d_mobility_constant * pow(util::proj(c_old) * util::proj(1. - c_old), 2);
+      Real c_max = - std::numeric_limits<Real>::infinity();
+      Real c_min = + std::numeric_limits<Real>::infinity();
+
+      for (unsigned int l = 0; l < d_phi.size(); l++) {
+        c_max = std::max( get_old_sol_var(l, 0), c_max);
+        c_min = std::min( get_old_sol_var(l, 0), c_min);
+      }
+
+      Real mobility = d_mobility_constant * pow(util::proj(c_old) * util::proj(1. - c_old), 2);
+
+      //if (c_min < 1e-9 || c_max > 1-1e-9) mobility = 0;
+      if (c_min < 1e-1 || c_max > 1-1e-1) mobility = 0;
+
+      // const Real mobility = d_mobility_constant * pow(util::proj(c_old) * util::proj(1. - c_old), 2);
       // const Real mobility = 1.;
 
       const Real compute_rhs_c = d_JxW[qp] * (d_dt * c_old * (1 - c_old) + c_old);

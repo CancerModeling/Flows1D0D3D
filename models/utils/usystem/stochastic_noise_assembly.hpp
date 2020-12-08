@@ -8,7 +8,7 @@ namespace util {
 /*! @brief Creates and assembles noise from a cylindrical Wiener process. */
 class StochasticNoiseAssembly {
 public:
-  StochasticNoiseAssembly(unsigned int num_eigenfunctions,
+  StochasticNoiseAssembly(unsigned int num_terms_bound,
                           unsigned int seed,
                           double scale,
                           double length,
@@ -52,8 +52,8 @@ public:
   double eval_eigenfunctions_at_quadrature_point(const Point &p, double field_value, double total_field_value) const;
 
 private:
-  /*! @brief The number of eigenfuntions of our covariance matrix. */
-  unsigned int d_num_eigenfunctions;
+  /*! @brief The an upper bound for the number of eigenfunctions. */
+  unsigned int d_num_terms_bound;
 
   /*! @brief Random number generator. */
   std::default_random_engine d_generator;
@@ -89,6 +89,8 @@ private:
    *  @param rhs             The right hand side vector to which we add the noise
    * */
   void assemble(BaseAssembly &assembly, BaseAssembly &assembly_total, NumericVector<Number> &rhs) const;
+
+  std::size_t num_basis_functions() const;
 };
 
 } // namespace util

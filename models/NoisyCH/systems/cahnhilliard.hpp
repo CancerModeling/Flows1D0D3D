@@ -35,7 +35,7 @@ Number initial_condition_cahnhilliard_circle_3d(const Point &p,
 
 class CahnHilliardConfig {
 public:
-  unsigned int cubic_root_num_eigenfunctions;
+  unsigned int num_terms_bound;
   unsigned int seed;
   double scale;
   double length;
