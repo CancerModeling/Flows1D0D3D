@@ -183,6 +183,23 @@ void util::SolverDeck::read_parameters(const std::string &filename) {
 
   d_project_solution_to_physical_range =
     input("project_solution_to_phyiscal_range", false);
+
+  // find which fields need to be projected
+  bool field_project = input("project_prolific", false);
+  if (field_project)
+    d_project_fields.emplace_back("prolific");
+
+  field_project = input("project_hypoxic", false);
+  if (field_project)
+    d_project_fields.emplace_back("hypoxic");
+
+  field_project = input("project_necrotic", false);
+  if (field_project)
+    d_project_fields.emplace_back("necrotic");
+
+  field_project = input("project_tumor", false);
+  if (field_project)
+    d_project_fields.emplace_back("tumor");
 }
 
 void util::SolverDeck::print(unsigned int level) {}
