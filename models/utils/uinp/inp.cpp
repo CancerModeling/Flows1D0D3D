@@ -183,6 +183,23 @@ void util::SolverDeck::read_parameters(const std::string &filename) {
 
   d_project_solution_to_physical_range =
     input("project_solution_to_phyiscal_range", false);
+
+  // find which fields need to be projected
+  bool field_project = input("project_prolific", false);
+  if (field_project)
+    d_project_fields.emplace_back("prolific");
+
+  field_project = input("project_hypoxic", false);
+  if (field_project)
+    d_project_fields.emplace_back("hypoxic");
+
+  field_project = input("project_necrotic", false);
+  if (field_project)
+    d_project_fields.emplace_back("necrotic");
+
+  field_project = input("project_tumor", false);
+  if (field_project)
+    d_project_fields.emplace_back("tumor");
 }
 
 void util::SolverDeck::print(unsigned int level) {}
@@ -252,6 +269,7 @@ void util::HypoxicDeck::read_parameters(const std::string &filename) {
   d_hyp_noise_scale = input("hyp_noise_scale", 0.1);
   d_hyp_noise_lower_bound = input("hyp_noise_lower_bound", 0.0);
   d_hyp_noise_upper_bound = input("hyp_noise_upper_bound", 1.0);
+  d_hyp_substract_avg_stoch = input("hyp_substract_avg_stoch", false);
 }
 
 void util::HypoxicDeck::print(unsigned int level) {}
@@ -267,6 +285,7 @@ void util::ProlificDeck::read_parameters(const std::string &filename) {
   d_pro_noise_scale = input("pro_noise_scale", 0.1);
   d_pro_noise_lower_bound = input("pro_noise_lower_bound", 0.0);
   d_pro_noise_upper_bound = input("pro_noise_upper_bound", 1.0);
+  d_pro_substract_avg_stoch = input("pro_substract_avg_stoch", false);
 }
 
 void util::ProlificDeck::print(unsigned int level) {}

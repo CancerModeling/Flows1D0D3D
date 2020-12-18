@@ -82,6 +82,11 @@ public:
   double compute_qoi(const std::string &type, unsigned int local_var_id = 0);
 
   /*!
+   * @brief project solution to the physical range
+   */
+  void project_physical_range(unsigned int local_var_id = 0, double min = 0., double max = 1.);
+
+  /*!
    * @brief Initializes the fe and local matrix and vector
    *
    * @param elem Pointer to the element
