@@ -71,3 +71,23 @@ double util::BaseAssembly::compute_qoi(const std::string &type, unsigned int loc
 
   return total_qoi;
 }
+
+void util::BaseAssembly::project_physical_range(unsigned int local_var_id, double min, double max) {
+
+  // loop over nodes and modify dofs
+  for (const auto &node : d_mesh.local_node_ptr_range()) {
+
+    const auto &dof = node->dof_number(d_sys.number(), d_var_id[local_var_id], 0);
+
+    auto val = d_sys.current_solution(dof);
+    if (val < min)
+      d_sys.solution->add(dof, -val + min);
+    else if (val > max)
+      d_sys.solution->add(dof, -val + max);
+    else
+      continue;
+  }
+
+  d_sys.solution->close();
+  d_sys.update();
+}

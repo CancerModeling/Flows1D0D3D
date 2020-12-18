@@ -29,6 +29,25 @@ public:
    */
   void calculate_new_stochastic_coefficients(double dt);
 
+  /*! @brief Calculates new stochastic coefficients for scaling our L2 basis.
+   *         Should be called after every time step.
+   *
+   * Suppose \f$ S = H \Delta W \f$ is the stochastic term, \f$\Delta W = W_{n+1} - W_n\f$, and \f$ H\f$ is the heaviside function.
+   * We compute
+   * - \f$ s = \frac{1}{|\Omega|} \int_{\Omega} H \Delta W dx \f$
+   * - \f$ h = \frac{1}{|\Omega|} \int_{\Omega} H dx \f$
+   * - \f$ sh = s / h \f$ if \f$ h > 0 \f$ otherwise \f$ sh = 0 \f$. This term is calculated in variable d_avg
+   *
+   * Average corrected stochastic term is then given by \f$ S_{new} = H \Delta W - H sh = H (\Delta W - sh) \f$.
+   *
+   * We can check that \f$ \int_{\Omega} S_{new} = 0 \f$.
+   *
+   * @param dt  The current time step size, which determines the standard deviation of our stochastic increments.
+   * @param assembly Assembly object to compute the average of stochastic term over the domain
+   * @param total_assembly Assembly object to compute the average of stochastic term over the domain
+   */
+  void calculate_new_stochastic_coefficients(double dt, BaseAssembly &assembly, BaseAssembly &assembly_total);
+
   /*! @brief Evaluates the sum
    *         sum_{i,j,k}^J sqrt(8/L) * beta_{i,j,k} * cos(i*pi*x/L) * cos(j*pi*y/L) * cos(k*pi*z/L)
    *         where beta_{i,j,k} are our stochastic weights.
@@ -69,6 +88,9 @@ private:
 
   /*! @brief Flag indicating if the right hand side must be reassembled. */
   mutable bool d_reassemble;
+
+  /*! @brief Average of stochastic function over domain */
+  double d_avg;
 
 private:
   /*! @brief Assembles noise from a cylindrical Wiener process for the current time step.
