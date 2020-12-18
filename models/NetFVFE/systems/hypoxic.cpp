@@ -182,7 +182,9 @@ void netfvfe::HypAssembly::assemble_1() {
         mobility = deck.d_bar_M_P * pow(util::proj(hyp_old) * util::proj(1. - tum_old), 2);
 
         compute_rhs_hyp =
-          d_JxW[qp] * (hyp_old + dt * deck.d_lambda_PH * util::heaviside(deck.d_sigma_PH - nut_cur) * pro_cur - dt * deck.d_lambda_HP * util::heaviside(nut_cur - deck.d_sigma_HP) * hyp_old);
+          d_JxW[qp] * (hyp_old + dt * deck.d_lambda_PH * util::heaviside(deck.d_sigma_PH - nut_cur) * util::proj(pro_old)
+                       - dt * deck.d_lambda_HP * util::heaviside(nut_cur - deck.d_sigma_HP) * util::proj(hyp_old)
+                       - dt * deck.d_lambda_HN * util::heaviside(deck.d_sigma_HN - nut_cur) * util::proj(hyp_old));
 
         compute_rhs_mu =
           d_JxW[qp] * (deck.d_bar_E_phi_T * tum_old *
@@ -194,9 +196,7 @@ void netfvfe::HypAssembly::assemble_1() {
 
         compute_mat_hyp =
           d_JxW[qp] * (1. + dt * deck.d_lambda_A -
-                       dt * deck.d_lambda_Ph * nut_cur * util::proj(1. - tum_old) +
-                       dt * deck.d_lambda_HN *
-                         util::heaviside(deck.d_sigma_HN - nut_cur));
+                       dt * deck.d_lambda_Ph * nut_cur * util::proj(1. - tum_old));
       }
 
       // Assembling matrix
