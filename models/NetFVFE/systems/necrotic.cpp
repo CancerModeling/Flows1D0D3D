@@ -23,6 +23,7 @@ void netfvfe::NecAssembly::assemble() {
 void netfvfe::NecAssembly::assemble_1() {
 
   // Get required system alias
+  auto &nec = d_model_p->get_nec_assembly();
   auto &nut = d_model_p->get_nut_assembly();
   auto &hyp = d_model_p->get_hyp_assembly();
 
@@ -35,51 +36,58 @@ void netfvfe::NecAssembly::assemble_1() {
   Real nut_cur = 0.;
   Real hyp_cur = 0.;
 
-  Real nut_proj = 0.;
-  Real hyp_proj = 0.;
+  Real nut_old = 0.;
+  Real hyp_old = 0.;
 
   Real compute_rhs = 0.;
 
   // Looping through elements
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
 
-    init_dof(elem);
+    nec.init_dof(elem);
     nut.init_dof(elem);
     hyp.init_dof(elem);
 
     // init fe and element matrix and vector
-    init_fe(elem);
+    nec.init_fe(elem);
 
     // get nutrient at this element
     nut_cur = nut.get_current_sol(0);
-    nut_proj = util::project_concentration(nut_cur);
 
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
 
-      // Computing solution
-      nec_old = 0.;
-      hyp_cur = 0.;
-      for (unsigned int l = 0; l < d_phi.size(); l++) {
+      if (d_implicit_assembly) {
+        // required
+        // old: nec
+        // new: nut, hyp
+        nec_old = 0.;
+        hyp_cur = 0.;
+        for (unsigned int l = 0; l < d_phi.size(); l++) {
 
-        nec_old += d_phi[l][qp] * get_old_sol(l);
-        hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
-      }
-
-      if (deck.d_assembly_method == 1) {
+          nec_old += d_phi[l][qp] * nec.get_old_sol(l);
+          hyp_cur += d_phi[l][qp] * hyp.get_current_sol_var(l, 0);
+        }
         compute_rhs =
           d_JxW[qp] *
           (nec_old + dt * deck.d_lambda_HN *
-                       util::heaviside(deck.d_sigma_HN - nut_cur) *
-                       hyp_cur);
+                     util::heaviside(deck.d_sigma_HN - nut_cur) *
+                     hyp_cur);
       } else {
+        // required
+        // old: nec, hyp
+        // new: nut
+        nec_old = 0.;
+        hyp_old = 0.;
+        for (unsigned int l = 0; l < d_phi.size(); l++) {
 
-        hyp_proj = util::project_concentration(hyp_cur);
-
+          nec_old += d_phi[l][qp] * nec.get_old_sol(l);
+          hyp_old += d_phi[l][qp] * hyp.get_old_sol_var(l, 0);
+        }
         compute_rhs =
           d_JxW[qp] *
           (nec_old + dt * deck.d_lambda_HN *
-                       util::heaviside(deck.d_sigma_HN - nut_cur) *
-                       hyp_cur);
+                     util::heaviside(deck.d_sigma_HN - nut_cur) *
+                     util::proj(hyp_old));
       }
 
       // Assembling matrix
