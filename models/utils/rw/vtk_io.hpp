@@ -27,9 +27,9 @@
 //#ifdef LIBMESH_HAVE_VTK
 // Ignore "deprecated...header" warning from strstream
 #include "libmesh/ignore_warnings.h"
-#include "vtkType.h"
-#include "vtkSmartPointer.h"
 #include "libmesh/restore_warnings.h"
+#include "vtkSmartPointer.h"
+#include "vtkType.h"
 //#endif
 
 // C++ includes

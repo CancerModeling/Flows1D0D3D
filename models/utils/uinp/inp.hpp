@@ -25,6 +25,8 @@ struct ModelDeck {
 
   std::string d_test_name;
 
+  std::string d_scheme_name;
+
   bool d_advection_active;
 
   bool d_decouple_nutrients;
@@ -41,7 +43,7 @@ struct ModelDeck {
       : d_dim(2), d_domain_type("hyper_cuboid"),
         d_domain_params(std::vector<double>(6, 0.)), d_assembly_method(2),
         d_test_name(""), d_advection_active(false), d_decouple_nutrients(false), d_seed(-1), d_coupled_1d3d(false), d_solve_ecm(true),
-        d_solve_pres_with_net_update(false) {
+        d_solve_pres_with_net_update(false), d_scheme_name("solve_explicit") {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -158,9 +160,11 @@ struct SolverDeck {
 
   bool d_project_solution_to_physical_range;
 
+  std::vector<std::string> d_project_fields;
+
   explicit SolverDeck(const std::string &filename = "")
       : d_linear_max_iters(0), d_linear_tol(0.), d_nonlin_max_iters(0),
-        d_nonlin_tol(0.), d_project_solution_to_physical_range(false) {
+        d_nonlin_tol(0.), d_project_solution_to_physical_range(false){
 
     if (!filename.empty())
       read_parameters(filename);
@@ -224,6 +228,29 @@ struct TumorDeck {
   void print(unsigned int level = 0);
 };
 
+struct ProlificDeck {
+  unsigned int d_pro_noise_num_eigenfunctions;
+  unsigned int d_pro_noise_seed;
+  double d_pro_noise_scale;
+  double d_pro_noise_lower_bound;
+  double d_pro_noise_upper_bound;
+  bool d_pro_substract_avg_stoch;
+
+  explicit ProlificDeck(const std::string &filename = "")
+      : d_pro_noise_num_eigenfunctions(0),
+        d_pro_noise_seed(4242),
+        d_pro_noise_scale(0),
+        d_pro_noise_lower_bound(0),
+        d_pro_noise_upper_bound(1), d_pro_substract_avg_stoch(false) {
+    if (!filename.empty())
+      read_parameters(filename);
+  }
+
+  void read_parameters(const std::string &filename);
+
+  void print(unsigned int level = 0);
+};
+
 struct HypoxicDeck {
   double d_bar_M_H;
   double d_lambda_HP;
@@ -236,10 +263,21 @@ struct HypoxicDeck {
   double d_bar_E_phi_H;
   double d_epsilon_H;
 
+  unsigned int d_hyp_noise_num_eigenfunctions;
+  unsigned int d_hyp_noise_seed;
+  double d_hyp_noise_scale;
+  double d_hyp_noise_lower_bound;
+  double d_hyp_noise_upper_bound;
+  bool d_hyp_substract_avg_stoch;
+
   explicit HypoxicDeck(const std::string &filename = "")
       : d_bar_M_H(0.), d_lambda_HP(0.), d_lambda_PH(0.), d_lambda_HN(0.),
         d_sigma_PH(0.), d_sigma_HP(0.), d_sigma_HN(0.),
-        d_bar_E_phi_H(0.), d_epsilon_H(0.) {
+        d_bar_E_phi_H(0.), d_epsilon_H(0.),
+        d_hyp_noise_num_eigenfunctions(0),
+        d_hyp_noise_seed(4242),
+        d_hyp_noise_scale(0),
+        d_hyp_noise_lower_bound(0), d_hyp_noise_upper_bound(1), d_hyp_substract_avg_stoch(false) {
 
     if (!filename.empty())
       read_parameters(filename);
@@ -274,6 +312,12 @@ struct TAFDeck {
   double d_D_TAF;
   double d_delta_TAF;
   double d_lambda_TAF;
+
+  // lower threshold of hypoxic concentration necessary to trigger TAF production
+  double d_sigma_HTAF;
+
+  // natural decay of the TAF production
+  double d_lambda_TAF_deg;
 
   std::vector<int> d_taf_source_type;
   std::vector<std::vector<double>> d_taf_source_center;
@@ -475,6 +519,14 @@ struct NetworkDeck {
   double d_network_bifurcate_prob;
   double d_min_radius;
   double d_sprouting_prob;
+  double d_network_update_absolute_upper_threshold_1d;
+  double d_network_update_absolute_upper_threshold_3d;
+  double d_network_update_relative_upper_threshold_1d;
+  double d_network_update_relative_upper_threshold_3d;
+
+  double d_k_WSS;
+  double d_k_s;
+  double d_offset_tau;
 
   // parameters below are not used currently
   int d_no_branch_dist;
@@ -504,6 +556,10 @@ struct NetworkDeck {
         d_assembly_factor_p_t(1.), d_assembly_factor_c_t(1.),
         d_identify_vein_pres(0.), d_compute_elem_weights(false),
         d_network_bifurcate_prob(0.9), d_min_radius(8.5e-3), d_sprouting_prob(0.9),
+        d_network_update_absolute_upper_threshold_1d(std::numeric_limits<double>::max()),
+        d_network_update_absolute_upper_threshold_3d(std::numeric_limits<double>::max()),
+        d_network_update_relative_upper_threshold_1d(std::numeric_limits<double>::max()),
+        d_network_update_relative_upper_threshold_3d(std::numeric_limits<double>::max()),
         d_identify_artery_radius(0.), d_coupling_3d1d_integration_method(0), d_disable_remove_redundant_vessel(false),
         d_min_length_for_sprouting(0.) {
 
@@ -607,6 +663,7 @@ struct InputDeck : public ModelDeck,
                    public NutrientDeck,
                    public TumorDeck,
                    public HypoxicDeck,
+                   public ProlificDeck,
                    public NecroticDeck,
                    public TAFDeck,
                    public ECMDeck,
@@ -623,10 +680,10 @@ public:
       : ModelDeck(filename), RestartDeck(filename), MeshDeck(filename),
         TimeDeck(filename), SolverDeck(filename), OutputDeck(filename),
         NutrientDeck(filename), TumorDeck(filename), HypoxicDeck(filename),
-        NecroticDeck(filename), TAFDeck(filename), ECMDeck(filename),
-        MDEDeck(filename), NutrientICDeck(filename), TumorICDeck(filename),
-        NutrientBCDeck(filename), NetworkDeck(filename), Flow1DDeck(filename),
-        FlowDeck(filename){};
+        ProlificDeck(filename), NecroticDeck(filename), TAFDeck(filename),
+        ECMDeck(filename), MDEDeck(filename), NutrientICDeck(filename),
+        TumorICDeck(filename), NutrientBCDeck(filename), NetworkDeck(filename),
+        Flow1DDeck(filename), FlowDeck(filename){};
 
   //
   void print(unsigned int level = 0){
@@ -672,6 +729,11 @@ public:
 
 {
   HypoxicDeck *deck = this;
+  deck->print();
+}
+
+{
+  ProlificDeck *deck = this;
   deck->print();
 }
 

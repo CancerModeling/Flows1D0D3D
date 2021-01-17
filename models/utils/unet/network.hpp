@@ -9,8 +9,8 @@
 #define UTIL_UNET_NETWORK_H
 
 // Libmesh
-#include "utils.hpp"
 #include "random_dist.hpp"
+#include "utils.hpp"
 
 // gmm dependencies
 #include "gmm.h"
@@ -42,8 +42,18 @@ class Network {
 
 public:
   /*! @brief Constructor */
-  Network(util::BaseModel *model)
-      : d_has_network_changed(false), d_model_p(model), d_update_number(0), d_coupled_solver(false), d_comm_p(model->get_comm()), d_procRank(0), d_procSize(0) {
+  explicit Network(util::BaseModel *model)
+      : d_has_network_changed(false),
+        d_model_p(model),
+        d_update_number(0),
+        d_coupled_solver(false),
+        d_comm_p(model->get_comm()),
+        d_procRank(0),
+        d_procSize(0),
+        total_added_length(0.0),
+        total_removed_length(0.0),
+        total_added_volume(0.0),
+        total_removed_volume(0.0) {
 
     // initialize random distribution samplers
     const auto &input = d_model_p->get_input_deck();
@@ -59,9 +69,41 @@ public:
     d_uniformDist.init(0., 1., input.d_seed);
   }
 
-  const util::unet::ListStructure<util::unet::VGNode> &get_mesh() const { return VGM; }
+  const ListStructure<VGNode> &get_mesh() const { return VGM; }
 
-  util::unet::ListStructure<util::unet::VGNode> &get_mesh() { return VGM; }
+  ListStructure<VGNode> &get_mesh() { return VGM; }
+
+  /**
+   * @name Vector-Copy-Functions
+   * @brief Utility functions to copy data into and out of the network.
+   */
+  /**@{*/
+
+  /*! @brief Unmarks all the nodes in the network by setting the node_marked attribute to false. */
+  void unmark_network_nodes();
+
+  /*! @brief Marks all the nodes connected to an initial node by setting the node_marked attribute to true. */
+  void mark_nodes_connected_with_initial_nodes();
+
+  /*! @brief Adds the volume and length of all vessels in contact with unmarked vertices.
+   *         This function call normally precedes a call which deletes the unmarked to gather statistics about edge removal.
+   */
+  void add_lengths_and_volumes_of_unmarked_network(double &length, double &volume);
+
+  /*! @brief Gets the overall volume and length of all vessels in the network. */
+  void get_length_and_volume_of_network(double &length, double &volume);
+
+  /*! @brief Returns the number of bifurcation in the network. */
+  int get_number_of_bifurcations();
+
+  /*! @brief Deletes nodes with a node_marked attribute set to true. */
+  void delete_unmarked_nodes();
+
+  /*! @brief Reenumerates the network dofs. Must be called after deleting nodes. */
+  void reenumerate_dofs();
+
+  /*! @brief Removes all the nodes which are not connected with the initial network. */
+  void delete_unconnected_nodes();
 
   /**
    * @name Input-output
@@ -82,8 +124,6 @@ public:
 
   void printDataVGM();
 
-  void writeDataToVTKTimeStep_VGM(int timeStep);
-
   void writeDataToVTK_3D(std::vector<double> P_3D, int N_3D, double h_3D);
 
   void writeDataToVTK3D_Pressure(std::vector<double> P_3D, std::vector<std::vector<double>> V_3D, int N_3D, double h_3D, int timeStep);
@@ -97,25 +137,28 @@ public:
    */
   /**@{*/
 
-  void assemble3D1DSystemForPressure(BaseAssembly
-                                       &pres_sys,
-                                     BaseAssembly &tum_sys);
+  /*! @brief Assembles the fully coupled 1D-3D pressure system */
+  void assemble3D1DSystemForPressure(BaseAssembly &pres_sys, BaseAssembly &tum_sys);
 
+  /*! @brief Assembles the fully coupled 1D-3D nutrient system */
   void assemble3D1DSystemForNutrients(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
 
-  void solve3D1DFlowProblem(BaseAssembly
-                              &pres_sys,
-                            BaseAssembly &tum_sys);
+  /*! @brief Solves the fully coupled 1D-3D pressure problem */
+  void solve3D1DFlowProblem(BaseAssembly &pres_sys, BaseAssembly &tum_sys);
 
+  /*! @brief Solves the fully coupled 1D-3D nutrient problem */
   void solve3D1DNutrientProblem(BaseAssembly &nut_sys, BaseAssembly &tum_sys);
 
-  /*! @brief Solve 1-d system */
+  /*! @brief Assembles the 1D pressure system */
   void assembleVGMSystemForPressure(BaseAssembly &pres_sys);
 
+  /*! @brief Solves one iteration of the decoupled 1D-3D pressure problem */
   void solveVGMforPressure(BaseAssembly &pres_sys);
 
+  /*! @brief Assembles the 1D nutrient system */
   void assembleVGMSystemForNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys);
 
+  /*! @brief Solves one iteration of the decoupled 1D-3D nutrient problem */
   void solveVGMforNutrient(BaseAssembly &pres_sys, BaseAssembly &nut_sys);
 
   /** @}*/
@@ -137,6 +180,8 @@ public:
   void createALinkingNode(std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer);
 
   void linkTerminalVessels();
+
+  bool linkToNearestNetworkNode(std::shared_ptr<VGNode> &pointer);
 
   bool testCollision(std::vector<double> point);
 
@@ -197,6 +242,8 @@ public:
   void prepare_and_communicate_network();
   void update_and_communicate_bdry_flag();
   void check_vessel_length();
+
+  void removeSingleEdges();
 
   /** @}*/
 
@@ -315,6 +362,18 @@ public:
 
   double L_p;
   double L_s;
+
+  /*! @brief Counts how much vessel length is added during a growth step. */
+  double total_added_length;
+
+  /*! @brief Counts how much vessel length is removed during a growth step. */
+  double total_removed_length;
+
+  /*! @brief Counts how much vessel vessel volume is added during a growth step. */
+  double total_added_volume;
+
+  /*! @brief Counts how much vessel vessel volume is removed during a growth step. */
+  double total_removed_volume;
 
   unsigned int d_update_number;
   unsigned int d_update_interval;

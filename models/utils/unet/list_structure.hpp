@@ -27,11 +27,11 @@ public:
     head = tail = NULL;
   }
 
-  ~ListStructure() {}
+  ~ListStructure() = default;
 
   bool isEmpty() {
 
-    return (head == NULL) ? true : false;
+    return (head == NULL);
   }
 
   void attachNode(Node newNode) {
@@ -71,6 +71,15 @@ public:
   std::shared_ptr<Node> getHead() {
 
     return head;
+  }
+
+
+  void setHead(const std::shared_ptr<Node> &_head) {
+    head = _head;
+  }
+
+  void setTail(const std::shared_ptr<Node> &_tail) {
+    tail = _tail;
   }
 
   const std::shared_ptr<Node> getHead() const {
@@ -161,6 +170,8 @@ public:
 
       pointer = pointer->global_successor;
     }
+
+    throw std::runtime_error("could not find node with index " + std::to_string(indexOfNode));
   }
 };
 

@@ -39,7 +39,8 @@ public:
         d_fe_face(FEBase::build(d_mesh.mesh_dimension(), d_fe_type)),
         d_qpoints_face(d_fe_face->get_xyz()), d_JxW_face(d_fe_face->get_JxW()),
         d_phi_face(d_fe_face->get_phi()), d_dphi_face(d_fe_face->get_dphi()),
-        d_qface_normals(d_fe_face->get_normals()), d_localized_sol(nullptr) {
+        d_qface_normals(d_fe_face->get_normals()), d_localized_sol(nullptr),
+        d_assemble_matrix(true), d_implicit_assembly(true) {
 
     d_dof_indices_sys_var.resize(d_num_vars);
 
@@ -79,6 +80,11 @@ public:
    * @brief compute norm of the system
    */
   double compute_qoi(const std::string &type, unsigned int local_var_id = 0);
+
+  /*!
+   * @brief project solution to the physical range
+   */
+  void project_physical_range(unsigned int local_var_id = 0, double min = 0., double max = 1.);
 
   /*!
    * @brief Initializes the fe and local matrix and vector
@@ -565,6 +571,12 @@ public:
   /*! @brief Localized solution vector */
   std::unique_ptr<NumericVector<Number>> d_localized_sol;
   std::vector<Number> d_localized_sol_std;
+
+  /*! @brief init assembly matrix */
+  bool d_assemble_matrix;
+
+  /*! @brief Assembly type (implicit or explicit) */
+  bool d_implicit_assembly;
 };
 
 } // namespace util

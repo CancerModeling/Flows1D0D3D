@@ -136,19 +136,19 @@ void netfvfe::PressureAssembly::assemble_1d_coupling() {
           // Add coupling entry
           numberOfElements = id_3D_elements.size();
 
-          for (int j = 0; j < numberOfElements; j++) {
+          for (int k = 0; k < numberOfElements; k++) {
 
-            if (id_3D_elements[j] > -1) {
+            if (id_3D_elements[k] > -1) {
 
-              const auto *elem = d_mesh.elem_ptr(id_3D_elements[j]);
+              const auto *elem = d_mesh.elem_ptr(id_3D_elements[k]);
               if (elem->processor_id() == d_model_p->get_comm()->rank()) {
                 init_dof(elem);
 
                 // implicit for p_t in source
-                Ke(0, 0) = factor_p * L_p * surface_area * weights[j];
+                Ke(0, 0) = factor_p * L_p * surface_area * weights[k];
 
                 // explicit for p_v in source
-                Fe(0) = factor_p * L_p * surface_area * weights[j] * p_v;
+                Fe(0) = factor_p * L_p * surface_area * weights[k] * p_v;
 
                 // update matrix
                 d_sys.matrix->add_matrix(Ke, d_dof_indices_sys,
@@ -279,21 +279,12 @@ void netfvfe::PressureAssembly::assemble_face() {
 
           ecm_proj = util::project_concentration(ecm_cur);
 
-          if (deck.d_assembly_method == 1) {
-            Sp = (chem_pro_cur + deck.d_chi_c * nut_cur +
-                  deck.d_chi_h * ecm_cur) *
-                   pro_grad +
-                 (chem_hyp_cur + deck.d_chi_c * nut_cur +
-                  deck.d_chi_h * ecm_cur) *
-                   hyp_grad;
-          } else {
-            Sp = (chem_pro_cur + deck.d_chi_c * nut_proj +
-                  deck.d_chi_h * ecm_proj) *
-                   pro_grad +
-                 (chem_hyp_cur + deck.d_chi_c * nut_proj +
-                  deck.d_chi_h * ecm_proj) *
-                   hyp_grad;
-          }
+          Sp = (chem_pro_cur + deck.d_chi_c * nut_cur +
+                deck.d_chi_h * ecm_cur) *
+                 pro_grad +
+               (chem_hyp_cur + deck.d_chi_c * nut_cur +
+                deck.d_chi_h * ecm_cur) *
+                 hyp_grad;
 
           // add to force
           Fe(0) += -factor_p * pro.d_JxW_face[qp] * deck.d_tissue_flow_coeff * Sp * pro.d_qface_normals[qp];

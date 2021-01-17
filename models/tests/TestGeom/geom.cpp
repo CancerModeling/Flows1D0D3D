@@ -5,9 +5,9 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "libmesh/point_locator_tree.h"
 #include "tests.hpp"
 #include <utils.hpp>
-#include "libmesh/point_locator_tree.h"
 
 namespace {
 void random_init() { srand(time(nullptr)); }

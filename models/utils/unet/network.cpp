@@ -12,6 +12,171 @@
 #include "network_growth_processes.cpp"
 #include "network_semi_coupled_assembly.cpp"
 
+void util::unet::Network::unmark_network_nodes() {
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+    pointer->node_marked = false;
+
+    pointer = pointer->global_successor;
+  } // loop over vertices
+}
+
+/// Simple depth first search in the graph
+void depth_first_search(std::shared_ptr<util::unet::VGNode> pointer) {
+  pointer->node_marked = true;
+
+  for (auto &neighborPtr : pointer->neighbors) {
+    if (!neighborPtr->node_marked) {
+      depth_first_search(neighborPtr);
+    }
+  }
+}
+
+void util::unet::Network::mark_nodes_connected_with_initial_nodes() {
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+    if (pointer->is_initial_node && !pointer->node_marked) {
+      depth_first_search(pointer);
+    }
+
+    pointer = pointer->global_successor;
+  } // loop over vertices
+}
+
+void util::unet::Network::add_lengths_and_volumes_of_unmarked_network(double &total_length, double &total_volume) {
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+    for (std::size_t idx = 0; idx < pointer->neighbors.size(); idx += 1) {
+      const auto neighbor = pointer->neighbors[idx];
+      // we only count the edge if either the node or its neighbor is not marked:
+      bool one_is_unmarked = !pointer->node_marked || !neighbor->node_marked;
+      // to avoid counting every edge twice, we only count edges,
+      // where the index of our node is smaller than the neighbor index.
+      if (one_is_unmarked && pointer->index < neighbor->index) {
+        const auto length = util::dist_between_points(pointer->coord, neighbor->coord);
+        const auto r = pointer->radii[idx];
+        total_length += length;
+        total_volume += length * r * r * M_PI;
+      }
+    }
+
+    pointer = pointer->global_successor;
+  } // loop over vertices
+}
+
+void util::unet::Network::get_length_and_volume_of_network(double &total_length, double &total_volume) {
+  total_length = 0;
+  total_volume = 0;
+
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+    for (std::size_t idx = 0; idx < pointer->neighbors.size(); idx += 1) {
+      const auto neighbor = pointer->neighbors[idx];
+      // to avoid counting every edge twice, we only count edges,
+      // where the index of our node is smaller than the neighbor index.
+      if (pointer->index < neighbor->index) {
+        const auto length = util::dist_between_points(pointer->coord, neighbor->coord);
+        const auto r = pointer->radii[idx];
+        total_length += length;
+        total_volume += length * r * r * M_PI;
+      }
+    }
+
+    pointer = pointer->global_successor;
+  } // loop over vertices
+}
+
+int util::unet::Network::get_number_of_bifurcations() {
+  int num_bifurcations = 0;
+
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+
+    if (pointer->neighbors.size() > 2)
+      num_bifurcations += 1;
+
+    pointer = pointer->global_successor;
+  } // loop over vertices
+}
+
+
+void util::unet::Network::delete_unmarked_nodes() {
+  // make sure we have at least one node
+  if (VGM.isEmpty())
+    return;
+
+  // 1. remove the nodes from the neighbor list
+  {
+    std::shared_ptr<VGNode> pointer = VGM.getHead();
+
+    auto notMarkedFunctional = [](const VGNode &node) -> bool { return !node.node_marked; };
+
+    while (pointer) {
+      // remove all the marked nodes from the neighbors list
+      // note we have to change several lists at once
+      pointer->remove(notMarkedFunctional);
+
+      pointer = pointer->global_successor;
+    } // loop over vertices
+  }
+
+  // 2. remove the nodes from the global list
+  {
+    std::shared_ptr<VGNode> pointer = VGM.getHead();
+
+    while (pointer) {
+
+      auto predecessor = pointer->global_predecessor;
+      auto successor = pointer->global_successor;
+
+      if (!pointer->node_marked) {
+        // case: we were the last node in the graph
+        if (predecessor == nullptr && successor == nullptr) {
+          VGM.setHead(nullptr);
+          VGM.setTail(nullptr);
+        }
+
+        if (predecessor != nullptr) {
+          predecessor->global_successor = successor;
+        }
+        // case: we were the first node
+        else {
+          VGM.setHead(successor);
+        }
+
+        if (successor != nullptr) {
+          successor->global_predecessor = predecessor;
+        }
+        // case: we were the last node
+        else {
+          VGM.setTail(predecessor);
+        }
+      }
+
+      pointer = pointer->global_successor;
+    } // loop over vertices
+  }
+}
+
+void util::unet::Network::reenumerate_dofs() {
+  int next_index = 0;
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+    pointer->index = next_index;
+
+    pointer = pointer->global_successor;
+    next_index += 1;
+  } // loop over vertices
+}
+
+void util::unet::Network::delete_unconnected_nodes() {
+  unmark_network_nodes();
+  mark_nodes_connected_with_initial_nodes();
+  add_lengths_and_volumes_of_unmarked_network(total_removed_length, total_removed_volume);
+  delete_unmarked_nodes();
+  reenumerate_dofs();
+}
+
 void util::unet::Network::create_initial_network() {
 
   //
@@ -156,6 +321,11 @@ void util::unet::Network::create_initial_network() {
       phi_sigma_old[i] = input.d_nut_ic_value;
       phi_sigma[i] = input.d_nut_ic_value;
     }
+
+    for (int i = 0; i < d_numVertices; i++) {
+      phi_sigma_old[N_tot_3D + i] = 0.0;
+      phi_sigma[N_tot_3D + i] = 0.0;
+    }
   }
 
   // initialize nutrient as one in artery
@@ -205,11 +375,14 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
 
   const auto &input = d_model_p->get_input_deck();
 
+  std::cout << " " << std::endl;
+  std::cout << "Assemble system of equations (pressure)" << std::endl;
+
   assemble3D1DSystemForPressure(pres_sys, tum_sys);
 
   // Solve linear system of equations
-  // std::cout << " " << std::endl;
-  // std::cout << "Solve linear system of equations (pressure)" << std::endl;
+  std::cout << " " << std::endl;
+  std::cout << "Solve linear system of equations (pressure)" << std::endl;
 
   // gmm::iteration iter(10E-11, 2);
 
@@ -220,19 +393,11 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
     P_3D1D = b_flow_3D1D;
   }
 
-  gmm::iteration iter(1.0E-10, 2);
+  gmm::iteration iter(1.0E-10);
 
-  gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50, 1e-8);
-
-  //gmm::ilutp_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D, 50, 1e-4);
-
-  //gmm::ildlt_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
-
-  // gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
+  gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_flow_3D1D);
 
   gmm::gmres(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, restart, iter);
-
-  //gmm::bicgstab(A_flow_3D1D, P_3D1D, b_flow_3D1D, PR, iter);
 
   auto pointer = VGM.getHead();
 
@@ -266,11 +431,16 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
   const auto &input = d_model_p->get_input_deck();
   const auto timeStep = d_model_p->d_step;
 
+  for (int i = 0; i < phi_sigma_old.size(); i++) {
+
+    if (phi_sigma_old[i] > 1.0)
+      phi_sigma_old[i] = 1.0;
+  }
+
   assemble3D1DSystemForNutrients(nut_sys, tum_sys);
 
   // if this is first call inside nonlinear loop, we guess current
   // concentration as old concentration
-
   if (d_model_p->d_nonlinear_step == 0)
     phi_sigma = phi_sigma_old;
   if (d_model_p->d_step == 1)
@@ -291,6 +461,11 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
     int indexOfNode = pointer->index;
 
     pointer->c_v = phi_sigma[N_tot_3D + indexOfNode];
+
+    if (pointer->c_v > 1.0) {
+
+      pointer->c_v = 1.0;
+    }
 
     pointer = pointer->global_successor;
   }
@@ -322,21 +497,23 @@ void util::unet::Network::solveVGMforPressure(BaseAssembly &pres_sys) {
   pres_sys.localize_solution_with_elem_id_numbering_const_elem(P_3D, {0},
                                                                false);
 
+  std::cout << "pressure step 1" << std::endl;
   // solve only on processor zero and then communicate to all other processors
   if (d_procRank == 0) {
 
     assembleVGMSystemForPressure(pres_sys);
 
-    gmm::iteration iter(10E-18);
+    std::cout << "pressure step assembly" << std::endl;
 
-    //  gmm::ilut_precond<gmm::row_matrix<gmm::wsvector<double>>> P(A_VGM, 50,
-    //  1e-5);
+    gmm::iteration iter(10E-18);
 
     gmm::identity_matrix P;
 
     P_v = b;
 
     gmm::bicgstab(A_VGM, P_v, b, P, iter);
+
+    std::cout << "pressure step solve" << std::endl;
 
     std::shared_ptr<VGNode> pointer = VGM.getHead();
 

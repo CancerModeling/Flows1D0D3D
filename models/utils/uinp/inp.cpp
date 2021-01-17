@@ -55,6 +55,8 @@ void util::ModelDeck::read_parameters(const std::string &filename) {
 
   d_test_name = input("test_name", "");
 
+  d_scheme_name = input("scheme_name", "");
+
   d_advection_active = input("advection_active", true);
 
   d_decouple_nutrients = input("network_decouple_nutrients", true);
@@ -181,6 +183,23 @@ void util::SolverDeck::read_parameters(const std::string &filename) {
 
   d_project_solution_to_physical_range =
     input("project_solution_to_phyiscal_range", false);
+
+  // find which fields need to be projected
+  bool field_project = input("project_prolific", false);
+  if (field_project)
+    d_project_fields.emplace_back("prolific");
+
+  field_project = input("project_hypoxic", false);
+  if (field_project)
+    d_project_fields.emplace_back("hypoxic");
+
+  field_project = input("project_necrotic", false);
+  if (field_project)
+    d_project_fields.emplace_back("necrotic");
+
+  field_project = input("project_tumor", false);
+  if (field_project)
+    d_project_fields.emplace_back("tumor");
 }
 
 void util::SolverDeck::print(unsigned int level) {}
@@ -220,7 +239,7 @@ void util::TumorDeck::read_parameters(const std::string &filename) {
   d_bar_E_phi_T = input("bar_E_phi_T", 0.045);
   d_epsilon_T = input("epsilon_T", 0.005);
 
-  d_bar_E_phi_P = input("bar_E_phi_P", 0.045);
+  d_bar_E_phi_P = input("bar_E_phi_P", 0.0);
   d_epsilon_P = input("epsilon_P", 0.005);
 }
 
@@ -242,11 +261,34 @@ void util::HypoxicDeck::read_parameters(const std::string &filename) {
   d_sigma_HP = input("sigma_HP", 0.5);
   d_sigma_HN = input("sigma_HN", 0.2);
 
-  d_bar_E_phi_H = input("bar_E_phi_H", 0.045);
+  d_bar_E_phi_H = input("bar_E_phi_H", 0.0);
   d_epsilon_H = input("epsilon_H", 0.005);
+
+  d_hyp_noise_num_eigenfunctions = input("hyp_noise_num_eigenfunctions", 0);
+  d_hyp_noise_seed = input("hyp_noise_seed", 104020);
+  d_hyp_noise_scale = input("hyp_noise_scale", 0.1);
+  d_hyp_noise_lower_bound = input("hyp_noise_lower_bound", 0.0);
+  d_hyp_noise_upper_bound = input("hyp_noise_upper_bound", 1.0);
+  d_hyp_substract_avg_stoch = input("hyp_substract_avg_stoch", false);
 }
 
 void util::HypoxicDeck::print(unsigned int level) {}
+
+void util::ProlificDeck::read_parameters(const std::string &filename) {
+  // Open file with model setup
+  if (filename.empty())
+    return;
+
+  GetPot input(filename);
+  d_pro_noise_num_eigenfunctions = input("pro_noise_num_eigenfunctions", 0);
+  d_pro_noise_seed = input("pro_noise_seed", 104020);
+  d_pro_noise_scale = input("pro_noise_scale", 0.1);
+  d_pro_noise_lower_bound = input("pro_noise_lower_bound", 0.0);
+  d_pro_noise_upper_bound = input("pro_noise_upper_bound", 1.0);
+  d_pro_substract_avg_stoch = input("pro_substract_avg_stoch", false);
+}
+
+void util::ProlificDeck::print(unsigned int level) {}
 
 void util::NecroticDeck::read_parameters(const std::string &filename) {
 
@@ -272,6 +314,8 @@ void util::TAFDeck::read_parameters(const std::string &filename) {
   d_D_TAF = input("D_TAF", 10.);
   d_delta_TAF = input("delta_TAF", 1.);
   d_lambda_TAF = input("lambda_TAF", 10.);
+  d_sigma_HTAF = input("sigma_HTAF", 0.);
+  d_lambda_TAF_deg = input("lambda_TAF_deg", 0.);
 
   // see if taf source file is provided
   bool read_csv = false;
@@ -523,6 +567,11 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   d_min_radius = input("network_min_radius", 8.5e-3);
   d_sprouting_prob = input("network_sprouting_prob", 0.9);
 
+  d_network_update_absolute_upper_threshold_1d = input("network_update_absolute_upper_threshold_1d", std::numeric_limits<double>::max());
+  d_network_update_absolute_upper_threshold_3d = input("network_update_absolute_upper_threshold_3d", std::numeric_limits<double>::max());
+  d_network_update_relative_upper_threshold_1d = input("network_update_relative_upper_threshold_1d", std::numeric_limits<double>::max());
+  d_network_update_relative_upper_threshold_3d = input("network_update_relative_upper_threshold_3d", std::numeric_limits<double>::max());
+
   // parameters which are not used currently
   d_no_branch_dist = input("network_no_branch_dist", 1);
   d_new_vessel_max_angle = input("network_new_veesel_max_angle", M_PI / 4.);
@@ -537,6 +586,10 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
     input("network_no_new_node_search_factor", 0.5);
   d_net_direction_lambda_g = input("vessel_lambda_g", 0.);
   d_net_length_R_factor = input("vessel_R_factor", 0.);
+
+  d_k_WSS = input("k_WSS", 0.45);
+  d_k_s = input("k_s", 0.25);
+  d_offset_tau = input("offset_tau", 0.02);
 }
 
 void util::NetworkDeck::print(unsigned int level) {}

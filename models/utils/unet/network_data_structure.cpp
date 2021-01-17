@@ -156,7 +156,8 @@ void util::unet::Network::transferDataToVGM(std::vector<std::vector<double>> &ve
     pointer_1->neighbors.push_back(pointer_2);
     pointer_1->edge_touched.push_back(false);
     pointer_1->sprouting_edge.push_back(false);
-    pointer_1->tau_w_initial.push_back(0.); // we missed this
+    pointer_1->tau_w_initial.push_back(0.);
+    pointer_1->is_given = true;
 
     pointer_2->radii.push_back(radius);
     pointer_2->radii_initial.push_back(radius);
@@ -165,7 +166,8 @@ void util::unet::Network::transferDataToVGM(std::vector<std::vector<double>> &ve
     pointer_2->neighbors.push_back(pointer_1);
     pointer_2->edge_touched.push_back(false);
     pointer_2->sprouting_edge.push_back(false);
-    pointer_2->tau_w_initial.push_back(0.); // we missed this
+    pointer_2->tau_w_initial.push_back(0.);
+    pointer_2->is_given = true;
   }
 }
 
@@ -339,6 +341,8 @@ void util::unet::Network::refine1DMesh() {
         new_node.tau_w_initial.push_back(pointer->tau_w_initial[i]);
 
         new_node.typeOfVGNode = TypeOfNode::InnerNode;
+
+        new_node.is_given = true;
 
         std::shared_ptr<VGNode> pointer_new_node =
           std::make_shared<VGNode>(new_node);
@@ -527,222 +531,6 @@ void util::unet::Network::writeDataToVTK_3D(std::vector<double> P_3D,
         filevtk << P_3D[index] << std::endl;
       }
     }
-  }
-}
-
-void util::unet::Network::writeDataToVTKTimeStep_VGM(int timeStep) {
-
-  //check_vessel_length();
-
-  if (d_model_p->get_comm()->rank() > 0)
-    return;
-
-  const auto &input = d_model_p->get_input_deck();
-
-  // TODO delete when test is done
-  // output segment data for debug
-  //if (d_procRank == 0) {
-  if (false) {
-    std::string path =
-      input.d_outfilename_net + "_segments_" + std::to_string(timeStep) + ".txt";
-    std::ofstream off;
-    off.open(path);
-    for (unsigned int i = 0; i < d_numSegments; i++) {
-      auto node1 = d_segments[2 * i + 0];
-      auto node2 = d_segments[2 * i + 1];
-
-      std::vector<double> coord1, coord2;
-      for (unsigned int j = 0; j < 3; j++) {
-        coord1.push_back(d_vertices[3 * node1 + j]);
-        coord2.push_back(d_vertices[3 * node2 + j]);
-      }
-
-      // radius and length
-      double radius = d_segmentData[i];
-      double length = util::dist_between_points(coord1, coord2);
-      if (length > 0.75)
-        libmesh_error_msg("Error vessel is too long");
-
-      off << node1 << " " << node2 << " " << radius << " " << length << "\n";
-    }
-    off.close();
-  } // debug write segment
-
-  std::string path = input.d_outfilename_net + "_";
-  path += std::to_string(timeStep);
-  path += ".vtk";
-
-  std::fstream filevtk;
-  filevtk.open(path, std::ios::out);
-  filevtk << "# vtk DataFile Version 2.0" << std::endl;
-  filevtk << "Network Nutrient Transport" << std::endl;
-  filevtk << "ASCII" << std::endl;
-  filevtk << "DATASET POLYDATA" << std::endl;
-
-  filevtk << "POINTS " << VGM.getNumberOfNodes() << " float" << std::endl;
-
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
-
-  while (pointer) {
-
-    std::vector<double> coord;
-
-    coord = pointer->coord;
-
-    filevtk << coord[0] << " " << coord[1] << " " << coord[2] << std::endl;
-
-    pointer = pointer->global_successor;
-  }
-
-  int numberOfNodes = 0;
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      if (!pointer->edge_touched[i]) {
-
-        numberOfNodes = numberOfNodes + 1;
-
-        pointer->edge_touched[i] = true;
-
-        pointer->neighbors[i]->markEdge(pointer->index);
-      }
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      pointer->edge_touched[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  int polygons = 3 * numberOfNodes;
-
-  filevtk << " " << std::endl;
-  filevtk << "LINES " << numberOfNodes << " " << polygons << std::endl;
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      if (!pointer->edge_touched[i]) {
-
-        filevtk << "2 " << pointer->index << " " << pointer->neighbors[i]->index
-                << std::endl;
-
-        auto length = util::dist_between_points(pointer->coord,
-                                                pointer->neighbors[i]->coord);
-        //d_model_p->d_log("vessel length: " + std::to_string(length) + "\n",
-        //                "debug");
-        if (util::definitelyGreaterThan(length, 0.75))
-          d_model_p->d_log("vessel is too long\n", "debug");
-
-        pointer->edge_touched[i] = true;
-
-        pointer->neighbors[i]->markEdge(pointer->index);
-      }
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      pointer->edge_touched[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  filevtk << " " << std::endl;
-  filevtk << "CELL_DATA " << numberOfNodes << std::endl;
-  filevtk << "SCALARS radii float 1" << std::endl;
-  filevtk << "LOOKUP_TABLE default" << std::endl;
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      if (!pointer->edge_touched[i]) {
-
-        filevtk << pointer->radii[i] << std::endl;
-
-        pointer->edge_touched[i] = true;
-
-        pointer->neighbors[i]->markEdge(pointer->index);
-      }
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    int numberOfNeighbors = pointer->neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      pointer->edge_touched[i] = false;
-    }
-
-    pointer = pointer->global_successor;
-  }
-
-  filevtk << " " << std::endl;
-  filevtk << "POINT_DATA " << VGM.getNumberOfNodes() << std::endl;
-  filevtk << "SCALARS pressure_1d float 1" << std::endl;
-  filevtk << "LOOKUP_TABLE default" << std::endl;
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    filevtk << pointer->p_v << std::endl;
-
-    pointer = pointer->global_successor;
-  }
-
-  filevtk << "SCALARS nutrient_1d float 1" << std::endl;
-  filevtk << "LOOKUP_TABLE default" << std::endl;
-
-  pointer = VGM.getHead();
-
-  while (pointer) {
-
-    filevtk << pointer->c_v << std::endl;
-
-    pointer = pointer->global_successor;
   }
 }
 

@@ -23,13 +23,13 @@
 // Local includes
 #include "libmesh/libmesh_config.h"
 //#include "libmesh/vtk_io.h"
-#include "libmesh/mesh_base.h"
-#include "libmesh/equation_systems.h"
-#include "libmesh/numeric_vector.h"
-#include "libmesh/system.h"
-#include "libmesh/node.h"
 #include "libmesh/elem.h"
 #include "libmesh/enum_io_package.h"
+#include "libmesh/equation_systems.h"
+#include "libmesh/mesh_base.h"
+#include "libmesh/node.h"
+#include "libmesh/numeric_vector.h"
+#include "libmesh/system.h"
 
 //#ifdef LIBMESH_HAVE_VTK
 
@@ -37,19 +37,19 @@
 // on VTK header files.
 #include "libmesh/ignore_warnings.h"
 
-#include "vtkXMLUnstructuredGridReader.h"
-#include "vtkXMLUnstructuredGridWriter.h"
-#include "vtkXMLPUnstructuredGridWriter.h"
-#include "vtkUnstructuredGrid.h"
-#include "vtkIntArray.h"
 #include "vtkCellArray.h"
 #include "vtkCellData.h"
 #include "vtkConfigure.h"
 #include "vtkDoubleArray.h"
 #include "vtkGenericCell.h"
+#include "vtkIntArray.h"
 #include "vtkPointData.h"
 #include "vtkPoints.h"
 #include "vtkSmartPointer.h"
+#include "vtkUnstructuredGrid.h"
+#include "vtkXMLPUnstructuredGridWriter.h"
+#include "vtkXMLUnstructuredGridReader.h"
+#include "vtkXMLUnstructuredGridWriter.h"
 
 #ifdef LIBMESH_HAVE_MPI
 #include "vtkMPI.h"
