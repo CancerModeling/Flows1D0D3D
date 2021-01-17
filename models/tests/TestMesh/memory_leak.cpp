@@ -6,8 +6,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests.hpp"
-#include <utils.hpp>
 #include "utilLibs.hpp"
+#include <utils.hpp>
 // using namespace libMesh;
 
 static double diri_bc_val = 0.;

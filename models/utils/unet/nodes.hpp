@@ -8,8 +8,8 @@
 #ifndef UTIL_UNET_SEG_FV_H
 #define UTIL_UNET_SEG_FV_H
 
-#include "utils.hpp"
 #include "list_structure.hpp"
+#include "utils.hpp"
 
 // definitions
 #define UNET_FREE_MASK 0x0000
@@ -109,11 +109,12 @@ public:
    */
   VGNode() : index(0), p_v(0.0), c_v(0.0), p_boundary(0.0),
              c_boundary(0.0), edge_touched(false), sprouting_edge(false), apicalGrowth(false),
-             coord(0.0), radii(0.0), radii_initial(0.0), tau_w_initial(0.0), L_p(0.0), notUpdated(0), is_initial_node(false) {}
+             coord(0.0), radii(0.0), radii_initial(0.0), tau_w_initial(0.0), L_p(0.0), notUpdated(0), is_initial_node(false), is_sprouting_node(false),
+             node_marked(false), is_given(false) {}
 
   int index, notUpdated;
 
-  bool apicalGrowth;
+  bool apicalGrowth, is_sprouting_node, is_given;
 
   double p_v, c_v, p_boundary, c_boundary;
 
@@ -132,6 +133,9 @@ public:
   std::vector<ElemWeights> J_b_points;
 
   bool is_initial_node;
+
+  /*! @brief Generic attribute to mark the node to simplify algorithms on the graph. */
+  bool node_marked;
 
   void markEdge(int index) {
 
@@ -168,13 +172,7 @@ public:
     return local_index_neighbor;
   }
 
-  void replacePointerWithLocalIndex(int index_new, std::shared_ptr<VGNode> new_pointer) {
-
-    neighbors[index_new] = new_pointer;
-  }
-
-
-  void replacePointerWithGlobalIndex(int index_new, std::shared_ptr<VGNode> new_pointer) {
+  void replacePointerWithIndex(int index_new, std::shared_ptr<VGNode> new_pointer) {
 
     int numberOfNeighbors = neighbors.size();
 
@@ -251,15 +249,57 @@ public:
     std::cout << "typeOfVGNode: " << typeOfVGNode << std::endl;
     std::cout << "radii_initial: " << radii_initial << std::endl;
     std::cout << "tau_w_initial: " << tau_w_initial << std::endl;
+    std::cout << "is_sprouting_node: " << is_sprouting_node << std::endl;
+
+    if (global_successor) {
+
+      std::cout << "global_successor: " << global_successor->index << std::endl;
+    }
+
+    if (global_predecessor) {
+
+      std::cout << "global_predecessor: " << global_predecessor->index << std::endl;
+    }
 
     int numberOfNeighbors = neighbors.size();
     std::cout << "numberOfNeighbors: " << numberOfNeighbors << std::endl;
+
+    std::cout << " " << std::endl;
 
     for (int i = 0; i < numberOfNeighbors; i++) {
 
       std::cout << "index_neighbor: " << neighbors[i]->index << std::endl;
       std::cout << "coord_neighbor: " << neighbors[i]->coord << std::endl;
+      std::cout << "radius: " << radii[i] << std::endl;
     }
+  }
+
+  void remove(const std::function<bool(const VGNode &)> &predicate) {
+    std::vector<double> radii_new, L_p_new, L_s_new, radii_initial_new, tau_w_initial_new;
+    std::vector<bool> edge_touched_new, sprouting_edge_new;
+    std::vector<std::shared_ptr<VGNode>> neighbors_new;
+
+    for (int i = 0; i < neighbors.size(); i++) {
+      if (!predicate(*neighbors[i])) {
+        radii_new.push_back(radii[i]);
+        L_p_new.push_back(L_p[i]);
+        L_s_new.push_back(L_s[i]);
+        radii_initial_new.push_back(radii_initial[i]);
+        tau_w_initial_new.push_back(tau_w_initial[i]);
+        edge_touched_new.push_back(edge_touched[i]);
+        sprouting_edge_new.push_back(sprouting_edge[i]);
+        neighbors_new.push_back(neighbors[i]);
+      }
+    }
+
+    radii = radii_new;
+    L_p = L_p_new;
+    L_s = L_s_new;
+    radii_initial = radii_initial_new;
+    tau_w_initial = tau_w_initial_new;
+    edge_touched = edge_touched_new;
+    sprouting_edge = sprouting_edge_new;
+    neighbors = neighbors_new;
   }
 
   void removeComponent(int comp) {
@@ -294,6 +334,23 @@ public:
     tau_w_initial = tau_w_initial_new;
     edge_touched = edge_touched_new;
     sprouting_edge = sprouting_edge_new;
+    neighbors = neighbors_new;
+  }
+
+  void removePointer(int comp) {
+
+    int numberOfComponents = neighbors.size();
+
+    std::vector<std::shared_ptr<VGNode>> neighbors_new;
+
+    for (int i = 0; i < numberOfComponents; i++) {
+
+      if (i != comp) {
+
+        neighbors_new.push_back(neighbors[i]);
+      }
+    }
+
     neighbors = neighbors_new;
   }
 
@@ -342,6 +399,26 @@ public:
     edge_touched = edge_touched_new;
     sprouting_edge = sprouting_edge_new;
     neighbors = neighbors_new;
+  }
+
+  void replacePointerWithLocalIndex(int index_new, std::shared_ptr<VGNode> new_pointer) {
+
+    neighbors[index_new] = new_pointer;
+  }
+
+  void replacePointerWithGlobalIndex(int index_new, std::shared_ptr<VGNode> new_pointer) {
+
+    int numberOfNeighbors = neighbors.size();
+
+    for (int i = 0; i < numberOfNeighbors; i++) {
+
+      if (index_new == neighbors[i]->index) {
+
+        neighbors[i] = new_pointer;
+
+        edge_touched[i] = true;
+      }
+    }
   }
 };
 

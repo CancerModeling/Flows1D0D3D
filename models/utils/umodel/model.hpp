@@ -9,9 +9,9 @@
 #define UTIL_BASEMODEL_H
 
 // Libmesh
-#include "utils.hpp"
 #include "logger.hpp"
 #include "qoi.hpp"
+#include "utils.hpp"
 
 // input deck
 #include "uinp/inp.hpp"

@@ -9,6 +9,21 @@
 
 void netfvfe::VelAssembly::assemble() {
 
+  // initialize matrix and rhs vector
+  d_sys.rhs->zero();
+  if (d_assemble_matrix)
+    d_sys.matrix->zero();
+
+  assemble_1();
+
+  // finish
+  d_sys.rhs->close();
+  if (d_assemble_matrix)
+    d_sys.matrix->close();
+}
+
+void netfvfe::VelAssembly::assemble_1() {
+
   // Get required system alias
   auto &pres = d_model_p->get_pres_assembly();
   auto &pro = d_model_p->get_pro_assembly();
@@ -159,18 +174,22 @@ void netfvfe::VelAssembly::assemble() {
         for (unsigned int d = 0; d < deck.d_dim; d++)
           d_Fe_var[d](i) += compute_rhs(d) * d_phi[i][qp];
 
-        for (unsigned int j = 0; j < d_phi.size(); j++) {
+        if (d_assemble_matrix) {
+          for (unsigned int j = 0; j < d_phi.size(); j++) {
 
-          for (unsigned int d = 0; d < deck.d_dim; d++)
-            d_Ke_var[d][d](i, j) +=
-              d_JxW[qp] * factor_p * d_phi[j][qp] * d_phi[i][qp];
+            for (unsigned int d = 0; d < deck.d_dim; d++)
+              d_Ke_var[d][d](i, j) +=
+                d_JxW[qp] * factor_p * d_phi[j][qp] * d_phi[i][qp];
+          }
         }
       }
     } // loop over quadrature points
 
     d_dof_map_sys.heterogenously_constrain_element_matrix_and_vector(d_Ke, d_Fe,
                                                                      d_dof_indices_sys);
-    d_sys.matrix->add_matrix(d_Ke, d_dof_indices_sys);
+
     d_sys.rhs->add_vector(d_Fe, d_dof_indices_sys);
+    if (d_assemble_matrix)
+      d_sys.matrix->add_matrix(d_Ke, d_dof_indices_sys);
   }
 }

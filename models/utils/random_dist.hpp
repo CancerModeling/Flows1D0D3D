@@ -11,6 +11,10 @@
 #include <boost/random.hpp>
 #include <random>
 
+#include "libmesh/parallel.h"
+
+#include "utilIO.hpp"
+
 // boost method
 //typedef boost::mt19937 RandGen;
 //typedef boost::lognormal_distribution<> LogNormalDist;
@@ -77,7 +81,7 @@ public:
   }
 
   // not implemented for this
-  void debug_out(std::string filename) {
+  void debug_out(const std::string &filename) {
     return;
   }
 
@@ -90,7 +94,7 @@ template<class T>
 class DistributionSampleParallel {
 public:
   DistributionSampleParallel(double arg1, double arg2,
-                             Parallel::Communicator *comm,
+                             libMesh::Parallel::Communicator *comm,
                              int seed = -1,
                              unsigned int sample_size = 1000)
       : d_seed(seed), d_curSample(0), d_sampleSize(sample_size),
@@ -114,7 +118,7 @@ public:
         d_procSize(0), d_comm_p(nullptr){};
 
   void init(double arg1, double arg2,
-            Parallel::Communicator *comm,
+            libMesh::Parallel::Communicator *comm,
             int seed = -1,
             unsigned int sample_size = 1000) {
 
@@ -161,7 +165,7 @@ public:
       libmesh_error_msg("Error collecting samples");
   }
 
-  void debug_out(std::string filename) {
+  void debug_out(const std::string &filename) {
     util::io::printFile(filename + "_" + std::to_string(d_procRank) + ".txt", d_samples, 0, " ");
   }
 
@@ -172,7 +176,7 @@ public:
   T d_dist;
   unsigned int d_procRank;
   unsigned int d_procSize;
-  Parallel::Communicator *d_comm_p;
+  libMesh::Parallel::Communicator *d_comm_p;
   std::vector<double> d_samples;
 };
 

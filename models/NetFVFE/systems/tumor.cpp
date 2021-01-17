@@ -30,6 +30,7 @@ void netfvfe::TumAssembly::solve_custom() {
   }
 
   d_sys.solution->close();
+  *d_sys.old_local_solution = *d_sys.solution;
   d_sys.update();
 }
 

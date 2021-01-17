@@ -8,9 +8,10 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include "utilLibs.hpp"
-#include "utilIO.hpp"
+
 #include "utilCompare.hpp"
+#include "utilIO.hpp"
+#include "utilLibs.hpp"
 #include <boost/random.hpp>
 
 //#include "../../external/gmm/gmm.h"
@@ -481,6 +482,11 @@ inline boost::mt19937 get_random_generator_boost(int seed) {
     auto rd = boost::mt19937(seed);
     return rd;
   }
+}
+
+inline double proj(double x) {
+  auto y = 1. < x ? 1. : x;
+  return 0. > y ? 0. : y;
 }
 
 } // namespace util

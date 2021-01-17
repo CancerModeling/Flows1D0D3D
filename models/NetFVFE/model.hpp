@@ -8,11 +8,17 @@
 #ifndef NETFVFE_MODEL_H
 #define NETFVFE_MODEL_H
 
-#include "umodel/model.hpp"
-#include "usystem/ghosting_functor.hpp"
 #include "modelUtil.hpp"
+#include "rw/csv_qoi_writer.hpp"
+#include "rw/matlab_qoi_writer.hpp"
 #include "systems/systems.hpp"
+#include "umodel/model.hpp"
+
+#include "unet/NetworkDGFWriter.h"
+#include "unet/NetworkVTKWriter.h"
 #include "unet/network.hpp"
+#include "usystem/ghosting_functor.hpp"
+#include <utility>
 
 // typedef network
 typedef util::unet::Network Net;
@@ -23,6 +29,7 @@ typedef util::unet::Network Net;
  * docs/NetTum/network_and_tumor_model.pdf for more details.
  */
 namespace netfvfe {
+
 
 void model_setup_run(int argc,
                      char **argv,
@@ -121,6 +128,17 @@ private:
   /*! @brief Solves tumor system */
   void solve_system() override;
 
+  // all 3D systems explicit including 3D+1D nutrient
+  // 1D-3D coupling in Nutrient and pressure is implicit in all cases
+  void solve_system_explicit();
+
+  // Nutrient is explicit ie out of the nonlineat iterations
+  void solve_system_nutrient_explicit();
+
+  // all 3D systems implicit
+  void solve_system_implicit();
+
+
   /*! @brief Compute quantity of interest */
   void compute_qoi() override;
 
@@ -129,9 +147,17 @@ private:
    * iteratively.
    */
   void solve_pressure();
+  void solve_nutrient();
 
   /*! @brief Network class */
   Net d_network;
+
+  /*! @brief Saves the network as a vtk file. */
+  util::unet::NetworkVTKWriter d_networkVtkWriter;
+  util::unet::NetworkDGFWriter d_networkDGFWriter;
+
+  util::MatlabQoIWriter d_qoi_writer;
+  util::CSVQoIWriter d_csv_qoi_writer;
 
   /*! @brief Assembly objects */
   TumAssembly d_tum;
