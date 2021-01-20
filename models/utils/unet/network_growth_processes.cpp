@@ -528,6 +528,8 @@ void util::unet::Network::processApicalGrowth() {
 
   int counter = 0;
 
+  const double global_max_TAF = gmm::vect_norminf(phi_TAF);
+
   while (pointer) {
 
     if (pointer->apicalGrowth) {
@@ -718,8 +720,6 @@ void util::unet::Network::processApicalGrowth() {
       std::vector<double> new_point_link = std::vector<double>(3, 0.0);
 
       bool isIntersecting = testIntersection(coord, new_point_1, radius_p, pointer);
-
-      double global_max_TAF = gmm::vect_norminf(phi_TAF);
 
       // check if we bifurcate at this node
       bool bifurcate = false;
