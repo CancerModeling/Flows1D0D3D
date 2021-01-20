@@ -511,6 +511,13 @@ void util::unet::Network::markApicalGrowth() {
   }
 }
 
+double util::unet::Network::get_maximum_pressure_value_3D() const {
+  double p_max = -std::numeric_limits<double>::infinity();
+  for (int j = 0; j < P_3D.size(); j++)
+    p_max = std::max(p_max, P_3D[j]);
+  return p_max;
+}
+
 void util::unet::Network::processApicalGrowth() {
 
   const auto &input = d_model_p->get_input_deck();
@@ -529,6 +536,8 @@ void util::unet::Network::processApicalGrowth() {
   int counter = 0;
 
   const double global_max_TAF = gmm::vect_norminf(phi_TAF);
+
+  const double p_3d_max = get_maximum_pressure_value_3D();
 
   while (pointer) {
 
@@ -555,8 +564,6 @@ void util::unet::Network::processApicalGrowth() {
       double TAF_max = 0.0;
       double TAF_max_2 = 0.0;
       double TAF_min = 0.0;
-
-      double p_min = 0.0;
 
       std::vector<double> new_point_1 = std::vector<double>(3, 0.0);
       std::vector<double> diff = std::vector<double>(3, 0.0);
@@ -617,13 +624,7 @@ void util::unet::Network::processApicalGrowth() {
       int N_theta = 35;
       int N_r = 35;
 
-      for (int j = 0; j < N_3D; j++) {
-
-        if (P_3D[j] > p_min) {
-
-          p_min = P_3D[j];
-        }
-      }
+      double p_min = p_3d_max;
 
       for (int i_theta = 0; i_theta < N_theta; i_theta++) {
 
