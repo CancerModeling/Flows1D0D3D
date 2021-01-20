@@ -105,6 +105,9 @@ public:
   /*! @brief Removes all the nodes which are not connected with the initial network. */
   void delete_unconnected_nodes();
 
+  /*! @brief Returns the maximum pressure value in 3D. */
+  double get_maximum_pressure_value_3D() const;
+
   /**
    * @name Input-output
    */
