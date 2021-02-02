@@ -41,17 +41,20 @@ inline QuadratureFormula create_trapezoidal_rule() {
 class FETypeNetwork {
 public:
   explicit FETypeNetwork(QuadratureFormula qf)
-      : d_qf(std::move(qf)), d_phi(3), d_dphi(3), d_JxW(3) {
+      : d_qf(std::move(qf)),
+        d_phi(3, std::vector<double>(d_qf.size())),
+        d_dphi(3, std::vector<double>(d_qf.size())),
+        d_JxW(d_qf.size()) {
     for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
-      d_phi[0].push_back(1);
-      d_phi[1].push_back(qf.ref_points[qp]);
-      d_phi[2].push_back(legendre2(qf.ref_points[qp]));
+      d_phi[0][qp] = 1;
+      d_phi[1][qp] = d_qf.ref_points[qp];
+      d_phi[2][qp] = legendre2(d_qf.ref_points[qp]);
 
-      d_dphi[0].push_back(0);
-      d_dphi[1].push_back(NAN);
-      d_dphi[2].push_back(NAN);
+      d_dphi[0][qp] = 0;
+      d_dphi[1][qp] = NAN;
+      d_dphi[2][qp] = NAN;
 
-      d_JxW.push_back(NAN);
+      d_JxW[qp] = NAN;
     }
   }
 
