@@ -46,3 +46,8 @@ if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}" STREQUAL
         "Build_NoisyCH")
     add_subdirectory(NoisyCH)
 endif ()
+
+if ("${LIBTG_BUILD_FLAG}" STREQUAL "Build_All" OR "${LIBTG_BUILD_FLAG}" STREQUAL
+        "Build_Macrocirculation")
+    add_subdirectory(macrocirculation)
+endif ()
