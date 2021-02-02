@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
   auto v0 = graph.create_vertex(lm::Point(0, 0, 0));
   auto v1 = graph.create_vertex(lm::Point(4.0, 0, 0));
   graph.connect(*v0, *v1, ascending_aorta_id);
-  graph.refine(2);
+  graph.refine(4);
 
   const double velocity = 1;
   const double tau = 0.1;
@@ -266,7 +266,12 @@ int main(int argc, char *argv[]) {
     gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A);
     gmm::gmres(A, u_now, f, PR, 500, iter);
 
-    std::cout << u_now << std::endl;
+    for(std::size_t idx = 0; idx < num_dofs/3; idx+=1)
+    {
+      std::cout << u_now[idx*3] - 0.5*u_now[idx*3+2] << ", ";
+      std::cout << "[" << u_now[idx*3] << " " << u_now[idx*3+1] << " " << u_now[idx*3+2] << "] ";
+    }
+    std::cout << endl;
   }
 
   return 0;
