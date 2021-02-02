@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
   auto v0 = graph.create_vertex(lm::Point(0, 0, 0));
   auto v1 = graph.create_vertex(lm::Point(4.0, 0, 0));
   graph.connect(*v0, *v1, ascending_aorta_id);
-  graph.refine(4);
+  graph.refine(2);
 
   const double velocity = 1;
   const double tau = 0.1;
@@ -64,8 +64,8 @@ int main(int argc, char *argv[]) {
 
   gmm::row_matrix<gmm::wsvector<double>> A(num_dofs, num_dofs);
   std::vector<double> f(num_dofs);
-  std::vector<double> u_now(num_dofs);
-  std::vector<double> u_prev(num_dofs);
+  std::vector<double> u_now(num_dofs, 0);
+  std::vector<double> u_prev(num_dofs, 0);
 
   DofMapNetwork dof_map(num_components);
 
@@ -81,7 +81,8 @@ int main(int argc, char *argv[]) {
       f[i] = 0;
 
     // next time step
-    std::swap(u_now, u_prev);
+    for (int i = 0; i < u_now.size(); i++)
+      u_prev[i] = u_now[i];
 
     // assemble cell integrals
     {
@@ -100,12 +101,19 @@ int main(int argc, char *argv[]) {
         fe.reinit(*edge);
         dof_map.dof_indices(*edge, dof_indices);
 
+        std::vector<double> u_prev_loc(phi[0].size(), 0);
+        for (std::size_t qp = 0; qp < phi[0].size(); qp += 1) {
+          for (std::size_t i = 0; i < num_basis_functions; i += 1) {
+            u_prev_loc[qp] += phi[i][qp] * u_prev[dof_indices[i]];
+          }
+        }
+
         // cell integral
         for (std::size_t i = 0; i < num_basis_functions; i += 1) {
           // rhs integral
           f_loc[i] = 0;
           for (std::size_t qp = 0; qp < phi[i].size(); qp += 1) {
-            f_loc[i] += phi[i][qp] * u_prev[i] * JxW[qp];
+            f_loc[i] += phi[i][qp] * u_prev_loc[qp] * JxW[qp];
           }
 
           // matrix integral
@@ -122,6 +130,7 @@ int main(int argc, char *argv[]) {
 
         // copy into global matrix
         for (std::size_t i = 0; i < dof_indices.size(); i += 1) {
+          f[dof_indices[i]] += f_loc[i];
           for (std::size_t j = 0; j < dof_indices.size(); j += 1) {
             A(dof_indices[i], dof_indices[j]) += A_loc(i, j);
           }
@@ -269,7 +278,7 @@ int main(int argc, char *argv[]) {
     for(std::size_t idx = 0; idx < num_dofs/3; idx+=1)
     {
       std::cout << u_now[idx*3] - 0.5*u_now[idx*3+2] << ", ";
-      std::cout << "[" << u_now[idx*3] << " " << u_now[idx*3+1] << " " << u_now[idx*3+2] << "] ";
+      // std::cout << "[" << u_now[idx*3] << " " << u_now[idx*3+1] << " " << u_now[idx*3+2] << "] ";
     }
     std::cout << endl;
   }
