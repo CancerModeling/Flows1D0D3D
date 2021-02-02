@@ -127,11 +127,32 @@ int main(int argc, char *argv[]) {
     const auto &phi_l = fe_inner.get_phi_l();
     const auto &phi_r = fe_inner.get_phi_r();
 
-    // functions evaluated on the exterior cell boundaries
+    // normals for inner boundaries
+    const double normal_l = +1;
+    const double normal_r = -1;
+
+    // block matrices for inner boundaries
+    gmm::row_matrix<gmm::wsvector<double>> A_ll_loc(num_components * num_basis_functions, num_components * num_basis_functions);
+    gmm::row_matrix<gmm::wsvector<double>> A_lr_loc(num_components * num_basis_functions, num_components * num_basis_functions);
+    gmm::row_matrix<gmm::wsvector<double>> A_rl_loc(num_components * num_basis_functions, num_components * num_basis_functions);
+    gmm::row_matrix<gmm::wsvector<double>> A_rr_loc(num_components * num_basis_functions, num_components * num_basis_functions);
+
+    // right hand side for inner boundaries
+    std::vector<double> f_l_loc(num_components * num_basis_functions);
+    std::vector<double> f_r_loc(num_components * num_basis_functions);
+
+    // functions evaluated on the exterior boundaries
     mc::FETypeExteriorBdryNetwork fe_ext;
     const auto &phi = fe_ext.get_phi();
 
-    std::vector<double> normal = {-1, +1};
+    // normal for the exterior boundaries
+    const double normal_ext = -1;
+
+    // block matrices for exterior boundaries
+    gmm::row_matrix<gmm::wsvector<double>> A_ext_loc(num_components * num_basis_functions, num_components * num_basis_functions);
+
+    // right hand side for inner boundaries
+    std::vector<double> f_ext_loc(num_components * num_basis_functions);
 
     std::vector<std::size_t> dof_indices;
     std::vector<std::size_t> dof_indices_l;
@@ -141,30 +162,72 @@ int main(int argc, char *argv[]) {
       const auto vertex = graph.get_vertex(v_id);
 
       // exterior boundary
-      if (vertex->is_leaf())
-      {
+      if (vertex->is_leaf()) {
         const auto edge = graph.get_edge(vertex->get_edge_neighbors()[0]);
         dof_map.dof_indices(*edge, dof_indices);
-        // inflow boundary
-        if ((vertex->get_coordinate() - lm::Point(0,0,0)).norm() < 1e-14)
-        {
 
+        // zero local system
+        for (std::size_t i = 0; i < num_basis_functions; i += 1) {
+          f_ext_loc[i] = 0;
+          for (std::size_t j = 0; j < num_basis_functions; j += 1)
+            A_ext_loc(i, j) = 0;
+        }
+
+        // inflow boundary
+        if ((vertex->get_coordinate() - lm::Point(0, 0, 0)).norm() < 1e-14) {
         }
         // outflow boundary
         {
-
         }
+
+        // copy into global matrix
+        // TODO
       }
       // inner boundary
-      else
-      {
+      else {
         const auto edge_l = graph.get_edge(vertex->get_edge_neighbors()[0]);
         const auto edge_r = graph.get_edge(vertex->get_edge_neighbors()[1]);
         dof_map.dof_indices(*edge_l, dof_indices_l);
         dof_map.dof_indices(*edge_r, dof_indices_r);
 
+        // zero local system
+        for (std::size_t i = 0; i < num_basis_functions; i += 1) {
+          f_r_loc[i] = 0;
+          f_l_loc[i] = 0;
+          for (std::size_t j = 0; j < num_basis_functions; j += 1) {
+            A_ll_loc(i, j) = 0;
+            A_lr_loc(i, j) = 0;
+            A_rl_loc(i, j) = 0;
+            A_rr_loc(i, j) = 0;
+          }
+        }
 
+        // ll
+        for (std::size_t i = 0; i < num_basis_functions; i += 1)
+          for (std::size_t j = 0; j < num_basis_functions; j += 1)
+            if (false)
+              true;
 
+        // lr
+        for (std::size_t i = 0; i < num_basis_functions; i += 1)
+          for (std::size_t j = 0; j < num_basis_functions; j += 1)
+            if (false)
+              true;
+
+        // rl
+        for (std::size_t i = 0; i < num_basis_functions; i += 1)
+          for (std::size_t j = 0; j < num_basis_functions; j += 1)
+            if (false)
+              true;
+
+        // rr
+        for (std::size_t i = 0; i < num_basis_functions; i += 1)
+          for (std::size_t j = 0; j < num_basis_functions; j += 1)
+            if (false)
+              true;
+
+        // copy into global matrix
+        // TODO
       }
     }
   }
