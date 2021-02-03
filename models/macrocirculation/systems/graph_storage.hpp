@@ -13,7 +13,6 @@
 #include <memory>
 #include <utility>
 #include <vector>
-#include <fstream>
 
 namespace macrocirculation {
 
@@ -118,32 +117,13 @@ private:
   /// while the second one points away from the vertex.
   /// If both edges point towards the vertex or away, an exception is thrown.
   /// If it has more than two edges, an exception is thrown.
-  void reorder_edges(Vertex& v);
+  void reorder_edges(Vertex &v);
 
   std::map<std::size_t, std::shared_ptr<Edge>> p_edges;
   std::map<std::size_t, std::shared_ptr<Vertex>> p_vertices;
 
   std::size_t p_next_edge_id;
   std::size_t p_next_vertex_id;
-};
-
-class GraphDataWriter {
-public:
-  void add_midpoint_data(const std::string &name, std::vector<double> data);
-
-  void write_vtk(const std::string &filename, GraphStorage &storage, std::size_t time_idx) const;
-
-private:
-  struct NamedField {
-    NamedField(std::string n, std::vector<double> v) : name(std::move(n)), values(std::move(v)) {}
-
-    std::string name;
-    std::vector<double> values;
-  };
-
-  std::vector< NamedField > midpoint_data;
-
-  std::string get_path(const std::string & filename, std::size_t time_idx) const;
 };
 
 } // namespace macrocirculation

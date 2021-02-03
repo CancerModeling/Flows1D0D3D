@@ -15,6 +15,7 @@
 #include "../systems/fe_type_network.hpp"
 #include "../systems/graph_storage.hpp"
 #include "../systems/dof_map_network.hpp"
+#include "../systems/graph_data_writer.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
@@ -44,7 +45,7 @@ int main(int argc, char *argv[]) {
   //  v_prev = v_next;
   // }
 
-  const double velocity = 1;
+  const double velocity = 2;
   const double tau = 0.1;
 
   double t_now = 0;
