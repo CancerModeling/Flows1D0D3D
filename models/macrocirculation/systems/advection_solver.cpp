@@ -77,19 +77,19 @@ void AdvectionSolver<DEGREE>::solve() const {
         fe.reinit(*edge);
         dof_map->dof_indices(*edge, dof_indices);
 
-        std::vector<double> u_prev_loc(phi[0].size(), 0);
-        for (std::size_t qp = 0; qp < phi[0].size(); qp += 1) {
-          for (std::size_t i = 0; i < num_basis_functions; i += 1) {
-            u_prev_loc[qp] += phi[i][qp] * u_prev[dof_indices[i]];
-          }
-        }
+        // extract the local values of u_prev
+        std::vector<double> u_prev_loc(num_basis_functions, 0);
+        extract_dof(dof_indices, u_prev, u_prev_loc);
+        // evaluate the local values on the quadrature points
+        std::vector<double> u_prev_qp(phi[0].size(), 0);
+        fe.evaluate_dof_at_quadrature_points(u_prev_loc, u_prev_qp);
 
         // cell integral
         for (std::size_t i = 0; i < num_basis_functions; i += 1) {
           // rhs integral
           f_loc[i] = 0;
           for (std::size_t qp = 0; qp < phi[i].size(); qp += 1) {
-            f_loc[i] += phi[i][qp] * u_prev_loc[qp] * JxW[qp];
+            f_loc[i] += phi[i][qp] * u_prev_qp[qp] * JxW[qp];
           }
 
           // matrix integral
