@@ -26,6 +26,33 @@ bool Vertex::is_leaf() const { return p_neighbors.size() == 1; };
 
 bool Vertex::is_unconnected() const { return p_neighbors.empty(); }
 
+bool Vertex::is_bifurcation() const { return p_neighbors.empty() > 2; }
+
+bool Edge::is_pointing_to(std::size_t vertex_id) const {
+  return p_neighbors[1] == vertex_id;
+}
+
+void GraphStorage::reorder_edges(Vertex & v) {
+  if (v.get_edge_neighbors().size() > 2)
+    throw std::runtime_error("ordering edges on vertex with more than two neighbors.");
+
+  // nothing to reorder
+  if (v.get_edge_neighbors().size() <= 1)
+    return;
+
+  const auto e0 = get_edge(v.get_edge_neighbors()[0]);
+  const auto e1 = get_edge(v.get_edge_neighbors()[1]);
+
+  if ( !(e0->is_pointing_to(v.get_id()) != e1->is_pointing_to(v.get_id())) )
+    throw std::runtime_error("edges cannot be reordered");
+
+  // nothing to reorder
+  if (e0->is_pointing_to(v.get_id()))
+    return;
+
+  std::swap(v.p_neighbors[0], v.p_neighbors[1]);
+}
+
 Edge::Edge(std::size_t id, std::size_t type_id, const Vertex &v1, const Vertex &v2)
     : Primitive(id),
       p_type_id(type_id),
@@ -136,6 +163,11 @@ void GraphStorage::refine(std::size_t num_refinements) {
       auto edge = get_edge(id);
       refine(*edge);
     }
+  }
+
+  for (auto &id : get_vertex_ids()) {
+    auto vertex = get_vertex(id);
+    reorder_edges(*vertex);
   }
 }
 

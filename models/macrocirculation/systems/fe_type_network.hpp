@@ -10,12 +10,16 @@
 
 #include <utility>
 
-#include "libmesh/libmesh.h"
 #include "graph_storage.hpp"
+#include "libmesh/libmesh.h"
 
 namespace macrocirculation {
 
+constexpr double legendre1(double x) { return x; }
 constexpr double legendre2(double x) { return 0.5 * (3 * x * x - 1); }
+
+constexpr double diff_legendre1(double x) { return 1; }
+constexpr double diff_legendre2(double x) { return 3 * x; }
 
 struct QuadratureFormula {
   std::vector<double> ref_points;
@@ -45,7 +49,6 @@ inline QuadratureFormula create_midpoint_rule() {
   return qf;
 }
 
-/*
 class FETypeNetwork {
 public:
   explicit FETypeNetwork(QuadratureFormula qf)
@@ -55,7 +58,7 @@ public:
         d_JxW(d_qf.size()) {
     for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
       d_phi[0][qp] = 1;
-      d_phi[1][qp] = d_qf.ref_points[qp];
+      d_phi[1][qp] = legendre1(d_qf.ref_points[qp]);
       d_phi[2][qp] = legendre2(d_qf.ref_points[qp]);
 
       d_dphi[0][qp] = 0;
@@ -70,8 +73,8 @@ public:
     auto length = e.get_length();
 
     for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
-      d_dphi[1][qp] = length / 2;
-      d_dphi[2][qp] = 6 * d_qf.ref_points[qp] / length;
+      d_dphi[1][qp] = diff_legendre1(d_qf.ref_points[qp]) * 2. / length;
+      d_dphi[2][qp] = diff_legendre2(d_qf.ref_points[qp]) * 2. / length;
       d_JxW[qp] = d_qf.ref_weights[qp] * length / 2.;
     }
   };
@@ -95,7 +98,7 @@ private:
 class FETypeInnerBdryNetwork {
 public:
   explicit FETypeInnerBdryNetwork()
-    : d_phi_r(3), d_phi_l(3) {
+      : d_phi_r(3), d_phi_l(3) {
     d_phi_l[0] = 1;
     d_phi_r[0] = 1;
 
@@ -107,15 +110,15 @@ public:
   }
 
   /// Assume: ----e_left----(v)----e_right----
-  void reinit(const Vertex & v, const Edge &e_left, const Edge &e_right) {
-    const double orientation_left = e_left.get_vertex_neighbors()[1] == v.get_id() ? +1 : -1;
-    const double orientation_right = e_right.get_vertex_neighbors()[0] == v.get_id() ? +1 : -1;
+  void reinit(const Vertex &v, const Edge &e_left, const Edge &e_right) {
+    const double point_left = +1;
+    const double point_right = -1;
 
-    const double point_left = +1*orientation_left;
-    const double point_right = -1*orientation_right;
+    assert(e_left.get_vertex_neighbors()[1] == v.get_id());
+    assert(e_right.get_vertex_neighbors()[0] == v.get_id());
 
-    d_phi_l[1] = point_left;
-    d_phi_r[1] = point_right;
+    d_phi_l[1] = legendre1(point_left);
+    d_phi_r[1] = legendre1(point_right);
 
     d_phi_l[2] = legendre2(point_left);
     d_phi_r[2] = legendre2(point_right);
@@ -132,92 +135,18 @@ private:
 class FETypeExteriorBdryNetwork {
 public:
   explicit FETypeExteriorBdryNetwork()
-    : d_phi(3) {
+      : d_phi(3), d_n(1) {
     d_phi[0] = 1;
     d_phi[1] = NAN;
     d_phi[2] = NAN;
   }
 
   /// Assume: (v)----e----
-  void reinit(const Vertex & v, const Edge &e) {
-    const double point_left = e.get_vertex_neighbors()[0] == v.get_id() ? -1 : +1;
-    d_phi[1] = point_left;
-    d_phi[2] = legendre2(point_left);
-  };
+  void reinit(const Vertex &v, const Edge &e) {
+    const double point = e.get_vertex_neighbors()[0] == v.get_id() ? -1 : +1;
+    d_phi[1] = legendre1(point);
+    d_phi[2] = legendre2(point);
 
-  const std::vector<double> &get_phi() const { return d_phi; };
-
-private:
-  std::vector<double> d_phi;
-};
-*/
-
-class FETypeNetwork {
-public:
-  explicit FETypeNetwork(QuadratureFormula qf)
-      : d_qf(std::move(qf)),
-        d_phi(1, std::vector<double>(d_qf.size())),
-        d_dphi(1, std::vector<double>(d_qf.size())),
-        d_JxW(d_qf.size()) {
-    for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
-      d_phi[0][qp] = 1;
-      d_dphi[0][qp] = 0;
-      d_JxW[qp] = NAN;
-    }
-  }
-
-  void reinit(const Edge &e) {
-    auto length = e.get_length();
-
-    for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
-      d_JxW[qp] = d_qf.ref_weights[qp] * length / 2.;
-    }
-  };
-
-  const std::vector<std::vector<double>> &get_phi() const { return d_phi; };
-
-  const std::vector<std::vector<double>> &get_dphi() const { return d_dphi; };
-
-  const std::vector<double> &get_JxW() const { return d_JxW; };
-
-private:
-  QuadratureFormula d_qf;
-
-  std::vector<std::vector<double>> d_phi;
-
-  std::vector<std::vector<double>> d_dphi;
-
-  std::vector<double> d_JxW;
-};
-
-class FETypeInnerBdryNetwork {
-public:
-  explicit FETypeInnerBdryNetwork()
-    : d_phi_r(1), d_phi_l(1) {
-    d_phi_l[0] = 1;
-    d_phi_r[0] = 1;
-  }
-
-  /// Assume: ----e_left----(v)----e_right----
-  void reinit(const Vertex & v, const Edge &e_left, const Edge &e_right) { };
-
-  const std::vector<double> &get_phi_l() const { return d_phi_l; };
-  const std::vector<double> &get_phi_r() const { return d_phi_r; };
-
-private:
-  std::vector<double> d_phi_l;
-  std::vector<double> d_phi_r;
-};
-
-class FETypeExteriorBdryNetwork {
-public:
-  explicit FETypeExteriorBdryNetwork()
-    : d_phi(1), d_n(1) {
-    d_phi[0] = 1;
-  }
-
-  /// Assume: (v)----e----
-  void reinit(const Vertex & v, const Edge &e) {
     d_n = (e.get_vertex_neighbors()[0] == v.get_id()) ? -1 : +1;
   };
 
@@ -226,6 +155,7 @@ public:
 
 private:
   std::vector<double> d_phi;
+
   double d_n;
 };
 
