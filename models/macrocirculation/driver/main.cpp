@@ -37,7 +37,7 @@ private:
 };
 
 int main(int argc, char *argv[]) {
-  constexpr std::size_t degree = 2;
+  constexpr std::size_t degree = 3;
 
   // Note: This one requires pointer to comm and therefore we have to init
   // libmesh and then call the constructor of model
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
       gmm::row_matrix<gmm::wsvector<double>> A_loc(num_components * num_basis_functions, num_components * num_basis_functions);
       std::vector<double> f_loc(num_components * num_basis_functions);
 
-      mc::FETypeNetwork<degree> fe(mc::create_gauss3());
+      mc::FETypeNetwork<degree> fe(mc::create_gauss4());
       //mc::FETypeNetwork fe(mc::create_midpoint_rule());
       const auto &phi = fe.get_phi();
       const auto &dphi = fe.get_dphi();
@@ -288,7 +288,7 @@ int main(int argc, char *argv[]) {
       for (std::size_t idx = 0; idx < graph.num_edges(); idx += 1) {
         u_mid[idx] = u_now[idx * num_basis_functions];
         if (num_basis_functions > 2)
-          u_mid[idx] += -0.5 * u_now[idx * 3 + 2];
+          u_mid[idx] += -0.5 * u_now[idx * num_basis_functions + 2];
       }
     }
 
