@@ -17,7 +17,7 @@ include_directories("${CMAKE_SOURCE_DIR}/models/utils")
 include_directories("${CMAKE_SOURCE_DIR}/models/${ProjectName}")
 
 # ****************************************************************************
-# Create executible
+# Create executable
 # ****************************************************************************
-add_executable(${ProjectName} main.cpp)
-target_link_libraries(${ProjectName} ${ProjectLib})
+add_executable(${ProjectName}Advection main_advection.cpp)
+target_link_libraries(${ProjectName}Advection ${ProjectLib})
