@@ -13,6 +13,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <fstream>
 
 namespace macrocirculation {
 
@@ -114,10 +115,23 @@ private:
   std::size_t p_next_vertex_id;
 };
 
-class GraphIO {
+class GraphDataWriter {
 public:
-  void read_dgf(const std::string &filename, GraphStorage &storage) const;
-  void write_vtk(const std::string &filename, GraphStorage &storage) const;
+  void add_midpoint_data(const std::string &name, std::vector<double> data);
+
+  void write_vtk(const std::string &filename, GraphStorage &storage, std::size_t time_idx) const;
+
+private:
+  struct NamedField {
+    NamedField(std::string n, std::vector<double> v) : name(n), values(std::move(v)) {}
+
+    std::string name;
+    std::vector<double> values;
+  };
+
+  std::vector< NamedField > midpoint_data;
+
+  std::string get_path(const std::string & filename, std::size_t time_idx) const;
 };
 
 class GraphData {

@@ -44,10 +44,21 @@ int main(int argc, char *argv[]) {
   // create the ascending aorta
   mc::GraphStorage graph;
   std::size_t ascending_aorta_id = 1;
-  //auto v0 = graph.create_vertex(lm::Point(0, 0, 0));
-  //auto v1 = graph.create_vertex(lm::Point(4.0, 0, 0));
-  //graph.connect(*v0, *v1, ascending_aorta_id);
-  // graph.refine(2);
+  /*
+  auto v0 = graph.create_vertex(lm::Point(0, 0, 0));
+  auto v1 = graph.create_vertex(lm::Point(1.0, 0, 0));
+  graph.connect(*v0, *v1, ascending_aorta_id);
+  graph.refine(4);
+   */
+  const std::size_t N = 32;
+  auto v_prev = graph.create_vertex(lm::Point(0, 0, 0));
+  for(std::size_t k=0; k<N; k+= 1)
+  {
+    auto v_next = graph.create_vertex(lm::Point((1.*k)/N, 0, 0));
+    graph.connect(*v_prev, *v_next, ascending_aorta_id);
+    v_prev = v_next;
+  }
+  /*
   auto v0 = graph.create_vertex(lm::Point(0, 0, 0));
   auto v1 = graph.create_vertex(lm::Point(0.2, 0, 0));
   auto v2 = graph.create_vertex(lm::Point(0.4, 0, 0));
@@ -59,6 +70,7 @@ int main(int argc, char *argv[]) {
   graph.connect(*v2, *v3, ascending_aorta_id);
   graph.connect(*v3, *v4, ascending_aorta_id);
   graph.connect(*v4, *v5, ascending_aorta_id);
+   */
 
 
   const double velocity = 1;
@@ -81,9 +93,12 @@ int main(int argc, char *argv[]) {
 
   DofMapNetwork dof_map(num_components, num_basis_functions);
 
+  std::size_t it = 0;
+
   while (t_now < t_end)
   {
     t_now += tau;
+    it += 1;
 
     // reset matrix and rhs
     for (int i = 0; i < A.nrows(); i++)
@@ -101,8 +116,8 @@ int main(int argc, char *argv[]) {
       gmm::row_matrix<gmm::wsvector<double>> A_loc(num_components * num_basis_functions, num_components * num_basis_functions);
       std::vector<double> f_loc(num_components * num_basis_functions);
 
-      //mc::FETypeNetwork fe(mc::create_gauss3());
-      mc::FETypeNetwork fe(mc::create_midpoint_rule());
+      mc::FETypeNetwork fe(mc::create_gauss3());
+      //mc::FETypeNetwork fe(mc::create_midpoint_rule());
       const auto &phi = fe.get_phi();
       const auto &dphi = fe.get_dphi();
       const auto &JxW = fe.get_JxW();
@@ -199,7 +214,7 @@ int main(int argc, char *argv[]) {
             const auto inflow_value = inflow_boundary_value( vertex->get_coordinate() );
             for ( unsigned int i = 0; i < num_basis_functions; i += 1 )
             {
-              f_ext_loc[ i ] += ( -tau ) * inflow_value * velocity * (-1) * phi[i];
+              f_ext_loc[ i ] += ( -tau ) * inflow_value * velocity * fe_ext.get_normal() * phi[i];
             }
           }
           // outflow boundary
@@ -209,7 +224,7 @@ int main(int argc, char *argv[]) {
             {
               for ( unsigned int j = 0; j < num_basis_functions; j += 1 )
               {
-                A_ext_loc( i, j ) += tau * phi[i] * velocity * (+1) * phi[j];
+                A_ext_loc( i, j ) += tau * phi[i] * velocity * fe_ext.get_normal() * phi[j];
               }
             }
           }
@@ -288,6 +303,11 @@ int main(int argc, char *argv[]) {
     gmm::iteration iter(1.0E-10);
     gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A);
     gmm::gmres(A, u_now, f, PR, 500, iter);
+
+    mc::GraphDataWriter writer;
+    writer.add_midpoint_data("concentration", u_now);
+    writer.write_vtk("concentration", graph, it);
+
 
     /*
     for(std::size_t idx = 0; idx < num_dofs/3; idx+=1)
