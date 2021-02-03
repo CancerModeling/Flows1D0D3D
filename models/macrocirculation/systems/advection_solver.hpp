@@ -16,6 +16,7 @@ namespace macrocirculation {
 
 class GraphStorage;
 
+template < std::size_t DEGREE >
 class AdvectionSolver {
 public:
   /*! @brief Type of the function providing inflow boundary values.

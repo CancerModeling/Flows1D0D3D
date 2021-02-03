@@ -16,14 +16,16 @@
 
 namespace macrocirculation {
 
-AdvectionSolver::AdvectionSolver(std::shared_ptr<GraphStorage> graph, double tau, double t_end, double velocity, InflowValueFct inflow_value_fct)
+template < std::size_t DEGREE >
+AdvectionSolver<DEGREE>::AdvectionSolver(std::shared_ptr<GraphStorage> graph, double tau, double t_end, double velocity, InflowValueFct inflow_value_fct)
     : d_tau(tau),
       d_t_end(t_end),
       d_velocity(velocity),
       d_inflow_value_fct(std::move(inflow_value_fct)),
       d_graph(std::move(graph)) {}
 
-void AdvectionSolver::solve() const {
+template < std::size_t DEGREE >
+void AdvectionSolver<DEGREE>::solve() const {
   constexpr std::size_t degree = 1;
 
   // assemble finite element system
@@ -256,5 +258,11 @@ void AdvectionSolver::solve() const {
     writer.write_vtk("concentration", *d_graph, it);
   }
 }
+
+// instantiations of the available templates to avoid lengthy recompiles:
+template class AdvectionSolver<0>;
+template class AdvectionSolver<1>;
+template class AdvectionSolver<2>;
+template class AdvectionSolver<3>;
 
 } // namespace macrocirculation
