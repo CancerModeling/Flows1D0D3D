@@ -46,4 +46,6 @@ int main(int argc, char *argv[]) {
   // }
 
   mc::AdvectionSolver<degree> solver(graph, tau, t_end, velocity, inflow_boundary_value);
+
+  solver.solve();
 }
