@@ -8,6 +8,7 @@
 #include "graph_data_writer.hpp"
 
 #include "graph_storage.hpp"
+#include "dof_map_network.hpp"
 
 #include <fstream>
 
@@ -64,6 +65,22 @@ void GraphDataWriter::write_vtk(const std::string &filename, GraphStorage &stora
       filevtk << midpoint_data[idx].values[edge->get_id()] << std::endl;
     }
   }
+  filevtk << " " << std::endl;
+
+  filevtk << "POINT_DATA " << number_of_points << std::endl;
+  for (std::size_t idx = 0; idx < vertex_data.size(); idx += 1) {
+    filevtk << "SCALARS " << vertex_data[idx].name << " float 1" << std::endl;
+    filevtk << "LOOKUP_TABLE default" << std::endl;
+    for (auto e_id : storage.get_edge_ids()) {
+      filevtk << vertex_data[idx].values[2*e_id + 0] << std::endl;
+      filevtk << vertex_data[idx].values[2*e_id + 1] << std::endl;
+    }
+  }
+}
+
+void GraphDataWriter::add_vertex_data(const std::string &name, std::vector<double> data)
+{
+  vertex_data.push_back(std::move(NamedField(name, std::move(data))));
 }
 
 } // namespace macrocirculation

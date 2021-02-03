@@ -13,6 +13,7 @@
 #include "fe_type_network.hpp"
 #include "gmm.h"
 #include "graph_data_writer.hpp"
+#include "interpolate_to_vertices.hpp"
 
 namespace macrocirculation {
 
@@ -244,18 +245,28 @@ void AdvectionSolver<DEGREE>::solve() const {
     gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A);
     gmm::gmres(A, u_now, f, PR, 500, iter);
 
-    std::vector<double> u_mid(d_graph->num_edges(), 0);
+
     {
-      for (std::size_t idx = 0; idx < d_graph->num_edges(); idx += 1) {
-        u_mid[idx] = u_now[idx * num_basis_functions];
-        if (num_basis_functions > 2)
-          u_mid[idx] += -0.5 * u_now[idx * num_basis_functions + 2];
+      FETypeNetwork<degree> fe(create_trapezoidal_rule());
+
+      std::vector< double > u_vertex (d_graph->num_edges()*2, 0);
+      interpolate_to_vertices(*d_graph, *dof_map, fe, u_now, u_vertex);
+
+      std::vector<double> u_mid(d_graph->num_edges(), 0);
+      {
+        for (std::size_t idx = 0; idx < d_graph->num_edges(); idx += 1) {
+          u_mid[idx] = u_now[idx * num_basis_functions];
+          if (num_basis_functions > 2)
+            u_mid[idx] += -0.5 * u_now[idx * num_basis_functions + 2];
+        }
       }
+
+      GraphDataWriter writer;
+      writer.add_midpoint_data("concentration_midpoint", u_mid);
+      writer.add_vertex_data("concentration_vertex", u_vertex);
+      writer.write_vtk("concentration", *d_graph, it);
     }
 
-    GraphDataWriter writer;
-    writer.add_midpoint_data("concentration", u_mid);
-    writer.write_vtk("concentration", *d_graph, it);
   }
 }
 
