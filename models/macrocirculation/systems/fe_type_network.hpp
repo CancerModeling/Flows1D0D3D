@@ -212,17 +212,21 @@ private:
 class FETypeExteriorBdryNetwork {
 public:
   explicit FETypeExteriorBdryNetwork()
-    : d_phi(1) {
+    : d_phi(1), d_n(1) {
     d_phi[0] = 1;
   }
 
   /// Assume: (v)----e----
-  void reinit(const Vertex & v, const Edge &e) { };
+  void reinit(const Vertex & v, const Edge &e) {
+    d_n = (e.get_vertex_neighbors()[0] == v.get_id()) ? -1 : +1;
+  };
 
   const std::vector<double> &get_phi() const { return d_phi; };
+  const double &get_normal() const { return d_n; };
 
 private:
   std::vector<double> d_phi;
+  double d_n;
 };
 
 } // namespace macrocirculation
