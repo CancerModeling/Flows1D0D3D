@@ -19,5 +19,9 @@ include_directories("${CMAKE_SOURCE_DIR}/models/${ProjectName}")
 # ****************************************************************************
 # Create executable
 # ****************************************************************************
+# advection:
 add_executable(${ProjectName}Advection main_advection.cpp)
 target_link_libraries(${ProjectName}Advection ${ProjectLib})
+# nonlinear flow solver:
+add_executable(${ProjectName}NonlinearFlow main_nonlinear_flow.cpp)
+target_link_libraries(${ProjectName}NonlinearFlow ${ProjectLib})
