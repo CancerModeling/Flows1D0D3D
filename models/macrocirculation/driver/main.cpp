@@ -28,7 +28,7 @@ public:
     dofs.resize(d_num_basis_functions * d_num_components);
     auto id = edge.get_id();
     for (auto idx = 0; idx < dofs.size(); idx += 1)
-      dofs[idx] = id*d_num_basis_functions*d_num_components + idx;
+      dofs[idx] = id * d_num_basis_functions * d_num_components + idx;
   }
 
 private:
@@ -43,35 +43,21 @@ int main(int argc, char *argv[]) {
 
   // create the ascending aorta
   mc::GraphStorage graph;
+
   std::size_t ascending_aorta_id = 1;
-  /*
+
   auto v0 = graph.create_vertex(lm::Point(0, 0, 0));
   auto v1 = graph.create_vertex(lm::Point(1.0, 0, 0));
   graph.connect(*v0, *v1, ascending_aorta_id);
-  graph.refine(4);
-   */
-  const std::size_t N = 32;
-  auto v_prev = graph.create_vertex(lm::Point(0, 0, 0));
-  for(std::size_t k=0; k<N; k+= 1)
-  {
-    auto v_next = graph.create_vertex(lm::Point((1.*k)/N, 0, 0));
-    graph.connect(*v_prev, *v_next, ascending_aorta_id);
-    v_prev = v_next;
-  }
-  /*
-  auto v0 = graph.create_vertex(lm::Point(0, 0, 0));
-  auto v1 = graph.create_vertex(lm::Point(0.2, 0, 0));
-  auto v2 = graph.create_vertex(lm::Point(0.4, 0, 0));
-  auto v3 = graph.create_vertex(lm::Point(0.6, 0, 0));
-  auto v4 = graph.create_vertex(lm::Point(0.8, 0, 0));
-  auto v5 = graph.create_vertex(lm::Point(1, 0, 0));
-  graph.connect(*v0, *v1, ascending_aorta_id);
-  graph.connect(*v1, *v2, ascending_aorta_id);
-  graph.connect(*v2, *v3, ascending_aorta_id);
-  graph.connect(*v3, *v4, ascending_aorta_id);
-  graph.connect(*v4, *v5, ascending_aorta_id);
-   */
+  graph.refine(5);
 
+  // const std::size_t N = 32;
+  // auto v_prev = graph.create_vertex(lm::Point(0, 0, 0));
+  // for (std::size_t k = 0; k < N; k += 1) {
+  //  auto v_next = graph.create_vertex(lm::Point((k + 1.) / N, 0, 0));
+  //  graph.connect(*v_prev, *v_next, ascending_aorta_id);
+  //  v_prev = v_next;
+  // }
 
   const double velocity = 1;
   const double tau = 0.1;
@@ -79,11 +65,11 @@ int main(int argc, char *argv[]) {
   double t_now = 0;
   const double t_end = 1;
 
-  auto inflow_boundary_value = [&t_now](auto&){ return std::sin(M_PI*t_now); };
+  auto inflow_boundary_value = [&t_now](auto &) { return std::sin(M_PI * t_now); };
 
   // assemble finite element system
   const std::size_t num_components = 1;
-  const std::size_t num_basis_functions = 1;
+  const std::size_t num_basis_functions = 3;
   const std::size_t num_dofs = graph.num_edges() * num_components * num_basis_functions;
 
   gmm::row_matrix<gmm::wsvector<double>> A(num_dofs, num_dofs);
@@ -95,8 +81,7 @@ int main(int argc, char *argv[]) {
 
   std::size_t it = 0;
 
-  while (t_now < t_end)
-  {
+  while (t_now < t_end) {
     t_now += tau;
     it += 1;
 
@@ -151,7 +136,7 @@ int main(int argc, char *argv[]) {
               // mass for time derivative
               A_loc(i, j) += phi[i][qp] * phi[j][qp] * JxW[qp];
               // advection term
-              A_loc(i, j) += (-tau) * velocity * phi[i][qp] * dphi[j][qp] * JxW[qp];
+              A_loc(i, j) += (-tau) * velocity * phi[j][qp] * dphi[i][qp] * JxW[qp];
             }
           }
         }
@@ -211,20 +196,16 @@ int main(int argc, char *argv[]) {
 
           // inflow boundary
           if ((vertex->get_coordinate() - lm::Point(0, 0, 0)).norm() < 1e-14) {
-            const auto inflow_value = inflow_boundary_value( vertex->get_coordinate() );
-            for ( unsigned int i = 0; i < num_basis_functions; i += 1 )
-            {
-              f_ext_loc[ i ] += ( -tau ) * inflow_value * velocity * fe_ext.get_normal() * phi[i];
+            const auto inflow_value = inflow_boundary_value(vertex->get_coordinate());
+            for (unsigned int i = 0; i < num_basis_functions; i += 1) {
+              f_ext_loc[i] += (-tau) * inflow_value * velocity * fe_ext.get_normal() * phi[i];
             }
           }
           // outflow boundary
-          else
-          {
-            for ( unsigned int i = 0; i < num_basis_functions; i += 1 )
-            {
-              for ( unsigned int j = 0; j < num_basis_functions; j += 1 )
-              {
-                A_ext_loc( i, j ) += tau * phi[i] * velocity * fe_ext.get_normal() * phi[j];
+          else {
+            for (unsigned int i = 0; i < num_basis_functions; i += 1) {
+              for (unsigned int j = 0; j < num_basis_functions; j += 1) {
+                A_ext_loc(i, j) += tau * phi[i] * velocity * fe_ext.get_normal() * phi[j];
               }
             }
           }
@@ -237,7 +218,7 @@ int main(int argc, char *argv[]) {
             }
           }
         }
-          // inner boundary
+        // inner boundary
         else {
           const auto edge_l = graph.get_edge(vertex->get_edge_neighbors()[0]);
           const auto edge_r = graph.get_edge(vertex->get_edge_neighbors()[1]);
@@ -256,35 +237,31 @@ int main(int argc, char *argv[]) {
           }
 
           // ll
-          if (velocity * 1 > 0)
-          {
+          if (velocity * 1 > 0) {
             for (std::size_t i = 0; i < num_basis_functions; i += 1)
               for (std::size_t j = 0; j < num_basis_functions; j += 1)
-                A_ll_loc( i, j ) += tau * phi_l[j] * velocity * phi_l[i];
+                A_ll_loc(i, j) += tau * phi_l[j] * velocity * phi_l[i];
           }
 
           // lr
-          if (velocity * 1 < 0)
-          {
+          if (velocity * 1 < 0) {
             for (std::size_t i = 0; i < num_basis_functions; i += 1)
               for (std::size_t j = 0; j < num_basis_functions; j += 1)
-                A_lr_loc( i, j ) += tau * phi_r[j] * velocity * phi_l[i];
+                A_lr_loc(i, j) += tau * phi_r[j] * velocity * phi_l[i];
           }
 
           // rl
-          if ( velocity * 1 > 0 )
-          {
+          if (velocity * 1 > 0) {
             for (std::size_t i = 0; i < num_basis_functions; i += 1)
               for (std::size_t j = 0; j < num_basis_functions; j += 1)
-                A_rl_loc( i, j ) += ( -tau ) * phi_l[j] * velocity * phi_r[i];
+                A_rl_loc(i, j) += (-tau) * phi_l[j] * velocity * phi_r[i];
           }
 
           // rr
-          if ( velocity * 1 < 0)
-          {
+          if (velocity * 1 < 0) {
             for (std::size_t i = 0; i < num_basis_functions; i += 1)
               for (std::size_t j = 0; j < num_basis_functions; j += 1)
-                A_rr_loc( i, j ) += ( -tau ) * phi_r[j] * velocity * phi_r[i];
+                A_rr_loc(i, j) += (-tau) * phi_r[j] * velocity * phi_r[i];
           }
 
           // copy into global matrix
@@ -304,19 +281,18 @@ int main(int argc, char *argv[]) {
     gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A);
     gmm::gmres(A, u_now, f, PR, 500, iter);
 
-    mc::GraphDataWriter writer;
-    writer.add_midpoint_data("concentration", u_now);
-    writer.write_vtk("concentration", graph, it);
-
-
-    /*
-    for(std::size_t idx = 0; idx < num_dofs/3; idx+=1)
+    std::vector<double> u_mid(graph.num_edges(), 0);
     {
-      std::cout << u_now[idx*3] - 0.5*u_now[idx*3+2] << ", ";
-      // std::cout << "[" << u_now[idx*3] << " " << u_now[idx*3+1] << " " << u_now[idx*3+2] << "] ";
+      for (std::size_t idx = 0; idx < graph.num_edges(); idx += 1) {
+        u_mid[idx] = u_now[idx * num_basis_functions];
+        if (num_basis_functions > 2)
+          u_mid[idx] += -0.5 * u_now[idx * 3 + 2];
+      }
     }
-    */
-    std::cout << u_now << endl;
+
+    mc::GraphDataWriter writer;
+    writer.add_midpoint_data("concentration", u_mid);
+    writer.write_vtk("concentration", graph, it);
   }
 
   return 0;

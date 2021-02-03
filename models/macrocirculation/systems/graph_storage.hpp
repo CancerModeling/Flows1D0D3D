@@ -41,6 +41,7 @@ public:
 
   bool is_leaf() const;
   bool is_unconnected() const;
+  bool is_bifurcation() const;
 
 private:
   Point p_coordinate;
@@ -61,6 +62,9 @@ public:
 
   double get_length() const;
   Point get_midpoint() const;
+
+  /*! @brief Is the edge pointing towards the given vertex? */
+  bool is_pointing_to(std::size_t vertex_id) const;
 
 protected:
   std::vector<std::size_t> p_neighbors;
@@ -107,6 +111,14 @@ public:
 
 private:
   std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_type_id, std::size_t edge_id);
+
+  /// @brief
+  ///
+  /// Reorders the edges such that the first one points towards the vertex,
+  /// while the second one points away from the vertex.
+  /// If both edges point towards the vertex or away, an exception is thrown.
+  /// If it has more than two edges, an exception is thrown.
+  void reorder_edges(Vertex& v);
 
   std::map<std::size_t, std::shared_ptr<Edge>> p_edges;
   std::map<std::size_t, std::shared_ptr<Vertex>> p_vertices;
