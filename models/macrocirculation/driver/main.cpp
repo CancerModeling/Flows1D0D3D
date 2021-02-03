@@ -14,27 +14,10 @@
 #include "../systems/advection_assembly.hpp"
 #include "../systems/fe_type_network.hpp"
 #include "../systems/graph_storage.hpp"
+#include "../systems/dof_map_network.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
-
-/// Simple hack to emulate a dof-map.
-class DofMapNetwork {
-public:
-  explicit DofMapNetwork(std::size_t num_components, std::size_t num_basis_functions)
-      : d_num_components(num_components), d_num_basis_functions(num_basis_functions) {}
-
-  void dof_indices(const mc::Edge &edge, std::vector<std::size_t> &dofs) const {
-    dofs.resize(d_num_basis_functions * d_num_components);
-    auto id = edge.get_id();
-    for (auto idx = 0; idx < dofs.size(); idx += 1)
-      dofs[idx] = id * d_num_basis_functions * d_num_components + idx;
-  }
-
-private:
-  std::size_t d_num_components;
-  std::size_t d_num_basis_functions;
-};
 
 int main(int argc, char *argv[]) {
   constexpr std::size_t degree = 3;
@@ -79,7 +62,7 @@ int main(int argc, char *argv[]) {
   std::vector<double> u_now(num_dofs, 0);
   std::vector<double> u_prev(num_dofs, 0);
 
-  DofMapNetwork dof_map(num_components, num_basis_functions);
+  const auto dof_map = std::make_shared< mc::SimpleDofMapNetwork >(num_components, num_basis_functions);
 
   std::size_t it = 0;
 
@@ -114,7 +97,7 @@ int main(int argc, char *argv[]) {
       for (const auto &e_id : graph.get_edge_ids()) {
         const auto edge = graph.get_edge(e_id);
         fe.reinit(*edge);
-        dof_map.dof_indices(*edge, dof_indices);
+        dof_map->dof_indices(*edge, dof_indices);
 
         std::vector<double> u_prev_loc(phi[0].size(), 0);
         for (std::size_t qp = 0; qp < phi[0].size(); qp += 1) {
@@ -186,7 +169,7 @@ int main(int argc, char *argv[]) {
         // exterior boundary
         if (vertex->is_leaf()) {
           const auto edge = graph.get_edge(vertex->get_edge_neighbors()[0]);
-          dof_map.dof_indices(*edge, dof_indices);
+          dof_map->dof_indices(*edge, dof_indices);
           fe_ext.reinit(*vertex, *edge);
 
           // zero local system
@@ -224,8 +207,8 @@ int main(int argc, char *argv[]) {
         else {
           const auto edge_l = graph.get_edge(vertex->get_edge_neighbors()[0]);
           const auto edge_r = graph.get_edge(vertex->get_edge_neighbors()[1]);
-          dof_map.dof_indices(*edge_l, dof_indices_l);
-          dof_map.dof_indices(*edge_r, dof_indices_r);
+          dof_map->dof_indices(*edge_l, dof_indices_l);
+          dof_map->dof_indices(*edge_r, dof_indices_r);
           fe_inner.reinit(*vertex, *edge_l, *edge_r);
 
           // zero local system

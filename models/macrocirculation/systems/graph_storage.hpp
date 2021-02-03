@@ -146,45 +146,6 @@ private:
   std::string get_path(const std::string & filename, std::size_t time_idx) const;
 };
 
-class GraphData {
-public:
-  GraphData();
-
-  double get_length(const Edge &) const;
-  double get_A0(const Edge &) const;
-  double get_G0(const Edge &) const;
-  double get_radius(const Edge &) const;
-  double get_C(const Edge &) const;
-
-  double set_length(std::size_t type, double value);
-  double set_A0(std::size_t type, double value);
-  double set_G0(const Edge &);
-  double set_radius(const Edge &);
-  double set_C(const Edge &);
-
-private:
-  std::vector<std::size_t> p_id_to_vessel_type;
-
-  std::vector<double> p_lengths;
-
-  std::vector<double> p_A0;
-
-  std::vector<double> p_G0;
-
-  std::vector<double> p_radii;
-
-  std::vector<double> p_C;
-};
-
-class GraphBoundaryData {
-public:
-  GraphBoundaryData();
-
-  bool is_inflow(const Vertex &) const;
-
-  bool is_outflow(const Vertex &) const;
-};
-
 } // namespace macrocirculation
 
 #endif
