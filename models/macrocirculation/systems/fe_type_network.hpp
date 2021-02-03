@@ -18,10 +18,12 @@ namespace macrocirculation {
 // Collection of legendre polynomials
 constexpr double legendre1(double x) { return x; }
 constexpr double legendre2(double x) { return 0.5 * (3 * x * x - 1); }
+constexpr double legendre3(double x) { return 0.5 * (5 * x * x * x - 3 * x); }
 
 // Collection of their derivatives
 constexpr double diff_legendre1(double x) { return 1; }
 constexpr double diff_legendre2(double x) { return 3 * x; }
+constexpr double diff_legendre3(double x) { return 0.5 * (15 * x * x  - 3); }
 
 /*! @brief Representation of a quadrature formula for the network. */
 struct QuadratureFormula {
@@ -30,6 +32,22 @@ struct QuadratureFormula {
 
   std::size_t size() const { return ref_points.size(); }
 };
+
+/*! @brief Creates a gauss quadrature formula of order 7. */
+inline QuadratureFormula create_gauss4() {
+  QuadratureFormula qf;
+  qf.ref_points = {
+    - 0.861136311594053,
+    - 0.339981043584856,
+    + 0.339981043584856,
+    + 0.861136311594053 };
+  qf.ref_weights = {
+    0.347854845137454,
+    0.652145154862546,
+    0.652145154862546,
+    0.347854845137454 };
+  return qf;
+}
 
 /*! @brief Creates a gauss quadrature formula of order 5. */
 inline QuadratureFormula create_gauss3() {
@@ -55,49 +73,14 @@ inline QuadratureFormula create_midpoint_rule() {
   return qf;
 }
 
+/*! @brief Class for evaluating the legendre shape functions on our network edges. */
 template<std::size_t DEGREE>
 class FETypeNetwork {
 public:
-  explicit FETypeNetwork(QuadratureFormula qf)
-      : d_qf(std::move(qf)),
-        d_phi(DEGREE + 1, std::vector<double>(d_qf.size())),
-        d_dphi(DEGREE + 1, std::vector<double>(d_qf.size())),
-        d_JxW(d_qf.size()) {
+  explicit FETypeNetwork(QuadratureFormula qf);
 
-    // we only have lagrange polynomials up to order three
-    static_assert(DEGREE < 3);
-
-    for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
-      d_phi[0][qp] = 1;
-      d_dphi[0][qp] = 0;
-
-      if (DEGREE > 0) {
-        d_phi[1][qp] = legendre1(d_qf.ref_points[qp]);
-        d_dphi[1][qp] = NAN;
-      }
-
-      if (DEGREE > 1) {
-        d_phi[2][qp] = legendre2(d_qf.ref_points[qp]);
-        d_dphi[2][qp] = NAN;
-      }
-
-      d_JxW[qp] = NAN;
-    }
-  }
-
-  void reinit(const Edge &e) {
-    auto length = e.get_length();
-
-    for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
-      if (DEGREE > 0)
-        d_dphi[1][qp] = diff_legendre1(d_qf.ref_points[qp]) * 2. / length;
-
-      if (DEGREE > 1)
-        d_dphi[2][qp] = diff_legendre2(d_qf.ref_points[qp]) * 2. / length;
-
-      d_JxW[qp] = d_qf.ref_weights[qp] * length / 2.;
-    }
-  };
+  /*! @brief Updates the shape function values on the given edge. */
+  void reinit(const Edge &e);
 
   const std::vector<std::vector<double>> &get_phi() const { return d_phi; };
 
@@ -115,43 +98,20 @@ private:
   std::vector<double> d_JxW;
 };
 
+/*! @brief Class for evaluating the legendre shape functions on our _inner_ network vertices. */
 template<std::size_t DEGREE>
 class FETypeInnerBdryNetwork {
 public:
-  explicit FETypeInnerBdryNetwork()
-      : d_phi_r(DEGREE + 1), d_phi_l(DEGREE + 1) {
-    d_phi_l[0] = 1;
-    d_phi_r[0] = 1;
+  FETypeInnerBdryNetwork();
 
-    if (DEGREE > 0) {
-      d_phi_l[1] = NAN;
-      d_phi_r[1] = NAN;
-    }
-
-    if (DEGREE > 1) {
-      d_phi_l[2] = NAN;
-      d_phi_r[2] = NAN;
-    }
-  }
-
-  /// Assume: ----e_left----(v)----e_right----
-  void reinit(const Vertex &v, const Edge &e_left, const Edge &e_right) {
-    const double point_left = +1;
-    const double point_right = -1;
-
-    assert(e_left.get_vertex_neighbors()[1] == v.get_id());
-    assert(e_right.get_vertex_neighbors()[0] == v.get_id());
-
-    if (DEGREE > 0) {
-      d_phi_l[1] = legendre1(point_left);
-      d_phi_r[1] = legendre1(point_right);
-    }
-
-    if (DEGREE > 1) {
-      d_phi_l[2] = legendre2(point_left);
-      d_phi_r[2] = legendre2(point_right);
-    }
-  };
+  /*! @brief Updates the shape function values at the boundary.
+   *         This class assumes that the edge e_left points towards the vertex v,
+   *         while the edge e_right points away from the vertex.
+   *         If this is not the case an exception is thrown.
+   *
+   * Geometric assumption: ----e_left----(v)----e_right----
+   */
+  void reinit(const Vertex &v, const Edge &e_left, const Edge &e_right);
 
   const std::vector<double> &get_phi_l() const { return d_phi_l; };
   const std::vector<double> &get_phi_r() const { return d_phi_r; };
@@ -161,27 +121,14 @@ private:
   std::vector<double> d_phi_r;
 };
 
+/*! @brief Class for evaluating the legendre shape functions on our exterior network vertices. */
 template<std::size_t DEGREE>
 class FETypeExteriorBdryNetwork {
 public:
-  explicit FETypeExteriorBdryNetwork()
-      : d_phi(DEGREE + 1), d_n(1) {
-    d_phi[0] = 1;
-    if (DEGREE > 0)
-      d_phi[1] = NAN;
-    if (DEGREE > 1)
-      d_phi[2] = NAN;
-  }
+  FETypeExteriorBdryNetwork();
 
-  /// Assume: (v)----e----
-  void reinit(const Vertex &v, const Edge &e) {
-    const double point = e.get_vertex_neighbors()[0] == v.get_id() ? -1 : +1;
-    if (DEGREE > 0)
-      d_phi[1] = legendre1(point);
-    if (DEGREE > 1)
-      d_phi[2] = legendre2(point);
-    d_n = (e.get_vertex_neighbors()[0] == v.get_id()) ? -1 : +1;
-  };
+  /*! @brief Updates the shape function values on the given vertex. */
+  void reinit(const Vertex &v, const Edge &e);
 
   const std::vector<double> &get_phi() const { return d_phi; };
   const double &get_normal() const { return d_n; };
