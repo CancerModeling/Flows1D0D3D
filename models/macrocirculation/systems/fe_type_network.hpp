@@ -27,17 +27,25 @@ struct QuadratureFormula {
 inline QuadratureFormula create_gauss3() {
   QuadratureFormula qf;
   qf.ref_points = {-0.774596669241, 0, 0.774596669241};
-  qf.ref_weights = {-5. / 9., 8. / 9., +5. / 9.};
+  qf.ref_weights = {+5. / 9., 8. / 9., +5. / 9.};
   return qf;
 }
 
 inline QuadratureFormula create_trapezoidal_rule() {
   QuadratureFormula qf;
   qf.ref_points = {-1, +1};
-  qf.ref_weights = {0.5, 0.5};
+  qf.ref_weights = {1, 1};
   return qf;
 }
 
+inline QuadratureFormula create_midpoint_rule() {
+  QuadratureFormula qf;
+  qf.ref_points = {0};
+  qf.ref_weights = {2.};
+  return qf;
+}
+
+/*
 class FETypeNetwork {
 public:
   explicit FETypeNetwork(QuadratureFormula qf)
@@ -136,6 +144,80 @@ public:
     d_phi[1] = point_left;
     d_phi[2] = legendre2(point_left);
   };
+
+  const std::vector<double> &get_phi() const { return d_phi; };
+
+private:
+  std::vector<double> d_phi;
+};
+*/
+
+class FETypeNetwork {
+public:
+  explicit FETypeNetwork(QuadratureFormula qf)
+      : d_qf(std::move(qf)),
+        d_phi(1, std::vector<double>(d_qf.size())),
+        d_dphi(1, std::vector<double>(d_qf.size())),
+        d_JxW(d_qf.size()) {
+    for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
+      d_phi[0][qp] = 1;
+      d_dphi[0][qp] = 0;
+      d_JxW[qp] = NAN;
+    }
+  }
+
+  void reinit(const Edge &e) {
+    auto length = e.get_length();
+
+    for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
+      d_JxW[qp] = d_qf.ref_weights[qp] * length / 2.;
+    }
+  };
+
+  const std::vector<std::vector<double>> &get_phi() const { return d_phi; };
+
+  const std::vector<std::vector<double>> &get_dphi() const { return d_dphi; };
+
+  const std::vector<double> &get_JxW() const { return d_JxW; };
+
+private:
+  QuadratureFormula d_qf;
+
+  std::vector<std::vector<double>> d_phi;
+
+  std::vector<std::vector<double>> d_dphi;
+
+  std::vector<double> d_JxW;
+};
+
+class FETypeInnerBdryNetwork {
+public:
+  explicit FETypeInnerBdryNetwork()
+    : d_phi_r(1), d_phi_l(1) {
+    d_phi_l[0] = 1;
+    d_phi_r[0] = 1;
+  }
+
+  /// Assume: ----e_left----(v)----e_right----
+  void reinit(const Vertex & v, const Edge &e_left, const Edge &e_right) { };
+
+  const std::vector<double> &get_phi_l() const { return d_phi_l; };
+  const std::vector<double> &get_phi_r() const { return d_phi_r; };
+
+private:
+  std::vector<double> d_phi_l;
+  std::vector<double> d_phi_r;
+};
+
+class FETypeExteriorBdryNetwork {
+public:
+  explicit FETypeExteriorBdryNetwork()
+    : d_phi(1) {
+    d_phi[0] = 1;
+  }
+
+  /// Assume: (v)----e----
+  void reinit(const Vertex & v, const Edge &e) { };
 
   const std::vector<double> &get_phi() const { return d_phi; };
 

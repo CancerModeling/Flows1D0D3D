@@ -21,19 +21,19 @@ namespace mc = macrocirculation;
 /// Simple hack to emulate a dof-map.
 class DofMapNetwork {
 public:
-  explicit DofMapNetwork(std::size_t num_components)
-      : d_num_components(num_components) {}
+  explicit DofMapNetwork(std::size_t num_components, std::size_t num_basis_functions)
+      : d_num_components(num_components), d_num_basis_functions(num_basis_functions) {}
 
   void dof_indices(const mc::Edge &edge, std::vector<std::size_t> &dofs) const {
-    const std::size_t num_basis_functions = 3; // since 2nd order
-    dofs.resize(num_basis_functions * d_num_components);
+    dofs.resize(d_num_basis_functions * d_num_components);
     auto id = edge.get_id();
     for (auto idx = 0; idx < dofs.size(); idx += 1)
-      dofs[idx] = id*num_basis_functions*d_num_components + idx;
+      dofs[idx] = id*d_num_basis_functions*d_num_components + idx;
   }
 
 private:
   std::size_t d_num_components;
+  std::size_t d_num_basis_functions;
 };
 
 int main(int argc, char *argv[]) {
@@ -44,22 +44,34 @@ int main(int argc, char *argv[]) {
   // create the ascending aorta
   mc::GraphStorage graph;
   std::size_t ascending_aorta_id = 1;
+  //auto v0 = graph.create_vertex(lm::Point(0, 0, 0));
+  //auto v1 = graph.create_vertex(lm::Point(4.0, 0, 0));
+  //graph.connect(*v0, *v1, ascending_aorta_id);
+  // graph.refine(2);
   auto v0 = graph.create_vertex(lm::Point(0, 0, 0));
-  auto v1 = graph.create_vertex(lm::Point(4.0, 0, 0));
+  auto v1 = graph.create_vertex(lm::Point(0.2, 0, 0));
+  auto v2 = graph.create_vertex(lm::Point(0.4, 0, 0));
+  auto v3 = graph.create_vertex(lm::Point(0.6, 0, 0));
+  auto v4 = graph.create_vertex(lm::Point(0.8, 0, 0));
+  auto v5 = graph.create_vertex(lm::Point(1, 0, 0));
   graph.connect(*v0, *v1, ascending_aorta_id);
-  graph.refine(2);
+  graph.connect(*v1, *v2, ascending_aorta_id);
+  graph.connect(*v2, *v3, ascending_aorta_id);
+  graph.connect(*v3, *v4, ascending_aorta_id);
+  graph.connect(*v4, *v5, ascending_aorta_id);
+
 
   const double velocity = 1;
   const double tau = 0.1;
 
   double t_now = 0;
-  const double t_end = 1.;
+  const double t_end = 1;
 
-  auto inflow_boundary_value = [&t_now](auto&){ return std::sin(2*M_PI*t_now); };
+  auto inflow_boundary_value = [&t_now](auto&){ return std::sin(M_PI*t_now); };
 
   // assemble finite element system
   const std::size_t num_components = 1;
-  const std::size_t num_basis_functions = 3;
+  const std::size_t num_basis_functions = 1;
   const std::size_t num_dofs = graph.num_edges() * num_components * num_basis_functions;
 
   gmm::row_matrix<gmm::wsvector<double>> A(num_dofs, num_dofs);
@@ -67,7 +79,7 @@ int main(int argc, char *argv[]) {
   std::vector<double> u_now(num_dofs, 0);
   std::vector<double> u_prev(num_dofs, 0);
 
-  DofMapNetwork dof_map(num_components);
+  DofMapNetwork dof_map(num_components, num_basis_functions);
 
   while (t_now < t_end)
   {
@@ -89,7 +101,8 @@ int main(int argc, char *argv[]) {
       gmm::row_matrix<gmm::wsvector<double>> A_loc(num_components * num_basis_functions, num_components * num_basis_functions);
       std::vector<double> f_loc(num_components * num_basis_functions);
 
-      mc::FETypeNetwork fe(mc::create_gauss3());
+      //mc::FETypeNetwork fe(mc::create_gauss3());
+      mc::FETypeNetwork fe(mc::create_midpoint_rule());
       const auto &phi = fe.get_phi();
       const auto &dphi = fe.get_dphi();
       const auto &JxW = fe.get_JxW();
@@ -190,12 +203,13 @@ int main(int argc, char *argv[]) {
             }
           }
           // outflow boundary
+          else
           {
             for ( unsigned int i = 0; i < num_basis_functions; i += 1 )
             {
               for ( unsigned int j = 0; j < num_basis_functions; j += 1 )
               {
-                A_ext_loc( i, j ) += tau * phi[i] * velocity * (-1) * phi[j];
+                A_ext_loc( i, j ) += tau * phi[i] * velocity * (+1) * phi[j];
               }
             }
           }
@@ -275,12 +289,14 @@ int main(int argc, char *argv[]) {
     gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A);
     gmm::gmres(A, u_now, f, PR, 500, iter);
 
+    /*
     for(std::size_t idx = 0; idx < num_dofs/3; idx+=1)
     {
       std::cout << u_now[idx*3] - 0.5*u_now[idx*3+2] << ", ";
       // std::cout << "[" << u_now[idx*3] << " " << u_now[idx*3+1] << " " << u_now[idx*3+2] << "] ";
     }
-    std::cout << endl;
+    */
+    std::cout << u_now << endl;
   }
 
   return 0;
