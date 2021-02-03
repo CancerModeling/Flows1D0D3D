@@ -12,7 +12,7 @@ namespace macrocirculation {
 constexpr std::size_t degree = 2;
 
 ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph)
-    : d_graph(graph) {
+    : d_graph(std::move(graph)) {
   // TODO: Initialize the rest
 }
 
