@@ -37,6 +37,8 @@ private:
 };
 
 int main(int argc, char *argv[]) {
+  constexpr std::size_t degree = 2;
+
   // Note: This one requires pointer to comm and therefore we have to init
   // libmesh and then call the constructor of model
   lm::LibMeshInit init(argc, argv);
@@ -69,7 +71,7 @@ int main(int argc, char *argv[]) {
 
   // assemble finite element system
   const std::size_t num_components = 1;
-  const std::size_t num_basis_functions = 3;
+  const std::size_t num_basis_functions = degree+1;
   const std::size_t num_dofs = graph.num_edges() * num_components * num_basis_functions;
 
   gmm::row_matrix<gmm::wsvector<double>> A(num_dofs, num_dofs);
@@ -101,7 +103,7 @@ int main(int argc, char *argv[]) {
       gmm::row_matrix<gmm::wsvector<double>> A_loc(num_components * num_basis_functions, num_components * num_basis_functions);
       std::vector<double> f_loc(num_components * num_basis_functions);
 
-      mc::FETypeNetwork fe(mc::create_gauss3());
+      mc::FETypeNetwork<degree> fe(mc::create_gauss3());
       //mc::FETypeNetwork fe(mc::create_midpoint_rule());
       const auto &phi = fe.get_phi();
       const auto &dphi = fe.get_dphi();
@@ -154,7 +156,7 @@ int main(int argc, char *argv[]) {
     // assemble boundary integrals
     {
       // functions evaluated on the inner cell boundaries
-      mc::FETypeInnerBdryNetwork fe_inner;
+      mc::FETypeInnerBdryNetwork<degree> fe_inner;
       const auto &phi_l = fe_inner.get_phi_l();
       const auto &phi_r = fe_inner.get_phi_r();
 
@@ -165,7 +167,7 @@ int main(int argc, char *argv[]) {
       gmm::row_matrix<gmm::wsvector<double>> A_rr_loc(num_components * num_basis_functions, num_components * num_basis_functions);
 
       // functions evaluated on the exterior boundaries
-      mc::FETypeExteriorBdryNetwork fe_ext;
+      mc::FETypeExteriorBdryNetwork<degree> fe_ext;
       const auto &phi = fe_ext.get_phi();
 
       // block matrices for exterior boundaries

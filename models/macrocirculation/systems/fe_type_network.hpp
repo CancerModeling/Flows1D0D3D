@@ -15,12 +15,15 @@
 
 namespace macrocirculation {
 
+// Collection of legendre polynomials
 constexpr double legendre1(double x) { return x; }
 constexpr double legendre2(double x) { return 0.5 * (3 * x * x - 1); }
 
+// Collection of their derivatives
 constexpr double diff_legendre1(double x) { return 1; }
 constexpr double diff_legendre2(double x) { return 3 * x; }
 
+/*! @brief Representation of a quadrature formula for the network. */
 struct QuadratureFormula {
   std::vector<double> ref_points;
   std::vector<double> ref_weights;
@@ -28,6 +31,7 @@ struct QuadratureFormula {
   std::size_t size() const { return ref_points.size(); }
 };
 
+/*! @brief Creates a gauss quadrature formula of order 5. */
 inline QuadratureFormula create_gauss3() {
   QuadratureFormula qf;
   qf.ref_points = {-0.774596669241, 0, 0.774596669241};
@@ -35,6 +39,7 @@ inline QuadratureFormula create_gauss3() {
   return qf;
 }
 
+/*! @brief Creates tabulates the weights and points of the trapezoidal rule. */
 inline QuadratureFormula create_trapezoidal_rule() {
   QuadratureFormula qf;
   qf.ref_points = {-1, +1};
@@ -42,6 +47,7 @@ inline QuadratureFormula create_trapezoidal_rule() {
   return qf;
 }
 
+/*! @brief Creates tabulates the weights and points of the midpoint rule. */
 inline QuadratureFormula create_midpoint_rule() {
   QuadratureFormula qf;
   qf.ref_points = {0};
@@ -49,21 +55,31 @@ inline QuadratureFormula create_midpoint_rule() {
   return qf;
 }
 
+template<std::size_t DEGREE>
 class FETypeNetwork {
 public:
   explicit FETypeNetwork(QuadratureFormula qf)
       : d_qf(std::move(qf)),
-        d_phi(3, std::vector<double>(d_qf.size())),
-        d_dphi(3, std::vector<double>(d_qf.size())),
+        d_phi(DEGREE + 1, std::vector<double>(d_qf.size())),
+        d_dphi(DEGREE + 1, std::vector<double>(d_qf.size())),
         d_JxW(d_qf.size()) {
+
+    // we only have lagrange polynomials up to order three
+    static_assert(DEGREE < 3);
+
     for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
       d_phi[0][qp] = 1;
-      d_phi[1][qp] = legendre1(d_qf.ref_points[qp]);
-      d_phi[2][qp] = legendre2(d_qf.ref_points[qp]);
-
       d_dphi[0][qp] = 0;
-      d_dphi[1][qp] = NAN;
-      d_dphi[2][qp] = NAN;
+
+      if (DEGREE > 0) {
+        d_phi[1][qp] = legendre1(d_qf.ref_points[qp]);
+        d_dphi[1][qp] = NAN;
+      }
+
+      if (DEGREE > 1) {
+        d_phi[2][qp] = legendre2(d_qf.ref_points[qp]);
+        d_dphi[2][qp] = NAN;
+      }
 
       d_JxW[qp] = NAN;
     }
@@ -73,8 +89,12 @@ public:
     auto length = e.get_length();
 
     for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
-      d_dphi[1][qp] = diff_legendre1(d_qf.ref_points[qp]) * 2. / length;
-      d_dphi[2][qp] = diff_legendre2(d_qf.ref_points[qp]) * 2. / length;
+      if (DEGREE > 0)
+        d_dphi[1][qp] = diff_legendre1(d_qf.ref_points[qp]) * 2. / length;
+
+      if (DEGREE > 1)
+        d_dphi[2][qp] = diff_legendre2(d_qf.ref_points[qp]) * 2. / length;
+
       d_JxW[qp] = d_qf.ref_weights[qp] * length / 2.;
     }
   };
@@ -95,18 +115,23 @@ private:
   std::vector<double> d_JxW;
 };
 
+template<std::size_t DEGREE>
 class FETypeInnerBdryNetwork {
 public:
   explicit FETypeInnerBdryNetwork()
-      : d_phi_r(3), d_phi_l(3) {
+      : d_phi_r(DEGREE + 1), d_phi_l(DEGREE + 1) {
     d_phi_l[0] = 1;
     d_phi_r[0] = 1;
 
-    d_phi_l[1] = NAN;
-    d_phi_r[1] = NAN;
+    if (DEGREE > 0) {
+      d_phi_l[1] = NAN;
+      d_phi_r[1] = NAN;
+    }
 
-    d_phi_l[2] = NAN;
-    d_phi_r[2] = NAN;
+    if (DEGREE > 1) {
+      d_phi_l[2] = NAN;
+      d_phi_r[2] = NAN;
+    }
   }
 
   /// Assume: ----e_left----(v)----e_right----
@@ -117,11 +142,15 @@ public:
     assert(e_left.get_vertex_neighbors()[1] == v.get_id());
     assert(e_right.get_vertex_neighbors()[0] == v.get_id());
 
-    d_phi_l[1] = legendre1(point_left);
-    d_phi_r[1] = legendre1(point_right);
+    if (DEGREE > 0) {
+      d_phi_l[1] = legendre1(point_left);
+      d_phi_r[1] = legendre1(point_right);
+    }
 
-    d_phi_l[2] = legendre2(point_left);
-    d_phi_r[2] = legendre2(point_right);
+    if (DEGREE > 1) {
+      d_phi_l[2] = legendre2(point_left);
+      d_phi_r[2] = legendre2(point_right);
+    }
   };
 
   const std::vector<double> &get_phi_l() const { return d_phi_l; };
@@ -132,21 +161,25 @@ private:
   std::vector<double> d_phi_r;
 };
 
+template<std::size_t DEGREE>
 class FETypeExteriorBdryNetwork {
 public:
   explicit FETypeExteriorBdryNetwork()
-      : d_phi(3), d_n(1) {
+      : d_phi(DEGREE + 1), d_n(1) {
     d_phi[0] = 1;
-    d_phi[1] = NAN;
-    d_phi[2] = NAN;
+    if (DEGREE > 0)
+      d_phi[1] = NAN;
+    if (DEGREE > 1)
+      d_phi[2] = NAN;
   }
 
   /// Assume: (v)----e----
   void reinit(const Vertex &v, const Edge &e) {
     const double point = e.get_vertex_neighbors()[0] == v.get_id() ? -1 : +1;
-    d_phi[1] = legendre1(point);
-    d_phi[2] = legendre2(point);
-
+    if (DEGREE > 0)
+      d_phi[1] = legendre1(point);
+    if (DEGREE > 1)
+      d_phi[2] = legendre2(point);
     d_n = (e.get_vertex_neighbors()[0] == v.get_id()) ? -1 : +1;
   };
 

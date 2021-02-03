@@ -135,7 +135,7 @@ public:
 
 private:
   struct NamedField {
-    NamedField(std::string n, std::vector<double> v) : name(n), values(std::move(v)) {}
+    NamedField(std::string n, std::vector<double> v) : name(std::move(n)), values(std::move(v)) {}
 
     std::string name;
     std::vector<double> values;
