@@ -37,6 +37,9 @@ private:
   std::size_t d_num_basis_functions;
 };
 
+/*! @brief Copies the dof values in dof_indices from a global vector into a local vector. */
+void extract_dof(const std::vector<std::size_t>& dof_indices, const std::vector<double>& global, std::vector<double>& local);
+
 } // namespace macrocirculation
 
 #endif //TUMORMODELS_DOF_MAP_NETWORK_HPP

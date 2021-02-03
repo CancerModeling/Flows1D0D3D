@@ -8,6 +8,8 @@
 #include "dof_map_network.hpp"
 #include "graph_storage.hpp"
 
+#include <cassert>
+
 namespace macrocirculation {
 
 SimpleDofMapNetwork::SimpleDofMapNetwork(std::size_t num_components, std::size_t num_basis_functions)
@@ -18,6 +20,15 @@ void SimpleDofMapNetwork::dof_indices(const Edge &edge, std::vector<std::size_t>
   auto id = edge.get_id();
   for (auto idx = 0; idx < dof_indices.size(); idx += 1)
     dof_indices[idx] = id * d_num_basis_functions * d_num_components + idx;
+}
+
+void extract_dof(const std::vector<std::size_t>& dof_indices, const std::vector<double>& global, std::vector<double>& local)
+{
+  assert(global.size() > local.size());
+  assert(dof_indices.size() == local.size());
+
+  for (std::size_t i=0; i<dof_indices.size(); i+=1)
+    local[i] = global[dof_indices[i]];
 }
 
 } // namespace macrocirculation

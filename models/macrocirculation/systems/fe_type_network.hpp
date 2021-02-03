@@ -23,7 +23,7 @@ constexpr double legendre3(double x) { return 0.5 * (5 * x * x * x - 3 * x); }
 // Collection of their derivatives
 constexpr double diff_legendre1(double x) { return 1; }
 constexpr double diff_legendre2(double x) { return 3 * x; }
-constexpr double diff_legendre3(double x) { return 0.5 * (15 * x * x  - 3); }
+constexpr double diff_legendre3(double x) { return 0.5 * (15 * x * x - 3); }
 
 /*! @brief Representation of a quadrature formula for the network. */
 struct QuadratureFormula {
@@ -37,15 +37,15 @@ struct QuadratureFormula {
 inline QuadratureFormula create_gauss4() {
   QuadratureFormula qf;
   qf.ref_points = {
-    - 0.861136311594053,
-    - 0.339981043584856,
-    + 0.339981043584856,
-    + 0.861136311594053 };
+    -0.861136311594053,
+    -0.339981043584856,
+    +0.339981043584856,
+    +0.861136311594053};
   qf.ref_weights = {
     0.347854845137454,
     0.652145154862546,
     0.652145154862546,
-    0.347854845137454 };
+    0.347854845137454};
   return qf;
 }
 
@@ -87,6 +87,9 @@ public:
   const std::vector<std::vector<double>> &get_dphi() const { return d_dphi; };
 
   const std::vector<double> &get_JxW() const { return d_JxW; };
+
+  /*! @brief Evaluates the function with the given dof values at the quadratures points. */
+  void evaluate_dof_at_quadrature_points(const std::vector<double> &dof_values, std::vector<double> &quadrature_point_values) const;
 
 private:
   QuadratureFormula d_qf;
