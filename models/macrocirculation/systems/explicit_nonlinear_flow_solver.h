@@ -8,8 +8,6 @@
 #ifndef TUMORMODELS_EXPLICIT_NONLINEAR_FLOW_SOLVER_H
 #define TUMORMODELS_EXPLICIT_NONLINEAR_FLOW_SOLVER_H
 
-#include "libmesh/libmesh.h"
-
 #include <vector>
 #include <cmath>
 #include <memory>
@@ -32,26 +30,16 @@ inline double get_W2_value(double Q, double A, double G0, double rho, double A0 
   return + Q/A + 4 * std::sqrt(G0/(2*rho)) * std::pow(A/A0, 1./4.);
 }
 
-/*! @brief Calculates the Jacobian of the (W1, W2) vector valued function. */
-template < typename Mat >
-inline const void get_W12_jacobian(const double Q, const double A, const double G0, const double rho, const double A0, Mat& mat)
-{
-  mat[0, 0] = - 1./A;
-  mat[1, 0] = + 1./A;
-  const double a = Q/std::pow(A, 2);
-  const double b = std::sqrt(G0/rho) / ( std::sqrt(2) * A0 * std::pow(A/A0, 3./4.));
-  mat[0, 1] =  a + b;
-  mat[1, 1] = -a + b;
-}
-
 /*! @brief Solves the system of equation
  *           W1(Q_up, A_up) = W1
  *           W2(Q_up, A_up) = W2
- *         for (Q_up, Q_up) by applying a Newton iteration.
+ *         for (Q_up, Q_up).
  */
-template < typename Mat >
-inline const void solve_W12(double & Q_up, double & A_up, const double W1, const double W2,  const double G0, const double rho, const double A0)
+inline void solve_W12(double & Q_up, double & A_up, const double W1, const double W2,  const double G0, const double rho, const double A0)
 {
+  const double in = 1./8. * std::sqrt(2. * rho / G0) * (W2 + W1);
+  A_up = A0 * std::pow(in, 4);
+  Q_up = A_up/2. * (W2 - W1);
 }
 
 class ExplicitNonlinearFlowSolver {
