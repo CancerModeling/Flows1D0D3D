@@ -18,6 +18,7 @@ namespace macrocirculation {
 
 // forward declarations
 class GraphStorage;
+class DofMapNetwork;
 
 /*! @brief Evaluates the back propagating wave. */
 inline const double get_W1_value(const double Q, const double A, const double G0, const double rho, const double A0 )
@@ -77,6 +78,9 @@ private:
 
   /*! @brief The current domain for solving the equation. */
   std::shared_ptr< GraphStorage > d_graph;
+
+  /*! @brief The dof map for our domain */
+  std::shared_ptr< DofMapNetwork > d_dof_map;
 
   /*! @brief Recalculates the current fluxes from the previous time step. */
   void calculate_fluxes();
