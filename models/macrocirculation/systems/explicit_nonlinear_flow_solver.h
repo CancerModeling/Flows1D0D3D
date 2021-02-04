@@ -11,6 +11,7 @@
 #include <vector>
 #include <cmath>
 #include <memory>
+#include <functional>
 
 namespace macrocirculation {
 
@@ -55,6 +56,31 @@ inline void solve_W12(double & Q_up, double & A_up, const double W1, const doubl
   Q_up = A_up/2. * (W2 - W1);
 }
 
+/*! @brief Inflow boundary condition modeling a heart beat.
+ *         These values are from T. Koeppls doctoral thesis, Eq. (2.124)
+ *
+ * @param t Current time.
+ * @return The current flow rate.
+ */
+inline double heart_beat_inflow(double t)
+{
+  const double t_period = 1.0;
+  const double t_systole = 0.3;
+  const double t_in_period = t - std::ceil(t/t_period);
+  if (t_in_period < t_systole)
+  {
+    return 485. * std::sin(M_PI * t/t_period);
+  }
+  else if ( t_in_period <= t_period + 1e-14)
+  {
+    return 0.;
+  }
+  else
+  {
+    throw std::runtime_error("unreachable code");
+  }
+}
+
 class ExplicitNonlinearFlowSolver {
 public:
   explicit ExplicitNonlinearFlowSolver( std::shared_ptr<GraphStorage> graph );
@@ -73,6 +99,8 @@ private:
 
   /*! @brief The current time. */
   double d_t_now;
+
+  std::function< double(double) > d_inflow_value_function;
 
   /*! @brief The solution at the current time step. */
   std::vector< double > d_u_now;
