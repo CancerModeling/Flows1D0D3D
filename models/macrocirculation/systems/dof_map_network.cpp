@@ -22,6 +22,13 @@ void SimpleDofMapNetwork::dof_indices(const Edge &edge, std::vector<std::size_t>
     dof_indices[idx] = id * d_num_basis_functions * d_num_components + idx;
 }
 
+void SimpleDofMapNetwork::dof_indices(const Edge &edge, std::vector<std::size_t> &dof_indices, std::size_t component) const {
+  dof_indices.resize(d_num_basis_functions);
+  auto id = edge.get_id();
+  for (auto idx = 0; idx < dof_indices.size(); idx += 1)
+    dof_indices[idx] = id * d_num_basis_functions * d_num_components + d_num_basis_functions*component + idx;
+}
+
 void extract_dof(const std::vector<std::size_t>& dof_indices, const std::vector<double>& global, std::vector<double>& local)
 {
   assert(global.size() > local.size());

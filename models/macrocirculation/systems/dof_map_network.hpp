@@ -21,6 +21,7 @@ public:
   virtual ~DofMapNetwork() = default;
 
   virtual void dof_indices(const Edge &edge, std::vector<std::size_t> &dof_indices) const = 0;
+  virtual void dof_indices(const Edge &edge, std::vector<std::size_t> &dof_indices, std::size_t component) const = 0;
 };
 
 /*! @brief Simple dof map, which orders the dofs by the formula
@@ -31,6 +32,7 @@ public:
   SimpleDofMapNetwork(std::size_t num_components, std::size_t num_basis_functions);
 
   void dof_indices(const Edge &edge, std::vector<std::size_t> &dof_indices) const override;
+  void dof_indices(const Edge &edge, std::vector<std::size_t> &dof_indices, std::size_t component) const override;
 
 private:
   std::size_t d_num_components;
