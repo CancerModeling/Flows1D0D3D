@@ -171,9 +171,12 @@ void GraphStorage::refine(std::size_t num_refinements) {
   }
 }
 
+double GraphStorage::num_vertices() const {
+  return p_vertices.size();
+}
+
 double GraphStorage::num_edges() const {
   return p_edges.size();
 }
-
 
 } // namespace macrocirculation

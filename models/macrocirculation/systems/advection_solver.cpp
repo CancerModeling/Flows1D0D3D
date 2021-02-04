@@ -37,7 +37,7 @@ void AdvectionSolver<DEGREE>::solve() const {
   std::vector<double> u_now(num_dofs, 0);
   std::vector<double> u_prev(num_dofs, 0);
 
-  const auto dof_map = std::make_shared<SimpleDofMapNetwork>(num_components, num_basis_functions);
+  const auto dof_map = std::make_shared<SimpleDofMapNetwork>(num_components, num_basis_functions, d_graph->num_edges());
 
   std::size_t it = 0;
 
