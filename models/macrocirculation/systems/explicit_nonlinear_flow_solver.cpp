@@ -11,8 +11,12 @@
 #include "dof_map_network.hpp"
 #include "fe_type_network.hpp"
 #include "graph_storage.hpp"
+#include "libmesh/libmesh.h"
+#include "gmm.h"
 
 namespace macrocirculation {
+
+namespace lm = libMesh;
 
 constexpr std::size_t degree = 2;
 
@@ -21,6 +25,7 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
       d_dof_map(std::make_shared<SimpleDofMapNetwork>(2, degree + 1, d_graph->num_edges())),
       d_tau(1e-2),
       d_t_now(0),
+      d_inflow_value_function(heart_beat_inflow),
       d_u_now(d_dof_map->num_dof()),
       d_u_prev(d_dof_map->num_dof()),
       d_Q_up(d_graph->num_vertices()),
@@ -42,9 +47,16 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
 void ExplicitNonlinearFlowSolver::solve() {
   calculate_fluxes();
   // TODO: rest
+
+  std::cout << d_Q_up << std::endl;
+  std::cout << d_A_up << std::endl;
 }
 
 void ExplicitNonlinearFlowSolver::calculate_fluxes() {
+  // initial value of the flow
+  // TODO: make this more generic for other initial flow values
+  const double Q0 = 0;
+
   const std::size_t num_basis_functions = degree + 1;
 
   // dof indices for left and right edge
@@ -75,7 +87,58 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
 
     // exterior boundary
     if (vertex->is_leaf()) {
-      // TODO
+      // TODO: Make this more generic!
+      const bool is_inflow_boundary = (vertex->get_coordinate() - lm::Point(0, 0, 0)).norm() < 1e-10;
+
+      const auto edge_r = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
+
+      fe_r.reinit(*edge_r);
+
+      d_dof_map->dof_indices(*edge_r, Q_dof_indices_r, 0);
+      d_dof_map->dof_indices(*edge_r, A_dof_indices_r, 1);
+
+      extract_dof(Q_dof_indices_r, d_u_prev, Q_prev_loc_r);
+      extract_dof(A_dof_indices_r, d_u_prev, A_prev_loc_r);
+
+      fe_r.evaluate_dof_at_quadrature_points(Q_prev_loc_r,  Q_prev_qp_r);
+      fe_r.evaluate_dof_at_quadrature_points(A_prev_loc_r,  A_prev_qp_r);
+
+      // inflow boundary
+      if (is_inflow_boundary) {
+        // we assert that the edge direction fits our assumptions
+        // TODO: Make this assumption more generic!
+        assert(edge_r->get_vertex_neighbors()[0] == vertex->get_id());
+
+        const double Q = Q_prev_qp_r[0];
+        const double A = A_prev_qp_r[0];
+
+        const double W1 = calculate_W1_value(Q, A, d_G0, d_rho, d_A0);
+        const double W2 = 2 * d_inflow_value_function(d_t_now) + calculate_W1_value(Q0, d_A0, d_G0, d_rho, d_A0);
+
+        double Q_up = 0, A_up = 0;
+        solve_W12(Q_up, A_up, W1, W2, d_G0, d_rho, d_A0);
+
+        d_Q_up[vertex->get_id()] = Q_up;
+        d_A_up[vertex->get_id()] = A_up;
+      }
+      // free outflow boundary
+      else {
+        // we assert that the edge direction fits our assumptions
+        // TODO: Make this assumption more generic!
+        assert(edge_r->get_vertex_neighbors()[1] == vertex->get_id());
+
+        const double Q = Q_prev_qp_r[1];
+        const double A = A_prev_qp_r[1];
+
+        const double W1 = calculate_W1_value(Q0, d_A0, d_G0, d_rho, d_A0);
+        const double W2 = calculate_W2_value(Q, A, d_G0, d_rho, d_A0);
+
+        double Q_up = 0, A_up = 0;
+        solve_W12(Q_up, A_up, W1, W2, d_G0, d_rho, d_A0);
+
+        d_Q_up[vertex->get_id()] = Q_up;
+        d_A_up[vertex->get_id()] = A_up;
+      }
     }
     // inner boundary
     else {
