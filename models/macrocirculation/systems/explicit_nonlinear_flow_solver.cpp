@@ -26,13 +26,22 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
       d_Q_up(d_graph->num_vertices()),
       d_A_up(d_graph->num_vertices()),
       d_G0(592.4e2), // 592.4 10^2 Pa,  TODO: Check if units are consistent!
-      d_rho(1.028),  // 1.028 g/cm^3,   TODO: Check if units are consistent!
+      d_rho(1.028),  // 1.028 kg/cm^3,  TODO: Check if units are consistent!
       d_A0(6.97)     // 6.97 cm^2,      TODO: Check if units are consistent!
 {
-// TODO: Initialize the rest
+  // set A to A0
+  std::vector< std::size_t > dof_indices;
+  for (const auto &e_id : d_graph->get_edge_ids()) {
+    const auto edge = d_graph->get_edge(e_id);
+    d_dof_map->dof_indices(*edge, dof_indices, 1);
+    d_u_prev[dof_indices[0]] = d_A0;
+    d_u_now[dof_indices[0]] = d_A0;
+  }
 }
 
 void ExplicitNonlinearFlowSolver::solve() {
+  calculate_fluxes();
+  // TODO: rest
 }
 
 void ExplicitNonlinearFlowSolver::calculate_fluxes() {
