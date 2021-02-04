@@ -114,13 +114,27 @@ private:
   /*! @brief The upwinded A-flow. d_A_up[vertex_id] contains the respective flux. */
   std::vector< double > d_A_up;
 
-  /*! @brief Recalculates the current fluxes from the previous time step. */
-  void calculate_fluxes();
+  /*! @brief Our current rhs vector before multiplying it with the inverse mass. */
+  std::vector< double > d_rhs;
+
+  /*! @brief Our current mass vector, defining the diagonal mass matrix. */
+  std::vector< double > d_mass;
 
   // All the parameters, which are now kept constant, but should change for vessel types.
   double d_G0;
   double d_rho;
   double d_A0;
+  double d_mu;
+  double d_gamma;
+
+  /*! @brief Recalculates the current fluxes from the previous time step. */
+  void calculate_fluxes();
+
+  /*! @brief Assembles from the fluxes and the previous values a new right hand side function. */
+  void calculate_rhs();
+
+  /*! @brief Applies the inverse mass to our right hand side and saves the result to u_now. */
+  void apply_inverse_mass();
 };
 
 }
