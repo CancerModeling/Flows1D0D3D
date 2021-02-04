@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   std::size_t ascending_aorta_id = 1;
 
   auto v0 = graph->create_vertex(lm::Point(0, 0, 0));
-  auto v1 = graph->create_vertex(lm::Point(1.0, 0, 0));
+  auto v1 = graph->create_vertex(lm::Point(4.0, 0, 0));
   graph->connect(*v0, *v1, ascending_aorta_id);
   graph->refine(5);
 

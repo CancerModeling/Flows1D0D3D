@@ -106,6 +106,7 @@ public:
   std::vector<std::size_t> get_edge_ids() const;
   std::vector<std::size_t> get_vertex_ids() const;
 
+  double num_vertices() const;
   double num_edges() const;
 
 private:

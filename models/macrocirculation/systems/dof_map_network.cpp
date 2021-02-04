@@ -12,8 +12,8 @@
 
 namespace macrocirculation {
 
-SimpleDofMapNetwork::SimpleDofMapNetwork(std::size_t num_components, std::size_t num_basis_functions)
-    : d_num_components(num_components), d_num_basis_functions(num_basis_functions) {}
+SimpleDofMapNetwork::SimpleDofMapNetwork(std::size_t num_components, std::size_t num_basis_functions, std::size_t num_edges)
+    : d_num_components(num_components), d_num_basis_functions(num_basis_functions), d_num_edges(num_edges) {}
 
 void SimpleDofMapNetwork::dof_indices(const Edge &edge, std::vector<std::size_t> &dof_indices) const {
   dof_indices.resize(d_num_basis_functions * d_num_components);
@@ -27,6 +27,10 @@ void SimpleDofMapNetwork::dof_indices(const Edge &edge, std::vector<std::size_t>
   auto id = edge.get_id();
   for (auto idx = 0; idx < dof_indices.size(); idx += 1)
     dof_indices[idx] = id * d_num_basis_functions * d_num_components + d_num_basis_functions*component + idx;
+}
+
+std::size_t SimpleDofMapNetwork::num_dof() const {
+  return d_num_components * d_num_basis_functions * d_num_edges;
 }
 
 void extract_dof(const std::vector<std::size_t>& dof_indices, const std::vector<double>& global, std::vector<double>& local)

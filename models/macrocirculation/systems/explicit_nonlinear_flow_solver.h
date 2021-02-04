@@ -18,14 +18,27 @@ namespace macrocirculation {
 class GraphStorage;
 class DofMapNetwork;
 
+/*! @brief Calculates Eq. (2.8) from "Multi-scale modeling of flow and transport processes in arterial networks and tissue".
+ *
+ * @param h0 The thickness of the blood vessel.
+ * @param E Young's modulus.
+ * @param nu Poisson ratio.
+ * @param A0 The vessel area
+ * @return
+ */
+inline double calculate_G0(double h0, double E, double nu, double A0)
+{
+  return std::sqrt(M_PI)*h0*E / ((1-nu*nu)*std::sqrt(A0));
+}
+
 /*! @brief Evaluates the back propagating wave. */
-inline const double get_W1_value(const double Q, const double A, const double G0, const double rho, const double A0 )
+inline double calculate_W1_value(const double Q, const double A, const double G0, const double rho, const double A0 )
 {
   return - Q/A + 4 * std::sqrt(G0/(2*rho)) * std::pow(A/A0, 1./4.);
 }
 
 /*! @brief Evaluates the forward propagating wave. */
-inline double get_W2_value(double Q, double A, double G0, double rho, double A0 )
+inline double calculate_W2_value(double Q, double A, double G0, double rho, double A0 )
 {
   return + Q/A + 4 * std::sqrt(G0/(2*rho)) * std::pow(A/A0, 1./4.);
 }
@@ -49,6 +62,12 @@ public:
   void solve();
 
 private:
+  /*! @brief The current domain for solving the equation. */
+  std::shared_ptr< GraphStorage > d_graph;
+
+  /*! @brief The dof map for our domain */
+  std::shared_ptr< DofMapNetwork > d_dof_map;
+
   /*! @brief Current time step size. */
   double d_tau;
 
@@ -61,14 +80,11 @@ private:
   /*! @brief The solution at the previous time step. */
   std::vector< double > d_u_prev;
 
-  /*! @brief The upwinded flows. */
-  std::vector< double > d_u_up;
+  /*! @brief The upwinded Q-flow. d_Q_up[vertex_id] contains the respective flux. */
+  std::vector< double > d_Q_up;
 
-  /*! @brief The current domain for solving the equation. */
-  std::shared_ptr< GraphStorage > d_graph;
-
-  /*! @brief The dof map for our domain */
-  std::shared_ptr< DofMapNetwork > d_dof_map;
+  /*! @brief The upwinded A-flow. d_A_up[vertex_id] contains the respective flux. */
+  std::vector< double > d_A_up;
 
   /*! @brief Recalculates the current fluxes from the previous time step. */
   void calculate_fluxes();
