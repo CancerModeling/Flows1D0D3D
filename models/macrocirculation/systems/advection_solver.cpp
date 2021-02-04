@@ -27,11 +27,9 @@ AdvectionSolver<DEGREE>::AdvectionSolver(std::shared_ptr<GraphStorage> graph, do
 
 template < std::size_t DEGREE >
 void AdvectionSolver<DEGREE>::solve() const {
-  constexpr std::size_t degree = 1;
-
   // assemble finite element system
   const std::size_t num_components = 1;
-  const std::size_t num_basis_functions = degree + 1;
+  const std::size_t num_basis_functions = DEGREE + 1;
   const std::size_t num_dofs = d_graph->num_edges() * num_components * num_basis_functions;
 
   gmm::row_matrix<gmm::wsvector<double>> A(num_dofs, num_dofs);
@@ -65,7 +63,7 @@ void AdvectionSolver<DEGREE>::solve() const {
       gmm::row_matrix<gmm::wsvector<double>> A_loc(num_components * num_basis_functions, num_components * num_basis_functions);
       std::vector<double> f_loc(num_components * num_basis_functions);
 
-      FETypeNetwork<degree> fe(create_gauss4());
+      FETypeNetwork<DEGREE> fe(create_gauss4());
       //mc::FETypeNetwork fe(mc::create_midpoint_rule());
       const auto &phi = fe.get_phi();
       const auto &dphi = fe.get_dphi();
@@ -118,7 +116,7 @@ void AdvectionSolver<DEGREE>::solve() const {
     // assemble boundary integrals
     {
       // functions evaluated on the inner cell boundaries
-      FETypeInnerBdryNetwork<degree> fe_inner;
+      FETypeInnerBdryNetwork<DEGREE> fe_inner;
       const auto &phi_l = fe_inner.get_phi_l();
       const auto &phi_r = fe_inner.get_phi_r();
 
@@ -129,7 +127,7 @@ void AdvectionSolver<DEGREE>::solve() const {
       gmm::row_matrix<gmm::wsvector<double>> A_rr_loc(num_components * num_basis_functions, num_components * num_basis_functions);
 
       // functions evaluated on the exterior boundaries
-      FETypeExteriorBdryNetwork<degree> fe_ext;
+      FETypeExteriorBdryNetwork<DEGREE> fe_ext;
       const auto &phi = fe_ext.get_phi();
 
       // block matrices for exterior boundaries
@@ -247,7 +245,7 @@ void AdvectionSolver<DEGREE>::solve() const {
 
 
     {
-      FETypeNetwork<degree> fe(create_trapezoidal_rule());
+      FETypeNetwork<DEGREE> fe(create_trapezoidal_rule());
 
       std::vector< double > u_vertex (d_graph->num_edges()*2, 0);
       interpolate_to_vertices(*d_graph, *dof_map, fe, u_now, u_vertex);

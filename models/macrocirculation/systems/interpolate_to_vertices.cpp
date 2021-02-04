@@ -23,9 +23,9 @@ void interpolate_to_vertices(const GraphStorage &graph,
 
   interpolated.resize(2 * graph.num_edges(), 0);
 
-  std::vector<std::size_t> dof_indices(fe.get_phi().size());
-  std::vector<double> dof_vector_local(fe.get_phi().size());
-  std::vector<double> evaluated_at_qps(fe.get_phi().size());
+  std::vector<std::size_t> dof_indices(DEGREE+1);
+  std::vector<double> dof_vector_local(DEGREE+1);
+  std::vector<double> evaluated_at_qps(fe.get_phi()[0].size());
 
   for (auto e_id : graph.get_edge_ids()) {
     auto edge = graph.get_edge(e_id);
