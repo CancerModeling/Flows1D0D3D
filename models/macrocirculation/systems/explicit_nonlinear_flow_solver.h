@@ -93,6 +93,8 @@ public:
 
   void solve();
 
+  double get_time() const;
+
 private:
   /*! @brief The current domain for solving the equation. */
   std::shared_ptr< GraphStorage > d_graph;
