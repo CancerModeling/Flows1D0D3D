@@ -7,6 +7,7 @@
 
 #include "libmesh/libmesh.h"
 #include <cmath>
+#include <graph_data_writer.hpp>
 #include <memory>
 
 #include "../systems/advection_solver.hpp"
@@ -22,7 +23,7 @@ int main(int argc, char *argv[]) {
   lm::LibMeshInit init(argc, argv);
 
   const double t_end = 1e-1;
-  const std::size_t max_iter = 3;
+  const std::size_t max_iter = 5;
 
   // create the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
@@ -44,10 +45,23 @@ int main(int argc, char *argv[]) {
 
   mc::ExplicitNonlinearFlowSolver solver(graph);
 
+  std::vector< double > Q_vertex_values(graph->num_edges() * 2, 0);
+  std::vector< double > A_vertex_values(graph->num_edges() * 2, 0);
+
   for (std::size_t it = 0; it < max_iter; it+=1)
   {
     std::cout << "iter " << it << std::endl;
+
     solver.solve();
+
+    // save solution
+    solver.get_solution_on_vertices(Q_vertex_values, A_vertex_values);
+    mc::GraphDataWriter writer;
+    writer.add_vertex_data("Q", Q_vertex_values);
+    writer.add_vertex_data("A", A_vertex_values);
+    writer.write_vtk("solution", *graph, it);
+
+    // break
     if (solver.get_time() > t_end+1e-12)
       break;
   }

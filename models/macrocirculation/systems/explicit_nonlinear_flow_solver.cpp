@@ -10,6 +10,7 @@
 
 #include "dof_map_network.hpp"
 #include "fe_type_network.hpp"
+#include "interpolate_to_vertices.hpp"
 #include "gmm.h"
 #include "graph_storage.hpp"
 #include "libmesh/libmesh.h"
@@ -20,8 +21,7 @@ namespace lm = libMesh;
 
 constexpr std::size_t degree = 0;
 
-void interpolate_constant(const GraphStorage & graph, const DofMapNetwork & dof_map, double value, std::size_t component, std::vector< double > & result)
-{
+void interpolate_constant(const GraphStorage &graph, const DofMapNetwork &dof_map, double value, std::size_t component, std::vector<double> &result) {
   std::vector<std::size_t> dof_indices;
   for (const auto &e_id : graph.get_edge_ids()) {
     const auto edge = graph.get_edge(e_id);
@@ -165,7 +165,7 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
         const double A = A_prev_qp_r[0];
 
         const double W1 = calculate_W1_value(Q, A, d_G0, d_rho, d_A0);
-        const double W2 = 2 * d_inflow_value_function(d_t_now)/d_A0 + calculate_W1_value(Q_init, A_init, d_G0, d_rho, d_A0);
+        const double W2 = 2 * d_inflow_value_function(d_t_now) / d_A0 + calculate_W1_value(Q_init, A_init, d_G0, d_rho, d_A0);
 
         double Q_up = 0, A_up = 0;
         solve_W12(Q_up, A_up, W1, W2, d_G0, d_rho, d_A0);
@@ -266,7 +266,7 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
 
   // data structures for facet contributions
   FETypeNetwork<degree> fe_boundary(create_trapezoidal_rule());
-  const auto& phi_b = fe_boundary.get_phi();
+  const auto &phi_b = fe_boundary.get_phi();
 
   for (const auto &e_id : d_graph->get_edge_ids()) {
     const auto edge = d_graph->get_edge(e_id);
@@ -339,10 +339,18 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
 }
 
 void ExplicitNonlinearFlowSolver::apply_inverse_mass() {
-  std::cout << "+ " << d_rhs << std::endl;
-  for (std::size_t i=0; i<d_dof_map->num_dof(); i+=1)
+  for (std::size_t i = 0; i < d_dof_map->num_dof(); i += 1)
     d_u_now[i] = d_inverse_mass[i] * d_rhs[i];
-  std::cout << "- " << d_u_now << std::endl;
+}
+
+double ExplicitNonlinearFlowSolver::get_solution_on_vertices(std::vector<double> &Q_values, std::vector<double> &A_values) const {
+  assert(Q_values.size() == d_graph->num_edges()*2);
+  assert(A_values.size() == d_graph->num_edges()*2);
+
+  FETypeNetwork<degree> fe(create_trapezoidal_rule());
+
+  interpolate_to_vertices(*d_graph, *d_dof_map, fe, 0, d_u_now, Q_values);
+  interpolate_to_vertices(*d_graph, *d_dof_map, fe, 1, d_u_now, A_values);
 }
 
 } // namespace macrocirculation

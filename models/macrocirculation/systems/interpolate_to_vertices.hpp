@@ -22,6 +22,7 @@ template < std::size_t DEGREE >
 void interpolate_to_vertices(const GraphStorage &graph,
                              const DofMapNetwork &map,
                              const FETypeNetwork<DEGREE> &fe,
+                             const std::size_t component,
                              const std::vector<double> &dof_vector,
                              std::vector<double> &interpolated);
 

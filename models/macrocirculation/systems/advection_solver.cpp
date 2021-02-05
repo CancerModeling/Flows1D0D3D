@@ -248,7 +248,7 @@ void AdvectionSolver<DEGREE>::solve() const {
       FETypeNetwork<DEGREE> fe(create_trapezoidal_rule());
 
       std::vector< double > u_vertex (d_graph->num_edges()*2, 0);
-      interpolate_to_vertices(*d_graph, *dof_map, fe, u_now, u_vertex);
+      interpolate_to_vertices(*d_graph, *dof_map, fe, 0, u_now, u_vertex);
 
       std::vector<double> u_mid(d_graph->num_edges(), 0);
       {
