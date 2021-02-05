@@ -91,6 +91,8 @@ public:
   /*! @brief Evaluates the function with the given dof values at the quadratures points. */
   void evaluate_dof_at_quadrature_points(const std::vector<double> &dof_values, std::vector<double> &quadrature_point_values) const;
 
+  std::size_t num_quad_points() const;
+
 private:
   QuadratureFormula d_qf;
 

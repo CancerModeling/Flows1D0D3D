@@ -24,7 +24,7 @@ class DofMapNetwork;
  * @param h0 The thickness of the blood vessel.
  * @param E Young's modulus.
  * @param nu Poisson ratio.
- * @param A0 The vessel area
+ * @param A0 The vessel area at p=0.
  * @return
  */
 inline double calculate_G0(double h0, double E, double nu, double A0)
