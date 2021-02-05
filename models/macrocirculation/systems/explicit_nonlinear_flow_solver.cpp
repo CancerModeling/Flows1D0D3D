@@ -240,16 +240,21 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
     fe_boundary.evaluate_dof_at_quadrature_points(Q_prev_loc, Q_prev_qp_boundary);
     fe_boundary.evaluate_dof_at_quadrature_points(A_prev_loc, A_prev_qp_boundary);
 
+    // the A-component of our F function
+    const auto F_A_eval = [=](double Q, double A) -> double {
+      return std::pow(Q, 2) / A + d_G0 / (3 * d_rho * std::sqrt(d_A0)) * std::pow(A, 3. / 2.);
+    };
+
     // evaluate F = (F_Q, F_A) at the quadrature points
     const auto &F_Q = Q_prev_qp;
     std::vector<double> F_A(Q_prev_qp.size(), 0);
     for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
-      F_A[qp] = std::pow(Q_prev_qp[qp], 2) / A_prev_qp[qp] + d_G0 / (3 * d_rho * std::sqrt(d_A0)) * std::pow(A_prev_qp[qp], 3. / 2.);
+      F_A[qp] = F_A_eval(Q_prev_qp[qp], A_prev_qp[qp]);
 
     const auto &F_Q_boundary = Q_prev_qp_boundary;
     std::vector<double> F_A_boundary(Q_prev_qp_boundary.size(), 0);
     for (std::size_t qp = 0; qp < fe_boundary.num_quad_points(); qp += 1)
-      F_A_boundary[qp] = std::pow(Q_prev_qp_boundary[qp], 2) / A_prev_qp_boundary[qp] + d_G0 / (3 * d_rho * std::sqrt(d_A0)) * std::pow(A_prev_qp_boundary[qp], 3. / 2.);
+      F_A_boundary[qp] = F_A_eval(Q_prev_qp_boundary[qp], A_prev_qp_boundary[qp]);
 
     // evaluate S = (0, S_A) at the quadrature points
     const double S_Q = 0;
@@ -291,6 +296,9 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
 
 void ExplicitNonlinearFlowSolver::apply_inverse_mass() {
   // TODO: implement
+  for (const auto &e_id : d_graph->get_edge_ids()) {
+    const auto edge = d_graph->get_edge(e_id);
+  }
 }
 
 } // namespace macrocirculation
