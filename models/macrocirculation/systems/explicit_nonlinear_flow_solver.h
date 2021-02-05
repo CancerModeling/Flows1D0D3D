@@ -95,6 +95,8 @@ public:
 
   double get_time() const;
 
+  double get_solution_on_vertices(std::vector< double > & Q_values, std::vector< double > & A_values) const;
+
 private:
   /*! @brief The current domain for solving the equation. */
   std::shared_ptr< GraphStorage > d_graph;
