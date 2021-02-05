@@ -18,7 +18,48 @@ namespace macrocirculation {
 
 namespace lm = libMesh;
 
-constexpr std::size_t degree = 2;
+constexpr std::size_t degree = 1;
+
+void interpolate_constant(const GraphStorage & graph, const DofMapNetwork & dof_map, double value, std::size_t component, std::vector< double > & result)
+{
+  std::vector<std::size_t> dof_indices;
+  for (const auto &e_id : graph.get_edge_ids()) {
+    const auto edge = graph.get_edge(e_id);
+    dof_map.dof_indices(*edge, dof_indices, component);
+    result[dof_indices[0]] = value;
+  }
+}
+
+void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_map, std::vector<double> &inv_mass) {
+  // make sure that the inverse mass vector is large enough
+  assert(inv_mass.size() == dof_map.num_dof());
+
+  const std::size_t num_basis_functions = degree + 1;
+
+  // the squared norm of the legendre polynomials on [-1, +1]
+  std::vector<double> legendre_weight = {2, 2. / 3., 0.4, 0.285714};
+
+  // assert that we have precalculated enough weights
+  assert(num_basis_functions <= legendre_weight.size());
+
+  std::vector<std::size_t> Q_dof_indices(num_basis_functions, 0);
+  std::vector<std::size_t> A_dof_indices(num_basis_functions, 0);
+
+  for (const auto &e_id : graph.get_edge_ids()) {
+    const auto edge = graph.get_edge(e_id);
+
+    dof_map.dof_indices(*edge, Q_dof_indices, 0);
+    dof_map.dof_indices(*edge, A_dof_indices, 1);
+
+    const double edge_weight = edge->get_length() / 2;
+
+    for (std::size_t i = 0; i < num_basis_functions; i += 1) {
+      const double mass = legendre_weight[i] * edge_weight;
+      inv_mass[Q_dof_indices[i]] = 1. / mass;
+      inv_mass[A_dof_indices[i]] = 1. / mass;
+    }
+  }
+}
 
 ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph)
     : d_graph(std::move(graph)),
@@ -31,7 +72,7 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
       d_Q_up(d_graph->num_vertices()),
       d_A_up(d_graph->num_vertices()),
       d_rhs(d_dof_map->num_dof()),
-      d_mass(d_dof_map->num_dof()),
+      d_inverse_mass(d_dof_map->num_dof()),
       d_G0(592.4e2), // 592.4 10^2 Pa,  TODO: Check if units are consistent!
       d_rho(1.028),  // 1.028 kg/cm^3,  TODO: Check if units are consistent!
       d_A0(6.97),    // 6.97 cm^2,      TODO: Check if units are consistent!
@@ -39,41 +80,41 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
       d_gamma(2)     // Poiseuille flow
 {
   // set A constant to A0
-  std::vector<std::size_t> dof_indices;
-  for (const auto &e_id : d_graph->get_edge_ids()) {
-    const auto edge = d_graph->get_edge(e_id);
-    d_dof_map->dof_indices(*edge, dof_indices, 1);
-    d_u_prev[dof_indices[0]] = d_A0;
-    d_u_now[dof_indices[0]] = d_A0;
-  }
+  interpolate_constant(*d_graph, *d_dof_map, d_A0, 1, d_u_prev);
+  interpolate_constant(*d_graph, *d_dof_map, d_A0, 1, d_u_now);
+  assemble_inverse_mass(*d_graph, *d_dof_map, d_inverse_mass);
 }
 
 void ExplicitNonlinearFlowSolver::solve() {
   calculate_fluxes();
   calculate_rhs();
+  apply_inverse_mass();
 
   std::cout << d_Q_up << std::endl;
   std::cout << d_A_up << std::endl;
 
   std::cout << d_rhs << std::endl;
+  std::cout << d_u_prev << std::endl;
+  std::cout << d_u_now << std::endl;
 }
 
 void ExplicitNonlinearFlowSolver::calculate_fluxes() {
   // initial value of the flow
   // TODO: make this more generic for other initial flow values
-  const double Q0 = 0;
+  const double Q_init = 0;
+  const double A_init = d_A0;
 
   const std::size_t num_basis_functions = degree + 1;
+
+  // finite-element for left and right edge
+  FETypeNetwork<degree> fe_l(create_trapezoidal_rule());
+  FETypeNetwork<degree> fe_r(create_trapezoidal_rule());
 
   // dof indices for left and right edge
   std::vector<std::size_t> Q_dof_indices_l(num_basis_functions, 0);
   std::vector<std::size_t> A_dof_indices_l(num_basis_functions, 0);
   std::vector<std::size_t> Q_dof_indices_r(num_basis_functions, 0);
   std::vector<std::size_t> A_dof_indices_r(num_basis_functions, 0);
-
-  // finite-element for left and right edge
-  FETypeNetwork<degree> fe_l(create_trapezoidal_rule());
-  FETypeNetwork<degree> fe_r(create_trapezoidal_rule());
 
   // local views of our previous solution
   std::vector<double> Q_prev_loc_r(num_basis_functions, 0);
@@ -119,7 +160,7 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
         const double A = A_prev_qp_r[0];
 
         const double W1 = calculate_W1_value(Q, A, d_G0, d_rho, d_A0);
-        const double W2 = 2 * d_inflow_value_function(d_t_now) + calculate_W1_value(Q0, d_A0, d_G0, d_rho, d_A0);
+        const double W2 = 2 * d_inflow_value_function(d_t_now) + calculate_W1_value(Q_init, A_init, d_G0, d_rho, d_A0);
 
         double Q_up = 0, A_up = 0;
         solve_W12(Q_up, A_up, W1, W2, d_G0, d_rho, d_A0);
@@ -136,7 +177,7 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
         const double Q = Q_prev_qp_r[1];
         const double A = A_prev_qp_r[1];
 
-        const double W1 = calculate_W1_value(Q0, d_A0, d_G0, d_rho, d_A0);
+        const double W1 = calculate_W1_value(Q_init, A_init, d_G0, d_rho, d_A0);
         const double W2 = calculate_W2_value(Q, A, d_G0, d_rho, d_A0);
 
         double Q_up = 0, A_up = 0;
@@ -215,16 +256,14 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
   std::vector<double> Q_prev_qp(fe.num_quad_points(), 0);
   std::vector<double> A_prev_qp(fe.num_quad_points(), 0);
 
-  // data structures for boundary contributions
+  // data structures for facet contributions
   FETypeNetwork<degree> fe_boundary(create_trapezoidal_rule());
-  const auto &phi_boundary = fe_boundary.get_phi();
-
-  std::vector<double> Q_prev_qp_boundary(fe_boundary.num_quad_points(), 0);
-  std::vector<double> A_prev_qp_boundary(fe_boundary.num_quad_points(), 0);
+  const auto& phi_b = fe_boundary.get_phi();
 
   for (const auto &e_id : d_graph->get_edge_ids()) {
     const auto edge = d_graph->get_edge(e_id);
     fe.reinit(*edge);
+    fe_boundary.reinit(*edge);
 
     // evaluate Q and A inside cell
     d_dof_map->dof_indices(*edge, Q_dof_indices, 0);
@@ -237,8 +276,10 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
     fe.evaluate_dof_at_quadrature_points(A_prev_loc, A_prev_qp);
 
     // evaluate Q and A on boundary
-    fe_boundary.evaluate_dof_at_quadrature_points(Q_prev_loc, Q_prev_qp_boundary);
-    fe_boundary.evaluate_dof_at_quadrature_points(A_prev_loc, A_prev_qp_boundary);
+    const double Q_up_0 = d_Q_up[edge->get_vertex_neighbors()[0]];
+    const double Q_up_1 = d_Q_up[edge->get_vertex_neighbors()[1]];
+    const double A_up_0 = d_A_up[edge->get_vertex_neighbors()[0]];
+    const double A_up_1 = d_A_up[edge->get_vertex_neighbors()[1]];
 
     // the A-component of our F function
     const auto F_A_eval = [=](double Q, double A) -> double {
@@ -250,11 +291,6 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
     std::vector<double> F_A(Q_prev_qp.size(), 0);
     for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
       F_A[qp] = F_A_eval(Q_prev_qp[qp], A_prev_qp[qp]);
-
-    const auto &F_Q_boundary = Q_prev_qp_boundary;
-    std::vector<double> F_A_boundary(Q_prev_qp_boundary.size(), 0);
-    for (std::size_t qp = 0; qp < fe_boundary.num_quad_points(); qp += 1)
-      F_A_boundary[qp] = F_A_eval(Q_prev_qp_boundary[qp], A_prev_qp_boundary[qp]);
 
     // evaluate S = (0, S_A) at the quadrature points
     const double S_Q = 0;
@@ -279,11 +315,11 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
       }
 
       // boundary contributions
-      f_loc_Q[i] += phi_boundary[i][1] * d_tau * F_Q[1];
-      f_loc_Q[i] -= phi_boundary[i][0] * d_tau * F_Q[0];
+      f_loc_Q[i] += d_tau * Q_up_1 * phi_b[i][1];
+      f_loc_Q[i] -= d_tau * Q_up_0 * phi_b[i][0];
 
-      f_loc_A[i] += phi_boundary[i][1] * d_tau * F_A[1];
-      f_loc_A[i] -= phi_boundary[i][0] * d_tau * F_A[0];
+      f_loc_A[i] += d_tau * F_A_eval(Q_up_1, A_up_1) * phi_b[i][1];
+      f_loc_A[i] -= d_tau * F_A_eval(Q_up_0, A_up_0) * phi_b[i][0];
     }
 
     // copy into global vector
@@ -295,10 +331,8 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
 }
 
 void ExplicitNonlinearFlowSolver::apply_inverse_mass() {
-  // TODO: implement
-  for (const auto &e_id : d_graph->get_edge_ids()) {
-    const auto edge = d_graph->get_edge(e_id);
-  }
+  for (std::size_t i=0; i<d_dof_map->num_dof(); i+=1)
+    d_u_now[i] = d_inverse_mass[i] * d_rhs[i];
 }
 
 } // namespace macrocirculation

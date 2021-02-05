@@ -81,6 +81,12 @@ inline double heart_beat_inflow(double t)
   }
 }
 
+/*! @brief Assembles the inverse mass. WARNING: Assumes legendre basis! */
+void assemble_inverse_mass(const GraphStorage & graph, const DofMapNetwork & dof_map, std::vector< double > & inv_mass);
+
+/*! @brief Interpolates a constant value. WARNING: Assumes legendre basis! */
+void interpolate_constant(const GraphStorage & graph, const DofMapNetwork & dof_map, double value, std::size_t component, std::vector< double > & result);
+
 class ExplicitNonlinearFlowSolver {
 public:
   explicit ExplicitNonlinearFlowSolver( std::shared_ptr<GraphStorage> graph );
@@ -117,8 +123,8 @@ private:
   /*! @brief Our current rhs vector before multiplying it with the inverse mass. */
   std::vector< double > d_rhs;
 
-  /*! @brief Our current mass vector, defining the diagonal mass matrix. */
-  std::vector< double > d_mass;
+  /*! @brief Our current inverse mass vector, defining the diagonal inverse mass matrix. */
+  std::vector< double > d_inverse_mass;
 
   // All the parameters, which are now kept constant, but should change for vessel types.
   double d_G0;
