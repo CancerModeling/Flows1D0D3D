@@ -62,17 +62,21 @@ void FETypeNetwork<DEGREE>::reinit(const Edge &e) {
 }
 
 template<std::size_t DEGREE>
-void FETypeNetwork<DEGREE>::evaluate_dof_at_quadrature_points(const std::vector< double > & dof_values, std::vector< double > & quadrature_point_values ) const
-{
-  assert(dof_values.size() == DEGREE+1);
+void FETypeNetwork<DEGREE>::evaluate_dof_at_quadrature_points(const std::vector<double> &dof_values, std::vector<double> &quadrature_point_values) const {
+  assert(dof_values.size() == DEGREE + 1);
   assert(quadrature_point_values.size() == d_qf.size());
 
   for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
     quadrature_point_values[qp] = 0;
-    for (std::size_t i = 0; i < DEGREE+1; i += 1) {
+    for (std::size_t i = 0; i < DEGREE + 1; i += 1) {
       quadrature_point_values[qp] += d_phi[i][qp] * dof_values[i];
     }
   }
+}
+
+template<std::size_t DEGREE>
+std::size_t FETypeNetwork<DEGREE>::num_quad_points() const {
+  return d_qf.size();
 }
 
 template<std::size_t DEGREE>

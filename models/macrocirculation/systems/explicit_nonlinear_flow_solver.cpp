@@ -10,9 +10,9 @@
 
 #include "dof_map_network.hpp"
 #include "fe_type_network.hpp"
+#include "gmm.h"
 #include "graph_storage.hpp"
 #include "libmesh/libmesh.h"
-#include "gmm.h"
 
 namespace macrocirculation {
 
@@ -39,7 +39,7 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
       d_gamma(2)     // Poiseuille flow
 {
   // set A constant to A0
-  std::vector< std::size_t > dof_indices;
+  std::vector<std::size_t> dof_indices;
   for (const auto &e_id : d_graph->get_edge_ids()) {
     const auto edge = d_graph->get_edge(e_id);
     d_dof_map->dof_indices(*edge, dof_indices, 1);
@@ -50,10 +50,12 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
 
 void ExplicitNonlinearFlowSolver::solve() {
   calculate_fluxes();
-  // TODO: rest
+  calculate_rhs();
 
   std::cout << d_Q_up << std::endl;
   std::cout << d_A_up << std::endl;
+
+  std::cout << d_rhs << std::endl;
 }
 
 void ExplicitNonlinearFlowSolver::calculate_fluxes() {
@@ -64,27 +66,27 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
   const std::size_t num_basis_functions = degree + 1;
 
   // dof indices for left and right edge
-  std::vector< std::size_t > Q_dof_indices_l(num_basis_functions, 0);
-  std::vector< std::size_t > A_dof_indices_l(num_basis_functions, 0);
-  std::vector< std::size_t > Q_dof_indices_r(num_basis_functions, 0);
-  std::vector< std::size_t > A_dof_indices_r(num_basis_functions, 0);
+  std::vector<std::size_t> Q_dof_indices_l(num_basis_functions, 0);
+  std::vector<std::size_t> A_dof_indices_l(num_basis_functions, 0);
+  std::vector<std::size_t> Q_dof_indices_r(num_basis_functions, 0);
+  std::vector<std::size_t> A_dof_indices_r(num_basis_functions, 0);
 
   // finite-element for left and right edge
   FETypeNetwork<degree> fe_l(create_trapezoidal_rule());
   FETypeNetwork<degree> fe_r(create_trapezoidal_rule());
 
   // local views of our previous solution
-  std::vector< double > Q_prev_loc_r (num_basis_functions, 0);
-  std::vector< double > A_prev_loc_r (num_basis_functions, 0);
-  std::vector< double > Q_prev_loc_l (num_basis_functions, 0);
-  std::vector< double > A_prev_loc_l (num_basis_functions, 0);
+  std::vector<double> Q_prev_loc_r(num_basis_functions, 0);
+  std::vector<double> A_prev_loc_r(num_basis_functions, 0);
+  std::vector<double> Q_prev_loc_l(num_basis_functions, 0);
+  std::vector<double> A_prev_loc_l(num_basis_functions, 0);
 
   // previous solution evaluated at quadrature points
   // we have 2 quadrature points for the trapezoidal rule
-  std::vector< double > Q_prev_qp_r (2, 0);
-  std::vector< double > A_prev_qp_r (2, 0);
-  std::vector< double > Q_prev_qp_l (2, 0);
-  std::vector< double > A_prev_qp_l (2, 0);
+  std::vector<double> Q_prev_qp_r(2, 0);
+  std::vector<double> A_prev_qp_r(2, 0);
+  std::vector<double> Q_prev_qp_l(2, 0);
+  std::vector<double> A_prev_qp_l(2, 0);
 
   for (const auto &v_id : d_graph->get_vertex_ids()) {
     const auto vertex = d_graph->get_vertex(v_id);
@@ -104,8 +106,8 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
       extract_dof(Q_dof_indices_r, d_u_prev, Q_prev_loc_r);
       extract_dof(A_dof_indices_r, d_u_prev, A_prev_loc_r);
 
-      fe_r.evaluate_dof_at_quadrature_points(Q_prev_loc_r,  Q_prev_qp_r);
-      fe_r.evaluate_dof_at_quadrature_points(A_prev_loc_r,  A_prev_qp_r);
+      fe_r.evaluate_dof_at_quadrature_points(Q_prev_loc_r, Q_prev_qp_r);
+      fe_r.evaluate_dof_at_quadrature_points(A_prev_loc_r, A_prev_qp_r);
 
       // inflow boundary
       if (is_inflow_boundary) {
@@ -166,10 +168,10 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
       extract_dof(Q_dof_indices_r, d_u_prev, Q_prev_loc_r);
       extract_dof(A_dof_indices_r, d_u_prev, A_prev_loc_r);
 
-      fe_l.evaluate_dof_at_quadrature_points(Q_prev_loc_l,  Q_prev_qp_l);
-      fe_l.evaluate_dof_at_quadrature_points(A_prev_loc_l,  A_prev_qp_l);
-      fe_l.evaluate_dof_at_quadrature_points(Q_prev_loc_r,  Q_prev_qp_r);
-      fe_l.evaluate_dof_at_quadrature_points(A_prev_loc_r,  A_prev_qp_r);
+      fe_l.evaluate_dof_at_quadrature_points(Q_prev_loc_l, Q_prev_qp_l);
+      fe_l.evaluate_dof_at_quadrature_points(A_prev_loc_l, A_prev_qp_l);
+      fe_l.evaluate_dof_at_quadrature_points(Q_prev_loc_r, Q_prev_qp_r);
+      fe_l.evaluate_dof_at_quadrature_points(A_prev_loc_r, A_prev_qp_r);
 
       const double Q_l = Q_prev_qp_l[1];
       const double A_l = A_prev_qp_l[1];
@@ -190,172 +192,100 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
 
 void ExplicitNonlinearFlowSolver::calculate_rhs() {
   // first zero rhs
-  for (std::size_t idx=0; idx<d_rhs.size(); idx+=1)
+  for (std::size_t idx = 0; idx < d_rhs.size(); idx += 1)
     d_rhs[idx] = 0;
 
   const std::size_t num_basis_functions = degree + 1;
 
-  // assemble cell contributions
-  {
-    std::vector<double> f_loc_Q(num_basis_functions);
-    std::vector<double> f_loc_A(num_basis_functions);
+  std::vector<double> f_loc_Q(num_basis_functions);
+  std::vector<double> f_loc_A(num_basis_functions);
 
-    FETypeNetwork<degree> fe(create_gauss4());
-    const auto &phi = fe.get_phi();
-    const auto &dphi = fe.get_dphi();
-    const auto &JxW = fe.get_JxW();
+  // data structures for cell contributions
+  FETypeNetwork<degree> fe(create_gauss4());
+  const auto &phi = fe.get_phi();
+  const auto &dphi = fe.get_dphi();
+  const auto &JxW = fe.get_JxW();
 
-    std::vector<std::size_t> Q_dof_indices;
-    std::vector<std::size_t> A_dof_indices;
+  std::vector<std::size_t> Q_dof_indices(num_basis_functions, 0);
+  std::vector<std::size_t> A_dof_indices(num_basis_functions, 0);
 
-    std::vector<double> Q_prev_loc;
-    std::vector<double> A_prev_loc;
+  std::vector<double> Q_prev_loc(num_basis_functions, 0);
+  std::vector<double> A_prev_loc(num_basis_functions, 0);
 
-    std::vector<double> Q_prev_qp;
-    std::vector<double> A_prev_qp;
+  std::vector<double> Q_prev_qp(fe.num_quad_points(), 0);
+  std::vector<double> A_prev_qp(fe.num_quad_points(), 0);
 
-    for (const auto &e_id : d_graph->get_edge_ids()) {
-      const auto edge = d_graph->get_edge(e_id);
-      fe.reinit(*edge);
+  // data structures for boundary contributions
+  FETypeNetwork<degree> fe_boundary(create_trapezoidal_rule());
+  const auto &phi_boundary = fe_boundary.get_phi();
 
-      d_dof_map->dof_indices(*edge, Q_dof_indices, 0);
-      d_dof_map->dof_indices(*edge, A_dof_indices, 1);
+  std::vector<double> Q_prev_qp_boundary(fe_boundary.num_quad_points(), 0);
+  std::vector<double> A_prev_qp_boundary(fe_boundary.num_quad_points(), 0);
 
-      extract_dof(Q_dof_indices, d_u_prev, Q_prev_loc);
-      extract_dof(A_dof_indices, d_u_prev, A_prev_loc);
+  for (const auto &e_id : d_graph->get_edge_ids()) {
+    const auto edge = d_graph->get_edge(e_id);
+    fe.reinit(*edge);
 
-      fe.evaluate_dof_at_quadrature_points(Q_prev_loc,  Q_prev_qp);
-      fe.evaluate_dof_at_quadrature_points(A_prev_loc,  A_prev_qp);
+    // evaluate Q and A inside cell
+    d_dof_map->dof_indices(*edge, Q_dof_indices, 0);
+    d_dof_map->dof_indices(*edge, A_dof_indices, 1);
 
-      // evaluate F = (F_Q, F_A) at the quadrature points
-      const auto& F_Q = Q_prev_qp;
-      std::vector<double> F_A (Q_prev_qp.size(), 0);
-      for (std::size_t qp = 0; qp < phi[0].size(); qp += 1)
-        F_A[qp] = std::pow(Q_prev_qp[qp], 2)/A_prev_qp[qp] + d_G0/(3*d_rho*std::sqrt(d_A0)) * std::pow(A_prev_qp[qp], 3./2.);
+    extract_dof(Q_dof_indices, d_u_prev, Q_prev_loc);
+    extract_dof(A_dof_indices, d_u_prev, A_prev_loc);
 
-      // evaluate S = (0, S_A) at the quadrature points
-      const double S_Q = 0;
-      std::vector<double> S_A (Q_prev_qp.size(), 0);
-      for (std::size_t qp = 0; qp < phi[0].size(); qp += 1)
-        S_A[qp] = - 2 * d_mu * M_PI * (d_gamma + 2) * Q_prev_qp[qp] / A_prev_qp[qp];
+    fe.evaluate_dof_at_quadrature_points(Q_prev_loc, Q_prev_qp);
+    fe.evaluate_dof_at_quadrature_points(A_prev_loc, A_prev_qp);
 
-      for (std::size_t i = 0; i < num_basis_functions; i += 1) {
-        // rhs integral
-        f_loc_A[i] = 0;
-        f_loc_Q[i] = 0;
-        for (std::size_t qp = 0; qp < phi[i].size(); qp += 1) {
-          // mass term
-          f_loc_A[i] += phi[i][qp] * A_prev_qp[qp] * JxW[qp];
-          f_loc_A[i] += phi[i][qp] * d_tau * S_A[qp] * JxW[qp];
-          f_loc_A[i] += dphi[i][qp] * d_tau * F_A[qp] * JxW[qp];
+    // evaluate Q and A on boundary
+    fe_boundary.evaluate_dof_at_quadrature_points(Q_prev_loc, Q_prev_qp_boundary);
+    fe_boundary.evaluate_dof_at_quadrature_points(A_prev_loc, A_prev_qp_boundary);
 
-          f_loc_Q[i] += phi[i][qp] * Q_prev_qp[qp] * JxW[qp];
-          f_loc_Q[i] += phi[i][qp] * d_tau * S_Q * JxW[qp];
-          f_loc_Q[i] += dphi[i][qp] * d_tau * F_Q[qp] * JxW[qp];
-        }
+    // evaluate F = (F_Q, F_A) at the quadrature points
+    const auto &F_Q = Q_prev_qp;
+    std::vector<double> F_A(Q_prev_qp.size(), 0);
+    for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
+      F_A[qp] = std::pow(Q_prev_qp[qp], 2) / A_prev_qp[qp] + d_G0 / (3 * d_rho * std::sqrt(d_A0)) * std::pow(A_prev_qp[qp], 3. / 2.);
+
+    const auto &F_Q_boundary = Q_prev_qp_boundary;
+    std::vector<double> F_A_boundary(Q_prev_qp_boundary.size(), 0);
+    for (std::size_t qp = 0; qp < fe_boundary.num_quad_points(); qp += 1)
+      F_A_boundary[qp] = std::pow(Q_prev_qp_boundary[qp], 2) / A_prev_qp_boundary[qp] + d_G0 / (3 * d_rho * std::sqrt(d_A0)) * std::pow(A_prev_qp_boundary[qp], 3. / 2.);
+
+    // evaluate S = (0, S_A) at the quadrature points
+    const double S_Q = 0;
+    std::vector<double> S_A(Q_prev_qp.size(), 0);
+    for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
+      S_A[qp] = -2 * d_mu * M_PI * (d_gamma + 2) * Q_prev_qp[qp] / A_prev_qp[qp];
+
+    for (std::size_t i = 0; i < num_basis_functions; i += 1) {
+      // rhs integral
+      f_loc_A[i] = 0;
+      f_loc_Q[i] = 0;
+
+      // cell contributions
+      for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1) {
+        f_loc_Q[i] += phi[i][qp] * Q_prev_qp[qp] * JxW[qp];
+        f_loc_Q[i] += phi[i][qp] * d_tau * S_Q * JxW[qp];
+        f_loc_Q[i] += dphi[i][qp] * d_tau * F_Q[qp] * JxW[qp];
+
+        f_loc_A[i] += phi[i][qp] * A_prev_qp[qp] * JxW[qp];
+        f_loc_A[i] += phi[i][qp] * d_tau * S_A[qp] * JxW[qp];
+        f_loc_A[i] += dphi[i][qp] * d_tau * F_A[qp] * JxW[qp];
       }
 
-      // copy into global vector
-      for (std::size_t i = 0; i < Q_dof_indices.size(); i += 1)
-        d_rhs[Q_dof_indices[i]] += f_loc_Q[i];
-      for (std::size_t i = 0; i < A_dof_indices.size(); i += 1)
-        d_rhs[A_dof_indices[i]] += f_loc_A[i];
+      // boundary contributions
+      f_loc_Q[i] += phi_boundary[i][1] * d_tau * F_Q[1];
+      f_loc_Q[i] -= phi_boundary[i][0] * d_tau * F_Q[0];
+
+      f_loc_A[i] += phi_boundary[i][1] * d_tau * F_A[1];
+      f_loc_A[i] -= phi_boundary[i][0] * d_tau * F_A[0];
     }
-  }
 
-  // assemble boundary contributions
-  {
-    // functions evaluated on the inner cell boundaries
-    FETypeInnerBdryNetwork<degree> fe_inner;
-    const auto &phi_l = fe_inner.get_phi_l();
-    const auto &phi_r = fe_inner.get_phi_r();
-
-    // block rhs for inner boundaries
-    std::vector<double> f_loc_l_Q(num_basis_functions);
-    std::vector<double> f_loc_l_A(num_basis_functions);
-    std::vector<double> f_loc_r_Q(num_basis_functions);
-    std::vector<double> f_loc_r_A(num_basis_functions);
-
-    // functions evaluated on the exterior boundaries
-    FETypeExteriorBdryNetwork<degree> fe_ext;
-    const auto &phi = fe_ext.get_phi();
-
-    // right hand side for inner boundaries
-    std::vector<double> f_ext_loc_Q(num_basis_functions);
-    std::vector<double> f_ext_loc_A(num_basis_functions);
-
-    std::vector<std::size_t> Q_dof_indices;
-    std::vector<std::size_t> A_dof_indices;
-    std::vector<std::size_t> Q_dof_indices_l;
-    std::vector<std::size_t> A_dof_indices_l;
-    std::vector<std::size_t> Q_dof_indices_r;
-    std::vector<std::size_t> A_dof_indices_r;
-
-    for (const auto &v_id : d_graph->get_vertex_ids()) {
-      const auto vertex = d_graph->get_vertex(v_id);
-
-      // exterior boundary
-      if (vertex->is_leaf()) {
-        const auto edge = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
-        d_dof_map->dof_indices(*edge, Q_dof_indices, 0);
-        d_dof_map->dof_indices(*edge, A_dof_indices, 1);
-        fe_ext.reinit(*vertex, *edge);
-
-        // zero local system
-        for (std::size_t i = 0; i < num_basis_functions; i += 1) {
-          f_ext_loc_Q[i] = 0;
-          f_ext_loc_A[i] = 0;
-        }
-
-        // TODO: Make this more generic!
-        const bool is_inflow_boundary = (vertex->get_coordinate() - lm::Point(0, 0, 0)).norm() < 1e-10;
-
-        // inflow boundary
-        if (is_inflow_boundary) {
-          // TODO: implement
-        }
-        // outflow boundary
-        else {
-          // TODO: implement
-        }
-
-        // copy into vector
-        for (std::size_t i = 0; i < num_basis_functions; i += 1) {
-          d_rhs[Q_dof_indices[i]] += f_ext_loc_Q[i];
-          d_rhs[A_dof_indices[i]] += f_ext_loc_A[i];
-        }
-      }
-        // inner boundary
-      else {
-        const auto edge_l = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
-        const auto edge_r = d_graph->get_edge(vertex->get_edge_neighbors()[1]);
-
-        d_dof_map->dof_indices(*edge_l, Q_dof_indices_l, 0);
-        d_dof_map->dof_indices(*edge_l, A_dof_indices_l, 1);
-        d_dof_map->dof_indices(*edge_r, Q_dof_indices_r, 0);
-        d_dof_map->dof_indices(*edge_r, A_dof_indices_r, 1);
-
-        fe_inner.reinit(*vertex, *edge_l, *edge_r);
-
-        // zero local system
-        for (std::size_t i = 0; i < num_basis_functions; i += 1) {
-          f_loc_l_Q[i] = 0;
-          f_loc_l_A[i] = 0;
-          f_loc_r_Q[i] = 0;
-          f_loc_r_A[i] = 0;
-        }
-
-        // TODO: assemble contributions
-
-        // copy into global matrix
-        for (std::size_t i = 0; i < num_basis_functions; i += 1) {
-          d_rhs[Q_dof_indices_l[i]] += f_loc_l_Q[i];
-          d_rhs[A_dof_indices_l[i]] += f_loc_l_A[i];
-          d_rhs[Q_dof_indices_r[i]] += f_loc_r_Q[i];
-          d_rhs[A_dof_indices_r[i]] += f_loc_r_A[i];
-        }
-      }
-    }
+    // copy into global vector
+    for (std::size_t i = 0; i < Q_dof_indices.size(); i += 1)
+      d_rhs[Q_dof_indices[i]] += f_loc_Q[i];
+    for (std::size_t i = 0; i < A_dof_indices.size(); i += 1)
+      d_rhs[A_dof_indices[i]] += f_loc_A[i];
   }
 }
 
