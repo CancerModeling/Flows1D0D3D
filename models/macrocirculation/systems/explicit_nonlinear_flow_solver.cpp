@@ -64,7 +64,7 @@ void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_m
 ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph)
     : d_graph(std::move(graph)),
       d_dof_map(std::make_shared<SimpleDofMapNetwork>(2, degree + 1, d_graph->num_edges())),
-      d_tau(1e-2),
+      d_tau(2.5e-4),
       d_t_now(0),
       d_inflow_value_function(heart_beat_inflow),
       d_u_now(d_dof_map->num_dof()),
@@ -290,21 +290,21 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
     const double A_up_1 = d_A_up[edge->get_vertex_neighbors()[1]];
 
     // the A-component of our F function
-    const auto F_A_eval = [=](double Q, double A) -> double {
+    const auto F_Q_eval = [=](double Q, double A) -> double {
       return std::pow(Q, 2) / A + d_G0 / (3 * d_rho * std::sqrt(d_A0)) * std::pow(A, 3. / 2.);
     };
 
     // evaluate F = (F_Q, F_A) at the quadrature points
-    const auto &F_Q = Q_prev_qp;
-    std::vector<double> F_A(Q_prev_qp.size(), 0);
+    const auto &F_A = Q_prev_qp;
+    std::vector<double> F_Q(Q_prev_qp.size(), 0);
     for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
-      F_A[qp] = F_A_eval(Q_prev_qp[qp], A_prev_qp[qp]);
+      F_Q[qp] = F_Q_eval(Q_prev_qp[qp], A_prev_qp[qp]);
 
-    // evaluate S = (0, S_A) at the quadrature points
-    const double S_Q = 0;
-    std::vector<double> S_A(Q_prev_qp.size(), 0);
+    // evaluate S = (S_Q, S_A) at the quadrature points
+    const double S_A = 0;
+    std::vector<double> S_Q(Q_prev_qp.size(), 0);
     for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
-      S_A[qp] = -2 * d_mu * M_PI * (d_gamma + 2) * Q_prev_qp[qp] / A_prev_qp[qp];
+      S_Q[qp] = -2 * d_mu * M_PI * (d_gamma + 2) * Q_prev_qp[qp] / A_prev_qp[qp];
 
     for (std::size_t i = 0; i < num_basis_functions; i += 1) {
       // rhs integral
@@ -314,20 +314,20 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
       // cell contributions
       for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1) {
         f_loc_Q[i] += phi[i][qp] * Q_prev_qp[qp] * JxW[qp];
-        f_loc_Q[i] += phi[i][qp] * d_tau * S_Q * JxW[qp];
+        f_loc_Q[i] += phi[i][qp] * d_tau * S_Q[qp] * JxW[qp];
         f_loc_Q[i] += dphi[i][qp] * d_tau * F_Q[qp] * JxW[qp];
 
         f_loc_A[i] += phi[i][qp] * A_prev_qp[qp] * JxW[qp];
-        f_loc_A[i] += phi[i][qp] * d_tau * S_A[qp] * JxW[qp];
+        f_loc_A[i] += phi[i][qp] * d_tau * S_A * JxW[qp];
         f_loc_A[i] += dphi[i][qp] * d_tau * F_A[qp] * JxW[qp];
       }
 
       // boundary contributions  - tau [ F(U_up) phi ] ds, keep attention to the minus!
-      f_loc_Q[i] -= d_tau * Q_up_1 * phi_b[i][1];
-      f_loc_Q[i] += d_tau * Q_up_0 * phi_b[i][0];
+      f_loc_Q[i] -= d_tau * F_Q_eval(Q_up_1, A_up_1) * phi_b[i][1];
+      f_loc_Q[i] += d_tau * F_Q_eval(Q_up_0, A_up_0) * phi_b[i][0];
 
-      f_loc_A[i] -= d_tau * F_A_eval(Q_up_1, A_up_1) * phi_b[i][1];
-      f_loc_A[i] += d_tau * F_A_eval(Q_up_0, A_up_0) * phi_b[i][0];
+      f_loc_A[i] -= d_tau * Q_up_1 * phi_b[i][1];
+      f_loc_A[i] += d_tau * Q_up_0 * phi_b[i][0];
     }
 
     // copy into global vector

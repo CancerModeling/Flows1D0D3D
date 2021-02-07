@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
   lm::LibMeshInit init(argc, argv);
 
   const double t_end = 1e-1;
-  const std::size_t max_iter = 5;
+  const std::size_t max_iter = 10000;
 
   // create the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
@@ -35,13 +35,14 @@ int main(int argc, char *argv[]) {
 //  graph->connect(*v0, *v1, ascending_aorta_id);
 //  graph->refine(5);
 
-  const std::size_t N = 32;
+  const std::size_t N = 12;
   auto v_prev = graph->create_vertex(lm::Point(0, 0, 0));
   for (std::size_t k = 0; k < N; k += 1) {
-   auto v_next = graph->create_vertex(lm::Point(4*(k + 1.) / N, 0, 0));
+   auto v_next = graph->create_vertex(lm::Point(1*(k + 1.) / N, 0, 0));
    graph->connect(*v_prev, *v_next, ascending_aorta_id);
    v_prev = v_next;
   }
+  std::cout << graph->num_vertices() << std::endl;
 
   mc::ExplicitNonlinearFlowSolver solver(graph);
 
