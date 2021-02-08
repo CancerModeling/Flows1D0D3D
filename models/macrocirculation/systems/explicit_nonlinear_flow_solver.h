@@ -69,7 +69,7 @@ inline double heart_beat_inflow(double t)
   const double t_in_period = t - std::floor(t/t_period);
   if (t_in_period < t_systole)
   {
-    return 485. * std::sin(M_PI * t/t_systole);
+    return 485. * std::sin(M_PI * t_in_period/t_systole);
   }
   else if ( t_in_period <= t_period + 1e-14)
   {
@@ -79,6 +79,32 @@ inline double heart_beat_inflow(double t)
   {
     throw std::runtime_error("unreachable code");
   }
+}
+
+inline double solve_for_W2(const double W1, const double W2_init, const double Q_star, const double A_0, const double c_0)
+{
+  double W2 = W2_init;
+  double W2_prev = W2_init;
+  const auto f = [=](double W2){ return (W2 - W1) / 2. * std::pow((W1 + W2)/(8 * c_0), 4) * A_0 - Q_star; };
+  const auto f_prime = [=](double W2){ return  (0.000610352*A_0*(W2 - 0.6*W1)*pow((W2 + W1), 3))/pow(c_0, 4); };
+  for (std::size_t it=0; it<100; it+=1)
+  {
+    W2 += (-1) * f(W2)/f_prime(W2);
+    if (std::abs(W2 - W2_prev) < 1e-16 || std::abs(W2 - W2_prev) < 1e-8 * W2_prev)
+      break;
+    W2_prev = W2;
+  }
+  return W2;
+}
+
+inline double assemble_in_flow(const double Q_l, const double A_l, const double Q_star, const double G0, const double rho, const double A0)
+{
+  const double c0 = sqrt(G0/(2*rho));
+  const double W1 = calculate_W1_value(Q_l, A_l, G0, rho, A0);
+  const double W2_init = calculate_W2_value(Q_l, A_l, G0, rho, A0);
+  const double W2 = solve_for_W2(W1, W2_init, Q_star, A0, c0);
+  const double A = A0*std::pow(1./(8*c0)*(W2+W1), 4);
+  return A;
 }
 
 /*! @brief Assembles the inverse mass. WARNING: Assumes legendre basis! */
@@ -94,6 +120,8 @@ public:
   void solve();
 
   double get_time() const;
+
+  void set_tau(double tau);
 
   double get_solution_on_vertices(std::vector< double > & Q_values, std::vector< double > & A_values) const;
 

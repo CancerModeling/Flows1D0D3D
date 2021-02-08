@@ -22,8 +22,12 @@ int main(int argc, char *argv[]) {
   // libmesh and then call the constructor of model
   lm::LibMeshInit init(argc, argv);
 
-  const double t_end = 1e-1;
-  const std::size_t max_iter = 10000;
+  const double t_end = 2.;
+  const std::size_t max_iter = 40000;
+
+  const double tau = 2.5e-4/4;
+  const double tau_out = 1e-3;
+  const std::size_t output_interval = static_cast< std::size_t > (tau_out/tau);
 
   // create the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
@@ -45,6 +49,7 @@ int main(int argc, char *argv[]) {
   std::cout << graph->num_vertices() << std::endl;
 
   mc::ExplicitNonlinearFlowSolver solver(graph);
+  solver.set_tau(tau);
 
   std::vector< double > Q_vertex_values(graph->num_edges() * 2, 0);
   std::vector< double > A_vertex_values(graph->num_edges() * 2, 0);
@@ -55,12 +60,15 @@ int main(int argc, char *argv[]) {
 
     solver.solve();
 
-    // save solution
-    solver.get_solution_on_vertices(Q_vertex_values, A_vertex_values);
-    mc::GraphDataWriter writer;
-    writer.add_vertex_data("Q", Q_vertex_values);
-    writer.add_vertex_data("A", A_vertex_values);
-    writer.write_vtk("solution", *graph, it);
+    if (it % output_interval == 0)
+    {
+      // save solution
+      solver.get_solution_on_vertices(Q_vertex_values, A_vertex_values);
+      mc::GraphDataWriter writer;
+      writer.add_vertex_data("Q", Q_vertex_values);
+      writer.add_vertex_data("A", A_vertex_values);
+      writer.write_vtk("solution", *graph, it);
+    }
 
     // break
     if (solver.get_time() > t_end+1e-12)
