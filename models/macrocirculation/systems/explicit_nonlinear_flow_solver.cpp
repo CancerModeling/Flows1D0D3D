@@ -19,7 +19,7 @@ namespace macrocirculation {
 
 namespace lm = libMesh;
 
-constexpr std::size_t degree = 0;
+constexpr std::size_t degree = 1;
 
 void interpolate_constant(const GraphStorage &graph, const DofMapNetwork &dof_map, double value, std::size_t component, std::vector<double> &result) {
   std::vector<std::size_t> dof_indices;
@@ -64,7 +64,7 @@ void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_m
 ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph)
     : d_graph(std::move(graph)),
       d_dof_map(std::make_shared<SimpleDofMapNetwork>(2, degree + 1, d_graph->num_edges())),
-      d_tau(2.5e-4),
+      d_tau(2.5e-4/4),
       d_t_now(0),
       d_inflow_value_function(heart_beat_inflow),
       d_u_now(d_dof_map->num_dof()),
@@ -93,15 +93,19 @@ void ExplicitNonlinearFlowSolver::solve() {
   calculate_rhs();
   apply_inverse_mass();
 
+  /*
   std::cout << "Q_up " << d_Q_up << std::endl;
   std::cout << "A_up " << d_A_up << std::endl;
 
   std::cout << "rhs " << d_rhs << std::endl;
   std::cout << "u_prev " << d_u_prev << std::endl;
   std::cout << "u_now " << d_u_now << std::endl;
+   */
 }
 
 double ExplicitNonlinearFlowSolver::get_time() const { return d_t_now; }
+
+void ExplicitNonlinearFlowSolver::set_tau(double tau){ d_tau = tau; }
 
 void ExplicitNonlinearFlowSolver::calculate_fluxes() {
   // initial value of the flow
@@ -164,13 +168,10 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
         const double Q = Q_prev_qp_r[0];
         const double A = A_prev_qp_r[0];
 
-        const double W1 = calculate_W1_value(Q, A, d_G0, d_rho, d_A0);
-        const double W2 = 2 * d_inflow_value_function(d_t_now) / d_A0 + calculate_W1_value(Q_init, A_init, d_G0, d_rho, d_A0);
+        const double Q_star = d_inflow_value_function(d_t_now);
+        const double A_up = assemble_in_flow(Q, A, Q_star, d_G0, d_rho, d_A0);
 
-        double Q_up = 0, A_up = 0;
-        solve_W12(Q_up, A_up, W1, W2, d_G0, d_rho, d_A0);
-
-        d_Q_up[vertex->get_id()] = Q_up;
+        d_Q_up[vertex->get_id()] = Q_star;
         d_A_up[vertex->get_id()] = A_up;
       }
       // free outflow boundary
