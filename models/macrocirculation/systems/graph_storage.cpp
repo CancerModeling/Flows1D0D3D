@@ -26,7 +26,7 @@ bool Vertex::is_leaf() const { return p_neighbors.size() == 1; };
 
 bool Vertex::is_unconnected() const { return p_neighbors.empty(); }
 
-bool Vertex::is_bifurcation() const { return p_neighbors.empty() > 2; }
+bool Vertex::is_bifurcation() const { return p_neighbors.size() > 2; }
 
 bool Edge::is_pointing_to(std::size_t vertex_id) const {
   return p_neighbors[1] == vertex_id;

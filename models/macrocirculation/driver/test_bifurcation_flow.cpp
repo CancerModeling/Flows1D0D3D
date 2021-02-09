@@ -22,15 +22,15 @@ inline double calculate_p_from_QA(double Q, double A, const mc::VesselParameters
 void test1()
 {
   const double Q_a = 1;
-  const double Q_b = 0.5;
+  const double Q_b = 0.5/2;
   const double Q_c = 0.5;
 
   const double A_a = 6.97;
-  const double A_b = 6.97;
+  const double A_b = 6.97/2;
   const double A_c = 6.97;
 
   mc::VesselParameters param_a { 592.4e2,  6.97, 1.028 };
-  mc::VesselParameters param_b { 592.4e2,  6.97, 1.028 };
+  mc::VesselParameters param_b { 592.4e2,  6.97/2, 1.028 };
   mc::VesselParameters param_c { 592.4e2,  6.97, 1.028 };
 
   double Q_a_up, A_a_up;
@@ -62,13 +62,13 @@ void test2()
   const double Q_b = 0.2;
   const double Q_c = 0.3;
 
-  const double A_a = 6.97;
-  const double A_b = 3.;
-  const double A_c = 4.;
+  const double A_a = 7.2;
+  const double A_b = 3.2;
+  const double A_c = 4.1;
 
   mc::VesselParameters param_a { 592.4e2,  6.97, 1.028 };
-  mc::VesselParameters param_b { 592.4e2,  3.2, 1.028 };
-  mc::VesselParameters param_c { 592.4e2,  4.1, 1.028 };
+  mc::VesselParameters param_b { 592.4e2,  3.1, 1.028 };
+  mc::VesselParameters param_c { 592.4e2,  4.0, 1.028 };
 
   double Q_a_up, A_a_up;
   double Q_b_up, A_b_up;
@@ -131,7 +131,7 @@ void test2()
   std::cout << "diff p1 = " << calculate_p_from_QA(Q_a_up, A_a_up, param_a) - calculate_p_from_QA(Q_b_up, A_b_up, param_b) << std::endl;
   std::cout << "diff p2 = " << calculate_p_from_QA(Q_a_up, A_a_up, param_a) - calculate_p_from_QA(Q_c_up, A_c_up, param_c) << std::endl;
 
-  std::cout << "permutation true true true :" << std::endl;
+  std::cout << "permutation false true true :" << std::endl;
   Q_a_up = A_a_up = Q_b_up = A_b_up = Q_c_up = A_c_up = 0;
   mc::solve_at_bifurcation(
     -Q_a, A_a, param_a, false,
@@ -141,8 +141,6 @@ void test2()
     Q_b_up, A_b_up,
     Q_c_up, A_c_up);
 
-  std::cout << num_iter << " iterations" << std::endl;
-
   std::cout << "Q_a_up = " << Q_a_up << ", A_a_up = " << A_a_up << std::endl;
   std::cout << "Q_b_up = " << Q_b_up << ", A_b_up = " << A_b_up << std::endl;
   std::cout << "Q_c_up = " << Q_c_up << ", A_c_up = " << A_c_up << std::endl;
@@ -150,8 +148,6 @@ void test2()
   std::cout << "diff Q = " << Q_a_up - Q_b_up - Q_c_up <<std::endl;
   std::cout << "diff p1 = " << calculate_p_from_QA(Q_a_up, A_a_up, param_a) - calculate_p_from_QA(Q_b_up, A_b_up, param_b) << std::endl;
   std::cout << "diff p2 = " << calculate_p_from_QA(Q_a_up, A_a_up, param_a) - calculate_p_from_QA(Q_c_up, A_c_up, param_c) << std::endl;
-
-  std::cout << "permutation false true false :" << std::endl;
 }
 
 int main(int argc, char *argv[]) {

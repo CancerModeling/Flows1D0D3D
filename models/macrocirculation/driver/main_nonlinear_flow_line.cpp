@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 
   const double tau = 2.5e-4;
   const double tau_out = 1e-3;
-  const std::size_t output_interval = static_cast< std::size_t > (tau_out/tau);
+  const auto output_interval = static_cast< std::size_t > (tau_out/tau);
 
   // create the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
