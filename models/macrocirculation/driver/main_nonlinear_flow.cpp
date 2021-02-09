@@ -23,9 +23,10 @@ int main(int argc, char *argv[]) {
   lm::LibMeshInit init(argc, argv);
 
   const double t_end = 2.;
-  const std::size_t max_iter = 40000;
+  // const std::size_t max_iter = 160000;
+  const std::size_t max_iter = 2;
 
-  const double tau = 2.5e-4/4;
+  const double tau = 2.5e-4;
   const double tau_out = 1e-3;
   const std::size_t output_interval = static_cast< std::size_t > (tau_out/tau);
 
@@ -39,7 +40,7 @@ int main(int argc, char *argv[]) {
 //  graph->connect(*v0, *v1, ascending_aorta_id);
 //  graph->refine(5);
 
-  const std::size_t N = 12;
+  const std::size_t N = 11;
   auto v_prev = graph->create_vertex(lm::Point(0, 0, 0));
   for (std::size_t k = 0; k < N; k += 1) {
    auto v_next = graph->create_vertex(lm::Point(1*(k + 1.) / N, 0, 0));

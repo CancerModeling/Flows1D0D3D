@@ -25,3 +25,6 @@ target_link_libraries(${ProjectName}Advection ${ProjectLib})
 # nonlinear flow solver:
 add_executable(${ProjectName}NonlinearFlow main_nonlinear_flow.cpp)
 target_link_libraries(${ProjectName}NonlinearFlow ${ProjectLib})
+# test bifurcation flow:
+add_executable(${ProjectName}BifurcationFlow test_bifurcation_flow.cpp)
+target_link_libraries(${ProjectName}BifurcationFlow ${ProjectLib})

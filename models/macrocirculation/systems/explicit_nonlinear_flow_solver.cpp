@@ -93,14 +93,12 @@ void ExplicitNonlinearFlowSolver::solve() {
   calculate_rhs();
   apply_inverse_mass();
 
-  /*
   std::cout << "Q_up " << d_Q_up << std::endl;
   std::cout << "A_up " << d_A_up << std::endl;
 
   std::cout << "rhs " << d_rhs << std::endl;
   std::cout << "u_prev " << d_u_prev << std::endl;
   std::cout << "u_now " << d_u_now << std::endl;
-   */
 }
 
 double ExplicitNonlinearFlowSolver::get_time() const { return d_t_now; }
@@ -193,6 +191,10 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
         d_A_up[vertex->get_id()] = A_up;
       }
     }
+    // bifurcation boundary
+    else if ( vertex->is_bifurcation() ) {
+      throw std::runtime_error("not implemented yet.");
+    }
     // inner boundary
     else {
       const auto edge_l = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
@@ -228,11 +230,11 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
       const double W2_l = calculate_W2_value(Q_l, A_l, d_G0, d_rho, d_A0);
       const double W1_r = calculate_W1_value(Q_r, A_r, d_G0, d_rho, d_A0);
 
+      if (v_id == 1)
+        std::cout << std::endl;
+
       double Q_up = 0, A_up = 0;
       solve_W12(Q_up, A_up, W1_r, W2_l, d_G0, d_rho, d_A0);
-
-      if (vertex->get_id() == 1)
-        std::cout << "halt" << std::endl;
 
       d_Q_up[vertex->get_id()] = Q_up;
       d_A_up[vertex->get_id()] = A_up;
