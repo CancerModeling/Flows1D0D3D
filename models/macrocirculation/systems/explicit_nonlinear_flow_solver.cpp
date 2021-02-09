@@ -116,6 +116,7 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
   // finite-element for left and right edge
   FETypeNetwork<degree> fe_l(create_trapezoidal_rule());
   FETypeNetwork<degree> fe_r(create_trapezoidal_rule());
+  FETypeExteriorBdryNetwork<degree> fe_ext;
 
   // dof indices for left and right edge
   std::vector<std::size_t> Q_dof_indices_l(num_basis_functions, 0);
@@ -193,6 +194,13 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
     }
     // bifurcation boundary
     else if ( vertex->is_bifurcation() ) {
+      if (vertex->get_edge_neighbors().size() > 3)
+        throw std::runtime_error("only 3 neighbors at bifurcation points possible.");
+
+      const auto e0 = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
+      const auto e1 = d_graph->get_edge(vertex->get_edge_neighbors()[1]);
+      const auto e2 = d_graph->get_edge(vertex->get_edge_neighbors()[2]);
+
       throw std::runtime_error("not implemented yet.");
     }
     // inner boundary
