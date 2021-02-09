@@ -234,17 +234,6 @@ inline std::size_t solve_at_bifurcation(
       break;
   }
 
-  // check error for debugging
-  double res = 0;
-  res += (in_a ? -1: +1)*calculate_Q(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-  res += (in_b ? -1: +1)*calculate_Q(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  res += (in_c ? -1: +1)*calculate_Q(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-  std::cout << res << std::endl;
-  res = calculate_p(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) - calculate_p(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  std::cout << res << std::endl;
-  res = calculate_p(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) - calculate_p(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-  std::cout << res << std::endl;
-
   // copy back into the input variables
   convert_w1w2_to_QA(w1_a, w2_a, p_a, Q_a_up, A_a_up);
   convert_w1w2_to_QA(w1_b, w2_b, p_b, Q_b_up, A_b_up);
