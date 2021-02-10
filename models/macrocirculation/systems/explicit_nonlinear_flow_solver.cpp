@@ -14,6 +14,7 @@
 #include "graph_storage.hpp"
 #include "interpolate_to_vertices.hpp"
 #include "libmesh/libmesh.h"
+#include "vessel_formulas.hpp"
 
 namespace macrocirculation {
 
