@@ -5,8 +5,11 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TUMORMODELS_CHARACTERISTIC_FORMULAS_HPP
-#define TUMORMODELS_CHARACTERISTIC_FORMULAS_HPP
+#ifndef TUMORMODELS_VESSEL_FORMULAS_HPP
+#define TUMORMODELS_VESSEL_FORMULAS_HPP
+
+#include <cmath>
+#include <gmm.h>
 
 namespace macrocirculation {
 
@@ -410,4 +413,4 @@ inline double assemble_in_flow(const double Q_l, const double A_l, const double 
 
 }
 
-#endif //TUMORMODELS_CHARACTERISTIC_FORMULAS_HPP
+#endif //TUMORMODELS_VESSEL_FORMULAS_HPP
