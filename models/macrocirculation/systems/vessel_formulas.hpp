@@ -266,7 +266,7 @@ inline double calculate_W2_value(double Q, double A, double G0, double rho, doub
 }
 
 /*! @brief Convertes the characteristic variables to flow Q and area A. */
-inline double convert_w1w2_to_QA(double w1, double w2, const VesselParameters & p, double& Q, double& A)
+inline void convert_w1w2_to_QA(double w1, double w2, const VesselParameters & p, double& Q, double& A)
 {
   const double c0 = calculate_c0(p.G0, p.rho, p.A0);
   A = std::pow((w1+w2)/(8*c0), 4) * p.A0;

@@ -428,7 +428,7 @@ void ExplicitNonlinearFlowSolver::apply_inverse_mass() {
     d_u_now[i] = d_inverse_mass[i] * d_rhs[i];
 }
 
-double ExplicitNonlinearFlowSolver::get_solution_on_vertices(std::vector<double> &Q_values, std::vector<double> &A_values) const {
+void ExplicitNonlinearFlowSolver::get_solution_on_vertices(std::vector<double> &Q_values, std::vector<double> &A_values) const {
   assert(Q_values.size() == d_graph->num_edges() * 2);
   assert(A_values.size() == d_graph->num_edges() * 2);
 
