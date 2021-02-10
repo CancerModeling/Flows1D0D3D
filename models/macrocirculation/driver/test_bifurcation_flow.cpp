@@ -7,10 +7,8 @@
 
 #include "libmesh/libmesh.h"
 #include <cmath>
-#include <graph_data_writer.hpp>
-#include <memory>
 
-#include "../systems/explicit_nonlinear_flow_solver.h"
+#include "../systems/vessel_formulas.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
