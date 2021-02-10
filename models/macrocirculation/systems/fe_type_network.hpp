@@ -138,6 +138,8 @@ public:
   const std::vector<double> &get_phi() const { return d_phi; };
   const double &get_normal() const { return d_n; };
 
+  double evaluate_dof_at_boundary_points(const std::vector<double> &dof_values) const;
+
 private:
   std::vector<double> d_phi;
 

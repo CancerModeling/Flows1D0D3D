@@ -10,9 +10,9 @@
 
 #include "dof_map_network.hpp"
 #include "fe_type_network.hpp"
-#include "interpolate_to_vertices.hpp"
 #include "gmm.h"
 #include "graph_storage.hpp"
+#include "interpolate_to_vertices.hpp"
 #include "libmesh/libmesh.h"
 
 namespace macrocirculation {
@@ -64,7 +64,7 @@ void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_m
 ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph)
     : d_graph(std::move(graph)),
       d_dof_map(std::make_shared<SimpleDofMapNetwork>(2, degree + 1, d_graph->num_edges())),
-      d_tau(2.5e-4/4),
+      d_tau(2.5e-4 / 4),
       d_t_now(0),
       d_inflow_value_function(heart_beat_inflow),
       d_u_now(d_dof_map->num_dof()),
@@ -95,6 +95,7 @@ void ExplicitNonlinearFlowSolver::solve() {
   calculate_rhs();
   apply_inverse_mass();
 
+  /*
   std::cout << "Q_up_er " << d_Q_up_er << std::endl;
   std::cout << "Q_up_el " << d_Q_up_el << std::endl;
   std::cout << "A_up_er " << d_A_up_er << std::endl;
@@ -103,11 +104,12 @@ void ExplicitNonlinearFlowSolver::solve() {
   std::cout << "rhs " << d_rhs << std::endl;
   std::cout << "u_prev " << d_u_prev << std::endl;
   std::cout << "u_now " << d_u_now << std::endl;
+  */
 }
 
 double ExplicitNonlinearFlowSolver::get_time() const { return d_t_now; }
 
-void ExplicitNonlinearFlowSolver::set_tau(double tau){ d_tau = tau; }
+void ExplicitNonlinearFlowSolver::set_tau(double tau) { d_tau = tau; }
 
 void ExplicitNonlinearFlowSolver::calculate_fluxes() {
   // initial value of the flow
@@ -197,15 +199,83 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
       }
     }
     // bifurcation boundary
-    else if ( vertex->is_bifurcation() ) {
+    else if (vertex->is_bifurcation()) {
       if (vertex->get_edge_neighbors().size() > 3)
         throw std::runtime_error("only 3 neighbors at bifurcation points possible.");
 
+      // get vertices
       const auto e0 = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
       const auto e1 = d_graph->get_edge(vertex->get_edge_neighbors()[1]);
       const auto e2 = d_graph->get_edge(vertex->get_edge_neighbors()[2]);
 
-      throw std::runtime_error("not implemented yet.");
+      // check orientation
+      const bool e0_in = e0->is_pointing_to(vertex->get_id());
+      const bool e1_in = e1->is_pointing_to(vertex->get_id());
+      const bool e2_in = e2->is_pointing_to(vertex->get_id());
+
+      // evaluate on edge e0
+      d_dof_map->dof_indices(*e0, Q_dof_indices_l, 0);
+      d_dof_map->dof_indices(*e0, A_dof_indices_l, 1);
+      extract_dof(Q_dof_indices_l, d_u_prev, Q_prev_loc_l);
+      extract_dof(A_dof_indices_l, d_u_prev, A_prev_loc_l);
+      fe_ext.reinit(*vertex, *e0);
+      const double Q_e0 = fe_ext.evaluate_dof_at_boundary_points(Q_prev_loc_l);
+      const double A_e0 = fe_ext.evaluate_dof_at_boundary_points(A_prev_loc_l);
+
+      // evaluate on edge e1
+      d_dof_map->dof_indices(*e1, Q_dof_indices_l, 0);
+      d_dof_map->dof_indices(*e1, A_dof_indices_l, 1);
+      extract_dof(Q_dof_indices_l, d_u_prev, Q_prev_loc_l);
+      extract_dof(A_dof_indices_l, d_u_prev, A_prev_loc_l);
+      fe_ext.reinit(*vertex, *e1);
+      const double Q_e1 = fe_ext.evaluate_dof_at_boundary_points(Q_prev_loc_l);
+      const double A_e1 = fe_ext.evaluate_dof_at_boundary_points(A_prev_loc_l);
+
+      // evaluate on edge e2
+      d_dof_map->dof_indices(*e2, Q_dof_indices_l, 0);
+      d_dof_map->dof_indices(*e2, A_dof_indices_l, 1);
+      extract_dof(Q_dof_indices_l, d_u_prev, Q_prev_loc_l);
+      extract_dof(A_dof_indices_l, d_u_prev, A_prev_loc_l);
+      fe_ext.reinit(*vertex, *e2);
+      const double Q_e2 = fe_ext.evaluate_dof_at_boundary_points(Q_prev_loc_l);
+      const double A_e2 = fe_ext.evaluate_dof_at_boundary_points(A_prev_loc_l);
+
+      // get upwinded values at bifurcation
+      double Q_e0_up, A_e0_up;
+      double Q_e1_up, A_e1_up;
+      double Q_e2_up, A_e2_up;
+      const auto num_iter = solve_at_bifurcation(
+        Q_e0, A_e0, {d_G0, d_rho, d_A0}, e0_in,
+        Q_e1, A_e1, {d_G0, d_rho, d_A0}, e1_in,
+        Q_e2, A_e2, {d_G0, d_rho, d_A0}, e2_in,
+        Q_e0_up, A_e0_up,
+        Q_e1_up, A_e1_up,
+        Q_e2_up, A_e2_up);
+
+      // save upwinded values into upwind vector
+      if (e0_in) {
+        d_Q_up_er[e0->get_id()] = Q_e0_up;
+        d_A_up_er[e0->get_id()] = A_e0_up;
+      } else {
+        d_Q_up_el[e0->get_id()] = Q_e0_up;
+        d_A_up_el[e0->get_id()] = A_e0_up;
+      }
+
+      if (e1_in) {
+        d_Q_up_er[e1->get_id()] = Q_e1_up;
+        d_A_up_er[e1->get_id()] = A_e1_up;
+      } else {
+        d_Q_up_el[e1->get_id()] = Q_e1_up;
+        d_A_up_el[e1->get_id()] = A_e1_up;
+      }
+
+      if (e2_in) {
+        d_Q_up_er[e2->get_id()] = Q_e2_up;
+        d_A_up_er[e2->get_id()] = A_e2_up;
+      } else {
+        d_Q_up_el[e2->get_id()] = Q_e2_up;
+        d_A_up_el[e2->get_id()] = A_e2_up;
+      }
     }
     // inner boundary
     else {
@@ -241,9 +311,6 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
 
       const double W2_l = calculate_W2_value(Q_l, A_l, d_G0, d_rho, d_A0);
       const double W1_r = calculate_W1_value(Q_r, A_r, d_G0, d_rho, d_A0);
-
-      if (v_id == 1)
-        std::cout << std::endl;
 
       double Q_up = 0, A_up = 0;
       solve_W12(Q_up, A_up, W1_r, W2_l, d_G0, d_rho, d_A0);
@@ -361,8 +428,8 @@ void ExplicitNonlinearFlowSolver::apply_inverse_mass() {
 }
 
 double ExplicitNonlinearFlowSolver::get_solution_on_vertices(std::vector<double> &Q_values, std::vector<double> &A_values) const {
-  assert(Q_values.size() == d_graph->num_edges()*2);
-  assert(A_values.size() == d_graph->num_edges()*2);
+  assert(Q_values.size() == d_graph->num_edges() * 2);
+  assert(A_values.size() == d_graph->num_edges() * 2);
 
   FETypeNetwork<degree> fe(create_trapezoidal_rule());
 
