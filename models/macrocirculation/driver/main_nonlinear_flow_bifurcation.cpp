@@ -37,11 +37,10 @@ int main(int argc, char *argv[]) {
   // libmesh and then call the constructor of model
   lm::LibMeshInit init(argc, argv);
 
-  const double t_end = 2.;
-  // const std::size_t max_iter = 160000;
-  const std::size_t max_iter = 2;
+  const double t_end = 4e-1;
+  const std::size_t max_iter = 160000;
 
-  const double tau = 2.5e-4;
+  const double tau = 2.5e-4/128;
   const double tau_out = 1e-3;
   const std::size_t output_interval = static_cast<std::size_t>(tau_out / tau);
 
@@ -57,11 +56,11 @@ int main(int argc, char *argv[]) {
   //  graph->connect(*v0, *v1, ascending_aorta_id);
   //  graph->refine(5);
 
-  const std::size_t N = 11;
+  const std::size_t N = 22;
   auto start = graph->create_vertex(lm::Point(0, 0, 0));
   auto midpoint = line_to(*graph, start, lm::Point(1, 0, 0), ascending_aorta_id, N);
-  line_to(*graph, midpoint, lm::Point(1+std::sqrt(2), +std::sqrt(2), 0), vessel_id_2, N);
-  line_to(*graph, midpoint, lm::Point(1+std::sqrt(2), -std::sqrt(2), 0), vessel_id_3, N);
+  line_to(*graph, midpoint, lm::Point(1.5, +0.5, 0), vessel_id_2, N);
+  line_to(*graph, midpoint, lm::Point(1.5, -0.5, 0), vessel_id_3, N);
   std::cout << graph->num_vertices() << std::endl;
 
   mc::ExplicitNonlinearFlowSolver solver(graph);
@@ -71,17 +70,17 @@ int main(int argc, char *argv[]) {
   std::vector<double> A_vertex_values(graph->num_edges() * 2, 0);
 
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    std::cout << "iter " << it << std::endl;
 
     solver.solve();
 
     if (it % output_interval == 0) {
+      std::cout << "iter " << it << std::endl;
       // save solution
       solver.get_solution_on_vertices(Q_vertex_values, A_vertex_values);
       mc::GraphDataWriter writer;
       writer.add_vertex_data("Q", Q_vertex_values);
       writer.add_vertex_data("A", A_vertex_values);
-      writer.write_vtk("solution", *graph, it);
+      writer.write_vtk("bifurcation_solution", *graph, it);
     }
 
     // break

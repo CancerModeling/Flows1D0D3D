@@ -140,6 +140,16 @@ void FETypeExteriorBdryNetwork<DEGREE>::reinit(const Vertex &v, const Edge &e) {
   d_n = (e.get_vertex_neighbors()[0] == v.get_id()) ? -1 : +1;
 };
 
+template<std::size_t DEGREE>
+double FETypeExteriorBdryNetwork<DEGREE>::evaluate_dof_at_boundary_points(const std::vector<double> &dof_values) const
+{
+  double value = 0;
+  for (std::size_t i = 0; i < DEGREE + 1; i += 1) {
+    value += d_phi[i] * dof_values[i];
+  }
+  return value;
+}
+
 // instantiations of the available templates to avoid lengthy recompiles:
 // DG0:
 template class FETypeNetwork<0>;
