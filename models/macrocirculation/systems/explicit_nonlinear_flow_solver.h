@@ -334,11 +334,25 @@ private:
   /*! @brief The solution at the previous time step. */
   std::vector<double> d_u_prev;
 
-  /*! @brief The upwinded Q-flow. d_Q_up[vertex_id] contains the respective flux. */
-  std::vector<double> d_Q_up;
+  /*! @brief The upwinded Q-flow from the left boundary of a macroedge,
+   *         ordered such that d_Q_up_el[edge_id] contains the respective flux.
+   * */
+  std::vector<double> d_Q_up_el;
 
-  /*! @brief The upwinded A-flow. d_A_up[vertex_id] contains the respective flux. */
-  std::vector<double> d_A_up;
+  /*! @brief The upwinded Q-flow from the right boundary of a macroedge,
+   *         ordered such that d_Q_up_er[edge_id] contains the respective flux.
+   * */
+  std::vector<double> d_Q_up_er;
+
+  /*! @brief The upwinded A-flow from the left boundary of a macroedge,
+   *         ordered such that d_A_up_el[edge_id] contains the respective flux.
+   * */
+  std::vector<double> d_A_up_el;
+
+  /*! @brief The upwinded A-flow from the right boundary of a macroedge,
+   *         ordered such that d_Q_up_er[edge_id] contains the respective flux.
+   * */
+  std::vector<double> d_A_up_er;
 
   /*! @brief Our current rhs vector before multiplying it with the inverse mass. */
   std::vector<double> d_rhs;
