@@ -69,8 +69,10 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
       d_inflow_value_function(heart_beat_inflow),
       d_u_now(d_dof_map->num_dof()),
       d_u_prev(d_dof_map->num_dof()),
-      d_Q_up(d_graph->num_vertices()),
-      d_A_up(d_graph->num_vertices()),
+      d_Q_up_el(d_graph->num_edges()),
+      d_Q_up_er(d_graph->num_edges()),
+      d_A_up_el(d_graph->num_edges()),
+      d_A_up_er(d_graph->num_edges()),
       d_rhs(d_dof_map->num_dof()),
       d_inverse_mass(d_dof_map->num_dof()),
       d_G0(592.4e2), // 592.4 10^2 Pa,  TODO: Check if units are consistent!
@@ -93,8 +95,10 @@ void ExplicitNonlinearFlowSolver::solve() {
   calculate_rhs();
   apply_inverse_mass();
 
-  std::cout << "Q_up " << d_Q_up << std::endl;
-  std::cout << "A_up " << d_A_up << std::endl;
+  std::cout << "Q_up_er " << d_Q_up_er << std::endl;
+  std::cout << "Q_up_el " << d_Q_up_el << std::endl;
+  std::cout << "A_up_er " << d_A_up_er << std::endl;
+  std::cout << "A_up_el " << d_A_up_el << std::endl;
 
   std::cout << "rhs " << d_rhs << std::endl;
   std::cout << "u_prev " << d_u_prev << std::endl;
@@ -170,8 +174,8 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
         const double Q_star = d_inflow_value_function(d_t_now);
         const double A_up = assemble_in_flow(Q, A, Q_star, d_G0, d_rho, d_A0);
 
-        d_Q_up[vertex->get_id()] = Q_star;
-        d_A_up[vertex->get_id()] = A_up;
+        d_Q_up_el[edge_r->get_id()] = Q_star;
+        d_A_up_el[edge_r->get_id()] = A_up;
       }
       // free outflow boundary
       else {
@@ -188,8 +192,8 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
         double Q_up = 0, A_up = 0;
         solve_W12(Q_up, A_up, W1, W2, d_G0, d_rho, d_A0);
 
-        d_Q_up[vertex->get_id()] = Q_up;
-        d_A_up[vertex->get_id()] = A_up;
+        d_Q_up_er[edge_r->get_id()] = Q_up;
+        d_A_up_er[edge_r->get_id()] = A_up;
       }
     }
     // bifurcation boundary
@@ -244,8 +248,10 @@ void ExplicitNonlinearFlowSolver::calculate_fluxes() {
       double Q_up = 0, A_up = 0;
       solve_W12(Q_up, A_up, W1_r, W2_l, d_G0, d_rho, d_A0);
 
-      d_Q_up[vertex->get_id()] = Q_up;
-      d_A_up[vertex->get_id()] = A_up;
+      d_Q_up_er[edge_l->get_id()] = Q_up;
+      d_A_up_er[edge_l->get_id()] = A_up;
+      d_Q_up_el[edge_r->get_id()] = Q_up;
+      d_A_up_el[edge_r->get_id()] = A_up;
     }
   }
 }
@@ -295,10 +301,10 @@ void ExplicitNonlinearFlowSolver::calculate_rhs() {
     fe.evaluate_dof_at_quadrature_points(A_prev_loc, A_prev_qp);
 
     // evaluate Q and A on boundary
-    const double Q_up_0 = d_Q_up[edge->get_vertex_neighbors()[0]];
-    const double Q_up_1 = d_Q_up[edge->get_vertex_neighbors()[1]];
-    const double A_up_0 = d_A_up[edge->get_vertex_neighbors()[0]];
-    const double A_up_1 = d_A_up[edge->get_vertex_neighbors()[1]];
+    const double Q_up_0 = d_Q_up_el[edge->get_id()];
+    const double Q_up_1 = d_Q_up_er[edge->get_id()];
+    const double A_up_0 = d_A_up_el[edge->get_id()];
+    const double A_up_1 = d_A_up_er[edge->get_id()];
 
     // the A-component of our F function
     const auto F_Q_eval = [=](double Q, double A) -> double {
