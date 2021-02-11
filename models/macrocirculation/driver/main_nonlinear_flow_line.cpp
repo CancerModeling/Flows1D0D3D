@@ -40,6 +40,7 @@ int main(int argc, char *argv[]) {
 
   const std::size_t N = 11;
   auto v_prev = graph->create_vertex(lm::Point(0, 0, 0));
+  v_prev->set_inflow(true);
   for (std::size_t k = 0; k < N; k += 1) {
    auto v_next = graph->create_vertex(lm::Point(4*(k + 1.) / N, 0, 0));
    graph->connect(*v_prev, *v_next, ascending_aorta_id);
@@ -67,7 +68,7 @@ int main(int argc, char *argv[]) {
       mc::GraphDataWriter writer;
       writer.add_vertex_data("Q", Q_vertex_values);
       writer.add_vertex_data("A", A_vertex_values);
-      writer.write_vtk("solution", *graph, it);
+      writer.write_vtk("line_solution", *graph, it);
     }
 
     // break

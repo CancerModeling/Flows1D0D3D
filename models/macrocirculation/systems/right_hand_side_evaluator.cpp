@@ -115,9 +115,6 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
 
     // exterior boundary
     if (vertex->is_leaf()) {
-      // TODO: Make this more generic!
-      const bool is_inflow_boundary = (vertex->get_coordinate() - lm::Point(0, 0, 0)).norm() < 1e-10;
-
       const auto edge_r = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
 
       fe_r.reinit(*edge_r);
@@ -132,7 +129,7 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
       fe_r.evaluate_dof_at_quadrature_points(A_prev_loc_r, A_prev_qp_r);
 
       // inflow boundary
-      if (is_inflow_boundary) {
+      if (vertex->is_inflow()) {
         // we assert that the edge direction fits our assumptions
         // TODO: Make this assumption more generic!
         assert(edge_r->get_vertex_neighbors()[0] == vertex->get_id());

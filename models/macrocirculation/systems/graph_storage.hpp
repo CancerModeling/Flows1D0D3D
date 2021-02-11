@@ -42,8 +42,13 @@ public:
   bool is_unconnected() const;
   bool is_bifurcation() const;
 
+  void set_inflow(bool inflow);
+  bool is_inflow() const;
+
 private:
   Point p_coordinate;
+
+  bool p_inflow;
 
   std::vector<std::size_t> p_neighbors;
 

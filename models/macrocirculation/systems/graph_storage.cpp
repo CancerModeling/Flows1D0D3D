@@ -16,7 +16,8 @@ std::size_t Primitive::get_id() const { return p_id; }
 
 Vertex::Vertex(std::size_t id, const Point &coordinate)
     : Primitive(id),
-      p_coordinate(coordinate) {}
+      p_coordinate(coordinate),
+      p_inflow(false) {}
 
 const Point &Vertex::get_coordinate() const { return p_coordinate; }
 
@@ -27,6 +28,10 @@ bool Vertex::is_leaf() const { return p_neighbors.size() == 1; };
 bool Vertex::is_unconnected() const { return p_neighbors.empty(); }
 
 bool Vertex::is_bifurcation() const { return p_neighbors.size() > 2; }
+
+void Vertex::set_inflow(bool inflow){ p_inflow = inflow; }
+
+bool Vertex::is_inflow() const{ return p_inflow; }
 
 bool Edge::is_pointing_to(std::size_t vertex_id) const {
   return p_neighbors[1] == vertex_id;
