@@ -11,17 +11,9 @@
 #include <cmath>
 #include <gmm.h>
 
+#include "vessel_parameters.hpp"
+
 namespace macrocirculation {
-
-/*! @brief Saves the material constants on a vessel. */
-struct VesselParameters {
-  VesselParameters(double G0, double A0, double rho)
-    : G0(G0), A0(A0), rho(rho) {}
-
-  double G0;
-  double A0;
-  double rho;
-};
 
 /*! @brief Calculates Eq. (2.8) from "Multi-scale modeling of flow and transport processes in arterial networks and tissue".
  *

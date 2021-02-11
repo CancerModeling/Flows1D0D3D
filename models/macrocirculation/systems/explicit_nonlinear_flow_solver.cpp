@@ -14,6 +14,7 @@
 #include "interpolate_to_vertices.hpp"
 #include "right_hand_side_evaluator.hpp"
 #include "time_integrators.hpp"
+#include "vessel_data_storage.hpp"
 
 namespace macrocirculation {
 
@@ -28,20 +29,35 @@ void interpolate_constant(const GraphStorage &graph, const DofMapNetwork &dof_ma
   }
 }
 
-ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph)
+void set_to_A0(const GraphStorage &graph, const DofMapNetwork &dof_map, const VesselDataStorage& vessel_data, std::vector<double> &result)
+{
+  std::vector<std::size_t> dof_indices;
+  for (const auto &e_id : graph.get_edge_ids()) {
+    const auto edge = graph.get_edge(e_id);
+    const auto& data = vessel_data.get_parameters(*edge);
+    // set Q
+    dof_map.dof_indices(*edge, dof_indices, 0);
+    result[dof_indices[0]] = 0;
+    // set A
+    dof_map.dof_indices(*edge, dof_indices, 1);
+    result[dof_indices[0]] = data.A0;
+  }
+}
+
+ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data)
     : d_graph(std::move(graph)),
+      d_vessel_data(std::move(vessel_data)),
       d_dof_map(std::make_shared<SimpleDofMapNetwork>(2, degree + 1, d_graph->num_edges())),
-      d_right_hand_side_evaluator(std::make_shared<RightHandSideEvaluator<degree>>(d_graph, d_dof_map)),
+      d_right_hand_side_evaluator(std::make_shared<RightHandSideEvaluator<degree>>(d_graph, d_vessel_data, d_dof_map)),
       d_time_integrator(std::make_unique<TimeIntegrator>(create_explicit_euler(), d_dof_map->num_dof())),
       d_tau(2.5e-4 / 4),
       d_t_now(0),
       d_u_now(d_dof_map->num_dof()),
-      d_u_prev(d_dof_map->num_dof()),
-      d_A0(6.97) // 6.97 cm^2,      TODO: Check if units are consistent!
+      d_u_prev(d_dof_map->num_dof())
 {
   // set A constant to A0
-  interpolate_constant(*d_graph, *d_dof_map, d_A0, 1, d_u_prev);
-  interpolate_constant(*d_graph, *d_dof_map, d_A0, 1, d_u_now);
+  set_to_A0(*d_graph, *d_dof_map, *d_vessel_data, d_u_prev);
+  set_to_A0(*d_graph, *d_dof_map, *d_vessel_data, d_u_now);
 }
 
 // we need the destructor here, to use unique_ptrs with forward declared classes.

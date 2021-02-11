@@ -54,6 +54,8 @@ bool Edge::is_pointing_to(std::size_t vertex_id) const {
   return p_neighbors[1] == vertex_id;
 }
 
+std::size_t Edge::get_type_id() const { return p_type_id; }
+
 void GraphStorage::reorder_edges(Vertex &v) {
   if (v.get_edge_neighbors().size() > 2)
     throw std::runtime_error("ordering edges on vertex with more than two neighbors.");

@@ -82,6 +82,8 @@ public:
   /*! @brief Is the edge pointing towards the given vertex? */
   bool is_pointing_to(std::size_t vertex_id) const;
 
+  std::size_t get_type_id() const;
+
 protected:
   std::vector<std::size_t> p_neighbors;
 

@@ -13,6 +13,7 @@
 #include "../systems/explicit_nonlinear_flow_solver.h"
 #include "../systems/graph_storage.hpp"
 #include "../systems/vessel_formulas.hpp"
+#include "../systems/vessel_data_storage.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
@@ -44,27 +45,26 @@ int main(int argc, char *argv[]) {
   const double tau_out = 1e-3;
   const std::size_t output_interval = static_cast<std::size_t>(tau_out / tau);
 
+  // we create data for the ascending aorta
+  auto vessel_data = std::make_shared< mc::VesselDataStorage > ();
+  std::size_t ascending_aorta_id = vessel_data->add_parameter({
+    592.4e2, // 592.4 10^2 Pa,  TODO: Check if units are consistent!
+    1.028,   // 1.028 kg/cm^3,  TODO: Check if units are consistent!
+    6.97,    // 6.97 cm^2,      TODO: Check if units are consistent!
+  });
+
   // create the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
-
-  std::size_t ascending_aorta_id = 1;
-  std::size_t vessel_id_2 = 2;
-  std::size_t vessel_id_3 = 3;
-
-  //  auto v0 = graph->create_vertex(lm::Point(0, 0, 0));
-  //  auto v1 = graph->create_vertex(lm::Point(4.0, 0, 0));
-  //  graph->connect(*v0, *v1, ascending_aorta_id);
-  //  graph->refine(5);
 
   const std::size_t N = 22;
   auto start = graph->create_vertex(lm::Point(0, 0, 0));
   start->set_to_inflow(mc::heart_beat_inflow);
   auto midpoint = line_to(*graph, start, lm::Point(1, 0, 0), ascending_aorta_id, N);
-  line_to(*graph, midpoint, lm::Point(1.5, +0.5, 0), vessel_id_2, N);
-  line_to(*graph, midpoint, lm::Point(1.5, -0.5, 0), vessel_id_3, N);
+  line_to(*graph, midpoint, lm::Point(1.5, +0.5, 0), ascending_aorta_id, N);
+  line_to(*graph, midpoint, lm::Point(1.5, -0.5, 0), ascending_aorta_id, N);
   std::cout << graph->num_vertices() << std::endl;
 
-  mc::ExplicitNonlinearFlowSolver solver(graph);
+  mc::ExplicitNonlinearFlowSolver solver(graph, vessel_data);
   solver.set_tau(tau);
 
   std::vector<double> Q_vertex_values(graph->num_edges() * 2, 0);
