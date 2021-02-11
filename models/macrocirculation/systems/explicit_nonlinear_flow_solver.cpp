@@ -10,10 +10,10 @@
 
 #include "dof_map_network.hpp"
 #include "fe_type_network.hpp"
-#include "gmm.h"
 #include "graph_storage.hpp"
 #include "interpolate_to_vertices.hpp"
 #include "right_hand_side_evaluator.hpp"
+#include "time_integrators.hpp"
 
 namespace macrocirculation {
 
@@ -32,11 +32,11 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
     : d_graph(std::move(graph)),
       d_dof_map(std::make_shared<SimpleDofMapNetwork>(2, degree + 1, d_graph->num_edges())),
       d_right_hand_side_evaluator(std::make_shared<RightHandSideEvaluator<degree>>(d_graph, d_dof_map)),
+      d_time_integrator(std::make_unique<TimeIntegrator>(create_explicit_euler(), d_dof_map->num_dof())),
       d_tau(2.5e-4 / 4),
       d_t_now(0),
       d_u_now(d_dof_map->num_dof()),
       d_u_prev(d_dof_map->num_dof()),
-      d_k0(d_dof_map->num_dof()),
       d_A0(6.97) // 6.97 cm^2,      TODO: Check if units are consistent!
 {
   // set A constant to A0
@@ -44,20 +44,29 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
   interpolate_constant(*d_graph, *d_dof_map, d_A0, 1, d_u_now);
 }
 
+// we need the destructor here, to use unique_ptrs with forward declared classes.
+ExplicitNonlinearFlowSolver::~ExplicitNonlinearFlowSolver() = default;
+
 void ExplicitNonlinearFlowSolver::solve() {
   d_u_prev = d_u_now;
   d_t_now += d_tau;
   const double t_prev = d_t_now - d_tau;
-
-  d_right_hand_side_evaluator->evaluate(t_prev, d_u_prev, d_k0);
-
-  // u_now = u_prev + tau * k0
-  gmm::add(d_u_prev, gmm::scaled(d_k0, d_tau), d_u_now);
+  d_time_integrator->apply<degree>(d_u_prev, t_prev, d_tau, *d_right_hand_side_evaluator, d_u_now);
 }
 
 double ExplicitNonlinearFlowSolver::get_time() const { return d_t_now; }
 
 void ExplicitNonlinearFlowSolver::set_tau(double tau) { d_tau = tau; }
+
+void ExplicitNonlinearFlowSolver::use_explicit_euler_method()
+{
+  d_time_integrator = std::make_unique<TimeIntegrator>(create_explicit_euler(), d_dof_map->num_dof());
+}
+
+void ExplicitNonlinearFlowSolver::use_ssp_method()
+{
+  d_time_integrator = std::make_unique<TimeIntegrator>(create_ssp_method(), d_dof_map->num_dof());
+}
 
 void ExplicitNonlinearFlowSolver::get_solution_on_vertices(std::vector<double> &Q_values, std::vector<double> &A_values) const {
   assert(Q_values.size() == d_graph->num_edges() * 2);

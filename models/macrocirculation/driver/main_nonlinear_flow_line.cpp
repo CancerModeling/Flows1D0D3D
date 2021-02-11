@@ -10,7 +10,6 @@
 #include <graph_data_writer.hpp>
 #include <memory>
 
-#include "../systems/advection_solver.hpp"
 #include "../systems/explicit_nonlinear_flow_solver.h"
 #include "../systems/graph_storage.hpp"
 
@@ -23,7 +22,7 @@ int main(int argc, char *argv[]) {
   lm::LibMeshInit init(argc, argv);
 
   const double t_end = 2.;
-  const std::size_t max_iter = 4;
+  const std::size_t max_iter = 160000;
 
   const double tau = 2.5e-4/4;
   const double tau_out = 1e-3;
@@ -50,6 +49,7 @@ int main(int argc, char *argv[]) {
 
   mc::ExplicitNonlinearFlowSolver solver(graph);
   solver.set_tau(tau);
+  solver.use_ssp_method();
 
   std::vector< double > Q_vertex_values(graph->num_edges() * 2, 0);
   std::vector< double > A_vertex_values(graph->num_edges() * 2, 0);

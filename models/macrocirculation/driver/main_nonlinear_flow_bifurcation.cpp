@@ -10,7 +10,6 @@
 #include <graph_data_writer.hpp>
 #include <memory>
 
-#include "../systems/advection_solver.hpp"
 #include "../systems/explicit_nonlinear_flow_solver.h"
 #include "../systems/graph_storage.hpp"
 

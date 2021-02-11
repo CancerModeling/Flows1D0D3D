@@ -42,7 +42,7 @@ bool check_consistency_rkm(const ButcherScheme &bs) {
 
 TimeIntegrator::TimeIntegrator(ButcherScheme bs, std::size_t num_dofs)
     : d_bs(std::move(bs)),
-      d_k(std::vector<std::vector<double>>(bs.b.size(), std::vector<double>(num_dofs, 0))),
+      d_k(std::vector<std::vector<double>>(d_bs.b.size(), std::vector<double>(num_dofs, 0))),
       d_tmp(num_dofs, 0) {}
 
 template<std::size_t degree>
@@ -56,7 +56,7 @@ void TimeIntegrator::apply(const std::vector<double> &u_prev,
     double t_s = t + tau * d_bs.c[i];
     d_tmp = u_prev;
     for (std::size_t j = 0; j < i; j += 1) {
-      std::size_t coeff = tau * d_bs.a.at(i * (i - 1) + j);
+      const double coeff = tau * d_bs.a.at(i * (i - 1)/2 + j);
       gmm::add(d_tmp, gmm::scaled(d_k[j], coeff), d_tmp);
     }
     rhs.evaluate(t_s, d_tmp, d_k[i]);
@@ -64,7 +64,7 @@ void TimeIntegrator::apply(const std::vector<double> &u_prev,
   // evaluate bs
   u_now = u_prev;
   for (std::size_t i = 0; i < d_bs.b.size(); i += 1) {
-    std::size_t coeff = tau * d_bs.b.at(i);
+    const double coeff = tau * d_bs.b.at(i);
     gmm::add(u_now, gmm::scaled(d_k[i], coeff), u_now);
   }
 }
