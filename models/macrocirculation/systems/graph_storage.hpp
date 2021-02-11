@@ -8,12 +8,12 @@
 #ifndef TUMORMODELS_GRAPH_STORAGE_H
 #define TUMORMODELS_GRAPH_STORAGE_H
 
+#include <functional>
 #include <libmesh/point.h>
 #include <map>
 #include <memory>
 #include <utility>
 #include <vector>
-#include <functional>
 
 namespace macrocirculation {
 
@@ -44,7 +44,7 @@ public:
   bool is_bifurcation() const;
 
   /*! @brief Marks the given vertex as part of the inflow boundary, where the given time dependent function provides the boundary values. */
-  void set_to_inflow(const std::function< double(double) >& inflow_value);
+  void set_to_inflow(const std::function<double(double)> &inflow_value);
 
   /*! @brief Marks the given vertex as part of the outflow boundary. */
   void set_to_outflow();
@@ -60,7 +60,7 @@ private:
 
   bool p_inflow;
 
-  std::function< double(double) > p_inflow_value;
+  std::function<double(double)> p_inflow_value;
 
   std::vector<std::size_t> p_neighbors;
 
@@ -127,6 +127,9 @@ public:
 
   double num_vertices() const;
   double num_edges() const;
+
+  /*! @brief Adds a line segment starting at "from" and ending at "to" to the graph. */
+  std::shared_ptr<Vertex> line_to(const std::shared_ptr<Vertex> &from, const Point &to, std::size_t vessel_id, std::size_t num_edges);
 
 private:
   std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_type_id, std::size_t edge_id);

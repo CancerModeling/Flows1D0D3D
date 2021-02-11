@@ -30,6 +30,8 @@ int main(int argc, char *argv[]) {
   const double tau_out = 1e-3;
   const auto output_interval = static_cast< std::size_t > (tau_out/tau);
 
+  const std::size_t num_edges_per_segment = 11;
+
   // we create data for the ascending aorta
   auto vessel_data = std::make_shared< mc::VesselDataStorage > ();
   std::size_t ascending_aorta_id = vessel_data->add_parameter({
@@ -40,17 +42,13 @@ int main(int argc, char *argv[]) {
 
   // create the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
+  auto start = graph->create_vertex(lm::Point(0, 0, 0));
+  graph->line_to(start, lm::Point(4, 0, 0), ascending_aorta_id, num_edges_per_segment);
 
-  const std::size_t N = 11;
-  auto v_prev = graph->create_vertex(lm::Point(0, 0, 0));
-  v_prev->set_to_inflow(mc::heart_beat_inflow);
-  for (std::size_t k = 0; k < N; k += 1) {
-   auto v_next = graph->create_vertex(lm::Point(4*(k + 1.) / N, 0, 0));
-   graph->connect(*v_prev, *v_next, ascending_aorta_id);
-   v_prev = v_next;
-  }
-  std::cout << graph->num_vertices() << std::endl;
+  // set inflow boundary conditions
+  start->set_to_inflow(mc::heart_beat_inflow);
 
+  // configure solver
   mc::ExplicitNonlinearFlowSolver solver(graph, vessel_data);
   solver.set_tau(tau);
   solver.use_ssp_method();
