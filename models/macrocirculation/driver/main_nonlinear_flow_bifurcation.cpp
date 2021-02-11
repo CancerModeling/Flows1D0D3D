@@ -57,6 +57,7 @@ int main(int argc, char *argv[]) {
 
   const std::size_t N = 22;
   auto start = graph->create_vertex(lm::Point(0, 0, 0));
+  start->set_inflow(true);
   auto midpoint = line_to(*graph, start, lm::Point(1, 0, 0), ascending_aorta_id, N);
   line_to(*graph, midpoint, lm::Point(1.5, +0.5, 0), vessel_id_2, N);
   line_to(*graph, midpoint, lm::Point(1.5, -0.5, 0), vessel_id_3, N);
