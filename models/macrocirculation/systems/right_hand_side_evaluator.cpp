@@ -55,7 +55,6 @@ template <std::size_t degree>
 RightHandSideEvaluator<degree>::RightHandSideEvaluator(std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMapNetwork> dof_map)
     : d_graph(std::move(graph)),
       d_dof_map(std::move(dof_map)),
-      d_inflow_value_function(heart_beat_inflow),
       d_Q_up_el(d_graph->num_edges()),
       d_Q_up_er(d_graph->num_edges()),
       d_A_up_el(d_graph->num_edges()),
@@ -137,7 +136,7 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
         const double Q = Q_prev_qp_r[0];
         const double A = A_prev_qp_r[0];
 
-        const double Q_star = d_inflow_value_function(t);
+        const double Q_star = vertex->get_inflow_value(t);
         const double A_up = assemble_in_flow(Q, A, Q_star, d_G0, d_rho, d_A0);
 
         d_Q_up_el[edge_r->get_id()] = Q_star;

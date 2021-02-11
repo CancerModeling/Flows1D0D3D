@@ -13,6 +13,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <functional>
 
 namespace macrocirculation {
 
@@ -42,13 +43,24 @@ public:
   bool is_unconnected() const;
   bool is_bifurcation() const;
 
-  void set_inflow(bool inflow);
+  /*! @brief Marks the given vertex as part of the inflow boundary, where the given time dependent function provides the boundary values. */
+  void set_to_inflow(const std::function< double(double) >& inflow_value);
+
+  /*! @brief Marks the given vertex as part of the outflow boundary. */
+  void set_to_outflow();
+
+  /*! @brief Returns whether the given vertex is part of the inflow boundary. */
   bool is_inflow() const;
+
+  /*! @brief Returns the inflow value at the given vertex. */
+  double get_inflow_value(double time) const;
 
 private:
   Point p_coordinate;
 
   bool p_inflow;
+
+  std::function< double(double) > p_inflow_value;
 
   std::vector<std::size_t> p_neighbors;
 
