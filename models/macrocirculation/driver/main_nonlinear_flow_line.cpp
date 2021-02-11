@@ -34,8 +34,8 @@ int main(int argc, char *argv[]) {
   auto vessel_data = std::make_shared< mc::VesselDataStorage > ();
   std::size_t ascending_aorta_id = vessel_data->add_parameter({
     592.4e2, // 592.4 10^2 Pa,  TODO: Check if units are consistent!
-    1.028,   // 1.028 kg/cm^3,  TODO: Check if units are consistent!
     6.97,    // 6.97 cm^2,      TODO: Check if units are consistent!
+    1.028,   // 1.028 kg/cm^3,  TODO: Check if units are consistent!
   });
 
   // create the geometry of the ascending aorta
