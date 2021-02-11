@@ -44,9 +44,6 @@ private:
   /*! @brief The dof map for our domain */
   std::shared_ptr<DofMapNetwork> d_dof_map;
 
-  /*! @brief The value at the inflow boundary. */
-  std::function<double(double)> d_inflow_value_function;
-
   /*! @brief The upwinded Q-flow from the left boundary of a macroedge,
    *         ordered such that d_Q_up_el[edge_id] contains the respective flux.
    */

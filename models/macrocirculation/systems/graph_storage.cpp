@@ -14,10 +14,15 @@ Primitive::Primitive(std::size_t id) : p_id(id) {}
 
 std::size_t Primitive::get_id() const { return p_id; }
 
+double default_inflow_function(double) {
+  throw std::runtime_error("inflow value at inflow boundary not set");
+}
+
 Vertex::Vertex(std::size_t id, const Point &coordinate)
     : Primitive(id),
       p_coordinate(coordinate),
-      p_inflow(false) {}
+      p_inflow(false),
+      p_inflow_value(default_inflow_function) {}
 
 const Point &Vertex::get_coordinate() const { return p_coordinate; }
 
@@ -29,9 +34,21 @@ bool Vertex::is_unconnected() const { return p_neighbors.empty(); }
 
 bool Vertex::is_bifurcation() const { return p_neighbors.size() > 2; }
 
-void Vertex::set_inflow(bool inflow){ p_inflow = inflow; }
+void Vertex::set_to_inflow(const std::function<double(double)> &value) {
+  p_inflow = true;
+  p_inflow_value = value;
+}
 
-bool Vertex::is_inflow() const{ return p_inflow; }
+void Vertex::set_to_outflow() {
+  p_inflow = false;
+  p_inflow_value = default_inflow_function;
+}
+
+bool Vertex::is_inflow() const { return p_inflow; }
+
+double Vertex::get_inflow_value(double time) const {
+  return p_inflow_value(time);
+}
 
 bool Edge::is_pointing_to(std::size_t vertex_id) const {
   return p_neighbors[1] == vertex_id;

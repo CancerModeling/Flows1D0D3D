@@ -12,6 +12,7 @@
 
 #include "../systems/explicit_nonlinear_flow_solver.h"
 #include "../systems/graph_storage.hpp"
+#include "../systems/vessel_formulas.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
@@ -40,7 +41,7 @@ int main(int argc, char *argv[]) {
 
   const std::size_t N = 11;
   auto v_prev = graph->create_vertex(lm::Point(0, 0, 0));
-  v_prev->set_inflow(true);
+  v_prev->set_to_inflow(mc::heart_beat_inflow);
   for (std::size_t k = 0; k < N; k += 1) {
    auto v_next = graph->create_vertex(lm::Point(4*(k + 1.) / N, 0, 0));
    graph->connect(*v_prev, *v_next, ascending_aorta_id);
