@@ -11,6 +11,7 @@
 #include "fe_type_network.hpp"
 #include "libmesh/point.h"
 #include "vessel_formulas.hpp"
+#include "vessel_data_storage.hpp"
 #include <utility>
 
 constexpr const std::size_t degree = 1;
@@ -52,17 +53,15 @@ void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_m
 }
 
 template <std::size_t degree>
-RightHandSideEvaluator<degree>::RightHandSideEvaluator(std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMapNetwork> dof_map)
+RightHandSideEvaluator<degree>::RightHandSideEvaluator(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data, std::shared_ptr<DofMapNetwork> dof_map)
     : d_graph(std::move(graph)),
       d_dof_map(std::move(dof_map)),
+      d_vessel_data(std::move(vessel_data)),
       d_Q_up_el(d_graph->num_edges()),
       d_Q_up_er(d_graph->num_edges()),
       d_A_up_el(d_graph->num_edges()),
       d_A_up_er(d_graph->num_edges()),
       d_inverse_mass(d_dof_map->num_dof()),
-      d_G0(592.4e2), // 592.4 10^2 Pa,  TODO: Check if units are consistent!
-      d_rho(1.028),  // 1.028 kg/cm^3,  TODO: Check if units are consistent!
-      d_A0(6.97),    // 6.97 cm^2,      TODO: Check if units are consistent!
       d_mu(4.5),     // 4.5 m Pa/s      TODO: Check if units are consistent!
       d_gamma(2)     // Poiseuille flow
 {
@@ -81,7 +80,6 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
   // initial value of the flow
   // TODO: make this more generic for other initial flow values
   const double Q_init = 0;
-  const double A_init = d_A0;
 
   const std::size_t num_basis_functions = degree + 1;
 
@@ -116,6 +114,8 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
     if (vertex->is_leaf()) {
       const auto edge_r = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
 
+      const auto& param = d_vessel_data->get_parameters(*edge_r);
+
       fe_r.reinit(*edge_r);
 
       d_dof_map->dof_indices(*edge_r, Q_dof_indices_r, 0);
@@ -137,7 +137,7 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
         const double A = A_prev_qp_r[0];
 
         const double Q_star = vertex->get_inflow_value(t);
-        const double A_up = assemble_in_flow(Q, A, Q_star, d_G0, d_rho, d_A0);
+        const double A_up = assemble_in_flow(Q, A, Q_star, param.G0, param.rho, param.A0);
 
         d_Q_up_el[edge_r->get_id()] = Q_star;
         d_A_up_el[edge_r->get_id()] = A_up;
@@ -148,14 +148,17 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
         // TODO: Make this assumption more generic!
         assert(edge_r->get_vertex_neighbors()[1] == vertex->get_id());
 
+        // TODO: make this more generic for other initial flow values
+        const double A_init = param.A0;
+
         const double Q = Q_prev_qp_r[1];
         const double A = A_prev_qp_r[1];
 
-        const double W1 = calculate_W1_value(Q_init, A_init, d_G0, d_rho, d_A0);
-        const double W2 = calculate_W2_value(Q, A, d_G0, d_rho, d_A0);
+        const double W1 = calculate_W1_value(Q_init, A_init, param.G0, param.rho, param.A0);
+        const double W2 = calculate_W2_value(Q, A, param.G0, param.rho, param.A0);
 
         double Q_up = 0, A_up = 0;
-        solve_W12(Q_up, A_up, W1, W2, d_G0, d_rho, d_A0);
+        solve_W12(Q_up, A_up, W1, W2, param.G0, param.rho, param.A0);
 
         d_Q_up_er[edge_r->get_id()] = Q_up;
         d_A_up_er[edge_r->get_id()] = A_up;
@@ -175,6 +178,11 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
       const bool e0_in = e0->is_pointing_to(vertex->get_id());
       const bool e1_in = e1->is_pointing_to(vertex->get_id());
       const bool e2_in = e2->is_pointing_to(vertex->get_id());
+
+      // get data
+      const auto& p_e0 = d_vessel_data->get_parameters(*e0);
+      const auto& p_e1 = d_vessel_data->get_parameters(*e1);
+      const auto& p_e2 = d_vessel_data->get_parameters(*e2);
 
       // evaluate on edge e0
       d_dof_map->dof_indices(*e0, Q_dof_indices_l, 0);
@@ -208,9 +216,9 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
       double Q_e1_up, A_e1_up;
       double Q_e2_up, A_e2_up;
       const auto num_iter = solve_at_bifurcation(
-        Q_e0, A_e0, {d_G0, d_rho, d_A0}, e0_in,
-        Q_e1, A_e1, {d_G0, d_rho, d_A0}, e1_in,
-        Q_e2, A_e2, {d_G0, d_rho, d_A0}, e2_in,
+        Q_e0, A_e0, p_e0, e0_in,
+        Q_e1, A_e1, p_e1, e1_in,
+        Q_e2, A_e2, p_e2, e2_in,
         Q_e0_up, A_e0_up,
         Q_e1_up, A_e1_up,
         Q_e2_up, A_e2_up);
@@ -245,6 +253,9 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
       const auto edge_l = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
       const auto edge_r = d_graph->get_edge(vertex->get_edge_neighbors()[1]);
 
+      const auto& p_l = d_vessel_data->get_parameters(*edge_l);
+      const auto& p_r = d_vessel_data->get_parameters(*edge_r);
+
       // we assert that the edge direction fits our assumptions
       assert(edge_l->get_vertex_neighbors()[1] == vertex->get_id());
       assert(edge_r->get_vertex_neighbors()[0] == vertex->get_id());
@@ -272,11 +283,14 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
       const double Q_r = Q_prev_qp_r[0];
       const double A_r = A_prev_qp_r[0];
 
-      const double W2_l = calculate_W2_value(Q_l, A_l, d_G0, d_rho, d_A0);
-      const double W1_r = calculate_W1_value(Q_r, A_r, d_G0, d_rho, d_A0);
+      const double W2_l = calculate_W2_value(Q_l, A_l, p_l.G0, p_l.rho, p_l.A0);
+      const double W1_r = calculate_W1_value(Q_r, A_r, p_r.G0, p_r.rho, p_r.A0);
 
       double Q_up = 0, A_up = 0;
-      solve_W12(Q_up, A_up, W1_r, W2_l, d_G0, d_rho, d_A0);
+
+      // TODO: make more general, such that different parameters are possible
+      assert(p_l.G0 == p_r.G0 && p_l.rho == p_r.rho && p_l.A0 == p_r.A0);
+      solve_W12(Q_up, A_up, W1_r, W2_l, p_l.G0, p_l.rho, p_l.A0);
 
       d_Q_up_er[edge_l->get_id()] = Q_up;
       d_A_up_er[edge_l->get_id()] = A_up;
@@ -321,6 +335,8 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const std::vector<double> &u_
     fe.reinit(*edge);
     fe_boundary.reinit(*edge);
 
+    const auto& param = d_vessel_data->get_parameters(*edge);
+
     // evaluate Q and A inside cell
     d_dof_map->dof_indices(*edge, Q_dof_indices, 0);
     d_dof_map->dof_indices(*edge, A_dof_indices, 1);
@@ -338,8 +354,8 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const std::vector<double> &u_
     const double A_up_1 = d_A_up_er[edge->get_id()];
 
     // the A-component of our F function
-    const auto F_Q_eval = [=](double Q, double A) -> double {
-      return std::pow(Q, 2) / A + d_G0 / (3 * d_rho * std::sqrt(d_A0)) * std::pow(A, 3. / 2.);
+    const auto F_Q_eval = [&param](double Q, double A) -> double {
+      return std::pow(Q, 2) / A + param.G0 / (3 * param.rho * std::sqrt(param.A0)) * std::pow(A, 3. / 2.);
     };
 
     // evaluate F = (F_Q, F_A) at the quadrature points

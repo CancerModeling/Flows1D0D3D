@@ -16,6 +16,7 @@ namespace macrocirculation {
 
 // forward declarations
 class GraphStorage;
+class VesselDataStorage;
 class DofMapNetwork;
 
 /*! @brief Assembles the inverse mass. WARNING: Assumes legendre basis! */
@@ -33,13 +34,16 @@ void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_m
 template <std::size_t degree>
 class RightHandSideEvaluator {
 public:
-  RightHandSideEvaluator(std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMapNetwork> dof_map);
+  RightHandSideEvaluator(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data, std::shared_ptr<DofMapNetwork> dof_map);
 
   void evaluate(double t, const std::vector<double> &u_prev, std::vector<double> &rhs);
 
 private:
   /*! @brief The current domain for solving the equation. */
   std::shared_ptr<GraphStorage> d_graph;
+
+  /*! @brief Stores the physical data for a given vessel. */
+  std::shared_ptr<VesselDataStorage> d_vessel_data;
 
   /*! @brief The dof map for our domain */
   std::shared_ptr<DofMapNetwork> d_dof_map;
@@ -69,9 +73,6 @@ private:
 
   // All the parameters, which are now kept constant, but should change for vessel types.
   // TODO: These values should be provided by the network.
-  double d_G0;
-  double d_rho;
-  double d_A0;
   double d_mu;
   double d_gamma;
 

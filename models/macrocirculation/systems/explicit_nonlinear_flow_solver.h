@@ -21,6 +21,7 @@ constexpr std::size_t degree = 1;
 
 // forward declarations
 class GraphStorage;
+class VesselDataStorage;
 class DofMapNetwork;
 template<std::size_t degree>
 class RightHandSideEvaluator;
@@ -29,9 +30,12 @@ class TimeIntegrator;
 /*! @brief Interpolates a constant value. WARNING: Assumes legendre basis! */
 void interpolate_constant(const GraphStorage &graph, const DofMapNetwork &dof_map, double value, std::size_t component, std::vector<double> &result);
 
+/*! @brief Sets the given function to A=A0 and Q=0. WARNING: Assumes legendre basis! */
+void set_to_A0(const GraphStorage &graph, const DofMapNetwork &dof_map, const VesselDataStorage&, std::vector<double> &result);
+
 class ExplicitNonlinearFlowSolver {
 public:
-  explicit ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph);
+  explicit ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data_storage);
   ~ExplicitNonlinearFlowSolver();
 
   void solve();
@@ -42,12 +46,18 @@ public:
 
   void get_solution_on_vertices(std::vector<double> &Q_values, std::vector<double> &A_values) const;
 
+  /*! @brief Configures the explicit euler method as the time integrator. */
   void use_explicit_euler_method();
+
+  /*! @brief Configures a 3rd order RKM as the time integrator. */
   void use_ssp_method();
 
 private:
   /*! @brief The current domain for solving the equation. */
   std::shared_ptr<GraphStorage> d_graph;
+
+  /*! @brief Stores the physical data for a given vessel. */
+  std::shared_ptr<VesselDataStorage> d_vessel_data;
 
   /*! @brief The dof map for our domain. */
   std::shared_ptr<DofMapNetwork> d_dof_map;
@@ -63,9 +73,6 @@ private:
 
   /*! @brief The current time. */
   double d_t_now;
-
-  // TODO: This value should be provided by the network.
-  double d_A0;
 
   /*! @brief The solution at the current time step. */
   std::vector<double> d_u_now;
