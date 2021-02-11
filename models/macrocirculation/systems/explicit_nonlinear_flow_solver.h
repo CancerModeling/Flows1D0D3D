@@ -24,6 +24,7 @@ class GraphStorage;
 class DofMapNetwork;
 template<std::size_t degree>
 class RightHandSideEvaluator;
+class TimeIntegrator;
 
 /*! @brief Interpolates a constant value. WARNING: Assumes legendre basis! */
 void interpolate_constant(const GraphStorage &graph, const DofMapNetwork &dof_map, double value, std::size_t component, std::vector<double> &result);
@@ -31,6 +32,7 @@ void interpolate_constant(const GraphStorage &graph, const DofMapNetwork &dof_ma
 class ExplicitNonlinearFlowSolver {
 public:
   explicit ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph);
+  ~ExplicitNonlinearFlowSolver();
 
   void solve();
 
@@ -39,6 +41,9 @@ public:
   void set_tau(double tau);
 
   void get_solution_on_vertices(std::vector<double> &Q_values, std::vector<double> &A_values) const;
+
+  void use_explicit_euler_method();
+  void use_ssp_method();
 
 private:
   /*! @brief The current domain for solving the equation. */
@@ -49,6 +54,9 @@ private:
 
   /*! @brief Utility class for evaluating the right hand side, to allow different explicit schemes. */
   std::shared_ptr<RightHandSideEvaluator<degree>> d_right_hand_side_evaluator;
+
+  /*! @brief Explicit time integrator to move the solution forwards in time. */
+  std::unique_ptr<TimeIntegrator> d_time_integrator;
 
   /*! @brief Current time step size. */
   double d_tau;
@@ -66,7 +74,7 @@ private:
   std::vector<double> d_u_prev;
 
   /*! @brief The solution at the previous time step. */
-  std::vector<double> d_k0;
+  std::vector< std::vector<double> > d_k;
 };
 
 } // namespace macrocirculation
