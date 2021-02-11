@@ -18,21 +18,6 @@
 namespace lm = libMesh;
 namespace mc = macrocirculation;
 
-std::shared_ptr<mc::Vertex> line_to(mc::GraphStorage &graph,
-                                    const std::shared_ptr<mc::Vertex>& from,
-                                    const lm::Point &to,
-                                    const std::size_t vessel_id,
-                                    const std::size_t N) {
-  auto v_prev = from;
-  for (std::size_t k = 0; k < N; k += 1) {
-    auto v_next = graph.create_vertex(from->get_coordinate() * (1. - (k + 1.) / N) + to * (1 * (k + 1.) / N));
-    graph.connect(*v_prev, *v_next, vessel_id);
-    v_prev = v_next;
-  }
-
-  return v_prev;
-}
-
 int main(int argc, char *argv[]) {
   // Note: This one requires pointer to comm and therefore we have to init
   // libmesh and then call the constructor of model
@@ -43,7 +28,9 @@ int main(int argc, char *argv[]) {
 
   const double tau = 2.5e-4/128;
   const double tau_out = 1e-3;
-  const std::size_t output_interval = static_cast<std::size_t>(tau_out / tau);
+  const auto output_interval = static_cast<std::size_t>(tau_out / tau);
+
+  const std::size_t num_edges_per_segment = 11;
 
   // we create data for the ascending aorta
   auto vessel_data = std::make_shared< mc::VesselDataStorage > ();
@@ -55,15 +42,15 @@ int main(int argc, char *argv[]) {
 
   // create the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
-
-  const std::size_t N = 22;
   auto start = graph->create_vertex(lm::Point(0, 0, 0));
-  start->set_to_inflow(mc::heart_beat_inflow);
-  auto midpoint = line_to(*graph, start, lm::Point(1, 0, 0), ascending_aorta_id, N);
-  line_to(*graph, midpoint, lm::Point(1.5, +0.5, 0), ascending_aorta_id, N);
-  line_to(*graph, midpoint, lm::Point(1.5, -0.5, 0), ascending_aorta_id, N);
-  std::cout << graph->num_vertices() << std::endl;
+  auto midpoint = graph->line_to(start, lm::Point(1, 0, 0), ascending_aorta_id, num_edges_per_segment);
+  graph->line_to(midpoint, lm::Point(1.5, +0.5, 0), ascending_aorta_id, num_edges_per_segment);
+  graph->line_to(midpoint, lm::Point(1.5, -0.5, 0), ascending_aorta_id, num_edges_per_segment);
 
+  // set inflow boundary conditions
+  start->set_to_inflow(mc::heart_beat_inflow);
+
+  // configure solver
   mc::ExplicitNonlinearFlowSolver solver(graph, vessel_data);
   solver.set_tau(tau);
 
