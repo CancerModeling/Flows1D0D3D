@@ -114,6 +114,17 @@ void FETypeInnerBdryNetwork<DEGREE>::reinit(const Vertex &v, const Edge &e_left,
 };
 
 template<std::size_t DEGREE>
+EdgeBoundaryValues FETypeInnerBdryNetwork<DEGREE>::evaluate_dof_at_boundary_points(const std::vector<double> &dof_values) const
+{
+  EdgeBoundaryValues values {0, 0};
+  for (std::size_t i = 0; i < DEGREE + 1; i += 1) {
+    values.left += d_phi_l[i] * dof_values[i];
+    values.right += d_phi_r[i] * dof_values[i];
+  }
+  return values;
+}
+
+template<std::size_t DEGREE>
 FETypeExteriorBdryNetwork<DEGREE>::FETypeExteriorBdryNetwork()
     : d_phi(DEGREE + 1), d_n(1) {
   // we only have lagrange polynomials up to order three

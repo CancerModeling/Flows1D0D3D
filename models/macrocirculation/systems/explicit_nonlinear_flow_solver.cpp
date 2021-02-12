@@ -15,6 +15,7 @@
 #include "right_hand_side_evaluator.hpp"
 #include "time_integrators.hpp"
 #include "vessel_data_storage.hpp"
+#include "quantities_of_interest.hpp"
 
 namespace macrocirculation {
 
@@ -92,6 +93,14 @@ void ExplicitNonlinearFlowSolver::get_solution_on_vertices(std::vector<double> &
 
   interpolate_to_vertices(*d_graph, *d_dof_map, fe, 0, d_u_now, Q_values);
   interpolate_to_vertices(*d_graph, *d_dof_map, fe, 1, d_u_now, A_values);
+}
+
+void ExplicitNonlinearFlowSolver::get_pressure_on_vertices(std::vector<double> &p_values) const {
+  assert(p_values.size() == d_graph->num_edges() * 2);
+
+  FETypeInnerBdryNetwork<degree> fe;
+
+  calculate_total_pressure(*d_graph, *d_vessel_data, *d_dof_map, fe, d_u_now, p_values);
 }
 
 } // namespace macrocirculation
