@@ -103,6 +103,11 @@ private:
   std::vector<double> d_JxW;
 };
 
+struct EdgeBoundaryValues {
+  double left;
+  double right;
+};
+
 /*! @brief Class for evaluating the legendre shape functions on our _inner_ network vertices. */
 template<std::size_t DEGREE>
 class FETypeInnerBdryNetwork {
@@ -120,6 +125,8 @@ public:
 
   const std::vector<double> &get_phi_l() const { return d_phi_l; };
   const std::vector<double> &get_phi_r() const { return d_phi_r; };
+
+  EdgeBoundaryValues evaluate_dof_at_boundary_points(const std::vector<double> &dof_values) const;
 
 private:
   std::vector<double> d_phi_l;

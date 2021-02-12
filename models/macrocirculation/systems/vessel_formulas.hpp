@@ -53,10 +53,20 @@ inline double calculate_diff_Q_w2(double w1, double w2, double G0, double rho, d
 }
 
 /*! @brief Calculates the total pressure from the characteristics. */
-inline double calculate_p(double w1, double w2, double G0, double rho, double A0) {
+inline double calculate_p_from_w1w2(double w1, double w2, double G0, double rho, double A0) {
   const double c0 = calculate_c0(G0, rho, A0);
   return 0.5 * rho * std::pow(0.5*(w2 - w1), 2) + G0 * (std::pow((w1+w2)/(8*c0), 2) - 1) ;
 }
+
+inline double calculate_p_from_QA(double Q, double A, double G0, double rho, double A0) {
+  return 0.5*rho*std::pow(Q/A, 2) + G0*(std::sqrt(A/A0)-1);
+}
+
+inline double calculate_static_p(double A, double G0, double A0)
+{
+  return G0*(std::sqrt(A/A0)-1);
+}
+
 
 /*! @brief Derivative of the total pressure with respect to the backward characteristic. */
 inline double calculate_diff_p_w1(double w1, double w2, double G0, double rho, double A0) {
@@ -101,8 +111,8 @@ inline void bifurcation_equation(
   eq_Q += (in_b ? -1 : +1) * calculate_Q(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
   eq_Q += (in_c ? -1 : +1) * calculate_Q(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
   out[0] = eq_Q;
-  double eq_p1 = calculate_p(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) - calculate_p(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  double eq_p2 = calculate_p(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) - calculate_p(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+  double eq_p1 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) - calculate_p_from_w1w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+  double eq_p2 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) - calculate_p_from_w1w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
   out[0] = eq_Q;
   out[1] = eq_p1;
   out[2] = eq_p2;
