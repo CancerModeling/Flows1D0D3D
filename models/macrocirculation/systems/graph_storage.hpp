@@ -129,7 +129,7 @@ public:
   double num_edges() const;
 
   /*! @brief Adds a line segment starting at "from" and ending at "to" to the graph. */
-  std::shared_ptr<Vertex> line_to(const std::shared_ptr<Vertex> &from, const Point &to, std::size_t vessel_id, std::size_t num_edges);
+  void line_to(Vertex &from, Vertex &to, std::size_t vessel_id, std::size_t num_edges);
 
 private:
   std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_type_id, std::size_t edge_id);

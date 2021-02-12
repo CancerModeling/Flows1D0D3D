@@ -195,15 +195,16 @@ void GraphStorage::refine(std::size_t num_refinements) {
   }
 }
 
-std::shared_ptr<Vertex> GraphStorage::line_to( const std::shared_ptr<Vertex>& from, const Point &to, std::size_t vessel_id, std::size_t num_new_edges)
-{
-  auto v_prev = from;
-  for (std::size_t k = 0; k < num_new_edges; k += 1) {
-    auto v_next = create_vertex(from->get_coordinate() * (1. - (k + 1.) / num_new_edges) + to * (1 * (k + 1.) / num_new_edges));
+void GraphStorage::line_to(Vertex &from, Vertex &to, std::size_t vessel_id, std::size_t num_new_edges) {
+  auto v_prev = get_vertex(from.get_id());
+  for (std::size_t k = 0; k < num_new_edges-1; k += 1) {
+    const double theta = (k + 1.) / num_new_edges;
+    const auto coordinates = from.get_coordinate() * (1. - theta) + to.get_coordinate() * theta;
+    auto v_next = create_vertex(coordinates);
     connect(*v_prev, *v_next, vessel_id);
     v_prev = v_next;
   }
-  return v_prev;
+  connect(*v_prev, to, vessel_id);
 }
 
 double GraphStorage::num_vertices() const {

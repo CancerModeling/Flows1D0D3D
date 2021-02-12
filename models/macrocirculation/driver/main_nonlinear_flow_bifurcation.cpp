@@ -37,12 +37,36 @@ int main(int argc, char *argv[]) {
     1.028,   // 1.028 kg/cm^3,  TODO: Check if units are consistent!
   });
 
+  /*
   // create the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
+  // create vertices:
   auto start = graph->create_vertex(lm::Point(0, 0, 0));
-  auto midpoint = graph->line_to(start, lm::Point(1, 0, 0), ascending_aorta_id, num_edges_per_segment);
-  graph->line_to(midpoint, lm::Point(1.5, +0.5, 0), ascending_aorta_id, num_edges_per_segment);
-  graph->line_to(midpoint, lm::Point(1.5, -0.5, 0), ascending_aorta_id, num_edges_per_segment);
+  auto midpoint = graph->create_vertex(lm::Point(1, 0, 0));
+  auto endpoint_up = graph->create_vertex(lm::Point(1.5, +0.5, 0));
+  auto endpoint_down = graph->create_vertex(lm::Point(1.5, -0.5, 0));
+  // connect vertices:
+  graph->line_to(*start, *midpoint, ascending_aorta_id, num_edges_per_segment);
+  graph->line_to(*midpoint, *endpoint_up, ascending_aorta_id, num_edges_per_segment);
+  graph->line_to(*midpoint, *endpoint_down, ascending_aorta_id, num_edges_per_segment);
+  */
+
+  // create the ascending aorta
+  auto graph = std::make_shared<mc::GraphStorage>();
+  // create vertices:
+  auto start = graph->create_vertex(lm::Point(0, 0, 0));
+  auto midpoint1 = graph->create_vertex(lm::Point(1, 0, 0));
+  auto upper_point = graph->create_vertex(lm::Point(1.5, +0.5, 0));
+  auto lower_point= graph->create_vertex(lm::Point(1.5, -0.5, 0));
+  auto midpoint2 = graph->create_vertex(lm::Point(2, 0, 0));
+  auto endpoint = graph->create_vertex(lm::Point(3, 0, 0));
+  // connect vertices:
+  graph->line_to(*start, *midpoint1, ascending_aorta_id, num_edges_per_segment);
+  graph->line_to(*midpoint1, *upper_point, ascending_aorta_id, num_edges_per_segment);
+  graph->line_to(*midpoint1, *lower_point, ascending_aorta_id, num_edges_per_segment);
+  graph->line_to(*lower_point, *midpoint2, ascending_aorta_id, num_edges_per_segment);
+  graph->line_to(*upper_point, *midpoint2, ascending_aorta_id, num_edges_per_segment);
+  graph->line_to(*midpoint2, *endpoint, ascending_aorta_id, num_edges_per_segment);
 
   // set inflow boundary conditions
   start->set_to_inflow(mc::heart_beat_inflow);
