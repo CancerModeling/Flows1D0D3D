@@ -5,7 +5,7 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "explicit_nonlinear_flow_solver.h"
+#include "explicit_nonlinear_flow_solver.hpp"
 #include <cassert>
 
 #include "dof_map_network.hpp"

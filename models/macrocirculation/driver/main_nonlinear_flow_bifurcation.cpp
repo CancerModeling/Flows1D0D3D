@@ -9,10 +9,10 @@
 #include <graph_data_writer.hpp>
 #include <memory>
 
-#include "../systems/explicit_nonlinear_flow_solver.h"
+#include "../systems/explicit_nonlinear_flow_solver.hpp"
 #include "../systems/graph_storage.hpp"
-#include "../systems/vessel_formulas.hpp"
 #include "../systems/vessel_data_storage.hpp"
+#include "../systems/vessel_formulas.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
