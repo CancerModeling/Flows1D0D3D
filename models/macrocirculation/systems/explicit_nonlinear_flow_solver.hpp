@@ -5,8 +5,8 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TUMORMODELS_EXPLICIT_NONLINEAR_FLOW_SOLVER_H
-#define TUMORMODELS_EXPLICIT_NONLINEAR_FLOW_SOLVER_H
+#ifndef TUMORMODELS_EXPLICIT_NONLINEAR_FLOW_SOLVER_HPP
+#define TUMORMODELS_EXPLICIT_NONLINEAR_FLOW_SOLVER_HPP
 
 #include <cassert>
 #include <cmath>
@@ -86,4 +86,4 @@ private:
 
 } // namespace macrocirculation
 
-#endif //TUMORMODELS_EXPLICIT_NONLINEAR_FLOW_SOLVER_H
+#endif //TUMORMODELS_EXPLICIT_NONLINEAR_FLOW_SOLVER_HPP
