@@ -27,6 +27,14 @@ void calculate_total_pressure(const GraphStorage &graph,
                              const std::vector<double> &dof_vector,
                              std::vector<double> &interpolated);
 
+template < std::size_t DEGREE >
+void calculate_static_pressure(const GraphStorage &graph,
+                              const VesselDataStorage& vessel_data,
+                              const DofMapNetwork &map,
+                              const FETypeInnerBdryNetwork<DEGREE> &fe,
+                              const std::vector<double> &dof_vector,
+                              std::vector<double> &interpolated);
+
 }
 
 #endif //TUMORMODELS_QUANTITIES_OF_INTEREST_HPP

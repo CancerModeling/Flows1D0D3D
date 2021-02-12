@@ -72,6 +72,7 @@ int main(int argc, char *argv[]) {
   std::vector<double> Q_vertex_values(graph->num_edges() * 2, 0);
   std::vector<double> A_vertex_values(graph->num_edges() * 2, 0);
   std::vector<double> p_vertex_values(graph->num_edges() * 2, 0);
+  std::vector<double> p_static_vertex_values(graph->num_edges() * 2, 0);
 
   for (std::size_t it = 0; it < max_iter; it += 1) {
 
@@ -81,11 +82,13 @@ int main(int argc, char *argv[]) {
       std::cout << "iter " << it << std::endl;
       // save solution
       solver.get_solution_on_vertices(Q_vertex_values, A_vertex_values);
-      solver.get_pressure_on_vertices(p_vertex_values);
+      solver.get_total_pressure_on_vertices(p_vertex_values);
+      solver.get_static_pressure_on_vertices(p_static_vertex_values);
       mc::GraphDataWriter writer;
       writer.add_vertex_data("Q", Q_vertex_values);
       writer.add_vertex_data("A", A_vertex_values);
-      writer.add_vertex_data("p", p_vertex_values);
+      writer.add_vertex_data("p_total", p_vertex_values);
+      writer.add_vertex_data("p_static", p_static_vertex_values);
       writer.write_vtk("bifurcation_solution", *graph, it);
     }
 
