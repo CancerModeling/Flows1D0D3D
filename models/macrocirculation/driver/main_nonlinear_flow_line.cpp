@@ -43,7 +43,8 @@ int main(int argc, char *argv[]) {
   // create the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
   auto start = graph->create_vertex(lm::Point(0, 0, 0));
-  graph->line_to(start, lm::Point(4, 0, 0), ascending_aorta_id, num_edges_per_segment);
+  auto end = graph->create_vertex(lm::Point(4, 0, 0));
+  graph->line_to(*start, *end, ascending_aorta_id, num_edges_per_segment);
 
   // set inflow boundary conditions
   start->set_to_inflow(mc::heart_beat_inflow);
