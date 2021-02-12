@@ -17,13 +17,13 @@ class GraphStorage;
 class VesselDataStorage;
 class DofMapNetwork;
 template< std::size_t >
-class FETypeInnerBdryNetwork;
+class FETypeNetwork;
 
 template < std::size_t DEGREE >
 void calculate_total_pressure(const GraphStorage &graph,
                              const VesselDataStorage& vessel_data,
                              const DofMapNetwork &map,
-                             const FETypeInnerBdryNetwork<DEGREE> &fe,
+                             const FETypeNetwork<DEGREE> &fe,
                              const std::vector<double> &dof_vector,
                              std::vector<double> &interpolated);
 
@@ -31,7 +31,7 @@ template < std::size_t DEGREE >
 void calculate_static_pressure(const GraphStorage &graph,
                               const VesselDataStorage& vessel_data,
                               const DofMapNetwork &map,
-                              const FETypeInnerBdryNetwork<DEGREE> &fe,
+                              const FETypeNetwork<DEGREE> &fe,
                               const std::vector<double> &dof_vector,
                               std::vector<double> &interpolated);
 

@@ -98,7 +98,7 @@ void ExplicitNonlinearFlowSolver::get_solution_on_vertices(std::vector<double> &
 void ExplicitNonlinearFlowSolver::get_total_pressure_on_vertices(std::vector<double> &p_values) const {
   assert(p_values.size() == d_graph->num_edges() * 2);
 
-  FETypeInnerBdryNetwork<degree> fe;
+  FETypeNetwork<degree> fe(create_trapezoidal_rule());
 
   calculate_total_pressure(*d_graph, *d_vessel_data, *d_dof_map, fe, d_u_now, p_values);
 }
@@ -106,7 +106,7 @@ void ExplicitNonlinearFlowSolver::get_total_pressure_on_vertices(std::vector<dou
 void ExplicitNonlinearFlowSolver::get_static_pressure_on_vertices(std::vector<double> &p_values) const {
   assert(p_values.size() == d_graph->num_edges() * 2);
 
-  FETypeInnerBdryNetwork<degree> fe;
+  FETypeNetwork<degree> fe(create_trapezoidal_rule());
 
   calculate_total_pressure(*d_graph, *d_vessel_data, *d_dof_map, fe, d_u_now, p_values);
 }

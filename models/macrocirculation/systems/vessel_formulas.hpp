@@ -370,7 +370,7 @@ inline double heart_beat_inflow(double t) {
   const double t_systole = 0.3;
   const double t_in_period = t - std::floor(t / t_period);
   if (t_in_period < t_systole) {
-    return 485. * std::sin(M_PI * t_in_period / t_systole);
+    return 485./10. * std::sin(M_PI * t_in_period / t_systole);
   } else if (t_in_period <= t_period + 1e-14) {
     return 0.;
   } else {
