@@ -12,10 +12,10 @@
 #include "fe_type_network.hpp"
 #include "graph_storage.hpp"
 #include "interpolate_to_vertices.hpp"
+#include "quantities_of_interest.hpp"
 #include "right_hand_side_evaluator.hpp"
 #include "time_integrators.hpp"
 #include "vessel_data_storage.hpp"
-#include "quantities_of_interest.hpp"
 
 namespace macrocirculation {
 
@@ -30,12 +30,11 @@ void interpolate_constant(const GraphStorage &graph, const DofMapNetwork &dof_ma
   }
 }
 
-void set_to_A0(const GraphStorage &graph, const DofMapNetwork &dof_map, const VesselDataStorage& vessel_data, std::vector<double> &result)
-{
+void set_to_A0(const GraphStorage &graph, const DofMapNetwork &dof_map, const VesselDataStorage &vessel_data, std::vector<double> &result) {
   std::vector<std::size_t> dof_indices;
   for (const auto &e_id : graph.get_edge_ids()) {
     const auto edge = graph.get_edge(e_id);
-    const auto& data = vessel_data.get_parameters(*edge);
+    const auto &data = vessel_data.get_parameters(*edge);
     // set Q
     dof_map.dof_indices(*edge, dof_indices, 0);
     result[dof_indices[0]] = 0;
@@ -54,8 +53,7 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
       d_tau(2.5e-4 / 4),
       d_t_now(0),
       d_u_now(d_dof_map->num_dof()),
-      d_u_prev(d_dof_map->num_dof())
-{
+      d_u_prev(d_dof_map->num_dof()) {
   // set A constant to A0
   set_to_A0(*d_graph, *d_dof_map, *d_vessel_data, d_u_prev);
   set_to_A0(*d_graph, *d_dof_map, *d_vessel_data, d_u_now);
@@ -75,15 +73,15 @@ double ExplicitNonlinearFlowSolver::get_time() const { return d_t_now; }
 
 void ExplicitNonlinearFlowSolver::set_tau(double tau) { d_tau = tau; }
 
-void ExplicitNonlinearFlowSolver::use_explicit_euler_method()
-{
+void ExplicitNonlinearFlowSolver::use_explicit_euler_method() {
   d_time_integrator = std::make_unique<TimeIntegrator>(create_explicit_euler(), d_dof_map->num_dof());
 }
 
-void ExplicitNonlinearFlowSolver::use_ssp_method()
-{
+void ExplicitNonlinearFlowSolver::use_ssp_method() {
   d_time_integrator = std::make_unique<TimeIntegrator>(create_ssp_method(), d_dof_map->num_dof());
 }
+
+RightHandSideEvaluator<degree> &ExplicitNonlinearFlowSolver::get_rhs_evaluator() { return *d_right_hand_side_evaluator; }
 
 void ExplicitNonlinearFlowSolver::get_solution_on_vertices(std::vector<double> &Q_values, std::vector<double> &A_values) const {
   assert(Q_values.size() == d_graph->num_edges() * 2);

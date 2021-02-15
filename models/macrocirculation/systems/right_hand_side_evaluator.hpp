@@ -12,7 +12,11 @@
 #include <memory>
 #include <functional>
 
+#include "libmesh/point.h"
+
 namespace macrocirculation {
+
+using libMesh::Point;
 
 // forward declarations
 class GraphStorage;
@@ -27,7 +31,7 @@ public:
   /*! @brief Evaluates the Q- and A-component of the right-hand side S,
    *         given Q and A at eacht of the quadrature points.
    */
-  void operator()(double, const std::vector<double>& Q, const std::vector<double>& A, std::vector<double>& S_Q_out, std::vector<double>& S_A_out) const;
+  void operator()(double, const std::vector<Point>&, const std::vector<double>& Q, const std::vector<double>& A, std::vector<double>& S_Q_out, std::vector<double>& S_A_out) const;
 
 private:
   /*! @brief Blood viscosity [m Pa s]. */
@@ -61,10 +65,11 @@ public:
 
   /*! @brief Function type to evaluate a vectorial quantity at all the quadrature points in one go:
    *         - the 1st argument is the current time,
-   *         - the 2nd and 3rd components are for the flow Q and the area A, while
-   *         - the 4th and 5th are the components of the vector evaluated at the quadrature points.
+   *         - the 2nd argument are the quadrature points on the domain,
+   *         - the 3nd and 4rd components are for the flow Q and the area A, while
+   *         - the 5th and 6th are the components of the vector evaluated at the quadrature points.
    */
-  using VectorEvaluator = std::function< void(double, const std::vector<double>&, const std::vector<double>&, std::vector<double>&, std::vector<double>&) >;
+  using VectorEvaluator = std::function< void(double, const std::vector<Point>&, const std::vector<double>&, const std::vector<double>&, std::vector<double>&, std::vector<double>&) >;
 
   /*! @brief Sets the right-hand side S. */
   void set_rhs_S(VectorEvaluator S_evaluator);
