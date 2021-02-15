@@ -22,6 +22,7 @@ AdvectionSolver<DEGREE>::AdvectionSolver(std::shared_ptr<GraphStorage> graph, do
     : d_tau(tau),
       d_t_end(t_end),
       d_velocity(velocity),
+      d_output_interval(1),
       d_inflow_value_fct(std::move(inflow_value_fct)),
       d_graph(std::move(graph)) {}
 
@@ -244,7 +245,9 @@ void AdvectionSolver<DEGREE>::solve() const {
     gmm::gmres(A, u_now, f, PR, 500, iter);
 
 
+    if (it % d_output_interval == 0)
     {
+      std::cout << "it = " << it << std::endl;
       FETypeNetwork<DEGREE> fe(create_trapezoidal_rule());
 
       std::vector< double > u_vertex (d_graph->num_edges()*2, 0);

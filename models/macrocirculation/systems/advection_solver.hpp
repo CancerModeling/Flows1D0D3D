@@ -28,10 +28,13 @@ public:
 
   void solve() const;
 
+  void set_output_interval(std::size_t interval){ d_output_interval = interval; }
+
 private:
   double d_tau;
   double d_t_end;
   double d_velocity;
+  std::size_t d_output_interval;
   InflowValueFct d_inflow_value_fct;
 
   std::shared_ptr<GraphStorage> d_graph;
