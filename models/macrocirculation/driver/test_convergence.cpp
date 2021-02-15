@@ -33,8 +33,8 @@ public:
 
     for (std::size_t qp = 0; qp < Q.size(); qp += 1) {
       const double x = ps[qp](0);
-      S_Q_out[qp] = -2 * std::sin(M_PI * x / d_length) * std::exp(-10. * t) * (10. * t - 1) * (t * std::sin(M_PI * x / d_length) * std::exp(-10. * t) + 1);
-      S_A_out[qp] = 2 * M_PI * std::pow(d_c0, 2) * t * std::cos(M_PI * x / d_length) * std::exp(-10. * t) * std::pow(t * std::sin(M_PI * x / d_length) * std::exp(-10. * t) + 1, 2) / (std::sqrt(d_A0) * d_length);
+      S_Q_out[qp] = 2 * M_PI * std::pow(d_c0, 2) * t * std::cos(M_PI * x / d_length) * std::exp(-10. * t) * std::pow(t * std::sin(M_PI * x / d_length) * std::exp(-10. * t) + 1, 2) / (std::sqrt(d_A0) * d_length);
+      S_A_out[qp] = -2 * std::sin(M_PI * x / d_length) * std::exp(-10. * t) * (10. * t - 1) * (t * std::sin(M_PI * x / d_length) * std::exp(-10. * t) + 1);
     }
   }
 
@@ -50,7 +50,7 @@ double get_tau(double h, double K_CFL, double c0) {
 
 void run(std::size_t m) {
   const double t_end = 2.;
-  const std::size_t max_iter = 16;
+  const std::size_t max_iter = 1000000;
 
   const double K_CFL = 0.25;
 
@@ -117,5 +117,5 @@ int main(int argc, char *argv[]) {
   // libmesh and then call the constructor of model
   lm::LibMeshInit init(argc, argv);
 
-  run(2);
+  run(3);
 }

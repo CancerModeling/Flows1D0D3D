@@ -16,13 +16,13 @@ namespace lm = libMesh;
 namespace mc = macrocirculation;
 
 int main(int argc, char *argv[]) {
-  constexpr std::size_t degree = 2;
+  constexpr std::size_t degree = 0;
 
   const double velocity = 1;
   const double tau = 0.001;
   const double t_end = 2;
-  const auto inflow_boundary_value = [](double t_now) -> double { return std::sin(M_PI * 3 * t_now); };
-  // const auto inflow_boundary_value = [](double t_now) -> double { return 1; };
+  //const auto inflow_boundary_value = [](double t_now) -> double { return std::sin(M_PI * 3 * t_now); };
+  const auto inflow_boundary_value = [](double t_now) -> double { return 1; };
 
   // Note: This one requires pointer to comm and therefore we have to init
   // libmesh and then call the constructor of model
