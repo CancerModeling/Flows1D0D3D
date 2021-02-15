@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
    */
 
   // set inflow boundary conditions
-  start->set_to_inflow(mc::heart_beat_inflow);
+  start->set_to_inflow(mc::heart_beat_inflow());
 
   // configure solver
   mc::ExplicitNonlinearFlowSolver solver(graph, vessel_data);

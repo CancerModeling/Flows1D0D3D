@@ -20,6 +20,11 @@ namespace mc = macrocirculation;
 
 class test_S {
 public:
+  void operator()(double, const std::vector<double>& Q, const std::vector<double>& A, std::vector<double>& S_Q_out, std::vector<double>& S_A_out) const
+  {
+
+
+  }
 
 private:
   double d_length;

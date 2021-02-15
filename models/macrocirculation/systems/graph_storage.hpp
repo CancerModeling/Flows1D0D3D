@@ -44,7 +44,7 @@ public:
   bool is_bifurcation() const;
 
   /*! @brief Marks the given vertex as part of the inflow boundary, where the given time dependent function provides the boundary values. */
-  void set_to_inflow(const std::function<double(double)> &inflow_value);
+  void set_to_inflow(std::function<double(double)> inflow_value);
 
   /*! @brief Marks the given vertex as part of the outflow boundary. */
   void set_to_outflow();

@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
   graph->line_to(*start, *end, ascending_aorta_id, num_edges_per_segment);
 
   // set inflow boundary conditions
-  start->set_to_inflow(mc::heart_beat_inflow);
+  start->set_to_inflow(mc::heart_beat_inflow());
 
   // configure solver
   mc::ExplicitNonlinearFlowSolver solver(graph, vessel_data);

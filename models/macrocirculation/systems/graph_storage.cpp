@@ -34,7 +34,7 @@ bool Vertex::is_unconnected() const { return p_neighbors.empty(); }
 
 bool Vertex::is_bifurcation() const { return p_neighbors.size() > 2; }
 
-void Vertex::set_to_inflow(const std::function<double(double)> &value) {
+void Vertex::set_to_inflow(std::function<double(double)> value) {
   p_inflow = true;
   p_inflow_value = value;
 }
