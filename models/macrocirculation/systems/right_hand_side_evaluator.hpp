@@ -27,7 +27,7 @@ public:
   /*! @brief Evaluates the Q- and A-component of the right-hand side S,
    *         given Q and A at eacht of the quadrature points.
    */
-  void operator()(const std::vector<double>& Q, const std::vector<double>& A, std::vector<double>& S_Q_out, std::vector<double>& S_A_out) const;
+  void operator()(double, const std::vector<double>& Q, const std::vector<double>& A, std::vector<double>& S_Q_out, std::vector<double>& S_A_out) const;
 
 private:
   /*! @brief Blood viscosity [m Pa s]. */
@@ -59,11 +59,12 @@ public:
 
   void evaluate(double t, const std::vector<double> &u_prev, std::vector<double> &rhs);
 
-  /*! @brief Function type to evaluate a vectorial quantity at all the quadrature points in one go.
-   *         The first and second component are for the flow Q and the area A, while the third and fourth are
-   *         the components of the vector evaluated at the quadrature points.
+  /*! @brief Function type to evaluate a vectorial quantity at all the quadrature points in one go:
+   *         - the 1st argument is the current time,
+   *         - the 2nd and 3rd components are for the flow Q and the area A, while
+   *         - the 4th and 5th are the components of the vector evaluated at the quadrature points.
    */
-  using VectorEvaluator = std::function< void(const std::vector<double>&, const std::vector<double>&, std::vector<double>&, std::vector<double>&) >;
+  using VectorEvaluator = std::function< void(double, const std::vector<double>&, const std::vector<double>&, std::vector<double>&, std::vector<double>&) >;
 
   /*! @brief Sets the right-hand side S. */
   void set_rhs_S(VectorEvaluator S_evaluator);
@@ -114,7 +115,7 @@ private:
   void calculate_fluxes(double t, const std::vector<double> &u_prev);
 
   /*! @brief Assembles from the fluxes and the previous values a new right hand side function. */
-  void calculate_rhs(const std::vector<double> &u_prev, std::vector<double> &rhs);
+  void calculate_rhs(double t, const std::vector<double> &u_prev, std::vector<double> &rhs);
 
   /*! @brief Applies the inverse mass to our right hand side and saves the result to u_now. */
   void apply_inverse_mass(std::vector<double> &rhs);
