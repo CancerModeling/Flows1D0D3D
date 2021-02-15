@@ -365,18 +365,28 @@ inline void solve_W12(double &Q_up, double &A_up, const double W1, const double 
  * @param t Current time.
  * @return The current flow rate.
  */
-inline double heart_beat_inflow(double t) {
-  const double t_period = 1.0;
-  const double t_systole = 0.3;
-  const double t_in_period = t - std::floor(t / t_period);
-  if (t_in_period < t_systole) {
-    return 485./10. * std::sin(M_PI * t_in_period / t_systole);
-  } else if (t_in_period <= t_period + 1e-14) {
-    return 0.;
-  } else {
-    throw std::runtime_error("unreachable code");
+class heart_beat_inflow {
+public:
+  explicit heart_beat_inflow(double amplitude=485., double t_period=1.0, double t_systole=0.3)
+    : d_amplitude(amplitude), d_t_period(t_period), d_t_systole(t_systole)
+    {}
+
+  double operator()(double t) const {
+    const double t_in_period = t - std::floor(t / d_t_period);
+    if (t_in_period < d_t_systole) {
+      return d_amplitude * std::sin(M_PI * t_in_period / d_t_systole);
+    } else if (t_in_period <= d_t_period + 1e-14) {
+      return 0.;
+    } else {
+      throw std::runtime_error("unreachable code");
+    }
   }
-}
+
+private:
+  double d_amplitude;
+  double d_t_period;
+  double d_t_systole;
+};
 
 /*! @brief Solves for the forward propagating characteristic W2, given the
  *         back propagating characteristic W1 and a prescribed flow Q_star,
