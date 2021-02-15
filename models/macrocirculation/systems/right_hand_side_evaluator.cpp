@@ -23,7 +23,7 @@ namespace lm = libMesh;
 default_S::default_S(double mu, double gamma, double phi)
     : d_mu(mu), d_gamma(gamma), d_phi(phi) {}
 
-void default_S::operator()(const std::vector<double> &Q, const std::vector<double> &A, std::vector<double> &S_Q_out, std::vector<double> &S_A_out) const {
+void default_S::operator()(double, const std::vector<double> &Q, const std::vector<double> &A, std::vector<double> &S_Q_out, std::vector<double> &S_A_out) const {
   // all vectors have to have the same shape
   assert(Q.size() == A.size());
   assert(Q.size() == S_Q_out.size());
@@ -88,7 +88,7 @@ RightHandSideEvaluator<degree>::RightHandSideEvaluator(std::shared_ptr<GraphStor
 template<std::size_t degree>
 void RightHandSideEvaluator<degree>::evaluate(const double t, const std::vector<double> &u_prev, std::vector<double> &rhs) {
   calculate_fluxes(t, u_prev);
-  calculate_rhs(u_prev, rhs);
+  calculate_rhs(t, u_prev, rhs);
   apply_inverse_mass(rhs);
 }
 
@@ -321,7 +321,7 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
 }
 
 template<std::size_t degree>
-void RightHandSideEvaluator<degree>::calculate_rhs(const std::vector<double> &u_prev, std::vector<double> &rhs) {
+void RightHandSideEvaluator<degree>::calculate_rhs(const double t, const std::vector<double> &u_prev, std::vector<double> &rhs) {
   // first zero rhs
   for (std::size_t idx = 0; idx < rhs.size(); idx += 1)
     rhs[idx] = 0;
@@ -389,7 +389,7 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const std::vector<double> &u_
       F_Q[qp] = F_Q_eval(Q_prev_qp[qp], A_prev_qp[qp]);
 
     // evaluate S = (S_Q, S_A) at the quadrature points
-    d_S_evaluator(Q_prev_qp, A_prev_qp, S_Q, S_A);
+    d_S_evaluator(t, Q_prev_qp, A_prev_qp, S_Q, S_A);
 
     for (std::size_t i = 0; i < num_basis_functions; i += 1) {
       // rhs integral
