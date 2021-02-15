@@ -152,8 +152,8 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
         // does the vessel point towards the vertex?
         const bool in = edge_r->get_vertex_neighbors()[1] == vertex->get_id();
 
-        const double Q = Q_prev_qp_r[0];
-        const double A = A_prev_qp_r[0];
+        const double Q = in ? Q_prev_qp_r[1] : Q_prev_qp_r[0];
+        const double A = in ? A_prev_qp_r[1] : A_prev_qp_r[0];
 
         const double Q_star = vertex->get_inflow_value(t);
         const double A_up = assemble_in_flow(Q, A, in, Q_star, param.G0, param.rho, param.A0);
