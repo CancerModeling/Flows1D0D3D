@@ -19,6 +19,27 @@ class GraphStorage;
 class VesselDataStorage;
 class DofMapNetwork;
 
+/*! @brief Functional to evaluate the right-hand-side S. */
+class default_S {
+public:
+  default_S(double mu, double gamma, double phi);
+
+  /*! @brief Evaluates the Q- and A-component of the right-hand side S,
+   *         given Q and A at eacht of the quadrature points.
+   */
+  void operator()(const std::vector<double>& Q, const std::vector<double>& A, std::vector<double>& S_Q_out, std::vector<double>& S_A_out) const;
+
+private:
+  /*! @brief Blood viscosity [m Pa s]. */
+  double d_mu;
+
+  /*! @brief Shape of velocity profile. */
+  double d_gamma;
+
+  /*! @brief Wall permeability [cm^2 s^{-1}]. */
+  double d_phi;
+};
+
 /*! @brief Assembles the inverse mass. WARNING: Assumes legendre basis! */
 template <std::size_t degree>
 void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_map, std::vector<double> &inv_mass);
@@ -38,6 +59,15 @@ public:
 
   void evaluate(double t, const std::vector<double> &u_prev, std::vector<double> &rhs);
 
+  /*! @brief Function type to evaluate a vectorial quantity at all the quadrature points in one go.
+   *         The first and second component are for the flow Q and the area A, while the third and fourth are
+   *         the components of the vector evaluated at the quadrature points.
+   */
+  using VectorEvaluator = std::function< void(const std::vector<double>&, const std::vector<double>&, std::vector<double>&, std::vector<double>&) >;
+
+  /*! @brief Sets the right-hand side S. */
+  void set_rhs_S(VectorEvaluator S_evaluator);
+
 private:
   /*! @brief The current domain for solving the equation. */
   std::shared_ptr<GraphStorage> d_graph;
@@ -47,6 +77,11 @@ private:
 
   /*! @brief The dof map for our domain */
   std::shared_ptr<DofMapNetwork> d_dof_map;
+
+  /*! @brief Evaluates the Q- and A-component of the right-hand side S,
+   *         given Q and A at eacht of the quadrature points.
+   */
+  VectorEvaluator d_S_evaluator;
 
   /*! @brief The upwinded Q-flow from the left boundary of a macroedge,
    *         ordered such that d_Q_up_el[edge_id] contains the respective flux.
@@ -70,11 +105,6 @@ private:
 
   /*! @brief Our current inverse mass vector, defining the diagonal inverse mass matrix. */
   std::vector<double> d_inverse_mass;
-
-  // All the parameters, which are now kept constant, but should change for vessel types.
-  // TODO: These values should be provided by the network.
-  double d_mu;
-  double d_gamma;
 
   /*! @brief Recalculates the current fluxes from the previous time step.
    *

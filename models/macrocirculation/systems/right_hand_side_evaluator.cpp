@@ -10,8 +10,8 @@
 #include "dof_map_network.hpp"
 #include "fe_type_network.hpp"
 #include "libmesh/point.h"
-#include "vessel_formulas.hpp"
 #include "vessel_data_storage.hpp"
+#include "vessel_formulas.hpp"
 #include <utility>
 
 constexpr const std::size_t degree = 1;
@@ -20,7 +20,22 @@ namespace macrocirculation {
 
 namespace lm = libMesh;
 
-template <std::size_t degree>
+default_S::default_S(double mu, double gamma, double phi)
+    : d_mu(mu), d_gamma(gamma), d_phi(phi) {}
+
+void default_S::operator()(const std::vector<double> &Q, const std::vector<double> &A, std::vector<double> &S_Q_out, std::vector<double> &S_A_out) const {
+  // all vectors have to have the same shape
+  assert(Q.size() == A.size());
+  assert(Q.size() == S_Q_out.size());
+  assert(Q.size() == S_A_out.size());
+
+  for (std::size_t qp = 0; qp < Q.size(); qp += 1) {
+    S_Q_out[qp] = -2 * d_mu * M_PI * (d_gamma + 2) * Q[qp] / A[qp];
+    S_A_out[qp] = d_phi;
+  }
+}
+
+template<std::size_t degree>
 void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_map, std::vector<double> &inv_mass) {
   // make sure that the inverse mass vector is large enough
   assert(inv_mass.size() == dof_map.num_dof());
@@ -52,30 +67,35 @@ void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_m
   }
 }
 
-template <std::size_t degree>
+template<std::size_t degree>
 RightHandSideEvaluator<degree>::RightHandSideEvaluator(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data, std::shared_ptr<DofMapNetwork> dof_map)
     : d_graph(std::move(graph)),
       d_dof_map(std::move(dof_map)),
       d_vessel_data(std::move(vessel_data)),
+      d_S_evaluator(default_S{
+        4.5,    // 4.5 m Pa/s
+        2,   // Poiseuille flow
+        0       // 0 cm^2/s, no wall permeability
+      }),
       d_Q_up_el(d_graph->num_edges()),
       d_Q_up_er(d_graph->num_edges()),
       d_A_up_el(d_graph->num_edges()),
       d_A_up_er(d_graph->num_edges()),
-      d_inverse_mass(d_dof_map->num_dof()),
-      d_mu(4.5),     // 4.5 m Pa/s      TODO: Check if units are consistent!
-      d_gamma(2)     // Poiseuille flow
-{
+      d_inverse_mass(d_dof_map->num_dof()) {
   assemble_inverse_mass<degree>(*d_graph, *d_dof_map, d_inverse_mass);
 }
 
-template <std::size_t degree>
+template<std::size_t degree>
 void RightHandSideEvaluator<degree>::evaluate(const double t, const std::vector<double> &u_prev, std::vector<double> &rhs) {
   calculate_fluxes(t, u_prev);
   calculate_rhs(u_prev, rhs);
   apply_inverse_mass(rhs);
 }
 
-template <std::size_t degree>
+template<std::size_t degree>
+void RightHandSideEvaluator<degree>::set_rhs_S(VectorEvaluator S_evaluator) { d_S_evaluator = S_evaluator; }
+
+template<std::size_t degree>
 void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std::vector<double> &u_prev) {
   // initial value of the flow
   // TODO: make this more generic for other initial flow values
@@ -114,7 +134,7 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
     if (vertex->is_leaf()) {
       const auto edge_r = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
 
-      const auto& param = d_vessel_data->get_parameters(*edge_r);
+      const auto &param = d_vessel_data->get_parameters(*edge_r);
 
       fe_r.reinit(*edge_r);
 
@@ -180,9 +200,9 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
       const bool e2_in = e2->is_pointing_to(vertex->get_id());
 
       // get data
-      const auto& p_e0 = d_vessel_data->get_parameters(*e0);
-      const auto& p_e1 = d_vessel_data->get_parameters(*e1);
-      const auto& p_e2 = d_vessel_data->get_parameters(*e2);
+      const auto &p_e0 = d_vessel_data->get_parameters(*e0);
+      const auto &p_e1 = d_vessel_data->get_parameters(*e1);
+      const auto &p_e2 = d_vessel_data->get_parameters(*e2);
 
       // evaluate on edge e0
       d_dof_map->dof_indices(*e0, Q_dof_indices_l, 0);
@@ -253,8 +273,8 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
       const auto edge_l = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
       const auto edge_r = d_graph->get_edge(vertex->get_edge_neighbors()[1]);
 
-      const auto& p_l = d_vessel_data->get_parameters(*edge_l);
-      const auto& p_r = d_vessel_data->get_parameters(*edge_r);
+      const auto &p_l = d_vessel_data->get_parameters(*edge_l);
+      const auto &p_r = d_vessel_data->get_parameters(*edge_r);
 
       // we assert that the edge direction fits our assumptions
       assert(edge_l->get_vertex_neighbors()[1] == vertex->get_id());
@@ -300,7 +320,7 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
   }
 }
 
-template <std::size_t degree>
+template<std::size_t degree>
 void RightHandSideEvaluator<degree>::calculate_rhs(const std::vector<double> &u_prev, std::vector<double> &rhs) {
   // first zero rhs
   for (std::size_t idx = 0; idx < rhs.size(); idx += 1)
@@ -326,6 +346,12 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const std::vector<double> &u_
   std::vector<double> Q_prev_qp(fe.num_quad_points(), 0);
   std::vector<double> A_prev_qp(fe.num_quad_points(), 0);
 
+  const auto &F_A = Q_prev_qp;
+  std::vector<double> F_Q(Q_prev_qp.size(), 0);
+
+  std::vector<double> S_Q(fe.num_quad_points(), 0);
+  std::vector<double> S_A(fe.num_quad_points(), 0);
+
   // data structures for facet contributions
   FETypeNetwork<degree> fe_boundary(create_trapezoidal_rule());
   const auto &phi_b = fe_boundary.get_phi();
@@ -335,7 +361,7 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const std::vector<double> &u_
     fe.reinit(*edge);
     fe_boundary.reinit(*edge);
 
-    const auto& param = d_vessel_data->get_parameters(*edge);
+    const auto &param = d_vessel_data->get_parameters(*edge);
 
     // evaluate Q and A inside cell
     d_dof_map->dof_indices(*edge, Q_dof_indices, 0);
@@ -359,16 +385,11 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const std::vector<double> &u_
     };
 
     // evaluate F = (F_Q, F_A) at the quadrature points
-    const auto &F_A = Q_prev_qp;
-    std::vector<double> F_Q(Q_prev_qp.size(), 0);
     for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
       F_Q[qp] = F_Q_eval(Q_prev_qp[qp], A_prev_qp[qp]);
 
     // evaluate S = (S_Q, S_A) at the quadrature points
-    const double S_A = 0;
-    std::vector<double> S_Q(Q_prev_qp.size(), 0);
-    for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
-      S_Q[qp] = -2 * d_mu * M_PI * (d_gamma + 2) * Q_prev_qp[qp] / A_prev_qp[qp];
+    d_S_evaluator(Q_prev_qp, A_prev_qp, S_Q, S_A);
 
     for (std::size_t i = 0; i < num_basis_functions; i += 1) {
       // rhs integral
@@ -380,7 +401,7 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const std::vector<double> &u_
         f_loc_Q[i] += phi[i][qp] * S_Q[qp] * JxW[qp];
         f_loc_Q[i] += dphi[i][qp] * F_Q[qp] * JxW[qp];
 
-        f_loc_A[i] += phi[i][qp] * S_A * JxW[qp];
+        f_loc_A[i] += phi[i][qp] * S_A[qp] * JxW[qp];
         f_loc_A[i] += dphi[i][qp] * F_A[qp] * JxW[qp];
       }
 
@@ -400,7 +421,7 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const std::vector<double> &u_
   }
 }
 
-template <std::size_t degree>
+template<std::size_t degree>
 void RightHandSideEvaluator<degree>::apply_inverse_mass(std::vector<double> &rhs) {
   for (std::size_t i = 0; i < d_dof_map->num_dof(); i += 1)
     rhs[i] = d_inverse_mass[i] * rhs[i];
