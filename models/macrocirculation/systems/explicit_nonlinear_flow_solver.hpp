@@ -56,6 +56,8 @@ public:
   /*! @brief Configures a 3rd order RKM as the time integrator. */
   void use_ssp_method();
 
+  RightHandSideEvaluator<degree> & get_rhs_evaluator();
+
 private:
   /*! @brief The current domain for solving the equation. */
   std::shared_ptr<GraphStorage> d_graph;

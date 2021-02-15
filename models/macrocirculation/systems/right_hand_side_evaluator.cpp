@@ -23,7 +23,7 @@ namespace lm = libMesh;
 default_S::default_S(double mu, double gamma, double phi)
     : d_mu(mu), d_gamma(gamma), d_phi(phi) {}
 
-void default_S::operator()(double, const std::vector<double> &Q, const std::vector<double> &A, std::vector<double> &S_Q_out, std::vector<double> &S_A_out) const {
+void default_S::operator()(double, const std::vector<Point>&, const std::vector<double> &Q, const std::vector<double> &A, std::vector<double> &S_Q_out, std::vector<double> &S_A_out) const {
   // all vectors have to have the same shape
   assert(Q.size() == A.size());
   assert(Q.size() == S_Q_out.size());
@@ -149,18 +149,25 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
 
       // inflow boundary
       if (vertex->is_inflow()) {
-        // we assert that the edge direction fits our assumptions
-        // TODO: Make this assumption more generic!
-        assert(edge_r->get_vertex_neighbors()[0] == vertex->get_id());
+        // does the vessel point towards the vertex?
+        const bool in = edge_r->get_vertex_neighbors()[1] == vertex->get_id();
 
         const double Q = Q_prev_qp_r[0];
         const double A = A_prev_qp_r[0];
 
         const double Q_star = vertex->get_inflow_value(t);
-        const double A_up = assemble_in_flow(Q, A, Q_star, param.G0, param.rho, param.A0);
+        const double A_up = assemble_in_flow(Q, A, in, Q_star, param.G0, param.rho, param.A0);
 
-        d_Q_up_el[edge_r->get_id()] = Q_star;
-        d_A_up_el[edge_r->get_id()] = A_up;
+        if (in)
+        {
+          d_Q_up_er[edge_r->get_id()] = Q_star;
+          d_A_up_er[edge_r->get_id()] = A_up;
+        }
+        else
+        {
+          d_Q_up_el[edge_r->get_id()] = Q_star;
+          d_A_up_el[edge_r->get_id()] = A_up;
+        }
       }
       // free outflow boundary
       else {
@@ -332,10 +339,15 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const double t, const std::ve
   std::vector<double> f_loc_A(num_basis_functions);
 
   // data structures for cell contributions
-  FETypeNetwork<degree> fe(create_gauss4());
+  QuadratureFormula qf = create_gauss4();
+  FETypeNetwork<degree> fe(qf);
   const auto &phi = fe.get_phi();
   const auto &dphi = fe.get_dphi();
   const auto &JxW = fe.get_JxW();
+
+  // some right hand sides need the physical location of the quadrature points
+  QuadraturePointMapper qpm(qf);
+  const auto &points = qpm.get_quadrature_points();
 
   std::vector<std::size_t> Q_dof_indices(num_basis_functions, 0);
   std::vector<std::size_t> A_dof_indices(num_basis_functions, 0);
@@ -360,6 +372,7 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const double t, const std::ve
     const auto edge = d_graph->get_edge(e_id);
     fe.reinit(*edge);
     fe_boundary.reinit(*edge);
+    qpm.reinit(*edge);
 
     const auto &param = d_vessel_data->get_parameters(*edge);
 
@@ -389,7 +402,7 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const double t, const std::ve
       F_Q[qp] = F_Q_eval(Q_prev_qp[qp], A_prev_qp[qp]);
 
     // evaluate S = (S_Q, S_A) at the quadrature points
-    d_S_evaluator(t, Q_prev_qp, A_prev_qp, S_Q, S_A);
+    d_S_evaluator(t, points, Q_prev_qp, A_prev_qp, S_Q, S_A);
 
     for (std::size_t i = 0; i < num_basis_functions; i += 1) {
       // rhs integral

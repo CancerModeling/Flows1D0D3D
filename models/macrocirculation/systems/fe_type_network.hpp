@@ -153,6 +153,19 @@ private:
   double d_n;
 };
 
+class QuadraturePointMapper {
+public:
+  explicit QuadraturePointMapper(QuadratureFormula qf);
+
+  void reinit(const Edge &e);
+
+  const std::vector<Point> &get_quadrature_points() const { return d_quadrature_points; };
+private:
+  QuadratureFormula d_qf;
+
+  std::vector<Point> d_quadrature_points;
+};
+
 } // namespace macrocirculation
 
 #endif //TUMORMODELS_FE_VALUES_H

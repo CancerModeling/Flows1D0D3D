@@ -413,14 +413,52 @@ inline double solve_for_W2(const double W1, const double W2_init, const double Q
   return W2;
 }
 
-/*! @brief Assembles the inflow boundary condition. */
-inline double assemble_in_flow(const double Q_l, const double A_l, const double Q_star, const double G0, const double rho, const double A0) {
+/*! @brief Solves for the backward propagating characteristic W1, given the
+ *         forward propagating characteristic W2 and a prescribed flow Q_star,
+ *         with a Newton iteration.
+ *
+ * @param W1_init An initial guess for the backward propagating characteristic.
+ * @param W2      The forward
+ * @param Q_star  A prescribed flow.
+ * @param A_0     The vessel area at zero pressure.
+ * @param c_0     The velocity.
+ * @return        The forward propagating wave w2.
+ */
+inline double solve_for_W1(const double W1_init, const double W2, const double Q_star, const double A_0, const double c_0) {
+  double W1 = W1_init;
+  double W1_prev = W1_init;
+  const auto f = [=](double W1) { return (W2 - W1) / 2. * std::pow((W1 + W2) / (8 * c_0), 4) * A_0 - Q_star; };
+  const auto f_prime = [=](double W1) { return (-0.0001220703125 * A_0 * (5*W1 - 3*W2) * pow((W2 + W1), 3)) / pow(c_0, 4); };
+  for (std::size_t it = 0; it < 100; it += 1) {
+    W1 += (-1) * f(W1) / f_prime(W1);
+    if (std::abs(W1 - W1_prev) < 1e-16 || std::abs(W1 - W1_prev) < 1e-8 * W1_prev)
+      break;
+    W1_prev = W1;
+  }
+  return W1;
+}
+
+/*! @brief Assembles the inflow boundary condition.
+ *
+ * @param Q  The value of Q inside the cell.
+ * @param A  The value of A inside the cell.
+ * @param in True, if the vessel points towards the vertex, false if it points away.
+ * @param Q_star The Q value at the boundary
+ * @param G0  TODO:
+ * @param rho The blood density.
+ * @param A0  The area at p=0.
+ * @return
+ */
+inline double assemble_in_flow(const double Q, const double A, const bool in, const double Q_star, const double G0, const double rho, const double A0) {
   const double c0 = sqrt(G0 / (2 * rho));
-  const double W1 = calculate_W1_value(Q_l, A_l, G0, rho, A0);
-  const double W2_init = calculate_W2_value(Q_l, A_l, G0, rho, A0);
-  const double W2 = solve_for_W2(W1, W2_init, Q_star, A0, c0);
-  const double A = A0 * std::pow(1. / (8 * c0) * (W2 + W1), 4);
-  return A;
+  double W1 = calculate_W1_value(Q, A, G0, rho, A0);
+  double W2 = calculate_W2_value(Q, A, G0, rho, A0);
+  if (in)
+    W1 = solve_for_W1(W1, W2, Q_star, A0, c0);
+  else
+    W2 = solve_for_W2(W1, W2, Q_star, A0, c0);
+  const double A_star = A0 * std::pow(1. / (8 * c0) * (W2 + W1), 4);
+  return A_star;
 }
 
 }

@@ -161,6 +161,19 @@ double FETypeExteriorBdryNetwork<DEGREE>::evaluate_dof_at_boundary_points(const 
   return value;
 }
 
+QuadraturePointMapper::QuadraturePointMapper(QuadratureFormula qf)
+: d_qf(qf),
+  d_quadrature_points(qf.size())
+{}
+
+void QuadraturePointMapper::reinit(const Edge &e) {
+  for (std::size_t qp = 0; qp < d_qf.size(); qp += 1)
+  {
+    const double s = 0.5*(d_qf.ref_points[qp] + 1);
+    d_quadrature_points[qp] = e.get_coordinate_v0() * (1-s) + e.get_coordinate_v1() * s;
+  }
+}
+
 // instantiations of the available templates to avoid lengthy recompiles:
 // DG0:
 template class FETypeNetwork<0>;
