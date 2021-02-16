@@ -58,6 +58,10 @@ public:
 
   RightHandSideEvaluator<degree> & get_rhs_evaluator();
 
+  DofMapNetwork & get_dof_map();
+
+  std::vector<double> & get_solution();
+
 private:
   /*! @brief The current domain for solving the equation. */
   std::shared_ptr<GraphStorage> d_graph;

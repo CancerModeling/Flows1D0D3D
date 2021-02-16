@@ -12,9 +12,10 @@
 
 #include "../systems/explicit_nonlinear_flow_solver.hpp"
 #include "../systems/graph_storage.hpp"
+#include "../systems/right_hand_side_evaluator.hpp"
 #include "../systems/vessel_data_storage.hpp"
 #include "../systems/vessel_formulas.hpp"
-#include "../systems/right_hand_side_evaluator.hpp"
+#include "../systems/errornorm.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
@@ -48,8 +49,13 @@ double get_tau(double h, double K_CFL, double c0) {
   return h * K_CFL / c0;
 }
 
+double get_analytic_solution_A(double t, double x, double length) {
+  return std::pow(1 + t * std::exp(-10 * t) * std::sin(M_PI * x / length), 2);
+}
+
+
 void run(std::size_t m) {
-  const double t_end = 2.;
+  const double t_end = 0.1;
   const std::size_t max_iter = 1000000;
 
   const double K_CFL = 0.25;
@@ -62,7 +68,7 @@ void run(std::size_t m) {
   const double c0 = std::sqrt(G0 / (2 * rho));
   const double length = 20.;
 
-  const double h = length/num_edges_per_segment;
+  const double h = length / num_edges_per_segment;
 
   const double tau = get_tau(h, K_CFL, c0);
   const auto output_interval = 1;
@@ -71,7 +77,7 @@ void run(std::size_t m) {
 
   // we create data for the ascending aorta
   auto vessel_data = std::make_shared<mc::VesselDataStorage>();
-  std::size_t ascending_aorta_id = vessel_data->add_parameter({ G0, A0, rho });
+  std::size_t ascending_aorta_id = vessel_data->add_parameter({G0, A0, rho});
 
   // create the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
@@ -80,8 +86,8 @@ void run(std::size_t m) {
   graph->line_to(*start, *end, ascending_aorta_id, num_edges_per_segment);
 
   // set inflow boundary conditions
-  start->set_to_inflow([](auto){ return 0.; });
-  end->set_to_inflow([](auto){ return 0.; });
+  start->set_to_inflow([](auto) { return 0.; });
+  end->set_to_inflow([](auto) { return 0.; });
 
   // configure solver
   mc::ExplicitNonlinearFlowSolver solver(graph, vessel_data);
@@ -96,6 +102,13 @@ void run(std::size_t m) {
     std::cout << "iter " << it << std::endl;
 
     solver.solve();
+
+    const double error = mc::errornorm<1>(*graph, solver.get_dof_map(), 1, solver.get_solution(), [&solver,length](const std::vector< lm::Point > & p, std::vector< double >& out){
+      for (std::size_t qp=0; qp<p.size(); qp+=1)
+        out[qp] = get_analytic_solution_A(solver.get_time(), p[qp](0), length);
+    });
+
+    std::cout << "error " << error << std::endl;
 
     if (it % output_interval == 0) {
       // save solution
@@ -117,5 +130,5 @@ int main(int argc, char *argv[]) {
   // libmesh and then call the constructor of model
   lm::LibMeshInit init(argc, argv);
 
-  run(3);
+  run(6);
 }
