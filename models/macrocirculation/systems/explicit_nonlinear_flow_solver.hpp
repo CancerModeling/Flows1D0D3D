@@ -17,7 +17,7 @@
 
 namespace macrocirculation {
 
-constexpr std::size_t degree = 1;
+constexpr std::size_t degree = 2;
 
 // forward declarations
 class GraphStorage;

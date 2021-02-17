@@ -46,7 +46,7 @@ private:
 };
 
 double get_tau(double h, double K_CFL, double c0) {
-  return h * K_CFL / c0;
+  return h * K_CFL / c0 * 0.5;
 }
 
 double get_analytic_solution_A(double t, double x, double length) {
@@ -54,7 +54,7 @@ double get_analytic_solution_A(double t, double x, double length) {
 }
 
 
-void run(std::size_t m) {
+double run(std::size_t m) {
   const double t_end = 0.1;
   const std::size_t max_iter = 1000000;
 
@@ -71,7 +71,7 @@ void run(std::size_t m) {
   const double h = length / num_edges_per_segment;
 
   const double tau = get_tau(h, K_CFL, c0);
-  const auto output_interval = 1;
+  const auto output_interval = 1000000;
 
   std::cout << "tau " << tau << " " << c0 << std::endl;
 
@@ -98,17 +98,17 @@ void run(std::size_t m) {
   std::vector<double> Q_vertex_values(graph->num_edges() * 2, 0);
   std::vector<double> A_vertex_values(graph->num_edges() * 2, 0);
 
+  double last_error = 0;
+
   for (std::size_t it = 0; it < max_iter; it += 1) {
     std::cout << "iter " << it << std::endl;
 
     solver.solve();
 
-    const double error = mc::errornorm<1>(*graph, solver.get_dof_map(), 1, solver.get_solution(), [&solver,length](const std::vector< lm::Point > & p, std::vector< double >& out){
+    last_error = mc::errornorm<2>(*graph, solver.get_dof_map(), 1, solver.get_solution(), [&solver,length](const std::vector< lm::Point > & p, std::vector< double >& out){
       for (std::size_t qp=0; qp<p.size(); qp+=1)
         out[qp] = get_analytic_solution_A(solver.get_time(), p[qp](0), length);
     });
-
-    std::cout << "error " << error << std::endl;
 
     if (it % output_interval == 0) {
       // save solution
@@ -123,6 +123,8 @@ void run(std::size_t m) {
     if (solver.get_time() > t_end + 1e-12)
       break;
   }
+
+  return last_error;
 }
 
 int main(int argc, char *argv[]) {
@@ -130,5 +132,13 @@ int main(int argc, char *argv[]) {
   // libmesh and then call the constructor of model
   lm::LibMeshInit init(argc, argv);
 
-  run(6);
+  const std::size_t max_m = 8;
+
+  std::ofstream f("convergence_error.csv");
+  for (std::size_t m=0; m<max_m; m+=1)
+  {
+    const double error = run(m);
+    const double h = 20. / (1<<(3+m));
+    f << h << ", " << error << std::endl;
+  }
 }

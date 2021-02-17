@@ -56,16 +56,16 @@ int main(int argc, char *argv[]) {
   // create vertices:
   auto start = graph->create_vertex(lm::Point(0, 0, 0));
   auto midpoint1 = graph->create_vertex(lm::Point(1*scale, 0, 0));
-  /*
   auto upper_point = graph->create_vertex(lm::Point(1.5*scale, +0.5*scale, 0));
+  /*
   auto lower_point= graph->create_vertex(lm::Point(1.5*scale, -0.5*scale, 0));
   auto midpoint2 = graph->create_vertex(lm::Point(2*scale, 0, 0));
   auto endpoint = graph->create_vertex(lm::Point(3*scale, 0, 0));
    */
   // connect vertices:
   graph->line_to(*start, *midpoint1, main_vessel_id, num_edges_per_segment);
-  /*
   graph->line_to(*midpoint1, *upper_point, other_vessel_id, num_edges_per_segment);
+  /*
   graph->line_to(*midpoint1, *lower_point, other_vessel_id, num_edges_per_segment);
   graph->line_to(*lower_point, *midpoint2, other_vessel_id, num_edges_per_segment);
   graph->line_to(*upper_point, *midpoint2, other_vessel_id, num_edges_per_segment);
