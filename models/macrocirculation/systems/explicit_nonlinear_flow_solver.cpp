@@ -44,7 +44,8 @@ void set_to_A0(const GraphStorage &graph, const DofMapNetwork &dof_map, const Ve
   }
 }
 
-ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data)
+template<std::size_t degree>
+ExplicitNonlinearFlowSolver<degree>::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data)
     : d_graph(std::move(graph)),
       d_vessel_data(std::move(vessel_data)),
       d_dof_map(std::make_shared<SimpleDofMapNetwork>(2, degree + 1, d_graph->num_edges())),
@@ -60,34 +61,44 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphSt
 }
 
 // we need the destructor here, to use unique_ptrs with forward declared classes.
-ExplicitNonlinearFlowSolver::~ExplicitNonlinearFlowSolver() = default;
+template<std::size_t degree>
+ExplicitNonlinearFlowSolver<degree>::~ExplicitNonlinearFlowSolver() = default;
 
-void ExplicitNonlinearFlowSolver::solve() {
+template<std::size_t degree>
+void ExplicitNonlinearFlowSolver<degree>::solve() {
   d_u_prev = d_u_now;
   d_t_now += d_tau;
   const double t_prev = d_t_now - d_tau;
   d_time_integrator->apply<degree>(d_u_prev, t_prev, d_tau, *d_right_hand_side_evaluator, d_u_now);
 }
 
-double ExplicitNonlinearFlowSolver::get_time() const { return d_t_now; }
+template<std::size_t degree>
+double ExplicitNonlinearFlowSolver<degree>::get_time() const { return d_t_now; }
 
-void ExplicitNonlinearFlowSolver::set_tau(double tau) { d_tau = tau; }
+template<std::size_t degree>
+void ExplicitNonlinearFlowSolver<degree>::set_tau(double tau) { d_tau = tau; }
 
-void ExplicitNonlinearFlowSolver::use_explicit_euler_method() {
+template<std::size_t degree>
+void ExplicitNonlinearFlowSolver<degree>::use_explicit_euler_method() {
   d_time_integrator = std::make_unique<TimeIntegrator>(create_explicit_euler(), d_dof_map->num_dof());
 }
 
-void ExplicitNonlinearFlowSolver::use_ssp_method() {
+template<std::size_t degree>
+void ExplicitNonlinearFlowSolver<degree>::use_ssp_method() {
   d_time_integrator = std::make_unique<TimeIntegrator>(create_ssp_method(), d_dof_map->num_dof());
 }
 
-RightHandSideEvaluator<degree> &ExplicitNonlinearFlowSolver::get_rhs_evaluator() { return *d_right_hand_side_evaluator; }
+template<std::size_t degree>
+RightHandSideEvaluator<degree> &ExplicitNonlinearFlowSolver<degree>::get_rhs_evaluator() { return *d_right_hand_side_evaluator; }
 
-DofMapNetwork & ExplicitNonlinearFlowSolver::get_dof_map() { return *d_dof_map; }
+template<std::size_t degree>
+DofMapNetwork &ExplicitNonlinearFlowSolver<degree>::get_dof_map() { return *d_dof_map; }
 
-std::vector<double> & ExplicitNonlinearFlowSolver::get_solution() { return d_u_now; }
+template<std::size_t degree>
+std::vector<double> &ExplicitNonlinearFlowSolver<degree>::get_solution() { return d_u_now; }
 
-void ExplicitNonlinearFlowSolver::get_solution_on_vertices(std::vector<double> &Q_values, std::vector<double> &A_values) const {
+template<std::size_t degree>
+void ExplicitNonlinearFlowSolver<degree>::get_solution_on_vertices(std::vector<double> &Q_values, std::vector<double> &A_values) const {
   assert(Q_values.size() == d_graph->num_edges() * 2);
   assert(A_values.size() == d_graph->num_edges() * 2);
 
@@ -97,7 +108,8 @@ void ExplicitNonlinearFlowSolver::get_solution_on_vertices(std::vector<double> &
   interpolate_to_vertices(*d_graph, *d_dof_map, fe, 1, d_u_now, A_values);
 }
 
-void ExplicitNonlinearFlowSolver::get_total_pressure_on_vertices(std::vector<double> &p_values) const {
+template<std::size_t degree>
+void ExplicitNonlinearFlowSolver<degree>::get_total_pressure_on_vertices(std::vector<double> &p_values) const {
   assert(p_values.size() == d_graph->num_edges() * 2);
 
   FETypeNetwork<degree> fe(create_trapezoidal_rule());
@@ -105,12 +117,19 @@ void ExplicitNonlinearFlowSolver::get_total_pressure_on_vertices(std::vector<dou
   calculate_total_pressure(*d_graph, *d_vessel_data, *d_dof_map, fe, d_u_now, p_values);
 }
 
-void ExplicitNonlinearFlowSolver::get_static_pressure_on_vertices(std::vector<double> &p_values) const {
+template<std::size_t degree>
+void ExplicitNonlinearFlowSolver<degree>::get_static_pressure_on_vertices(std::vector<double> &p_values) const {
   assert(p_values.size() == d_graph->num_edges() * 2);
 
   FETypeNetwork<degree> fe(create_trapezoidal_rule());
 
   calculate_total_pressure(*d_graph, *d_vessel_data, *d_dof_map, fe, d_u_now, p_values);
 }
+
+// template instantiations:
+template class ExplicitNonlinearFlowSolver<0>;
+template class ExplicitNonlinearFlowSolver<1>;
+template class ExplicitNonlinearFlowSolver<2>;
+template class ExplicitNonlinearFlowSolver<3>;
 
 } // namespace macrocirculation

@@ -31,8 +31,9 @@ class TimeIntegrator;
 void interpolate_constant(const GraphStorage &graph, const DofMapNetwork &dof_map, double value, std::size_t component, std::vector<double> &result);
 
 /*! @brief Sets the given function to A=A0 and Q=0. WARNING: Assumes legendre basis! */
-void set_to_A0(const GraphStorage &graph, const DofMapNetwork &dof_map, const VesselDataStorage&, std::vector<double> &result);
+void set_to_A0(const GraphStorage &graph, const DofMapNetwork &dof_map, const VesselDataStorage &, std::vector<double> &result);
 
+template<std::size_t degree>
 class ExplicitNonlinearFlowSolver {
 public:
   explicit ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data_storage);
@@ -56,11 +57,11 @@ public:
   /*! @brief Configures a 3rd order RKM as the time integrator. */
   void use_ssp_method();
 
-  RightHandSideEvaluator<degree> & get_rhs_evaluator();
+  RightHandSideEvaluator<degree> &get_rhs_evaluator();
 
-  DofMapNetwork & get_dof_map();
+  DofMapNetwork &get_dof_map();
 
-  std::vector<double> & get_solution();
+  std::vector<double> &get_solution();
 
 private:
   /*! @brief The current domain for solving the equation. */
@@ -91,7 +92,7 @@ private:
   std::vector<double> d_u_prev;
 
   /*! @brief The solution at the previous time step. */
-  std::vector< std::vector<double> > d_k;
+  std::vector<std::vector<double>> d_k;
 };
 
 } // namespace macrocirculation
