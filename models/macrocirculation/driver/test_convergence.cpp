@@ -54,7 +54,8 @@ double get_analytic_solution_A(double t, double x, double length) {
 }
 
 
-double run(std::size_t m) {
+template <std::size_t degree>
+double run_scenario(std::size_t m) {
   const double t_end = 0.1;
   const std::size_t max_iter = 1000000;
 
@@ -90,7 +91,7 @@ double run(std::size_t m) {
   end->set_to_inflow([](auto) { return 0.; });
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver solver(graph, vessel_data);
+  mc::ExplicitNonlinearFlowSolver<degree> solver(graph, vessel_data);
   solver.set_tau(tau);
   solver.use_ssp_method();
   solver.get_rhs_evaluator().set_rhs_S(test_S(length, c0, A0));
@@ -98,17 +99,10 @@ double run(std::size_t m) {
   std::vector<double> Q_vertex_values(graph->num_edges() * 2, 0);
   std::vector<double> A_vertex_values(graph->num_edges() * 2, 0);
 
-  double last_error = 0;
-
   for (std::size_t it = 0; it < max_iter; it += 1) {
     std::cout << "iter " << it << std::endl;
 
     solver.solve();
-
-    last_error = mc::errornorm<2>(*graph, solver.get_dof_map(), 1, solver.get_solution(), [&solver,length](const std::vector< lm::Point > & p, std::vector< double >& out){
-      for (std::size_t qp=0; qp<p.size(); qp+=1)
-        out[qp] = get_analytic_solution_A(solver.get_time(), p[qp](0), length);
-    });
 
     if (it % output_interval == 0) {
       // save solution
@@ -124,7 +118,30 @@ double run(std::size_t m) {
       break;
   }
 
-  return last_error;
+  const double error_Q = mc::errornorm<degree>(*graph, solver.get_dof_map(), 1, solver.get_solution(), [&solver,length](const std::vector< lm::Point > & p, std::vector< double >& out){
+    for (std::size_t qp=0; qp<p.size(); qp+=1)
+      out[qp] = get_analytic_solution_A(solver.get_time(), p[qp](0), length);
+  });
+  const double error_A = mc::errornorm<degree>(*graph, solver.get_dof_map(), 0, solver.get_solution(), [&solver,length](const std::vector< lm::Point > & p, std::vector< double >& out){
+    for (std::size_t qp=0; qp<p.size(); qp+=1)
+      out[qp] = 0;
+  });
+
+  const double error = std::sqrt(std::pow(error_Q, 2) + std::pow(error_A, 2));
+
+  return error;
+}
+
+template < std::size_t degree >
+void run_convergence_study(std::size_t max_m)
+{
+  std::ofstream f("convergence_error_dg" + std::to_string(degree) +  ".csv");
+  for (std::size_t m=0; m<max_m; m+=1)
+  {
+    const double error = run_scenario<degree>(m);
+    const double h = 20. / (1<<(3+m));
+    f << h << ", " << error << std::endl;
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -134,11 +151,8 @@ int main(int argc, char *argv[]) {
 
   const std::size_t max_m = 8;
 
-  std::ofstream f("convergence_error.csv");
-  for (std::size_t m=0; m<max_m; m+=1)
-  {
-    const double error = run(m);
-    const double h = 20. / (1<<(3+m));
-    f << h << ", " << error << std::endl;
-  }
+  run_convergence_study<0>(max_m);
+  run_convergence_study<1>(max_m);
+  run_convergence_study<2>(max_m);
+  run_convergence_study<3>(max_m);
 }
