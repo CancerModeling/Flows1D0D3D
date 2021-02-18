@@ -10,12 +10,12 @@
 #include <graph_data_writer.hpp>
 #include <memory>
 
+#include "../systems/errornorm.hpp"
 #include "../systems/explicit_nonlinear_flow_solver.hpp"
 #include "../systems/graph_storage.hpp"
 #include "../systems/right_hand_side_evaluator.hpp"
 #include "../systems/vessel_data_storage.hpp"
 #include "../systems/vessel_formulas.hpp"
-#include "../systems/errornorm.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
@@ -53,29 +53,17 @@ double get_analytic_solution_A(double t, double x, double length) {
   return std::pow(1 + t * std::exp(-10 * t) * std::sin(M_PI * x / length), 2);
 }
 
+const std::size_t max_iter = 1000000;
+const double G0 = 15.41e+1;
+const double A0 = 1.;
+const double rho = 1.028;
+const double c0 = std::sqrt(G0 / (2 * rho));
+const double length = 20.;
+const double K_CFL = 0.25;
+const double t_end = 0.1;
 
-template <std::size_t degree>
-double run_scenario(std::size_t m) {
-  const double t_end = 0.1;
-  const std::size_t max_iter = 1000000;
-
-  const double K_CFL = 0.25;
-
-  const std::size_t num_edges_per_segment = 1 << (3 + m);
-
-  const double G0 = 15.41e+1;
-  const double A0 = 1.;
-  const double rho = 1.028;
-  const double c0 = std::sqrt(G0 / (2 * rho));
-  const double length = 20.;
-
-  const double h = length / num_edges_per_segment;
-
-  const double tau = get_tau(h, K_CFL, c0);
-  const auto output_interval = 1000000;
-
-  std::cout << "tau " << tau << " " << c0 << std::endl;
-
+template<std::size_t degree>
+double run_scenario(std::size_t num_edges_per_segment, double tau, bool use_ssp) {
   // we create data for the ascending aorta
   auto vessel_data = std::make_shared<mc::VesselDataStorage>();
   std::size_t ascending_aorta_id = vessel_data->add_parameter({G0, A0, rho});
@@ -93,54 +81,116 @@ double run_scenario(std::size_t m) {
   // configure solver
   mc::ExplicitNonlinearFlowSolver<degree> solver(graph, vessel_data);
   solver.set_tau(tau);
-  solver.use_ssp_method();
+  if (use_ssp)
+    solver.use_ssp_method();
+  else
+    solver.use_explicit_euler_method();
   solver.get_rhs_evaluator().set_rhs_S(test_S(length, c0, A0));
 
   std::vector<double> Q_vertex_values(graph->num_edges() * 2, 0);
   std::vector<double> A_vertex_values(graph->num_edges() * 2, 0);
 
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    std::cout << "iter " << it << std::endl;
-
     solver.solve();
 
-    if (it % output_interval == 0) {
-      // save solution
-      solver.get_solution_on_vertices(Q_vertex_values, A_vertex_values);
-      mc::GraphDataWriter writer;
-      writer.add_vertex_data("Q", Q_vertex_values);
-      writer.add_vertex_data("A", A_vertex_values);
-      writer.write_vtk("line_convergence", *graph, it);
-    }
-
     // break
-    if (solver.get_time() > t_end + 1e-12)
+    if (solver.get_time() >= t_end - 1e-12)
       break;
   }
 
-  const double error_Q = mc::errornorm<degree>(*graph, solver.get_dof_map(), 1, solver.get_solution(), [&solver,length](const std::vector< lm::Point > & p, std::vector< double >& out){
-    for (std::size_t qp=0; qp<p.size(); qp+=1)
+  const double error_Q = mc::errornorm<degree>(*graph, solver.get_dof_map(), 1, solver.get_solution(), [&solver, length](const std::vector<lm::Point> &p, std::vector<double> &out) {
+    for (std::size_t qp = 0; qp < p.size(); qp += 1)
       out[qp] = get_analytic_solution_A(solver.get_time(), p[qp](0), length);
   });
-  const double error_A = mc::errornorm<degree>(*graph, solver.get_dof_map(), 0, solver.get_solution(), [&solver,length](const std::vector< lm::Point > & p, std::vector< double >& out){
-    for (std::size_t qp=0; qp<p.size(); qp+=1)
+  const double error_A = mc::errornorm<degree>(*graph, solver.get_dof_map(), 0, solver.get_solution(), [&solver, length](const std::vector<lm::Point> &p, std::vector<double> &out) {
+    for (std::size_t qp = 0; qp < p.size(); qp += 1)
       out[qp] = 0;
   });
 
-  const double error = std::sqrt(std::pow(error_Q, 2) + std::pow(error_A, 2));
-
-  return error;
+  return std::sqrt(std::pow(error_Q, 2) + std::pow(error_A, 2));
 }
 
-template < std::size_t degree >
-void run_convergence_study(std::size_t max_m)
+template<std::size_t degree>
+void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size_t m_max)
 {
-  std::ofstream f("convergence_error_dg" + std::to_string(degree) +  ".csv");
-  for (std::size_t m=0; m<max_m; m+=1)
+  std::cout << "run temporal convergence study" << std::endl;
+
+  // we create data for the ascending aorta
+  auto vessel_data = std::make_shared<mc::VesselDataStorage>();
+  std::size_t ascending_aorta_id = vessel_data->add_parameter({G0, A0, rho});
+
+  // create the geometry of the ascending aorta
+  auto graph = std::make_shared<mc::GraphStorage>();
+  auto start = graph->create_vertex(lm::Point(0, 0, 0));
+  auto end = graph->create_vertex(lm::Point(length, 0, 0));
+  graph->line_to(*start, *end, ascending_aorta_id, num_edges_per_segment);
+
+  // set inflow boundary conditions
+  start->set_to_inflow([](auto) { return 0.; });
+  end->set_to_inflow([](auto) { return 0.; });
+
+  const double h = 20. / num_edges_per_segment;
+  const double tau_max = get_tau(h, K_CFL, c0);
+  const double tau_min = tau_max/(1<<(m_max+2));
+  const double t_end = std::ceil(0.1/tau_max)*tau_max;
+
+  // get reference solution for smallest time step.
+  std::vector<double> reference_solution;
   {
-    const double error = run_scenario<degree>(m);
-    const double h = 20. / (1<<(3+m));
+    mc::ExplicitNonlinearFlowSolver<degree> solver(graph, vessel_data);
+    solver.get_rhs_evaluator().set_rhs_S(test_S(length, c0, A0));
+    solver.set_tau(tau_min);
+    solver.use_ssp_method();
+    for (std::size_t it = 0; it < max_iter; it += 1) {
+      solver.solve();
+      if (solver.get_time() >= t_end - 1e-12)
+        break;
+    }
+    reference_solution = solver.get_solution();
+    std::cout << "finished calculating reference solution" << std::endl;
+  }
+
+  std::vector<double> diff(reference_solution.size(), 0);
+
+  const auto zero_fct = [](const std::vector<lm::Point> &p, std::vector<double> &out) { for (std::size_t qp = 0; qp < p.size(); qp += 1) out[qp] = 0; };
+
+  std::ofstream f("temporal_convergence_error_dg" + std::to_string(degree) + ".csv");
+
+  for (std::size_t m = 0; m<m_max; m+=1)
+  {
+    const double tau = tau_max/(1<<m);
+    mc::ExplicitNonlinearFlowSolver<degree> solver(graph, vessel_data);
+    solver.get_rhs_evaluator().set_rhs_S(test_S(length, c0, A0));
+    solver.set_tau(tau);
+    solver.use_ssp_method();
+    for (std::size_t it = 0; it < max_iter; it += 1) {
+      solver.solve();
+      if (solver.get_time() >= t_end - 1e-12)
+        break;
+    }
+    std::cout << "finished calculating solution for tau = " << tau << std::endl;
+
+    gmm::add(reference_solution, gmm::scaled(solver.get_solution(), -1), diff);
+
+    const double error_Q = mc::errornorm<degree>(*graph, solver.get_dof_map(), 1, diff, zero_fct);
+    const double error_A = mc::errornorm<degree>(*graph, solver.get_dof_map(), 0, diff, zero_fct);
+    const double error = std::sqrt(std::pow(error_Q, 2) + std::pow(error_A, 2));
+
+    f << tau << ", " << error << std::endl;
+  }
+}
+
+template<std::size_t degree>
+void run_spatial_convergence_study(std::size_t max_m) {
+  std::cout << "spatial convergence study for degree " << std::to_string(degree) << std::endl;
+  std::ofstream f("spatial_convergence_error_dg" + std::to_string(degree) + ".csv");
+  const double tau = get_tau(20. / (1 << (3 + max_m)), K_CFL, c0);
+  for (std::size_t m = 0; m < max_m; m += 1) {
+    const std::size_t num_edges_per_segment = 1 << (3 + m);
+    const double error = run_scenario<degree>(num_edges_per_segment, tau, true);
+    const double h = 20. / num_edges_per_segment;
     f << h << ", " << error << std::endl;
+    std::cout << "finished h = " << h << std::endl;
   }
 }
 
@@ -150,9 +200,13 @@ int main(int argc, char *argv[]) {
   lm::LibMeshInit init(argc, argv);
 
   const std::size_t max_m = 8;
+  run_spatial_convergence_study<0>(max_m);
+  run_spatial_convergence_study<1>(max_m);
+  run_spatial_convergence_study<2>(max_m);
+  run_spatial_convergence_study<3>(max_m);
 
-  run_convergence_study<0>(max_m);
-  run_convergence_study<1>(max_m);
-  run_convergence_study<2>(max_m);
-  run_convergence_study<3>(max_m);
+  run_temporal_convergence_study<0>(12, 8);
+  run_temporal_convergence_study<1>(12, 8);
+  run_temporal_convergence_study<2>(12, 8);
+  run_temporal_convergence_study<3>(12, 8);
 }
