@@ -98,11 +98,11 @@ double run_scenario(std::size_t num_edges_per_segment, double tau, bool use_ssp)
       break;
   }
 
-  const double error_Q = mc::errornorm<degree>(*graph, solver.get_dof_map(), 1, solver.get_solution(), [&solver, length](const std::vector<lm::Point> &p, std::vector<double> &out) {
+  const double error_Q = mc::errornorm<degree>(*graph, solver.get_dof_map(), 1, solver.get_solution(), [&solver](const std::vector<lm::Point> &p, std::vector<double> &out) {
     for (std::size_t qp = 0; qp < p.size(); qp += 1)
       out[qp] = get_analytic_solution_A(solver.get_time(), p[qp](0), length);
   });
-  const double error_A = mc::errornorm<degree>(*graph, solver.get_dof_map(), 0, solver.get_solution(), [&solver, length](const std::vector<lm::Point> &p, std::vector<double> &out) {
+  const double error_A = mc::errornorm<degree>(*graph, solver.get_dof_map(), 0, solver.get_solution(), [](const std::vector<lm::Point> &p, std::vector<double> &out) {
     for (std::size_t qp = 0; qp < p.size(); qp += 1)
       out[qp] = 0;
   });
