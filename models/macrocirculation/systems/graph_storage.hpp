@@ -84,12 +84,20 @@ public:
 
   std::size_t get_type_id() const;
 
+  /*! @brief Assigns the edge to a certain rank. */
+  void assign_to_rank(int rank);
+
+  /*! @brief Returns the rank to which the dof on the given edge are assigned. */
+  int rank() const;
+
 protected:
   std::vector<std::size_t> p_neighbors;
 
   std::vector<Point> p_coordinates;
 
   std::size_t p_type_id;
+
+  int d_rank;
 
   friend GraphStorage;
 };
@@ -125,6 +133,17 @@ public:
   std::vector<std::size_t> get_edge_ids() const;
   std::vector<std::size_t> get_vertex_ids() const;
 
+  /*! @brief Returns all the edge ids assigned to the given rank. */
+  std::vector<std::size_t> get_active_edge_ids(int rank) const;
+
+  /*! @brief Returns all the edge ids for the ghost layer of main_rank w.r.t. ghost_rank.
+   *
+   * @param main_rank   The rank, whose ghost layer we want to know.
+   * @param ghost_rank  The rank which acts as a ghost.
+   * @return            A list of edge ids of the ghost.
+   */
+  std::vector<std::size_t> get_ghost_edge_ids(int main_rank, int ghost_rank) const;
+
   double num_vertices() const;
   double num_edges() const;
 
@@ -141,6 +160,9 @@ private:
   /// If both edges point towards the vertex or away, an exception is thrown.
   /// If it has more than two edges, an exception is thrown.
   void reorder_edges(Vertex &v);
+
+  /*! @brief Returns true if the given edge has a neighbor edge, which is assigned to the given rank. */
+  bool edge_is_neighbor_of_rank(const Edge& e, int rank) const;
 
   std::map<std::size_t, std::shared_ptr<Edge>> p_edges;
   std::map<std::size_t, std::shared_ptr<Vertex>> p_vertices;

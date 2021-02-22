@@ -81,7 +81,8 @@ Edge::Edge(std::size_t id, std::size_t type_id, const Vertex &v1, const Vertex &
     : Primitive(id),
       p_type_id(type_id),
       p_neighbors({v1.get_id(), v2.get_id()}),
-      p_coordinates({v1.get_coordinate(), v2.get_coordinate()}){};
+      p_coordinates({v1.get_coordinate(), v2.get_coordinate()}),
+      d_rank(0){};
 
 const std::vector<std::size_t> &Edge::get_vertex_neighbors() const { return p_neighbors; };
 
@@ -96,6 +97,10 @@ double Edge::get_length() const {
 Point Edge::get_midpoint() const {
   return 0.5 * (p_coordinates[0] - p_coordinates[1]);
 }
+
+void Edge::assign_to_rank(int rank) { d_rank = rank; }
+
+int Edge::rank() const { return d_rank; }
 
 GraphStorage::GraphStorage()
     : p_next_edge_id(0), p_next_vertex_id(0){};
@@ -181,6 +186,50 @@ std::vector<std::size_t> GraphStorage::get_vertex_ids() const {
   return keys;
 }
 
+std::vector<std::size_t> GraphStorage::get_active_edge_ids(int rank) const
+{
+  std::vector< std::size_t > active_edge_ids;
+  for (const auto& it : p_edges)
+  {
+    auto edge = it.second;
+
+    if (edge->rank() == rank)
+      active_edge_ids.push_back(edge->get_id());
+  }
+  return active_edge_ids;
+}
+
+bool GraphStorage::edge_is_neighbor_of_rank(const Edge& e, int rank) const {
+  for (auto v_id: e.get_vertex_neighbors())
+  {
+    auto vertex = get_vertex(v_id);
+    for (auto e_id: vertex->get_edge_neighbors())
+    {
+      auto neighbor_edge = get_edge(e_id);
+      if (neighbor_edge->rank() == rank)
+        return true;
+    }
+  }
+  return false;
+}
+
+std::vector<std::size_t> GraphStorage::get_ghost_edge_ids(int main_rank, int ghost_rank) const
+{
+  std::vector< std::size_t > ghost_edge_ids;
+  for (const auto& it : p_edges)
+  {
+    auto ghost_rank_edge = it.second;
+
+    // if the edge does not belong to the ghost rank we skip it
+    if (ghost_rank_edge->rank() != ghost_rank)
+      continue;
+
+    if (edge_is_neighbor_of_rank(*ghost_rank_edge, main_rank))
+      ghost_edge_ids.push_back(ghost_rank_edge->get_id());
+  }
+  return ghost_edge_ids;
+}
+
 void GraphStorage::refine(std::size_t num_refinements) {
   for (std::size_t ridx = 0; ridx < num_refinements; ridx += 1) {
     for (auto &id : get_edge_ids()) {
@@ -197,7 +246,7 @@ void GraphStorage::refine(std::size_t num_refinements) {
 
 void GraphStorage::line_to(Vertex &from, Vertex &to, std::size_t vessel_id, std::size_t num_new_edges) {
   auto v_prev = get_vertex(from.get_id());
-  for (std::size_t k = 0; k < num_new_edges-1; k += 1) {
+  for (std::size_t k = 0; k < num_new_edges - 1; k += 1) {
     const double theta = (k + 1.) / num_new_edges;
     const auto coordinates = from.get_coordinate() * (1. - theta) + to.get_coordinate() * theta;
     auto v_next = create_vertex(coordinates);
