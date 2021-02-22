@@ -21,6 +21,7 @@ add_subdirectory(driver)
 # ****************************************************************************
 AUX_SOURCE_DIRECTORY(./ SOURCES)
 AUX_SOURCE_DIRECTORY(systems SOURCES)
+AUX_SOURCE_DIRECTORY(systems/communication SOURCES)
 
 add_library(${ProjectLib} ${SOURCES})
 target_link_libraries(${ProjectLib} Utils)
