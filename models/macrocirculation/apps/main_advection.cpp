@@ -9,8 +9,8 @@
 #include "libmesh/libmesh.h"
 #include <cmath>
 
-#include "../systems/advection_solver.hpp"
-#include "../systems/graph_storage.hpp"
+#include "macrocirculation/advection_solver.hpp"
+#include "macrocirculation/graph_storage.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;

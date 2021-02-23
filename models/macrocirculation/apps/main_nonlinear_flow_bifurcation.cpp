@@ -6,13 +6,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "libmesh/libmesh.h"
-#include <graph_data_writer.hpp>
 #include <memory>
 
-#include "../systems/explicit_nonlinear_flow_solver.hpp"
-#include "../systems/graph_storage.hpp"
-#include "../systems/vessel_data_storage.hpp"
-#include "../systems/vessel_formulas.hpp"
+#include "macrocirculation/graph_data_writer.hpp"
+#include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
+#include "macrocirculation/graph_storage.hpp"
+#include "macrocirculation/vessel_data_storage.hpp"
+#include "macrocirculation/vessel_formulas.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;

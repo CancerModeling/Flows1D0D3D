@@ -10,11 +10,11 @@
 #include <memory>
 #include <gmm.h>
 
-#include "../systems/graph_storage.hpp"
-#include "../systems/graph_partitioner.hpp"
-#include "../systems/communication/mpi.hpp"
-#include "../systems/dof_map_network.hpp"
-#include "../systems/communicator.hpp"
+#include "macrocirculation/graph_storage.hpp"
+#include "macrocirculation/graph_partitioner.hpp"
+#include "macrocirculation/communication/mpi.hpp"
+#include "macrocirculation/dof_map_network.hpp"
+#include "macrocirculation/communicator.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
