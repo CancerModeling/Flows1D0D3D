@@ -84,13 +84,18 @@ public:
 
   std::size_t get_type_id() const;
 
-  /*! @brief Assigns the edge to a certain rank. */
-  void assign_to_rank(int rank);
-
   /*! @brief Returns the rank to which the dof on the given edge are assigned. */
   int rank() const;
 
 protected:
+  /*! @brief Assigns the edge to a certain rank.
+   *
+   *  This method is protected, since the GraphStorage structure could cache data for each rank.
+   *  Hence, the storage has to be aware of changes to invalidate its caches and therefore
+   *  manages the assignment to ranks.
+   */
+  void assign_to_rank(int rank);
+
   std::vector<std::size_t> p_neighbors;
 
   std::vector<Point> p_coordinates;
@@ -149,6 +154,8 @@ public:
 
   /*! @brief Adds a line segment starting at "from" and ending at "to" to the graph. */
   void line_to(Vertex &from, Vertex &to, std::size_t vessel_id, std::size_t num_edges);
+
+  void assign_edge_to_rank(Edge & edge, int rank);
 
 private:
   std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_type_id, std::size_t edge_id);
