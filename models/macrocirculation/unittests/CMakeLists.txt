@@ -1,3 +1,5 @@
+SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/macrocirculation_unittests/)
+
 add_library(Macrocirculation_Test_Runner run_tests.cpp)
 target_link_libraries(Macrocirculation_Test_Runner PUBLIC Catch2::Catch2)
 target_link_libraries(Macrocirculation_Test_Runner PUBLIC MPI::MPI_CXX)

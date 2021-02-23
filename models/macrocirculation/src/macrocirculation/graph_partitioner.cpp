@@ -23,11 +23,9 @@ void naive_mesh_partitioner(GraphStorage &graph, MPI_Comm comm) {
 
     for (std::size_t edge_id = start_edge_id; edge_id < end_edge_id; edge_id += 1) {
       auto edge = graph.get_edge(edge_id);
-      edge->assign_to_rank(rank);
+      graph.assign_edge_to_rank(*edge, rank);
     }
-
   }
-
 }
 
 } // namespace macrocirculation

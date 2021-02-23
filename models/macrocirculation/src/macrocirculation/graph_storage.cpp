@@ -264,4 +264,9 @@ double GraphStorage::num_edges() const {
   return p_edges.size();
 }
 
+void GraphStorage::assign_edge_to_rank(Edge & edge, int rank)
+{
+
+}
+
 } // namespace macrocirculation
