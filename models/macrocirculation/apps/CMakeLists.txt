@@ -8,13 +8,7 @@ set(ProjectLib "Lib${ProjectName}")
 project(${ProjectName} CXX)
 
 # Create executible in main directory of build directory
-SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
-
-# ****************************************************************************
-# Include directories
-# ****************************************************************************
-include_directories("${CMAKE_SOURCE_DIR}/models/utils")
-include_directories("${CMAKE_SOURCE_DIR}/models/${ProjectName}")
+SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/macrocirculation/)
 
 # ****************************************************************************
 # Create executable

@@ -8,7 +8,7 @@
 #include "libmesh/libmesh.h"
 #include <cmath>
 
-#include "../systems/vessel_formulas.hpp"
+#include "macrocirculation/vessel_formulas.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;

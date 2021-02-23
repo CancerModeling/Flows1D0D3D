@@ -10,13 +10,13 @@
 #include <cmath>
 #include <memory>
 
-#include "../systems/graph_data_writer.hpp"
-#include "../systems/errornorm.hpp"
-#include "../systems/explicit_nonlinear_flow_solver.hpp"
-#include "../systems/graph_storage.hpp"
-#include "../systems/right_hand_side_evaluator.hpp"
-#include "../systems/vessel_data_storage.hpp"
-#include "../systems/vessel_formulas.hpp"
+#include "macrocirculation/graph_data_writer.hpp"
+#include "macrocirculation/errornorm.hpp"
+#include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
+#include "macrocirculation/graph_storage.hpp"
+#include "macrocirculation/right_hand_side_evaluator.hpp"
+#include "macrocirculation/vessel_data_storage.hpp"
+#include "macrocirculation/vessel_formulas.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
