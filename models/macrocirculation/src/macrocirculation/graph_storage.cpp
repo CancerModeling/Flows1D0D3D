@@ -7,6 +7,7 @@
 
 #include "graph_storage.hpp"
 #include <algorithm>
+#include <utility>
 
 namespace macrocirculation {
 
@@ -36,7 +37,7 @@ bool Vertex::is_bifurcation() const { return p_neighbors.size() > 2; }
 
 void Vertex::set_to_inflow(std::function<double(double)> value) {
   p_inflow = true;
-  p_inflow_value = value;
+  p_inflow_value = std::move(value);
 }
 
 void Vertex::set_to_outflow() {
@@ -266,7 +267,7 @@ double GraphStorage::num_edges() const {
 
 void GraphStorage::assign_edge_to_rank(Edge & edge, int rank)
 {
-
+  edge.assign_to_rank(rank);
 }
 
 } // namespace macrocirculation

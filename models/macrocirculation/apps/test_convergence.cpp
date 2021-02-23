@@ -17,6 +17,9 @@
 #include "macrocirculation/right_hand_side_evaluator.hpp"
 #include "macrocirculation/vessel_data_storage.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
+#include "macrocirculation/communication/mpi.hpp"
+#include "macrocirculation/communicator.hpp"
+#include "macrocirculation/graph_partitioner.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
@@ -74,13 +77,14 @@ double run_scenario(std::size_t num_edges_per_segment, double tau, bool use_ssp)
   auto start = graph->create_vertex(lm::Point(0, 0, 0));
   auto end = graph->create_vertex(lm::Point(length, 0, 0));
   graph->line_to(*start, *end, ascending_aorta_id, num_edges_per_segment);
+  mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
   // set inflow boundary conditions
   start->set_to_inflow([](auto) { return 0.; });
   end->set_to_inflow([](auto) { return 0.; });
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver<degree> solver(graph, vessel_data);
+  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, vessel_data);
   solver.set_tau(tau);
   if (use_ssp)
     solver.use_ssp_method();
@@ -98,6 +102,8 @@ double run_scenario(std::size_t num_edges_per_segment, double tau, bool use_ssp)
     if (solver.get_time() >= t_end - 1e-12)
       break;
   }
+
+  solver.get_communicator().gather(0, solver.get_solution());
 
   const double error_Q = mc::errornorm<degree>(*graph, solver.get_dof_map(), 1, solver.get_solution(), [&solver](const std::vector<lm::Point> &p, std::vector<double> &out) {
     for (std::size_t qp = 0; qp < p.size(); qp += 1)
@@ -124,6 +130,7 @@ void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size
   auto start = graph->create_vertex(lm::Point(0, 0, 0));
   auto end = graph->create_vertex(lm::Point(length, 0, 0));
   graph->line_to(*start, *end, ascending_aorta_id, num_edges_per_segment);
+  mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
   // set inflow boundary conditions
   start->set_to_inflow([](auto) { return 0.; });
@@ -137,7 +144,7 @@ void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size
   // get reference solution for smallest time step.
   std::vector<double> reference_solution;
   {
-    mc::ExplicitNonlinearFlowSolver<degree> solver(graph, vessel_data);
+    mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, vessel_data);
     solver.get_rhs_evaluator().set_rhs_S(test_S(length, c0, A0));
     solver.set_tau(tau_min);
     solver.use_ssp_method();
@@ -146,6 +153,7 @@ void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size
       if (solver.get_time() >= t_end - 1e-12)
         break;
     }
+    solver.get_communicator().gather(0, solver.get_solution());
     reference_solution = solver.get_solution();
     std::cout << "finished calculating reference solution" << std::endl;
   }
@@ -160,7 +168,7 @@ void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size
     const auto begin_t = std::chrono::steady_clock::now();
 
     const double tau = tau_max / (1 << m);
-    mc::ExplicitNonlinearFlowSolver<degree> solver(graph, vessel_data);
+    mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, vessel_data);
     solver.get_rhs_evaluator().set_rhs_S(test_S(length, c0, A0));
     solver.set_tau(tau);
     solver.use_ssp_method();
@@ -169,18 +177,22 @@ void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size
       if (solver.get_time() >= t_end - 1e-12)
         break;
     }
+    solver.get_communicator().gather(0, solver.get_solution());
 
-    gmm::add(reference_solution, gmm::scaled(solver.get_solution(), -1), diff);
+    if (mc::mpi::rank(MPI_COMM_WORLD) == 0 )
+    {
+      gmm::add(reference_solution, gmm::scaled(solver.get_solution(), -1), diff);
 
-    const double error_Q = mc::errornorm<degree>(*graph, solver.get_dof_map(), 1, diff, zero_fct);
-    const double error_A = mc::errornorm<degree>(*graph, solver.get_dof_map(), 0, diff, zero_fct);
-    const double error = std::sqrt(std::pow(error_Q, 2) + std::pow(error_A, 2));
+      const double error_Q = mc::errornorm<degree>(*graph, solver.get_dof_map(), 0, diff, zero_fct);
+      const double error_A = mc::errornorm<degree>(*graph, solver.get_dof_map(), 1, diff, zero_fct);
+      const double error = std::sqrt(std::pow(error_Q, 2) + std::pow(error_A, 2));
 
-    f << tau << ", " << error << std::endl;
+      f << tau << ", " << error << std::endl;
 
-    const auto end_t = std::chrono::steady_clock::now();
-    const auto elapsed_ms =  std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
-    std::cout << "finished tau = " << tau << " (error = " << error << ", time = " << elapsed_ms*1e-6 << " s)" << std::endl;
+      const auto end_t = std::chrono::steady_clock::now();
+      const auto elapsed_ms =  std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
+      std::cout << "finished tau = " << tau << " (error = " << error << ", time = " << elapsed_ms*1e-6 << " s)" << std::endl;
+    }
   }
 }
 
@@ -208,6 +220,9 @@ int main(int argc, char *argv[]) {
   // libmesh and then call the constructor of model
   lm::LibMeshInit init(argc, argv);
 
+  std::cout << "comm world size = " << mc::mpi::size(MPI_COMM_WORLD) << std::endl;
+
+  //const std::size_t max_m = 8;
   const std::size_t max_m = 8;
   run_spatial_convergence_study<0>(max_m);
   run_spatial_convergence_study<1>(max_m);

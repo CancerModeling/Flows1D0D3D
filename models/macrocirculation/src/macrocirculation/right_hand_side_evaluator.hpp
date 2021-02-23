@@ -11,6 +11,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <mpi.h>
 
 #include "libmesh/point.h"
 
@@ -22,6 +23,7 @@ using libMesh::Point;
 class GraphStorage;
 class VesselDataStorage;
 class DofMapNetwork;
+class Communicator;
 
 /*! @brief Functional to evaluate the right-hand-side S. */
 class default_S {
@@ -59,9 +61,9 @@ void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_m
 template <std::size_t degree>
 class RightHandSideEvaluator {
 public:
-  RightHandSideEvaluator(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data, std::shared_ptr<DofMapNetwork> dof_map);
+  RightHandSideEvaluator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data, std::shared_ptr<DofMapNetwork> dof_map);
 
-  void evaluate(double t, const std::vector<double> &u_prev, std::vector<double> &rhs);
+  void evaluate(double t, std::vector<double> &u_prev, std::vector<double> &rhs);
 
   /*! @brief Function type to evaluate a vectorial quantity at all the quadrature points in one go:
    *         - the 1st argument is the current time,
@@ -75,6 +77,9 @@ public:
   void set_rhs_S(VectorEvaluator S_evaluator);
 
 private:
+  /*! @brief The mpi communicator. */
+  MPI_Comm d_comm;
+
   /*! @brief The current domain for solving the equation. */
   std::shared_ptr<GraphStorage> d_graph;
 
@@ -83,6 +88,9 @@ private:
 
   /*! @brief The dof map for our domain */
   std::shared_ptr<DofMapNetwork> d_dof_map;
+
+  /*! @brief The mpi-communication routine to update the ghost layers. */
+  std::unique_ptr<Communicator> d_communicator;
 
   /*! @brief Evaluates the Q- and A-component of the right-hand side S,
    *         given Q and A at eacht of the quadrature points.
