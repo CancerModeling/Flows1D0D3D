@@ -24,6 +24,8 @@ public:
   virtual void dof_indices(const Edge &edge, std::vector<std::size_t> &dof_indices, std::size_t component) const = 0;
 
   virtual std::size_t num_dof() const = 0;
+
+  virtual std::size_t num_local_dof() const = 0;
 };
 
 /*! @brief Simple dof map, which orders the dofs by the formula
@@ -37,6 +39,8 @@ public:
   void dof_indices(const Edge &edge, std::vector<std::size_t> &dof_indices, std::size_t component) const override;
 
   std::size_t num_dof() const override;
+
+  std::size_t num_local_dof() const override;
 
 private:
   std::size_t d_num_components;

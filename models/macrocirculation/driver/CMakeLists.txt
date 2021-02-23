@@ -39,3 +39,7 @@ target_link_libraries(${ProjectName}BifurcationFlow ${ProjectLib})
 # test the convergence:
 add_executable(${ProjectName}Convergence test_convergence.cpp)
 target_link_libraries(${ProjectName}Convergence ${ProjectLib})
+
+# test the communicator:
+add_executable(${ProjectName}Communicator test_communicator.cpp)
+target_link_libraries(${ProjectName}Communicator ${ProjectLib})
