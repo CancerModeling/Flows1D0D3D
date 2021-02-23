@@ -120,6 +120,12 @@ private:
   /*! @brief Our current inverse mass vector, defining the diagonal inverse mass matrix. */
   std::vector<double> d_inverse_mass;
 
+  /*! @brief We cache the active vertex ids. */
+  std::vector<std::size_t> d_active_vertex_ids;
+
+  /*! @brief We cache the active edge ids. */
+  std::vector<std::size_t> d_active_edge_ids;
+
   /*! @brief Recalculates the current fluxes from the previous time step.
    *
    * @param t       The current time for the inflow boundary conditions.
