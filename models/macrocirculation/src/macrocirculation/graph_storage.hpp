@@ -149,6 +149,9 @@ public:
    */
   std::vector<std::size_t> get_ghost_edge_ids(int main_rank, int ghost_rank) const;
 
+  /*! @brief Returns all the vertex ids, which he on active neighbor edge. */
+  std::vector<std::size_t> get_active_vertex_ids(int rank) const;
+
   double num_vertices() const;
   double num_edges() const;
 
@@ -170,6 +173,9 @@ private:
 
   /*! @brief Returns true if the given edge has a neighbor edge, which is assigned to the given rank. */
   bool edge_is_neighbor_of_rank(const Edge& e, int rank) const;
+
+  /*! @brief Returns true if the given vertex has a neighbor edge, which is assigned to the given rank. */
+  bool vertex_is_neighbor_of_rank(const Vertex& e, int rank) const;
 
   std::map<std::size_t, std::shared_ptr<Edge>> p_edges;
   std::map<std::size_t, std::shared_ptr<Vertex>> p_vertices;

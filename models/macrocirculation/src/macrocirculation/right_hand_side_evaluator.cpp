@@ -133,7 +133,7 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
   std::vector<double> Q_prev_qp_r(2, 0);
   std::vector<double> A_prev_qp_r(2, 0);
 
-  for (const auto &v_id : d_graph->get_vertex_ids()) {
+  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
     // exterior boundary
