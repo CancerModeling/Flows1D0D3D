@@ -200,16 +200,37 @@ std::vector<std::size_t> GraphStorage::get_active_edge_ids(int rank) const
   return active_edge_ids;
 }
 
+std::vector<std::size_t> GraphStorage::get_active_vertex_ids(int rank) const
+{
+  std::vector< std::size_t > active_vertex_ids;
+  for (const auto& v_it : p_vertices)
+  {
+    auto vertex = v_it.second;
+
+    if (vertex_is_neighbor_of_rank(*vertex, rank))
+      active_vertex_ids.push_back(vertex->get_id());
+  }
+  return active_vertex_ids;
+}
+
 bool GraphStorage::edge_is_neighbor_of_rank(const Edge& e, int rank) const {
   for (auto v_id: e.get_vertex_neighbors())
   {
     auto vertex = get_vertex(v_id);
-    for (auto e_id: vertex->get_edge_neighbors())
-    {
-      auto neighbor_edge = get_edge(e_id);
-      if (neighbor_edge->rank() == rank)
-        return true;
-    }
+
+    if (vertex_is_neighbor_of_rank(*vertex, rank))
+      return true;
+  }
+  return false;
+}
+
+bool GraphStorage::vertex_is_neighbor_of_rank(const Vertex& v, int rank) const
+{
+  for (const auto& e_id : v.get_edge_neighbors())
+  {
+    auto neighbor_edge = get_edge(e_id);
+    if (neighbor_edge->rank() == rank)
+      return true;
   }
   return false;
 }
