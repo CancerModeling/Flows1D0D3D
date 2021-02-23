@@ -85,7 +85,10 @@ RightHandSideEvaluator<degree>::RightHandSideEvaluator(MPI_Comm comm, std::share
       d_A_up_el(d_graph->num_edges()),
       d_A_up_er(d_graph->num_edges()),
       d_inverse_mass(d_dof_map->num_dof()),
-      d_comm(comm) {
+      d_comm(comm),
+      d_active_vertex_ids(d_graph->get_active_vertex_ids(mpi::rank(comm))),
+      d_active_edge_ids(d_graph->get_active_edge_ids(mpi::rank(comm)))
+{
   assemble_inverse_mass<degree>(*d_graph, *d_dof_map, d_inverse_mass);
 }
 
@@ -133,7 +136,7 @@ void RightHandSideEvaluator<degree>::calculate_fluxes(const double t, const std:
   std::vector<double> Q_prev_qp_r(2, 0);
   std::vector<double> A_prev_qp_r(2, 0);
 
-  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+  for (const auto &v_id : d_active_vertex_ids) {
     const auto vertex = d_graph->get_vertex(v_id);
 
     // exterior boundary
@@ -374,7 +377,7 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const double t, const std::ve
   FETypeNetwork<degree> fe_boundary(create_trapezoidal_rule());
   const auto &phi_b = fe_boundary.get_phi();
 
-  for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
+  for (const auto &e_id : d_active_edge_ids) {
     const auto edge = d_graph->get_edge(e_id);
     fe.reinit(*edge);
     fe_boundary.reinit(*edge);
