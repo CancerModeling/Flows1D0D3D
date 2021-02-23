@@ -6,10 +6,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "libmesh/libmesh.h"
+#include <chrono>
 #include <cmath>
-#include <graph_data_writer.hpp>
 #include <memory>
 
+#include "../systems/graph_data_writer.hpp"
 #include "../systems/errornorm.hpp"
 #include "../systems/explicit_nonlinear_flow_solver.hpp"
 #include "../systems/graph_storage.hpp"
@@ -111,8 +112,7 @@ double run_scenario(std::size_t num_edges_per_segment, double tau, bool use_ssp)
 }
 
 template<std::size_t degree>
-void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size_t m_max)
-{
+void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size_t m_max) {
   std::cout << "run temporal convergence study" << std::endl;
 
   // we create data for the ascending aorta
@@ -131,8 +131,8 @@ void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size
 
   const double h = 20. / num_edges_per_segment;
   const double tau_max = get_tau(h, K_CFL, c0);
-  const double tau_min = tau_max/(1<<(m_max+2));
-  const double t_end = std::ceil(0.1/tau_max)*tau_max;
+  const double tau_min = tau_max / (1 << (m_max + 2));
+  const double t_end = std::ceil(0.1 / tau_max) * tau_max;
 
   // get reference solution for smallest time step.
   std::vector<double> reference_solution;
@@ -156,9 +156,10 @@ void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size
 
   std::ofstream f("temporal_convergence_error_dg" + std::to_string(degree) + ".csv");
 
-  for (std::size_t m = 0; m<m_max; m+=1)
-  {
-    const double tau = tau_max/(1<<m);
+  for (std::size_t m = 0; m < m_max; m += 1) {
+    const auto begin_t = std::chrono::steady_clock::now();
+
+    const double tau = tau_max / (1 << m);
     mc::ExplicitNonlinearFlowSolver<degree> solver(graph, vessel_data);
     solver.get_rhs_evaluator().set_rhs_S(test_S(length, c0, A0));
     solver.set_tau(tau);
@@ -168,7 +169,6 @@ void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size
       if (solver.get_time() >= t_end - 1e-12)
         break;
     }
-    std::cout << "finished calculating solution for tau = " << tau << std::endl;
 
     gmm::add(reference_solution, gmm::scaled(solver.get_solution(), -1), diff);
 
@@ -177,6 +177,10 @@ void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size
     const double error = std::sqrt(std::pow(error_Q, 2) + std::pow(error_A, 2));
 
     f << tau << ", " << error << std::endl;
+
+    const auto end_t = std::chrono::steady_clock::now();
+    const auto elapsed_ms =  std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
+    std::cout << "finished tau = " << tau << " (error = " << error << ", time = " << elapsed_ms*1e-6 << " s)" << std::endl;
   }
 }
 
@@ -186,11 +190,16 @@ void run_spatial_convergence_study(std::size_t max_m) {
   std::ofstream f("spatial_convergence_error_dg" + std::to_string(degree) + ".csv");
   const double tau = get_tau(20. / (1 << (3 + max_m)), K_CFL, c0);
   for (std::size_t m = 0; m < max_m; m += 1) {
+    const auto begin = std::chrono::steady_clock::now();
+
     const std::size_t num_edges_per_segment = 1 << (3 + m);
     const double error = run_scenario<degree>(num_edges_per_segment, tau, true);
     const double h = 20. / num_edges_per_segment;
     f << h << ", " << error << std::endl;
-    std::cout << "finished h = " << h << std::endl;
+
+    const auto end = std::chrono::steady_clock::now();
+    const auto elapsed_ms =  std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    std::cout << "finished h = " << h << " (error = " << error << ", time = " << elapsed_ms*1e-6 << " s)" << std::endl;
   }
 }
 

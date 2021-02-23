@@ -18,6 +18,8 @@
 namespace lm = libMesh;
 namespace mc = macrocirculation;
 
+constexpr std::size_t degree = 2;
+
 int main(int argc, char *argv[]) {
   // Note: This one requires pointer to comm and therefore we have to init
   // libmesh and then call the constructor of model
@@ -50,7 +52,7 @@ int main(int argc, char *argv[]) {
   start->set_to_inflow(mc::heart_beat_inflow());
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver solver(graph, vessel_data);
+  mc::ExplicitNonlinearFlowSolver<degree> solver(graph, vessel_data);
   solver.set_tau(tau);
   solver.use_ssp_method();
 
