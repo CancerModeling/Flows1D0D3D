@@ -13,17 +13,21 @@
 namespace macrocirculation {
 
 void naive_mesh_partitioner(GraphStorage &graph, MPI_Comm comm) {
-  int rank, size;
-  MPI_Comm_rank( comm, &rank );
+  int size;
   MPI_Comm_size( comm, &size );
 
-  std::size_t start_edge_id = (rank*graph.num_edges())/size;
-  std::size_t end_edge_id = ((rank+1)*graph.num_edges())/size;
+  for (std::size_t rank=0; rank<size; rank+=1)
+  {
+    std::size_t start_edge_id = (rank*graph.num_edges())/size;
+    std::size_t end_edge_id = ((rank+1)*graph.num_edges())/size;
 
-  for (std::size_t edge_id = start_edge_id; edge_id < end_edge_id; edge_id += 1) {
-    auto edge = graph.get_edge(edge_id);
-    edge->assign_to_rank(rank);
+    for (std::size_t edge_id = start_edge_id; edge_id < end_edge_id; edge_id += 1) {
+      auto edge = graph.get_edge(edge_id);
+      edge->assign_to_rank(rank);
+    }
+
   }
+
 }
 
 } // namespace macrocirculation

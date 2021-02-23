@@ -10,7 +10,7 @@
 
 #include <mpi.h>
 
-namespace macromesh {
+namespace macrocirculation {
 
 // forward declarations
 class GraphStorage;

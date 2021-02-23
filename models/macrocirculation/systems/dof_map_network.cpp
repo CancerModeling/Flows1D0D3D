@@ -33,6 +33,10 @@ std::size_t SimpleDofMapNetwork::num_dof() const {
   return d_num_components * d_num_basis_functions * d_num_edges;
 }
 
+std::size_t SimpleDofMapNetwork::num_local_dof() const {
+  return d_num_components * d_num_basis_functions;
+}
+
 void extract_dof(const std::vector<std::size_t>& dof_indices, const std::vector<double>& global, std::vector<double>& local)
 {
   assert(global.size() > local.size());
