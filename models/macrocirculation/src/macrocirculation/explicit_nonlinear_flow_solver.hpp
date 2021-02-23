@@ -14,6 +14,7 @@
 #include <gmm.h>
 #include <memory>
 #include <vector>
+#include <mpi.h>
 
 namespace macrocirculation {
 
@@ -26,6 +27,7 @@ class DofMapNetwork;
 template<std::size_t degree>
 class RightHandSideEvaluator;
 class TimeIntegrator;
+class Communicator;
 
 /*! @brief Interpolates a constant value. WARNING: Assumes legendre basis! */
 void interpolate_constant(const GraphStorage &graph, const DofMapNetwork &dof_map, double value, std::size_t component, std::vector<double> &result);
@@ -36,7 +38,7 @@ void set_to_A0(const GraphStorage &graph, const DofMapNetwork &dof_map, const Ve
 template<std::size_t degree>
 class ExplicitNonlinearFlowSolver {
 public:
-  explicit ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data_storage);
+  explicit ExplicitNonlinearFlowSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data_storage);
   ~ExplicitNonlinearFlowSolver();
 
   void solve();
@@ -61,9 +63,14 @@ public:
 
   DofMapNetwork &get_dof_map();
 
+  Communicator &get_communicator();
+
   std::vector<double> &get_solution();
 
 private:
+  /*! @brief The mpi communicator. */
+  MPI_Comm d_comm;
+
   /*! @brief The current domain for solving the equation. */
   std::shared_ptr<GraphStorage> d_graph;
 
@@ -72,6 +79,9 @@ private:
 
   /*! @brief The dof map for our domain. */
   std::shared_ptr<DofMapNetwork> d_dof_map;
+
+  /*! @brief The mpi-communication routine to update the ghost layers. */
+  std::shared_ptr<Communicator> d_communicator;
 
   /*! @brief Utility class for evaluating the right hand side, to allow different explicit schemes. */
   std::shared_ptr<RightHandSideEvaluator<degree>> d_right_hand_side_evaluator;

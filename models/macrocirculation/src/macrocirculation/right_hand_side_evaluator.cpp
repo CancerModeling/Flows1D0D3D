@@ -13,6 +13,8 @@
 #include "vessel_data_storage.hpp"
 #include "vessel_formulas.hpp"
 #include <utility>
+#include "communication/mpi.hpp"
+#include "communicator.hpp"
 
 constexpr const std::size_t degree = 1;
 
@@ -68,10 +70,11 @@ void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_m
 }
 
 template<std::size_t degree>
-RightHandSideEvaluator<degree>::RightHandSideEvaluator(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data, std::shared_ptr<DofMapNetwork> dof_map)
+RightHandSideEvaluator<degree>::RightHandSideEvaluator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data, std::shared_ptr<DofMapNetwork> dof_map)
     : d_graph(std::move(graph)),
       d_dof_map(std::move(dof_map)),
       d_vessel_data(std::move(vessel_data)),
+      d_communicator(std::make_unique<Communicator>(comm, d_graph, d_dof_map)),
       d_S_evaluator(default_S{
         4.5,    // 4.5 m Pa/s
         2,   // Poiseuille flow
@@ -81,12 +84,15 @@ RightHandSideEvaluator<degree>::RightHandSideEvaluator(std::shared_ptr<GraphStor
       d_Q_up_er(d_graph->num_edges()),
       d_A_up_el(d_graph->num_edges()),
       d_A_up_er(d_graph->num_edges()),
-      d_inverse_mass(d_dof_map->num_dof()) {
+      d_inverse_mass(d_dof_map->num_dof()),
+      d_comm(comm) {
   assemble_inverse_mass<degree>(*d_graph, *d_dof_map, d_inverse_mass);
 }
 
 template<std::size_t degree>
-void RightHandSideEvaluator<degree>::evaluate(const double t, const std::vector<double> &u_prev, std::vector<double> &rhs) {
+void RightHandSideEvaluator<degree>::evaluate(const double t, std::vector<double> &u_prev, std::vector<double> &rhs) {
+  //
+  d_communicator->update_ghost_layer(u_prev);
   calculate_fluxes(t, u_prev);
   calculate_rhs(t, u_prev, rhs);
   apply_inverse_mass(rhs);
@@ -368,7 +374,7 @@ void RightHandSideEvaluator<degree>::calculate_rhs(const double t, const std::ve
   FETypeNetwork<degree> fe_boundary(create_trapezoidal_rule());
   const auto &phi_b = fe_boundary.get_phi();
 
-  for (const auto &e_id : d_graph->get_edge_ids()) {
+  for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
     const auto edge = d_graph->get_edge(e_id);
     fe.reinit(*edge);
     fe_boundary.reinit(*edge);

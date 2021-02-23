@@ -16,6 +16,8 @@
 #include "right_hand_side_evaluator.hpp"
 #include "time_integrators.hpp"
 #include "vessel_data_storage.hpp"
+#include "communicator.hpp"
+#include "communication/mpi.hpp"
 
 namespace macrocirculation {
 
@@ -45,11 +47,13 @@ void set_to_A0(const GraphStorage &graph, const DofMapNetwork &dof_map, const Ve
 }
 
 template<std::size_t degree>
-ExplicitNonlinearFlowSolver<degree>::ExplicitNonlinearFlowSolver(std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data)
-    : d_graph(std::move(graph)),
+ExplicitNonlinearFlowSolver<degree>::ExplicitNonlinearFlowSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data)
+    : d_comm(comm),
+      d_graph(std::move(graph)),
       d_vessel_data(std::move(vessel_data)),
       d_dof_map(std::make_shared<SimpleDofMapNetwork>(2, degree + 1, d_graph->num_edges())),
-      d_right_hand_side_evaluator(std::make_shared<RightHandSideEvaluator<degree>>(d_graph, d_vessel_data, d_dof_map)),
+      d_communicator(std::make_shared<Communicator>(comm, d_graph, d_dof_map)),
+      d_right_hand_side_evaluator(std::make_shared<RightHandSideEvaluator<degree>>(d_comm, d_graph, d_vessel_data, d_dof_map)),
       d_time_integrator(std::make_unique<TimeIntegrator>(create_explicit_euler(), d_dof_map->num_dof())),
       d_tau(2.5e-4 / 4),
       d_t_now(0),
@@ -93,6 +97,9 @@ RightHandSideEvaluator<degree> &ExplicitNonlinearFlowSolver<degree>::get_rhs_eva
 
 template<std::size_t degree>
 DofMapNetwork &ExplicitNonlinearFlowSolver<degree>::get_dof_map() { return *d_dof_map; }
+
+template<std::size_t degree>
+Communicator &ExplicitNonlinearFlowSolver<degree>::get_communicator() { return *d_communicator; }
 
 template<std::size_t degree>
 std::vector<double> &ExplicitNonlinearFlowSolver<degree>::get_solution() { return d_u_now; }
