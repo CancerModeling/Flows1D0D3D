@@ -19,7 +19,8 @@ namespace macrocirculation {
 
 template < std::size_t DEGREE >
 AdvectionSolver<DEGREE>::AdvectionSolver(std::shared_ptr<GraphStorage> graph, double tau, double t_end, double velocity, InflowValueFct inflow_value_fct)
-    : d_tau(tau),
+    : d_comm(MPI_COMM_WORLD),
+      d_tau(tau),
       d_t_end(t_end),
       d_velocity(velocity),
       d_output_interval(1),
@@ -251,7 +252,8 @@ void AdvectionSolver<DEGREE>::solve() const {
       FETypeNetwork<DEGREE> fe(create_trapezoidal_rule());
 
       std::vector< double > u_vertex (d_graph->num_edges()*2, 0);
-      interpolate_to_vertices(*d_graph, *dof_map, fe, 0, u_now, u_vertex);
+      std::vector< Point >  points(d_graph->num_edges()*2);
+      interpolate_to_vertices<DEGREE>(d_comm, *d_graph, *dof_map, 0, u_now, points, u_vertex);
 
       std::vector<double> u_mid(d_graph->num_edges(), 0);
       {

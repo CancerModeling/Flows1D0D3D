@@ -114,9 +114,8 @@ void FETypeInnerBdryNetwork<DEGREE>::reinit(const Vertex &v, const Edge &e_left,
 };
 
 template<std::size_t DEGREE>
-EdgeBoundaryValues FETypeInnerBdryNetwork<DEGREE>::evaluate_dof_at_boundary_points(const std::vector<double> &dof_values) const
-{
-  EdgeBoundaryValues values {0, 0};
+EdgeBoundaryValues FETypeInnerBdryNetwork<DEGREE>::evaluate_dof_at_boundary_points(const std::vector<double> &dof_values) const {
+  EdgeBoundaryValues values{0, 0};
   for (std::size_t i = 0; i < DEGREE + 1; i += 1) {
     values.left += d_phi_l[i] * dof_values[i];
     values.right += d_phi_r[i] * dof_values[i];
@@ -152,8 +151,7 @@ void FETypeExteriorBdryNetwork<DEGREE>::reinit(const Vertex &v, const Edge &e) {
 };
 
 template<std::size_t DEGREE>
-double FETypeExteriorBdryNetwork<DEGREE>::evaluate_dof_at_boundary_points(const std::vector<double> &dof_values) const
-{
+double FETypeExteriorBdryNetwork<DEGREE>::evaluate_dof_at_boundary_points(const std::vector<double> &dof_values) const {
   double value = 0;
   for (std::size_t i = 0; i < DEGREE + 1; i += 1) {
     value += d_phi[i] * dof_values[i];
@@ -162,15 +160,13 @@ double FETypeExteriorBdryNetwork<DEGREE>::evaluate_dof_at_boundary_points(const 
 }
 
 QuadraturePointMapper::QuadraturePointMapper(QuadratureFormula qf)
-: d_qf(qf),
-  d_quadrature_points(qf.size())
-{}
+    : d_qf(qf),
+      d_quadrature_points(qf.size()) {}
 
 void QuadraturePointMapper::reinit(const Edge &e) {
-  for (std::size_t qp = 0; qp < d_qf.size(); qp += 1)
-  {
-    const double s = 0.5*(d_qf.ref_points[qp] + 1);
-    d_quadrature_points[qp] = e.get_coordinate_v0() * (1-s) + e.get_coordinate_v1() * s;
+  for (std::size_t qp = 0; qp < d_qf.size(); qp += 1) {
+    const double s = 0.5 * (d_qf.ref_points[qp] + 1);
+    d_quadrature_points[qp] = e.get_coordinate_v0() * (1 - s) + e.get_coordinate_v1() * s;
   }
 }
 
