@@ -9,10 +9,8 @@
 #include <chrono>
 #include <memory>
 
-#include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/communicator.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
-#include "macrocirculation/graph_data_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
