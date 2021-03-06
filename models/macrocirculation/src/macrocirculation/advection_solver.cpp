@@ -12,8 +12,8 @@
 #include "dof_map_network.hpp"
 #include "fe_type_network.hpp"
 #include "gmm.h"
-#include "graph_data_writer.hpp"
 #include "interpolate_to_vertices.hpp"
+#include "graph_pvd_writer.hpp"
 
 namespace macrocirculation {
 
@@ -44,6 +44,8 @@ void AdvectionSolver<DEGREE>::solve() const {
   std::size_t it = 0;
 
   double t_now = 0;
+
+  GraphPVDWriter writer(d_comm, "./", "advection");
 
   while (t_now < d_t_end) {
     t_now += d_tau;
@@ -264,10 +266,9 @@ void AdvectionSolver<DEGREE>::solve() const {
         }
       }
 
-      GraphDataWriter writer;
-      writer.add_midpoint_data("concentration_midpoint", u_mid);
-      writer.add_vertex_data("concentration_vertex", u_vertex);
-      writer.write_vtk("concentration", *d_graph, it);
+      writer.set_points(points);
+      writer.add_vertex_data("concentration", u_vertex);
+      writer.write(t_now);
     }
 
   }

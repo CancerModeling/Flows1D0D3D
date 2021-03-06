@@ -10,7 +10,6 @@
 #include <cmath>
 #include <memory>
 
-#include "macrocirculation/graph_data_writer.hpp"
 #include "macrocirculation/errornorm.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/graph_storage.hpp"
