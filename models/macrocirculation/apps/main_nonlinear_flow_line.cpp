@@ -6,10 +6,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "libmesh/libmesh.h"
-#include <cmath>
 #include <memory>
 
-#include "macrocirculation/graph_data_writer.hpp"
+#include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/vessel_data_storage.hpp"
@@ -58,6 +57,11 @@ int main(int argc, char *argv[]) {
 
   std::vector< double > Q_vertex_values(graph->num_edges() * 2, 0);
   std::vector< double > A_vertex_values(graph->num_edges() * 2, 0);
+  std::vector< double > p_static_vertex_values(graph->num_edges() * 2, 0);
+  std::vector< double > p_total_vertex_values(graph->num_edges() * 2, 0);
+  std::vector< libMesh::Point > points(graph->num_edges() * 2);
+
+  mc::GraphPVDWriter writer(MPI_COMM_WORLD, "./", "line_solution");
 
   for (std::size_t it = 0; it < max_iter; it+=1)
   {
@@ -68,11 +72,15 @@ int main(int argc, char *argv[]) {
     if (it % output_interval == 0)
     {
       // save solution
-      solver.get_solution_on_vertices(Q_vertex_values, A_vertex_values);
-      mc::GraphDataWriter writer;
+      solver.get_solution_on_vertices(points, Q_vertex_values, A_vertex_values);
+      solver.get_total_pressure_on_vertices(points, p_total_vertex_values);
+      solver.get_static_pressure_on_vertices(points, p_static_vertex_values);
+      writer.set_points(points);
       writer.add_vertex_data("Q", Q_vertex_values);
       writer.add_vertex_data("A", A_vertex_values);
-      writer.write_vtk("line_solution", *graph, it);
+      writer.add_vertex_data("p_total", p_total_vertex_values);
+      writer.add_vertex_data("p_static", p_static_vertex_values);
+      writer.write(solver.get_time());
     }
 
     // break

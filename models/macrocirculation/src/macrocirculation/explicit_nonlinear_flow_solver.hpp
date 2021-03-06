@@ -15,8 +15,11 @@
 #include <memory>
 #include <vector>
 #include <mpi.h>
+#include "libmesh/point.h"
 
 namespace macrocirculation {
+
+using libMesh::Point;
 
 constexpr std::size_t degree = 2;
 
@@ -47,11 +50,11 @@ public:
 
   void set_tau(double tau);
 
-  void get_solution_on_vertices(std::vector<double> &Q_values, std::vector<double> &A_values) const;
+  void get_solution_on_vertices(std::vector< Point >& points, std::vector<double> &Q_values, std::vector<double> &A_values) const;
 
-  void get_total_pressure_on_vertices(std::vector<double> &p_values) const;
+  void get_total_pressure_on_vertices(std::vector< Point >& points, std::vector<double> &p_values) const;
 
-  void get_static_pressure_on_vertices(std::vector<double> &p_values) const;
+  void get_static_pressure_on_vertices(std::vector< Point >& points, std::vector<double> &p_values) const;
 
   /*! @brief Configures the explicit euler method as the time integrator. */
   void use_explicit_euler_method();

@@ -11,6 +11,7 @@
 #include <functional>
 #include <utility>
 #include <memory>
+#include <mpi.h>
 
 namespace macrocirculation {
 
@@ -31,6 +32,8 @@ public:
   void set_output_interval(std::size_t interval){ d_output_interval = interval; }
 
 private:
+  MPI_Comm d_comm;
+
   double d_tau;
   double d_t_end;
   double d_velocity;
