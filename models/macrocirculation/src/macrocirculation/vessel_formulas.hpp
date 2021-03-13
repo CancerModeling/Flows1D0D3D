@@ -11,9 +11,19 @@
 #include <cmath>
 #include <gmm.h>
 
-#include "vessel_parameters.hpp"
-
 namespace macrocirculation {
+
+/*! @brief Saves the material constants on a vessel. */
+struct VesselParameters {
+  VesselParameters() = default;
+
+  VesselParameters(double G0, double A0, double rho)
+      : G0(G0), A0(A0), rho(rho) {}
+
+  double G0{};
+  double A0{};
+  double rho{};
+};
 
 /*! @brief Calculates Eq. (2.8) from "Multi-scale modeling of flow and transport processes in arterial networks and tissue".
  *
@@ -39,45 +49,43 @@ inline double calculate_Q(double w1, double w2, double G0, double rho, double A0
 }
 
 /*! @brief Calculates the derivative of Q w.r.t. w1, the back propagating characteristic. */
-inline double calculate_diff_Q_w1(double w1, double w2, double G0, double rho, double A0)
-{
+inline double calculate_diff_Q_w1(double w1, double w2, double G0, double rho, double A0) {
   const double c0 = calculate_c0(G0, rho, A0);
-  return - 0.5 * std::pow((w1+w2)/(8*c0), 4) * A0 + 2 * A0 * (w2-w1)*std::pow(w2+w1, 3)/std::pow(8*c0, 4);
+  return -0.5 * std::pow((w1 + w2) / (8 * c0), 4) * A0 +
+         2 * A0 * (w2 - w1) * std::pow(w2 + w1, 3) / std::pow(8 * c0, 4);
 }
 
 /*! @brief Calculates the derivative of Q w.r.t. w2, the forward propagating characteristic. */
-inline double calculate_diff_Q_w2(double w1, double w2, double G0, double rho, double A0)
-{
+inline double calculate_diff_Q_w2(double w1, double w2, double G0, double rho, double A0) {
   const double c0 = calculate_c0(G0, rho, A0);
-  return + 0.5 * std::pow((w1+w2)/(8*c0), 4) * A0 + 2 * A0 * (w2-w1)*std::pow(w2+w1, 3)/std::pow(8*c0, 4);
+  return +0.5 * std::pow((w1 + w2) / (8 * c0), 4) * A0 +
+         2 * A0 * (w2 - w1) * std::pow(w2 + w1, 3) / std::pow(8 * c0, 4);
 }
 
 /*! @brief Calculates the total pressure from the characteristics. */
 inline double calculate_p_from_w1w2(double w1, double w2, double G0, double rho, double A0) {
   const double c0 = calculate_c0(G0, rho, A0);
-  return 0.5 * rho * std::pow(0.5*(w2 - w1), 2) + G0 * (std::pow((w1+w2)/(8*c0), 2) - 1) ;
+  return 0.5 * rho * std::pow(0.5 * (w2 - w1), 2) + G0 * (std::pow((w1 + w2) / (8 * c0), 2) - 1);
 }
 
 inline double calculate_p_from_QA(double Q, double A, double G0, double rho, double A0) {
-  return 0.5*rho*std::pow(Q/A, 2) + G0*(std::sqrt(A/A0)-1);
+  return 0.5 * rho * std::pow(Q / A, 2) + G0 * (std::sqrt(A / A0) - 1);
 }
 
-inline double calculate_static_p(double A, double G0, double A0)
-{
-  return G0*(std::sqrt(A/A0)-1);
+inline double calculate_static_p(double A, double G0, double A0) {
+  return G0 * (std::sqrt(A / A0) - 1);
 }
-
 
 /*! @brief Derivative of the total pressure with respect to the backward characteristic. */
 inline double calculate_diff_p_w1(double w1, double w2, double G0, double rho, double A0) {
   const double c0 = calculate_c0(G0, rho, A0);
-  return - 0.25 * rho * (w2-w1)  + 2 * G0 * (w1 + w2) / std::pow((8*c0), 2);
+  return -0.25 * rho * (w2 - w1) + 2 * G0 * (w1 + w2) / std::pow((8 * c0), 2);
 }
 
 /*! @brief Derivative of the total pressure with respect to the forward characteristic. */
 inline double calculate_diff_p_w2(double w1, double w2, double G0, double rho, double A0) {
   const double c0 = calculate_c0(G0, rho, A0);
-  return + 0.25 * rho * (w2-w1)  + 2 * G0 * (w1 + w2) / std::pow((8*c0), 2);
+  return +0.25 * rho * (w2 - w1) + 2 * G0 * (w1 + w2) / std::pow((8 * c0), 2);
 }
 
 /*! @brief Evaluates the bifurcation equation at a vertex, for three vessels a, b and c.
@@ -99,20 +107,23 @@ inline double calculate_diff_p_w2(double w1, double w2, double G0, double rho, d
  * @param in_c True if vessel c points towards the vertex, false if it points away.
  * @param out  A vector containing the three equations of the bifurcation system.
  */
-inline void bifurcation_equation(
-  double w1_a, double w2_a, const VesselParameters &p_a, bool in_a, // flow vessel a
-  double w1_b, double w2_b, const VesselParameters &p_b, bool in_b, // flow vessel b
-  double w1_c, double w2_c, const VesselParameters &p_c, bool in_c, // flow vessel c
-  std::vector<double> &out) {
-
+// clang-format off
+inline void bifurcation_equation( double w1_a, double w2_a, const VesselParameters& p_a, bool in_a, // flow vessel a
+                                  double w1_b, double w2_b, const VesselParameters& p_b, bool in_b, // flow vessel b
+                                  double w1_c, double w2_c, const VesselParameters& p_c, bool in_c, // flow vessel c
+                                  std::vector< double >&  out )
+// clang-format on
+{
   assert(out.size() == 3);
   double eq_Q = 0;
   eq_Q += (in_a ? -1 : +1) * calculate_Q(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
   eq_Q += (in_b ? -1 : +1) * calculate_Q(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
   eq_Q += (in_c ? -1 : +1) * calculate_Q(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
   out[0] = eq_Q;
-  double eq_p1 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) - calculate_p_from_w1w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  double eq_p2 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) - calculate_p_from_w1w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+  double eq_p1 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) -
+                 calculate_p_from_w1w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+  double eq_p2 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) -
+                 calculate_p_from_w1w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
   out[0] = eq_Q;
   out[1] = eq_p1;
   out[2] = eq_p2;
@@ -140,51 +151,52 @@ inline void bifurcation_equation(
  * @param in_c True if vessel c points towards the vertex, false if it points away.
  * @param J    The 3x3 Jacobian of the bifurcation equation system.
  */
-inline void bifurcation_equation_jacobian(
-  double w1_a, double w2_a, const VesselParameters &p_a, bool in_a, // flow vessel a
-  double w1_b, double w2_b, const VesselParameters &p_b, bool in_b, // flow vessel b
-  double w1_c, double w2_c, const VesselParameters &p_c, bool in_c, // flow vessel c
-  gmm::row_matrix<gmm::wsvector<double>>& J) {
-
+// clang-format off
+inline void bifurcation_equation_jacobian( double w1_a, double w2_a, const VesselParameters& p_a, bool in_a, // flow vessel a
+                                           double w1_b, double w2_b, const VesselParameters& p_b, bool in_b, // flow vessel b
+                                           double w1_c, double w2_c, const VesselParameters& p_c, bool in_c, // flow vessel c
+                                           gmm::row_matrix< gmm::wsvector< double > >& J )
+// clang-format on
+{
   assert(J.ncols() == 3 && J.nrows() == 3);
 
   // line 0
   if (in_a)
-    J[0][0] = - calculate_diff_Q_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+    J[0][0] = -calculate_diff_Q_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
   else
-    J[0][0] = + calculate_diff_Q_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+    J[0][0] = +calculate_diff_Q_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
 
   if (in_b)
-    J[0][1] = - calculate_diff_Q_w1(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+    J[0][1] = -calculate_diff_Q_w1(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
   else
-    J[0][1] = + calculate_diff_Q_w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+    J[0][1] = +calculate_diff_Q_w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
 
   if (in_c)
-    J[0][2] = - calculate_diff_Q_w1(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+    J[0][2] = -calculate_diff_Q_w1(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
   else
-    J[0][2] = + calculate_diff_Q_w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+    J[0][2] = +calculate_diff_Q_w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
 
   // line 1
   if (in_a)
-    J[1][0] = + calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+    J[1][0] = +calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
   else
-    J[1][0] = + calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+    J[1][0] = +calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
 
   if (in_b)
-    J[1][1] = - calculate_diff_p_w1(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+    J[1][1] = -calculate_diff_p_w1(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
   else
-    J[1][1] = - calculate_diff_p_w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+    J[1][1] = -calculate_diff_p_w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
 
   // line 2
   if (in_a)
-    J[2][0] = + calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+    J[2][0] = +calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
   else
-    J[2][0] = + calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+    J[2][0] = +calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
 
   if (in_c)
-    J[2][2] = - calculate_diff_p_w1(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+    J[2][2] = -calculate_diff_p_w1(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
   else
-    J[2][2] = - calculate_diff_p_w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+    J[2][2] = -calculate_diff_p_w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
 }
 
 /*! @brief Takes the unknown characteristic quantities from a vector and
@@ -207,7 +219,13 @@ inline void bifurcation_equation_jacobian(
  * @param in_c True if vessel c points towards the vertex, false if it points away.
  * @param vec  The vector of length 3, whose quantities we want to transfer to w{1,2}_{a,b,c}.
  */
-inline void extract_vector(double& w1_a, double& w2_a, bool in_a, double& w1_b, double& w2_b, bool in_b, double& w1_c, double& w2_c, bool in_c, const std::vector< double > & vec) {
+// clang-format off
+inline void extract_vector( double& w1_a, double& w2_a, bool in_a,
+                            double& w1_b, double& w2_b, bool in_b,
+                            double& w1_c, double& w2_c, bool in_c,
+                            const std::vector< double >& vec )
+// clang-format on
+{
   if (in_a)
     w1_a = vec[0];
   else
@@ -243,7 +261,13 @@ inline void extract_vector(double& w1_a, double& w2_a, bool in_a, double& w1_b, 
  * @param in_c True if vessel c points towards the vertex, false if it points away.
  * @param vec  The vector of length 3, which we want to update with w{1,2}_{a,b,c}.
  */
-inline void fill_vector(double w1_a, double w2_a, bool in_a, double w1_b, double w2_b, bool in_b, double w1_c, double w2_c, bool in_c, std::vector< double > & vec) {
+// clang-format off
+inline void fill_vector( double w1_a, double w2_a, bool in_a,
+                         double w1_b, double w2_b, bool in_b,
+                         double w1_c, double w2_c, bool in_c,
+                         std::vector< double >& vec )
+// clang-format on
+{
   if (in_a)
     vec[0] = w1_a;
   else
@@ -271,11 +295,10 @@ inline double calculate_W2_value(double Q, double A, double G0, double rho, doub
 }
 
 /*! @brief Convertes the characteristic variables to flow Q and area A. */
-inline void convert_w1w2_to_QA(double w1, double w2, const VesselParameters & p, double& Q, double& A)
-{
+inline void convert_w1w2_to_QA(double w1, double w2, const VesselParameters &p, double &Q, double &A) {
   const double c0 = calculate_c0(p.G0, p.rho, p.A0);
-  A = std::pow((w1+w2)/(8*c0), 4) * p.A0;
-  Q = 0.5*(w2 - w1)*A;
+  A = std::pow((w1 + w2) / (8 * c0), 4) * p.A0;
+  Q = 0.5 * (w2 - w1) * A;
 }
 
 /*! @brief Solves the bifurcation equations at the intersection of vessel a,
@@ -302,13 +325,14 @@ inline void convert_w1w2_to_QA(double w1, double w2, const VesselParameters & p,
  * @param Q_c_up The upwinded flow Q at vessel c.
  * @param A_c_up The upwinded area A at vessel c.
  */
-inline std::size_t solve_at_bifurcation(
-  double Q_a, double A_a, const VesselParameters &p_a, bool in_a, // flow vessel a
-  double Q_b, double A_b, const VesselParameters &p_b, bool in_b, // flow vessel b
-  double Q_c, double A_c, const VesselParameters &p_c, bool in_c, // flow vessel c
-  double& Q_a_up, double& A_a_up,
-  double& Q_b_up, double& A_b_up,
-  double& Q_c_up, double& A_c_up)
+// clang-format off
+inline std::size_t solve_at_bifurcation( double Q_a, double A_a, const VesselParameters& p_a, bool in_a, // flow vessel a
+                                         double Q_b, double A_b, const VesselParameters& p_b, bool in_b, // flow vessel b
+                                         double Q_c, double A_c, const VesselParameters& p_c, bool in_c, // flow vessel c
+                                         double& Q_a_up, double& A_a_up,
+                                         double& Q_b_up, double& A_b_up,
+                                         double& Q_c_up, double& A_c_up )
+// clang-format on
 {
   const std::size_t max_iter = 1000;
 
@@ -322,14 +346,13 @@ inline std::size_t solve_at_bifurcation(
 
   // solve for w1, w2 with a newton iteration
   gmm::row_matrix<gmm::wsvector<double>> Jac(3, 3);
-  std::vector< double > x(3, 0);
-  std::vector< double > f(3, 0);
-  std::vector< double > delta_x(3, 0);
+  std::vector<double> x(3, 0);
+  std::vector<double> f(3, 0);
+  std::vector<double> delta_x(3, 0);
 
   fill_vector(w1_a, w2_a, in_a, w1_b, w2_b, in_b, w1_c, w2_c, in_c, x);
-  std::size_t it=0;
-  for (; it<max_iter; it+=1)
-  {
+  std::size_t it = 0;
+  for (; it < max_iter; it += 1) {
     bifurcation_equation_jacobian(w1_a, w2_a, p_a, in_a, w1_b, w2_b, p_b, in_b, w1_c, w2_c, p_c, in_c, Jac);
     bifurcation_equation(w1_a, w2_a, p_a, in_a, w1_b, w2_b, p_b, in_b, w1_c, w2_c, p_c, in_c, f);
     gmm::lu_solve(Jac, delta_x, f);
@@ -353,7 +376,8 @@ inline std::size_t solve_at_bifurcation(
  *           W2(Q_up, A_up) = W2
  *         for (Q_up, Q_up) at some inner vertex between to vessel segments.
  */
-inline void solve_W12(double &Q_up, double &A_up, const double W1, const double W2, const double G0, const double rho, const double A0) {
+inline void
+solve_W12(double &Q_up, double &A_up, const double W1, const double W2, const double G0, const double rho, const double A0) {
   const double in = 1. / 8. * std::sqrt(2. * rho / G0) * (W2 + W1);
   A_up = A0 * std::pow(in, 4);
   Q_up = A_up / 2. * (W2 - W1);
@@ -367,9 +391,10 @@ inline void solve_W12(double &Q_up, double &A_up, const double W1, const double 
  */
 class heart_beat_inflow {
 public:
-  explicit heart_beat_inflow(double amplitude=485., double t_period=1.0, double t_systole=0.3)
-    : d_amplitude(amplitude), d_t_period(t_period), d_t_systole(t_systole)
-    {}
+  explicit heart_beat_inflow(double amplitude = 485., double t_period = 1.0, double t_systole = 0.3)
+      : d_amplitude(amplitude),
+        d_t_period(t_period),
+        d_t_systole(t_systole) {}
 
   double operator()(double t) const {
     const double t_in_period = t - std::floor(t / d_t_period);
@@ -403,7 +428,9 @@ inline double solve_for_W2(const double W1, const double W2_init, const double Q
   double W2 = W2_init;
   double W2_prev = W2_init;
   const auto f = [=](double W2) { return (W2 - W1) / 2. * std::pow((W1 + W2) / (8 * c_0), 4) * A_0 - Q_star; };
-  const auto f_prime = [=](double W2) { return (0.000610352 * A_0 * (W2 - 0.6 * W1) * pow((W2 + W1), 3)) / pow(c_0, 4); };
+  const auto f_prime = [=](double W2) {
+    return (0.000610352 * A_0 * (W2 - 0.6 * W1) * pow((W2 + W1), 3)) / pow(c_0, 4);
+  };
   for (std::size_t it = 0; it < 100; it += 1) {
     W2 += (-1) * f(W2) / f_prime(W2);
     if (std::abs(W2 - W2_prev) < 1e-16 || std::abs(W2 - W2_prev) < 1e-8 * W2_prev)
@@ -428,7 +455,9 @@ inline double solve_for_W1(const double W1_init, const double W2, const double Q
   double W1 = W1_init;
   double W1_prev = W1_init;
   const auto f = [=](double W1) { return (W2 - W1) / 2. * std::pow((W1 + W2) / (8 * c_0), 4) * A_0 - Q_star; };
-  const auto f_prime = [=](double W1) { return (-0.0001220703125 * A_0 * (5*W1 - 3*W2) * pow((W2 + W1), 3)) / pow(c_0, 4); };
+  const auto f_prime = [=](double W1) {
+    return (-0.0001220703125 * A_0 * (5 * W1 - 3 * W2) * pow((W2 + W1), 3)) / pow(c_0, 4);
+  };
   for (std::size_t it = 0; it < 100; it += 1) {
     W1 += (-1) * f(W1) / f_prime(W1);
     if (std::abs(W1 - W1_prev) < 1e-16 || std::abs(W1 - W1_prev) < 1e-8 * W1_prev)
@@ -449,7 +478,13 @@ inline double solve_for_W1(const double W1_init, const double W2, const double Q
  * @param A0  The area at p=0.
  * @return
  */
-inline double assemble_in_flow(const double Q, const double A, const bool in, const double Q_star, const double G0, const double rho, const double A0) {
+inline double assemble_in_flow(const double Q,
+                               const double A,
+                               const bool in,
+                               const double Q_star,
+                               const double G0,
+                               const double rho,
+                               const double A0) {
   const double c0 = sqrt(G0 / (2 * rho));
   double W1 = calculate_W1_value(Q, A, G0, rho, A0);
   double W2 = calculate_W2_value(Q, A, G0, rho, A0);
@@ -461,6 +496,6 @@ inline double assemble_in_flow(const double Q, const double A, const bool in, co
   return A_star;
 }
 
-}
+} // namespace macrocirculation
 
 #endif //TUMORMODELS_VESSEL_FORMULAS_HPP

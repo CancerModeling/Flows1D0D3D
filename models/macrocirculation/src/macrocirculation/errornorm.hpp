@@ -8,28 +8,26 @@
 #ifndef TUMORMODELS_ERRORNORM_H
 #define TUMORMODELS_ERRORNORM_H
 
-#include <vector>
 #include <functional>
-#include "libmesh/point.h"
+#include <mpi.h>
+#include <vector>
 
 namespace macrocirculation {
 
 // forward declarations
 class GraphStorage;
-class DofMapNetwork;
-template<std::size_t degree>
+class DofMap;
 class FETypeNetwork;
+class Point;
 
-using libMesh::Point;
+using EvaluationFunction = std::function<void(const std::vector<double> &, std::vector<double> &)>;
 
-using EvaluationFunction = std::function<void(const std::vector<Point> &, std::vector<double> &)>;
-
-template<std::size_t degree>
-double errornorm(const GraphStorage &graph,
-                 const DofMapNetwork &map,
+double errornorm(const MPI_Comm comm,
+                 const GraphStorage &graph,
+                 const DofMap &map,
                  std::size_t component,
                  const std::vector<double> &u_h,
-                 EvaluationFunction u);
+                 const EvaluationFunction &u);
 
 } // namespace macrocirculation
 

@@ -49,14 +49,14 @@ template<std::size_t degree>
 void TimeIntegrator::apply(const std::vector<double> &u_prev,
                            const double t,
                            const double tau,
-                           RightHandSideEvaluator<degree> &rhs,
+                           RightHandSideEvaluator &rhs,
                            std::vector<double> &u_now) const {
   // evaluate ks
   for (std::size_t i = 0; i < d_bs.b.size(); i += 1) {
     double t_s = t + tau * d_bs.c[i];
     d_tmp = u_prev;
     for (std::size_t j = 0; j < i; j += 1) {
-      const double coeff = tau * d_bs.a.at(i * (i - 1)/2 + j);
+      const double coeff = tau * d_bs.a.at(i * (i - 1) / 2 + j);
       gmm::add(d_tmp, gmm::scaled(d_k[j], coeff), d_tmp);
     }
     rhs.evaluate(t_s, d_tmp, d_k[i]);
@@ -69,9 +69,9 @@ void TimeIntegrator::apply(const std::vector<double> &u_prev,
   }
 }
 
-template void TimeIntegrator::apply<0>(const std::vector<double> &, const double, const double, RightHandSideEvaluator<0> &, std::vector<double> &) const;
-template void TimeIntegrator::apply<1>(const std::vector<double> &, const double, const double, RightHandSideEvaluator<1> &, std::vector<double> &) const;
-template void TimeIntegrator::apply<2>(const std::vector<double> &, const double, const double, RightHandSideEvaluator<2> &, std::vector<double> &) const;
-template void TimeIntegrator::apply<3>(const std::vector<double> &, const double, const double, RightHandSideEvaluator<3> &, std::vector<double> &) const;
+template void TimeIntegrator::apply<0>(const std::vector<double> &, const double, const double, RightHandSideEvaluator &, std::vector<double> &) const;
+template void TimeIntegrator::apply<1>(const std::vector<double> &, const double, const double, RightHandSideEvaluator &, std::vector<double> &) const;
+template void TimeIntegrator::apply<2>(const std::vector<double> &, const double, const double, RightHandSideEvaluator &, std::vector<double> &) const;
+template void TimeIntegrator::apply<3>(const std::vector<double> &, const double, const double, RightHandSideEvaluator &, std::vector<double> &) const;
 
 } // namespace macrocirculation

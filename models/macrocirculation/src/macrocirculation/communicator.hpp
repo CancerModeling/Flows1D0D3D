@@ -8,6 +8,7 @@
 #ifndef TUMORMODELS_COMMUNICATOR_HPP
 #define TUMORMODELS_COMMUNICATOR_HPP
 
+#include <functional>
 #include <memory>
 #include <mpi.h>
 #include <vector>
@@ -18,17 +19,19 @@ namespace macrocirculation {
 
 // forward declarations
 class GraphStorage;
-class DofMapNetwork;
+class Edge;
+
+/*! @brief Functional returns the dof indices to send and receive on a given macro edge. */
+using DoFFunctional = std::function<std::vector<std::size_t>(const Edge &)>;
 
 class Communicator {
 public:
-  Communicator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMapNetwork> dof_map);
+  Communicator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, DoFFunctional dof_to_send, DoFFunctional dof_to_receive);
 
   /*! @brief Updates the ghost layer on all ranks for the given vector. */
   void update_ghost_layer(std::vector<double> &u);
 
-  /*! @brief Gathers all the dof data on one single rank. */
-  void gather(int rank, std::vector<double> &u);
+  static Communicator create_edge_boundary_value_communicator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph);
 
 private:
   /*! @brief Unpacks the dof already in the receive buffer into the given vector. */
@@ -39,7 +42,8 @@ private:
 
   MPI_Comm d_comm;
   std::shared_ptr<GraphStorage> d_graph;
-  std::shared_ptr<DofMapNetwork> d_dof_map;
+  DoFFunctional d_dof_to_send;
+  DoFFunctional d_dof_to_receive;
   BufferSystem d_buffer_system;
   int d_rank;
   std::vector<std::vector<std::size_t>> d_ghost_dofs_to_send;

@@ -7,55 +7,74 @@
 
 #include "interpolate_to_vertices.hpp"
 
-#include "dof_map_network.hpp"
-#include "fe_type_network.hpp"
-#include "graph_storage.hpp"
 #include "communication/mpi.hpp"
+#include "dof_map.hpp"
+#include "fe_type.hpp"
+#include "graph_storage.hpp"
 
 namespace macrocirculation {
 
-template<std::size_t DEGREE>
+void linear_interpolate_points(const Point &left,
+                               const Point &right,
+                               const std::size_t num_micro_edges,
+                               std::vector<Point> &points) {
+  for (std::size_t micro_edge_id = 0; micro_edge_id < num_micro_edges; micro_edge_id += 1) {
+    points.push_back(convex_combination(left, right, static_cast<double>(micro_edge_id) / num_micro_edges));
+    points.push_back(convex_combination(left, right, static_cast<double>(micro_edge_id + 1) / num_micro_edges));
+  }
+}
+
 void interpolate_to_vertices(const MPI_Comm comm,
                              const GraphStorage &graph,
-                             const DofMapNetwork &map,
+                             const DofMap &map,
                              const std::size_t component,
                              const std::vector<double> &dof_vector,
                              std::vector<Point> &points,
                              std::vector<double> &interpolated) {
+  points.clear();
+  interpolated.clear();
 
-  interpolated.resize(2 * graph.num_edges(), 0);
+  std::vector<std::size_t> dof_indices;
+  std::vector<double> dof_vector_local;
+  std::vector<double> evaluated_at_qps;
 
-  FETypeNetwork<DEGREE> fe(create_trapezoidal_rule());
-
-  std::vector<std::size_t> dof_indices(DEGREE + 1);
-  std::vector<double> dof_vector_local(DEGREE + 1);
-  std::vector<double> evaluated_at_qps(fe.get_phi()[0].size());
-
-  const auto rank = mpi::rank(comm);
-
-  for (auto e_id : graph.get_edge_ids()) {
+  for (auto e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
     auto edge = graph.get_edge(e_id);
 
-    // we only interpolate on the given graph
-    if (edge->rank() != rank)
+    // we only write out embedded vessel segments
+    if (!edge->has_embedding_data())
       continue;
+    const auto &embedding = edge->get_embedding_data();
 
-    map.dof_indices(*edge, dof_indices, component);
-    extract_dof(dof_indices, dof_vector, dof_vector_local);
-    fe.evaluate_dof_at_quadrature_points(dof_vector_local, evaluated_at_qps);
-    interpolated[e_id * 2 + 0] = evaluated_at_qps[0];
-    interpolated[e_id * 2 + 1] = evaluated_at_qps[1];
+    auto local_dof_map = map.get_local_dof_map(*edge);
 
-    points[e_id * 2 + 0] = edge->get_coordinate_v0();
-    points[e_id * 2 + 1] = edge->get_coordinate_v1();
+    if (embedding.points.size() == 2 && local_dof_map.num_micro_edges() > 1)
+      linear_interpolate_points(embedding.points[0], embedding.points[1], local_dof_map.num_micro_edges(), points);
+    else if (embedding.points.size() == local_dof_map.num_micro_edges() + 1)
+      points.insert(points.end(), embedding.points.begin(), embedding.points.end());
+    else
+      throw std::runtime_error("this type of embedding is not implemented");
+
+    FETypeNetwork fe(create_trapezoidal_rule(), local_dof_map.num_basis_functions() - 1);
+
+    dof_indices.resize(local_dof_map.num_basis_functions());
+    dof_vector_local.resize(local_dof_map.num_basis_functions());
+    evaluated_at_qps.resize(fe.num_quad_points());
+
+    const auto &param = edge->get_physical_data();
+    const double h = param.length / local_dof_map.num_micro_edges();
+
+    fe.reinit(h);
+
+    for (std::size_t micro_edge_id = 0; micro_edge_id < local_dof_map.num_micro_edges(); micro_edge_id += 1) {
+      local_dof_map.dof_indices(micro_edge_id, component, dof_indices);
+      extract_dof(dof_indices, dof_vector, dof_vector_local);
+      const auto boundary_values = fe.evaluate_dof_at_boundary_points(dof_vector_local);
+
+      interpolated.push_back(boundary_values.left);
+      interpolated.push_back(boundary_values.right);
+    }
   }
 }
-
-// template instantiations
-
-template void interpolate_to_vertices<0>(const MPI_Comm, const GraphStorage &, const DofMapNetwork &, const std::size_t, const std::vector<double> &, std::vector<Point> &, std::vector<double> &);
-template void interpolate_to_vertices<1>(const MPI_Comm, const GraphStorage &, const DofMapNetwork &, const std::size_t, const std::vector<double> &, std::vector<Point> &, std::vector<double> &);
-template void interpolate_to_vertices<2>(const MPI_Comm, const GraphStorage &, const DofMapNetwork &, const std::size_t, const std::vector<double> &, std::vector<Point> &, std::vector<double> &);
-template void interpolate_to_vertices<3>(const MPI_Comm, const GraphStorage &, const DofMapNetwork &, const std::size_t, const std::vector<double> &, std::vector<Point> &, std::vector<double> &);
 
 } // namespace macrocirculation

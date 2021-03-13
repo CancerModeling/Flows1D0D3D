@@ -18,8 +18,8 @@ class GraphStorage;
 /*! @brief Distributes a graph to several processors through the ids of the assigned primitives.
  *         This partitioning makes sense when the edge ids and the geometric position correlate.
  */
-void naive_mesh_partitioner(GraphStorage & graph, MPI_Comm comm=MPI_COMM_WORLD);
+void naive_mesh_partitioner(GraphStorage &graph, MPI_Comm comm = MPI_COMM_WORLD);
 
-}
+} // namespace macrocirculation
 
 #endif //TUMORMODELS_GRAPH_PARTITIONER_HPP
