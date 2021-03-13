@@ -6,34 +6,57 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "graph_storage.hpp"
+
 #include <algorithm>
 #include <utility>
 
 namespace macrocirculation {
 
-Primitive::Primitive(std::size_t id) : p_id(id) {}
+Point::Point(double x, double y, double z)
+    : x(x), y(y), z(z) {}
 
-std::size_t Primitive::get_id() const { return p_id; }
+Point convex_combination(const Point &left, const Point &right, double theta) {
+  return {(1 - theta) * left.x + theta * right.x,
+          (1 - theta) * left.y + theta * right.y,
+          (1 - theta) * left.z + theta * right.z};
+}
+
+PhysicalData::PhysicalData(double G0, double A0, double rho, double length)
+    : G0(G0), A0(A0), rho(rho), length(length) {}
+
+std::size_t DiscretizationData::num_micro_edges() const {
+  return lengths.size();
+}
+
+Primitive::Primitive(std::size_t id)
+    : p_id(id) {}
+
+std::size_t Primitive::get_id() const {
+  return p_id;
+}
 
 double default_inflow_function(double) {
   throw std::runtime_error("inflow value at inflow boundary not set");
 }
 
-Vertex::Vertex(std::size_t id, const Point &coordinate)
-    : Primitive(id),
-      p_coordinate(coordinate),
-      p_inflow(false),
-      p_inflow_value(default_inflow_function) {}
+Vertex::Vertex(std::size_t id)
+    : Primitive(id), p_inflow(false), p_inflow_value(default_inflow_function) {}
 
-const Point &Vertex::get_coordinate() const { return p_coordinate; }
+const std::vector<std::size_t> &Vertex::get_edge_neighbors() const {
+  return p_neighbors;
+}
 
-const std::vector<std::size_t> &Vertex::get_edge_neighbors() const { return p_neighbors; }
+bool Vertex::is_leaf() const {
+  return p_neighbors.size() == 1;
+};
 
-bool Vertex::is_leaf() const { return p_neighbors.size() == 1; };
+bool Vertex::is_unconnected() const {
+  return p_neighbors.empty();
+}
 
-bool Vertex::is_unconnected() const { return p_neighbors.empty(); }
-
-bool Vertex::is_bifurcation() const { return p_neighbors.size() > 2; }
+bool Vertex::is_bifurcation() const {
+  return p_neighbors.size() > 2;
+}
 
 void Vertex::set_to_inflow(std::function<double(double)> value) {
   p_inflow = true;
@@ -45,7 +68,9 @@ void Vertex::set_to_outflow() {
   p_inflow_value = default_inflow_function;
 }
 
-bool Vertex::is_inflow() const { return p_inflow; }
+bool Vertex::is_inflow() const {
+  return p_inflow;
+}
 
 double Vertex::get_inflow_value(double time) const {
   return p_inflow_value(time);
@@ -55,7 +80,45 @@ bool Edge::is_pointing_to(std::size_t vertex_id) const {
   return p_neighbors[1] == vertex_id;
 }
 
-std::size_t Edge::get_type_id() const { return p_type_id; }
+const PhysicalData &Edge::get_physical_data() const {
+  return *physical_data;
+}
+
+const DiscretizationData &Edge::get_discretization_data() const {
+  return *discretization_data;
+}
+
+const EmbeddingData &Edge::get_embedding_data() const {
+  return *embedding_data;
+}
+
+void Edge::add_physical_data(const PhysicalData &data) {
+  physical_data = std::make_unique<PhysicalData>(data);
+}
+
+void Edge::add_discretization_data(const DiscretizationData &data) {
+  discretization_data = std::make_unique<DiscretizationData>(data);
+};
+
+void Edge::add_embedding_data(const EmbeddingData &data) {
+  embedding_data = std::make_unique<EmbeddingData>(data);
+};
+
+bool Edge::has_physical_data() const {
+  return physical_data != nullptr;
+}
+
+bool Edge::has_discretization_data() const {
+  return discretization_data != nullptr;
+}
+
+bool Edge::has_embedding_data() const {
+  return embedding_data != nullptr;
+}
+
+void Edge::assign_to_rank(int rank) { d_rank = rank; }
+
+int Edge::rank() const { return d_rank; }
 
 void GraphStorage::reorder_edges(Vertex &v) {
   if (v.get_edge_neighbors().size() > 2)
@@ -68,7 +131,7 @@ void GraphStorage::reorder_edges(Vertex &v) {
   const auto e0 = get_edge(v.get_edge_neighbors()[0]);
   const auto e1 = get_edge(v.get_edge_neighbors()[1]);
 
-  if (!(e0->is_pointing_to(v.get_id()) != e1->is_pointing_to(v.get_id())))
+  if (e0->is_pointing_to(v.get_id()) == e1->is_pointing_to(v.get_id()))
     throw std::runtime_error("edges cannot be reordered");
 
   // nothing to reorder
@@ -78,30 +141,12 @@ void GraphStorage::reorder_edges(Vertex &v) {
   std::swap(v.p_neighbors[0], v.p_neighbors[1]);
 }
 
-Edge::Edge(std::size_t id, std::size_t type_id, const Vertex &v1, const Vertex &v2)
-    : Primitive(id),
-      p_type_id(type_id),
-      p_neighbors({v1.get_id(), v2.get_id()}),
-      p_coordinates({v1.get_coordinate(), v2.get_coordinate()}),
-      d_rank(0){};
+Edge::Edge(std::size_t id, const Vertex &v1, const Vertex &v2)
+    : Primitive(id), p_neighbors({v1.get_id(), v2.get_id()}), d_rank(0){};
 
-const std::vector<std::size_t> &Edge::get_vertex_neighbors() const { return p_neighbors; };
-
-const Point &Edge::get_coordinate_v0() const { return p_coordinates[0]; };
-
-const Point &Edge::get_coordinate_v1() const { return p_coordinates[1]; };
-
-double Edge::get_length() const {
-  return (p_coordinates[0] - p_coordinates[1]).norm();
-}
-
-Point Edge::get_midpoint() const {
-  return 0.5 * (p_coordinates[0] - p_coordinates[1]);
-}
-
-void Edge::assign_to_rank(int rank) { d_rank = rank; }
-
-int Edge::rank() const { return d_rank; }
+const std::vector<std::size_t> &Edge::get_vertex_neighbors() const {
+  return p_neighbors;
+};
 
 GraphStorage::GraphStorage()
     : p_next_edge_id(0), p_next_vertex_id(0){};
@@ -121,18 +166,18 @@ std::shared_ptr<const Vertex> GraphStorage::get_vertex(std::size_t id) const {
   return p_vertices.at(id);
 }
 
-std::shared_ptr<Vertex> GraphStorage::create_vertex(const Point &coordinates) {
+std::shared_ptr<Vertex> GraphStorage::create_vertex() {
   const auto id = p_next_vertex_id++;
-  auto vertex = std::make_shared<Vertex>(id, coordinates);
+  auto vertex = std::make_shared<Vertex>(id);
   p_vertices[id] = vertex;
   return vertex;
 };
 
-std::shared_ptr<Edge> GraphStorage::connect(Vertex &v1, Vertex &v2, std::size_t edge_type_id) {
-  return connect(v1, v2, edge_type_id, p_next_edge_id++);
+std::shared_ptr<Edge> GraphStorage::connect(Vertex &v1, Vertex &v2) {
+  return connect(v1, v2, p_next_edge_id++);
 }
 
-std::shared_ptr<Edge> GraphStorage::connect(Vertex &v1, Vertex &v2, std::size_t edge_type_id, std::size_t edge_id) {
+std::shared_ptr<Edge> GraphStorage::connect(Vertex &v1, Vertex &v2, std::size_t edge_id) {
   if (p_vertices.find(v1.get_id()) == p_vertices.end() || p_vertices.find(v2.get_id()) == p_vertices.end())
     throw std::runtime_error("vertices not found in storage");
 
@@ -142,7 +187,7 @@ std::shared_ptr<Edge> GraphStorage::connect(Vertex &v1, Vertex &v2, std::size_t 
   if (p_edges.find(edge_id) != p_edges.end())
     throw std::runtime_error("edge with given id already in the graph");
 
-  auto edge = std::make_shared<Edge>(edge_id, edge_type_id, v1, v2);
+  auto edge = std::make_shared<Edge>(edge_id, v1, v2);
   p_edges[edge_id] = edge;
 
   v1.p_neighbors.push_back(edge->get_id());
@@ -160,21 +205,6 @@ void GraphStorage::remove(Edge &e) {
   e.p_neighbors.clear();
 }
 
-RefinementData GraphStorage::refine(Edge &e) {
-  auto v0 = get_vertex(e.get_vertex_neighbors()[0]);
-  auto v1 = get_vertex(e.get_vertex_neighbors()[1]);
-  auto v0p5 = create_vertex(0.5 * (v0->get_coordinate() + v1->get_coordinate()));
-
-  auto id = e.get_id();
-
-  remove(e);
-
-  auto e0 = connect(*v0, *v0p5, e.p_type_id, id);
-  auto e1 = connect(*v0p5, *v1, e.p_type_id);
-
-  return RefinementData(v0p5, e0, e1);
-}
-
 std::vector<std::size_t> GraphStorage::get_edge_ids() const {
   std::vector<std::size_t> keys;
   transform(p_edges.begin(), p_edges.end(), back_inserter(keys), [](auto v) { return v.first; });
@@ -187,11 +217,17 @@ std::vector<std::size_t> GraphStorage::get_vertex_ids() const {
   return keys;
 }
 
-std::vector<std::size_t> GraphStorage::get_active_edge_ids(int rank) const
-{
-  std::vector< std::size_t > active_edge_ids;
-  for (const auto& it : p_edges)
-  {
+double GraphStorage::num_vertices() const {
+  return p_vertices.size();
+}
+
+double GraphStorage::num_edges() const {
+  return p_edges.size();
+}
+
+std::vector<std::size_t> GraphStorage::get_active_edge_ids(int rank) const {
+  std::vector<std::size_t> active_edge_ids;
+  for (const auto &it : p_edges) {
     auto edge = it.second;
 
     if (edge->rank() == rank)
@@ -200,11 +236,9 @@ std::vector<std::size_t> GraphStorage::get_active_edge_ids(int rank) const
   return active_edge_ids;
 }
 
-std::vector<std::size_t> GraphStorage::get_active_vertex_ids(int rank) const
-{
-  std::vector< std::size_t > active_vertex_ids;
-  for (const auto& v_it : p_vertices)
-  {
+std::vector<std::size_t> GraphStorage::get_active_vertex_ids(int rank) const {
+  std::vector<std::size_t> active_vertex_ids;
+  for (const auto &v_it : p_vertices) {
     auto vertex = v_it.second;
 
     if (vertex_is_neighbor_of_rank(*vertex, rank))
@@ -213,9 +247,8 @@ std::vector<std::size_t> GraphStorage::get_active_vertex_ids(int rank) const
   return active_vertex_ids;
 }
 
-bool GraphStorage::edge_is_neighbor_of_rank(const Edge& e, int rank) const {
-  for (auto v_id: e.get_vertex_neighbors())
-  {
+bool GraphStorage::edge_is_neighbor_of_rank(const Edge &e, int rank) const {
+  for (auto v_id : e.get_vertex_neighbors()) {
     auto vertex = get_vertex(v_id);
 
     if (vertex_is_neighbor_of_rank(*vertex, rank))
@@ -224,10 +257,8 @@ bool GraphStorage::edge_is_neighbor_of_rank(const Edge& e, int rank) const {
   return false;
 }
 
-bool GraphStorage::vertex_is_neighbor_of_rank(const Vertex& v, int rank) const
-{
-  for (const auto& e_id : v.get_edge_neighbors())
-  {
+bool GraphStorage::vertex_is_neighbor_of_rank(const Vertex &v, int rank) const {
+  for (const auto &e_id : v.get_edge_neighbors()) {
     auto neighbor_edge = get_edge(e_id);
     if (neighbor_edge->rank() == rank)
       return true;
@@ -235,11 +266,9 @@ bool GraphStorage::vertex_is_neighbor_of_rank(const Vertex& v, int rank) const
   return false;
 }
 
-std::vector<std::size_t> GraphStorage::get_ghost_edge_ids(int main_rank, int ghost_rank) const
-{
-  std::vector< std::size_t > ghost_edge_ids;
-  for (const auto& it : p_edges)
-  {
+std::vector<std::size_t> GraphStorage::get_ghost_edge_ids(int main_rank, int ghost_rank) const {
+  std::vector<std::size_t> ghost_edge_ids;
+  for (const auto &it : p_edges) {
     auto ghost_rank_edge = it.second;
 
     // if the edge does not belong to the ghost rank we skip it
@@ -252,42 +281,7 @@ std::vector<std::size_t> GraphStorage::get_ghost_edge_ids(int main_rank, int gho
   return ghost_edge_ids;
 }
 
-void GraphStorage::refine(std::size_t num_refinements) {
-  for (std::size_t ridx = 0; ridx < num_refinements; ridx += 1) {
-    for (auto &id : get_edge_ids()) {
-      auto edge = get_edge(id);
-      refine(*edge);
-    }
-  }
-
-  for (auto &id : get_vertex_ids()) {
-    auto vertex = get_vertex(id);
-    reorder_edges(*vertex);
-  }
-}
-
-void GraphStorage::line_to(Vertex &from, Vertex &to, std::size_t vessel_id, std::size_t num_new_edges) {
-  auto v_prev = get_vertex(from.get_id());
-  for (std::size_t k = 0; k < num_new_edges - 1; k += 1) {
-    const double theta = (k + 1.) / num_new_edges;
-    const auto coordinates = from.get_coordinate() * (1. - theta) + to.get_coordinate() * theta;
-    auto v_next = create_vertex(coordinates);
-    connect(*v_prev, *v_next, vessel_id);
-    v_prev = v_next;
-  }
-  connect(*v_prev, to, vessel_id);
-}
-
-double GraphStorage::num_vertices() const {
-  return p_vertices.size();
-}
-
-double GraphStorage::num_edges() const {
-  return p_edges.size();
-}
-
-void GraphStorage::assign_edge_to_rank(Edge & edge, int rank)
-{
+void GraphStorage::assign_edge_to_rank(Edge &edge, int rank) {
   edge.assign_to_rank(rank);
 }
 

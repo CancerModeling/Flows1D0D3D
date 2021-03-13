@@ -13,11 +13,10 @@
 #include <string>
 #include <vector>
 
-#include "libmesh/point.h"
-
 namespace macrocirculation {
 
-using libMesh::Point;
+// forward declarations
+class Point;
 
 /*! @brief Graph agnostic data to write serialized graph data to pvd files in parallel.
  *

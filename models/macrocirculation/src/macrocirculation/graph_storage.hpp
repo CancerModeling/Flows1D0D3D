@@ -9,7 +9,6 @@
 #define TUMORMODELS_GRAPH_STORAGE_H
 
 #include <functional>
-#include <libmesh/point.h>
 #include <map>
 #include <memory>
 #include <utility>
@@ -17,9 +16,35 @@
 
 namespace macrocirculation {
 
-using libMesh::Point;
-
 class GraphStorage;
+
+struct Point {
+  Point(double x, double y, double z);
+
+  double x, y, z;
+};
+
+Point convex_combination(const Point &left, const Point &right, double theta);
+
+struct PhysicalData {
+  PhysicalData(double G0, double A0, double rho, double length);
+
+  // physical parameters
+  double G0;
+  double A0;
+  double rho;
+  double length;
+};
+
+struct DiscretizationData {
+  std::vector<double> lengths;
+
+  std::size_t num_micro_edges() const;
+};
+
+struct EmbeddingData {
+  std::vector<Point> points;
+};
 
 class Primitive {
 public:
@@ -33,9 +58,7 @@ protected:
 
 class Vertex : public Primitive {
 public:
-  Vertex(std::size_t id, const Point &coordinates);
-
-  const Point &get_coordinate() const;
+  explicit Vertex(std::size_t id);
 
   const std::vector<std::size_t> &get_edge_neighbors() const;
 
@@ -56,8 +79,6 @@ public:
   double get_inflow_value(double time) const;
 
 private:
-  Point p_coordinate;
-
   bool p_inflow;
 
   std::function<double(double)> p_inflow_value;
@@ -69,53 +90,46 @@ private:
 
 class Edge : public Primitive {
 public:
-  Edge(std::size_t id, std::size_t type_id, const Vertex &v1, const Vertex &v2);
+  Edge(std::size_t id, const Vertex &v1, const Vertex &v2);
 
   const std::vector<std::size_t> &get_vertex_neighbors() const;
 
-  const Point &get_coordinate_v0() const;
-  const Point &get_coordinate_v1() const;
+  const PhysicalData &get_physical_data() const;
+  const DiscretizationData &get_discretization_data() const;
+  const EmbeddingData &get_embedding_data() const;
 
-  double get_length() const;
-  Point get_midpoint() const;
+  void add_physical_data(const PhysicalData &data);
+  void add_discretization_data(const DiscretizationData &data);
+  void add_embedding_data(const EmbeddingData &data);
+
+  bool has_physical_data() const;
+  bool has_discretization_data() const;
+  bool has_embedding_data() const;
 
   /*! @brief Is the edge pointing towards the given vertex? */
   bool is_pointing_to(std::size_t vertex_id) const;
-
-  std::size_t get_type_id() const;
 
   /*! @brief Returns the rank to which the dof on the given edge are assigned. */
   int rank() const;
 
 protected:
   /*! @brief Assigns the edge to a certain rank.
-   *
-   *  This method is protected, since the GraphStorage structure could cache data for each rank.
-   *  Hence, the storage has to be aware of changes to invalidate its caches and therefore
-   *  manages the assignment to ranks.
-   */
+    *
+    *  This method is protected, since the GraphStorage structure could cache data for each rank.
+    *  Hence, the storage has to be aware of changes to invalidate its caches and therefore
+    *  manages the assignment to ranks.
+    */
   void assign_to_rank(int rank);
 
   std::vector<std::size_t> p_neighbors;
 
-  std::vector<Point> p_coordinates;
-
-  std::size_t p_type_id;
+  std::unique_ptr<PhysicalData> physical_data;
+  std::unique_ptr<DiscretizationData> discretization_data;
+  std::unique_ptr<EmbeddingData> embedding_data;
 
   int d_rank;
 
   friend GraphStorage;
-};
-
-struct RefinementData {
-  RefinementData(std::shared_ptr<Vertex> v, std::shared_ptr<Edge> e0, std::shared_ptr<Edge> e1)
-      : new_vertex(std::move(v)),
-        new_edge_0(std::move(e0)),
-        new_edge_1(std::move(e1)) {}
-
-  std::shared_ptr<Vertex> new_vertex;
-  std::shared_ptr<Edge> new_edge_0;
-  std::shared_ptr<Edge> new_edge_1;
 };
 
 class GraphStorage {
@@ -128,40 +142,34 @@ public:
   std::shared_ptr<Vertex> get_vertex(std::size_t id);
   std::shared_ptr<const Vertex> get_vertex(std::size_t id) const;
 
-  std::shared_ptr<Vertex> create_vertex(const Point &coordinates);
-  std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_type_id);
+  std::shared_ptr<Vertex> create_vertex();
+  std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2);
   void remove(Edge &e);
-
-  RefinementData refine(Edge &e);
-  void refine(std::size_t num_refinements = 1);
 
   std::vector<std::size_t> get_edge_ids() const;
   std::vector<std::size_t> get_vertex_ids() const;
+
+  double num_vertices() const;
+  double num_edges() const;
 
   /*! @brief Returns all the edge ids assigned to the given rank. */
   std::vector<std::size_t> get_active_edge_ids(int rank) const;
 
   /*! @brief Returns all the edge ids for the ghost layer of main_rank w.r.t. ghost_rank.
-   *
-   * @param main_rank   The rank, whose ghost layer we want to know.
-   * @param ghost_rank  The rank which acts as a ghost.
-   * @return            A list of edge ids of the ghost.
-   */
+    *
+    * @param main_rank   The rank, whose ghost layer we want to know.
+    * @param ghost_rank  The rank which acts as a ghost.
+    * @return            A list of edge ids of the ghost.
+    */
   std::vector<std::size_t> get_ghost_edge_ids(int main_rank, int ghost_rank) const;
 
   /*! @brief Returns all the vertex ids, which he on active neighbor edge. */
   std::vector<std::size_t> get_active_vertex_ids(int rank) const;
 
-  double num_vertices() const;
-  double num_edges() const;
-
-  /*! @brief Adds a line segment starting at "from" and ending at "to" to the graph. */
-  void line_to(Vertex &from, Vertex &to, std::size_t vessel_id, std::size_t num_edges);
-
-  void assign_edge_to_rank(Edge & edge, int rank);
+  void assign_edge_to_rank(Edge &edge, int rank);
 
 private:
-  std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_type_id, std::size_t edge_id);
+  std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_id);
 
   /// @brief
   ///
@@ -172,10 +180,10 @@ private:
   void reorder_edges(Vertex &v);
 
   /*! @brief Returns true if the given edge has a neighbor edge, which is assigned to the given rank. */
-  bool edge_is_neighbor_of_rank(const Edge& e, int rank) const;
+  bool edge_is_neighbor_of_rank(const Edge &e, int rank) const;
 
   /*! @brief Returns true if the given vertex has a neighbor edge, which is assigned to the given rank. */
-  bool vertex_is_neighbor_of_rank(const Vertex& e, int rank) const;
+  bool vertex_is_neighbor_of_rank(const Vertex &e, int rank) const;
 
   std::map<std::size_t, std::shared_ptr<Edge>> p_edges;
   std::map<std::size_t, std::shared_ptr<Vertex>> p_vertices;

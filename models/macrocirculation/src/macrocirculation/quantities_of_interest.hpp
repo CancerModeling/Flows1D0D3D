@@ -8,34 +8,26 @@
 #ifndef TUMORMODELS_QUANTITIES_OF_INTEREST_HPP
 #define TUMORMODELS_QUANTITIES_OF_INTEREST_HPP
 
-#include "libmesh/point.h"
+#include <mpi.h>
 #include <vector>
 
 namespace macrocirculation {
 
-using libMesh::Point;
-
 // forward declarations
 class GraphStorage;
-class VesselDataStorage;
-class DofMapNetwork;
-template<std::size_t>
-class FETypeNetwork;
+class DofMap;
+class Point;
 
-template<std::size_t DEGREE>
 void calculate_total_pressure(MPI_Comm comm,
                               const GraphStorage &graph,
-                              const VesselDataStorage &vessel_data,
-                              const DofMapNetwork &map,
+                              const DofMap &map,
                               const std::vector<double> &dof_vector,
                               std::vector<Point> &points,
                               std::vector<double> &interpolated);
 
-template<std::size_t DEGREE>
 void calculate_static_pressure(MPI_Comm comm,
                                const GraphStorage &graph,
-                               const VesselDataStorage &vessel_data,
-                               const DofMapNetwork &map,
+                               const DofMap &map,
                                const std::vector<double> &dof_vector,
                                std::vector<Point> &points,
                                std::vector<double> &interpolated);

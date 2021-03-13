@@ -7,19 +7,18 @@
 
 #include "graph_partitioner.hpp"
 #include "graph_storage.hpp"
-#include <mpi.h>
 #include <cmath>
+#include <mpi.h>
 
 namespace macrocirculation {
 
 void naive_mesh_partitioner(GraphStorage &graph, MPI_Comm comm) {
   int size;
-  MPI_Comm_size( comm, &size );
+  MPI_Comm_size(comm, &size);
 
-  for (std::size_t rank=0; rank<size; rank+=1)
-  {
-    std::size_t start_edge_id = (rank*graph.num_edges())/size;
-    std::size_t end_edge_id = ((rank+1)*graph.num_edges())/size;
+  for (std::size_t rank = 0; rank < size; rank += 1) {
+    std::size_t start_edge_id = (rank * graph.num_edges()) / size;
+    std::size_t end_edge_id = ((rank + 1) * graph.num_edges()) / size;
 
     for (std::size_t edge_id = start_edge_id; edge_id < end_edge_id; edge_id += 1) {
       auto edge = graph.get_edge(edge_id);

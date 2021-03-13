@@ -8,25 +8,24 @@
 #ifndef TUMORMODELS_INTERPOLATE_TO_VERTICES_HPP
 #define TUMORMODELS_INTERPOLATE_TO_VERTICES_HPP
 
-#include <vector>
 #include <mpi.h>
-#include "libmesh/point.h"
+#include <vector>
 
 namespace macrocirculation {
 
-using libMesh::Point;
-
 class GraphStorage;
-class DofMapNetwork;
+class DofMap;
+class Point;
 
-template < std::size_t DEGREE >
-class FETypeNetwork;
+void linear_interpolate_points(const Point &left,
+                               const Point &right,
+                               std::size_t num_micro_edges,
+                               std::vector<Point> &points);
 
-template < std::size_t DEGREE >
-void interpolate_to_vertices(const MPI_Comm comm,
+void interpolate_to_vertices(MPI_Comm comm,
                              const GraphStorage &graph,
-                             const DofMapNetwork &map,
-                             const std::size_t component,
+                             const DofMap &map,
+                             std::size_t component,
                              const std::vector<double> &dof_vector,
                              std::vector<Point> &points,
                              std::vector<double> &interpolated);

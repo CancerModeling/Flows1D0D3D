@@ -8,22 +8,18 @@
 #ifndef TUMORMODELS_RIGHT_HAND_SIDE_EVALUATOR_HPP
 #define TUMORMODELS_RIGHT_HAND_SIDE_EVALUATOR_HPP
 
-#include <vector>
-#include <memory>
+#include "communicator.hpp"
 #include <functional>
+#include <memory>
 #include <mpi.h>
-
-#include "libmesh/point.h"
+#include <vector>
 
 namespace macrocirculation {
 
-using libMesh::Point;
-
 // forward declarations
 class GraphStorage;
-class VesselDataStorage;
-class DofMapNetwork;
-class Communicator;
+class DofMap;
+class Edge;
 
 /*! @brief Functional to evaluate the right-hand-side S. */
 class default_S {
@@ -33,7 +29,12 @@ public:
   /*! @brief Evaluates the Q- and A-component of the right-hand side S,
    *         given Q and A at eacht of the quadrature points.
    */
-  void operator()(double, const std::vector<Point>&, const std::vector<double>& Q, const std::vector<double>& A, std::vector<double>& S_Q_out, std::vector<double>& S_A_out) const;
+  void operator()(double,
+                  const std::vector<double> &,
+                  const std::vector<double> &Q,
+                  const std::vector<double> &A,
+                  std::vector<double> &S_Q_out,
+                  std::vector<double> &S_A_out) const;
 
 private:
   /*! @brief Blood viscosity [m Pa s]. */
@@ -47,8 +48,7 @@ private:
 };
 
 /*! @brief Assembles the inverse mass. WARNING: Assumes legendre basis! */
-template <std::size_t degree>
-void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_map, std::vector<double> &inv_mass);
+void assemble_inverse_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, std::vector<double> &inv_mass);
 
 /*! @brief Our flow equation d/dt u + d/dz F(u) = 0, can be written with a DG ansatz as,
  *              d/dt u - M^{-1}( (F(u), d/dz v) - F(u(x_r))v(x_r) + F(u(x_l))v(x_l) )  = 0,
@@ -58,73 +58,71 @@ void assemble_inverse_mass(const GraphStorage &graph, const DofMapNetwork &dof_m
  *              M^{-1}( (F(u), d/dz v) - F(u(x_r))v(x_r) + F(u(x_l))v(x_l) )
  *         and can be easily used in a time integrator.
  */
-template <std::size_t degree>
 class RightHandSideEvaluator {
 public:
-  RightHandSideEvaluator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<VesselDataStorage> vessel_data, std::shared_ptr<DofMapNetwork> dof_map);
+  RightHandSideEvaluator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map, std::size_t degree);
 
-  void evaluate(double t, std::vector<double> &u_prev, std::vector<double> &rhs);
+  void evaluate(double t, const std::vector<double> &u_prev, std::vector<double> &rhs);
 
   /*! @brief Function type to evaluate a vectorial quantity at all the quadrature points in one go:
    *         - the 1st argument is the current time,
-   *         - the 2nd argument are the quadrature points on the domain,
+   *         - the 2nd argument are the quadrature points on the edge,
    *         - the 3nd and 4rd components are for the flow Q and the area A, while
    *         - the 5th and 6th are the components of the vector evaluated at the quadrature points.
    */
-  using VectorEvaluator = std::function< void(double, const std::vector<Point>&, const std::vector<double>&, const std::vector<double>&, std::vector<double>&, std::vector<double>&) >;
+  using VectorEvaluator = std::function<void(double,
+                                             const std::vector<double> &,
+                                             const std::vector<double> &,
+                                             const std::vector<double> &,
+                                             std::vector<double> &,
+                                             std::vector<double> &)>;
 
   /*! @brief Sets the right-hand side S. */
   void set_rhs_S(VectorEvaluator S_evaluator);
 
 private:
-  /*! @brief The mpi communicator. */
   MPI_Comm d_comm;
 
   /*! @brief The current domain for solving the equation. */
   std::shared_ptr<GraphStorage> d_graph;
 
-  /*! @brief Stores the physical data for a given vessel. */
-  std::shared_ptr<VesselDataStorage> d_vessel_data;
-
   /*! @brief The dof map for our domain */
-  std::shared_ptr<DofMapNetwork> d_dof_map;
+  std::shared_ptr<DofMap> d_dof_map;
 
-  /*! @brief The mpi-communication routine to update the ghost layers. */
-  std::unique_ptr<Communicator> d_communicator;
+  Communicator d_edge_boundary_communicator;
 
   /*! @brief Evaluates the Q- and A-component of the right-hand side S,
    *         given Q and A at eacht of the quadrature points.
    */
   VectorEvaluator d_S_evaluator;
 
-  /*! @brief The upwinded Q-flow from the left boundary of a macroedge,
-   *         ordered such that d_Q_up_el[edge_id] contains the respective flux.
-   */
-  std::vector<double> d_Q_up_el;
+  /*! @brief The degree of the finite-element shape functions. */
+  std::size_t d_degree;
 
-  /*! @brief The upwinded Q-flow from the right boundary of a macroedge,
-   *         ordered such that d_Q_up_er[edge_id] contains the respective flux.
-   */
-  std::vector<double> d_Q_up_er;
+  /*! @brief Contains the values of Q at the left and right boundary point of the given macro-edge.
+    *         For the 2i-th edge the left boundary value is at 2*i, while the right entry is at 2*i+1.
+    */
+  std::vector<double> d_Q_macro_edge_boundary_value;
 
-  /*! @brief The upwinded A-flow from the left boundary of a macroedge,
-   *         ordered such that d_A_up_el[edge_id] contains the respective flux.
-   */
-  std::vector<double> d_A_up_el;
+  /*! @brief Contains the values of A at the left and right boundary point of the given macro-edge.
+    *         For the 2i-th edge the left boundary value is at 2*i, while the right entry is at 2*i+1.
+    */
+  std::vector<double> d_A_macro_edge_boundary_value;
 
-  /*! @brief The upwinded A-flow from the right boundary of a macroedge,
-   *         ordered such that d_Q_up_er[edge_id] contains the respective flux.
-   */
-  std::vector<double> d_A_up_er;
+  /*! @brief Contains the flux-values of Q at the left boundary point of the given macro-edge.
+    *         The ith vector entry corresponds to the ith macro-edge id.
+    */
+  std::vector<double> d_Q_macro_edge_flux_l;
+  std::vector<double> d_Q_macro_edge_flux_r;
+  std::vector<double> d_A_macro_edge_flux_l;
+  std::vector<double> d_A_macro_edge_flux_r;
 
   /*! @brief Our current inverse mass vector, defining the diagonal inverse mass matrix. */
   std::vector<double> d_inverse_mass;
 
-  /*! @brief We cache the active vertex ids. */
-  std::vector<std::size_t> d_active_vertex_ids;
+  void evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev);
 
-  /*! @brief We cache the active edge ids. */
-  std::vector<std::size_t> d_active_edge_ids;
+  void calculate_inner_fluxes(const std::vector<double> &u_prev);
 
   /*! @brief Recalculates the current fluxes from the previous time step.
    *
@@ -133,6 +131,24 @@ private:
    */
   void calculate_fluxes(double t, const std::vector<double> &u_prev);
 
+  /*! @brief Recalculates the fluxes inside of the macro-edges for the given time step at the micro-vertices.
+    *
+    * @param u_prev  The solution for which we calculate the fluxes.
+    */
+  void calculate_fluxes_on_macro_edge(const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &Q_up, std::vector<double> &A_up);
+
+  /*! @brief Calculates the fluxes at bifurcations for the given time step at the macro edge boundaries.
+   *
+   * @param u_prev  The solution for which we calculate the fluxes.
+   */
+  void calculate_bifurcation_fluxes(const std::vector<double> &u_prev);
+
+  /*! @brief Calculates the in and outflow fluxes for the given timestep at the macro edge boundaries.
+   *
+   * @param u_prev  The solution for which we calculate the fluxes.
+   */
+  void calculate_inout_fluxes(double t, const std::vector<double> &u_prev);
+
   /*! @brief Assembles from the fluxes and the previous values a new right hand side function. */
   void calculate_rhs(double t, const std::vector<double> &u_prev, std::vector<double> &rhs);
 
@@ -140,6 +156,6 @@ private:
   void apply_inverse_mass(std::vector<double> &rhs);
 };
 
-}
+} // namespace macrocirculation
 
 #endif //TUMORMODELS_RIGHT_HAND_SIDE_EVALUATOR_HPP

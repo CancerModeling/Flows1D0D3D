@@ -13,7 +13,6 @@
 namespace macrocirculation {
 
 // forward declarations:
-template <std::size_t degree>
 class RightHandSideEvaluator;
 
 struct ButcherScheme {
@@ -32,22 +31,21 @@ ButcherScheme create_explicit_euler();
 ButcherScheme create_ssp_method();
 
 /*! @brief Checks the consistency of a butcher scheme. */
-bool check_consistency_rkm(const ButcherScheme & bs);
+bool check_consistency_rkm(const ButcherScheme &bs);
 
 /*! @brief Class for evaluating butcher schemes on gmm vectors. */
-class TimeIntegrator
-{
+class TimeIntegrator {
 public:
   TimeIntegrator(ButcherScheme bs, std::size_t num_dofs);
 
-  template <std::size_t degree>
-  void apply(const std::vector<double>& u_prev, double t, double tau, RightHandSideEvaluator<degree> & rhs, std::vector<double>& u_now) const;
+  template<std::size_t degree>
+  void apply(const std::vector<double> &u_prev, double t, double tau, RightHandSideEvaluator &rhs, std::vector<double> &u_now) const;
 
 private:
   ButcherScheme d_bs;
 
-  mutable std::vector< std::vector< double > > d_k;
-  mutable std::vector< double > d_tmp;
+  mutable std::vector<std::vector<double>> d_k;
+  mutable std::vector<double> d_tmp;
 };
 
 } // namespace macrocirculation

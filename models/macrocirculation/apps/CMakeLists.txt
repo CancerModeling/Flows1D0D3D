@@ -14,16 +14,12 @@ SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/macrocirculation/)
 # Create executable
 # ****************************************************************************
 
-# advection:
-add_executable(${ProjectName}Advection main_advection.cpp)
-target_link_libraries(${ProjectName}Advection ${ProjectLib})
-
 # nonlinear flow solver line:
-add_executable(${ProjectName}NonlinearFlowLine main_nonlinear_flow_line.cpp)
+add_executable(${ProjectName}NonlinearFlowLine nonlinear_flow_line.cpp)
 target_link_libraries(${ProjectName}NonlinearFlowLine ${ProjectLib})
 
 # nonlinear flow solver bifurcation:
-add_executable(${ProjectName}NonlinearFlowBifurcation main_nonlinear_flow_bifurcation.cpp)
+add_executable(${ProjectName}NonlinearFlowBifurcation nonlinear_flow_bifurcation.cpp)
 target_link_libraries(${ProjectName}NonlinearFlowBifurcation ${ProjectLib})
 
 # test bifurcation flow:
@@ -31,9 +27,16 @@ add_executable(${ProjectName}BifurcationFlow test_bifurcation_flow.cpp)
 target_link_libraries(${ProjectName}BifurcationFlow ${ProjectLib})
 
 # test the convergence:
-add_executable(${ProjectName}Convergence test_convergence.cpp)
-target_link_libraries(${ProjectName}Convergence ${ProjectLib})
+add_executable(${ProjectName}ConvergenceStudy convergence_study.cpp)
+target_link_libraries(${ProjectName}ConvergenceStudy ${ProjectLib})
 
-# test the communicator:
-add_executable(${ProjectName}Communicator test_communicator.cpp)
-target_link_libraries(${ProjectName}Communicator ${ProjectLib})
+foreach(TargetName ${ProjectName}NonlinearFlowLine ${ProjectName}NonlinearFlowBifurcation ${ProjectName}ConvergenceStudy)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
+
+    add_custom_command(
+            TARGET ${TargetName} PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/animation.py $<TARGET_FILE_DIR:${TargetName}>/animation.py
+            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/animation.py")
+endforeach()
