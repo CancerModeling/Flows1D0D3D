@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
 
   const std::size_t num_edges_per_segment = 80;
 
-  // we create data for celiac ii
+  // we create_for_node data for celiac ii
   mc::PhysicalData main_vessel_data{
     1706.7e2, // 1706.7 hPa
     0.13,     // 0.13 cm^2
@@ -49,9 +49,9 @@ int main(int argc, char *argv[]) {
     std::sqrt(2) / 2.        // [cm]
   };
 
-  // create the ascending aorta
+  // create_for_node the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
-  // create vertices:
+  // create_for_node vertices:
   auto start = graph->create_vertex();
   auto midpoint1 = graph->create_vertex();
   auto upper_point = graph->create_vertex();
@@ -59,17 +59,17 @@ int main(int argc, char *argv[]) {
   auto midpoint2 = graph->create_vertex();
   auto endpoint = graph->create_vertex();
   // connect vertices:
-  auto e1 = graph->connect(*start, *midpoint1);
+  auto e1 = graph->connect(*start, *midpoint1, num_edges_per_segment);
   e1->add_physical_data(main_vessel_data);
-  auto e2_1 = graph->connect(*midpoint1, *upper_point);
+  auto e2_1 = graph->connect(*midpoint1, *upper_point, num_edges_per_segment);
   e2_1->add_physical_data(other_vessel_data);
-  auto e2_2 = graph->connect(*midpoint1, *lower_point);
+  auto e2_2 = graph->connect(*midpoint1, *lower_point, num_edges_per_segment);
   e2_2->add_physical_data(other_vessel_data);
-  auto e3_1 = graph->connect(*lower_point, *midpoint2);
+  auto e3_1 = graph->connect(*lower_point, *midpoint2, num_edges_per_segment);
   e3_1->add_physical_data(other_vessel_data);
-  auto e3_2 = graph->connect(*upper_point, *midpoint2);
+  auto e3_2 = graph->connect(*upper_point, *midpoint2, num_edges_per_segment);
   e3_2->add_physical_data(other_vessel_data);
-  auto e4 = graph->connect(*midpoint2, *endpoint);
+  auto e4 = graph->connect(*midpoint2, *endpoint, num_edges_per_segment);
   e4->add_physical_data(main_vessel_data);
   // to embed the graph in 3D, we define and assign coordinates to the edges:
   auto start_coord = mc::Point(0, 0, 0);
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
 
   // initialize dof map
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
-  fill(MPI_COMM_WORLD, *graph, *dof_map, 2, degree, num_edges_per_segment);
+  dof_map->create_for_node(MPI_COMM_WORLD, *graph, 2, degree);
 
   // configure solver
   mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);

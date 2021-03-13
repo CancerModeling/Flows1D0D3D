@@ -58,6 +58,19 @@ public:
 
   std::size_t num_dof() const;
 
+  /*! @brief Creates the dof-map just for the given node,
+   *         i.e. edges not assigned to the given node are ignored.
+   *
+   * @param comm The communicator.
+   * @param graph The graph storage
+   * @param num_components The number of components which we want to calculate.
+   * @param degree The degree of the FE-shape functions.
+   */
+  void create_for_node(MPI_Comm comm,
+                       const GraphStorage &graph,
+                       std::size_t num_components,
+                       std::size_t degree);
+
 private:
   std::vector<std::unique_ptr<LocalDofMap>> d_local_dof_maps;
 
@@ -68,13 +81,6 @@ private:
 void extract_dof(const std::vector<std::size_t> &dof_indices,
                  const std::vector<double> &global,
                  std::vector<double> &local);
-
-void fill(MPI_Comm comm,
-          const GraphStorage &graph,
-          DofMap &dof_map,
-          std::size_t num_components,
-          std::size_t degree,
-          std::size_t num_micro_edges_per_vessel);
 
 } // namespace macrocirculation
 

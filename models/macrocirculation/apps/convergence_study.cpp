@@ -74,21 +74,21 @@ const double K_CFL = 0.25;
 const double t_end = 0.1;
 
 template<std::size_t degree>
-double run_scenario(std::size_t num_edges_per_segment, double tau, bool use_ssp) {
-  // we create data for the ascending aorta
+double run_scenario(std::size_t num_micro_edges_per_segment, double tau, bool use_ssp) {
+  // we create_for_node data for the ascending aorta
   // auto vessel_data = std::make_shared<mc::VesselDataStorage>();
   // std::size_t ascending_aorta_id = vessel_data->add_parameter({G0, A0, rho});
 
-  // create the geometry of the ascending aorta
+  // create_for_node the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
   auto start = graph->create_vertex();
   auto end = graph->create_vertex();
-  auto vessel = graph->connect(*start, *end);
+  auto vessel = graph->connect(*start, *end, num_micro_edges_per_segment);
   vessel->add_embedding_data(mc::EmbeddingData{{mc::Point(0, 0, 0), mc::Point(length, 0, 0)}});
   vessel->add_physical_data(mc::PhysicalData{G0, A0, rho, length});
 
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
-  mc::fill(MPI_COMM_WORLD, *graph, *dof_map, 2, degree, num_edges_per_segment);
+  dof_map->create_for_node(MPI_COMM_WORLD, *graph, 2, degree);
 
   //mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
@@ -150,19 +150,19 @@ double run_scenario(std::size_t num_edges_per_segment, double tau, bool use_ssp)
 }
 
 template<std::size_t degree>
-void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size_t m_max) {
+void run_temporal_convergence_study(std::size_t num_micro_edges_per_segment, std::size_t m_max) {
   std::cout << "run temporal convergence study" << std::endl;
 
-  // we create data for the ascending aorta
+  // we create_for_node data for the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
   auto start = graph->create_vertex();
   auto end = graph->create_vertex();
-  auto vessel = graph->connect(*start, *end);
+  auto vessel = graph->connect(*start, *end, num_micro_edges_per_segment);
   vessel->add_embedding_data(mc::EmbeddingData{{mc::Point(0, 0, 0), mc::Point(length, 0, 0)}});
   vessel->add_physical_data(mc::PhysicalData{G0, A0, rho, length});
 
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
-  mc::fill(MPI_COMM_WORLD, *graph, *dof_map, 2, degree, num_edges_per_segment);
+  dof_map->create_for_node(MPI_COMM_WORLD, *graph, 2, degree);
 
   //mc::naive_mesh_partitioner( *graph, MPI_COMM_WORLD );
 
@@ -170,7 +170,7 @@ void run_temporal_convergence_study(std::size_t num_edges_per_segment, std::size
   start->set_to_inflow([](auto) { return 0.; });
   end->set_to_inflow([](auto) { return 0.; });
 
-  const double h = 20. / num_edges_per_segment;
+  const double h = 20. / num_micro_edges_per_segment;
   const double tau_max = get_tau(h, K_CFL, c0);
   const double tau_min = tau_max / (1 << (m_max + 2));
   const double t_end = std::ceil(0.1 / tau_max) * tau_max;
