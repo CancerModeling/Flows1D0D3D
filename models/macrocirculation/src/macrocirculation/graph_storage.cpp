@@ -8,6 +8,7 @@
 #include "graph_storage.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <utility>
 
 namespace macrocirculation {
@@ -141,15 +142,48 @@ void GraphStorage::reorder_edges(Vertex &v) {
   std::swap(v.p_neighbors[0], v.p_neighbors[1]);
 }
 
-Edge::Edge(std::size_t id, const Vertex &v1, const Vertex &v2)
-    : Primitive(id), p_neighbors({v1.get_id(), v2.get_id()}), d_rank(0){};
+Edge::Edge(std::size_t id,
+           const Vertex &v1,
+           const Vertex &v2,
+           std::size_t first_micro_edge_id,
+           std::size_t first_micro_vertex_id,
+           std::size_t num_micro_edges)
+    : Primitive(id),
+      p_neighbors({v1.get_id(), v2.get_id()}),
+      d_rank(0),
+      d_micro_edges(),
+      d_micro_vertices() {
+  for (std::size_t local_micro_edge_id = 0; local_micro_edge_id < num_micro_edges; local_micro_edge_id += 1)
+    d_micro_edges.emplace_back(local_micro_edge_id, first_micro_edge_id + local_micro_edge_id);
+
+  for (std::size_t local_micro_vertex_id = 0; local_micro_vertex_id < num_micro_edges + 1; local_micro_vertex_id += 1)
+    d_micro_vertices.emplace_back(local_micro_vertex_id, first_micro_vertex_id + local_micro_vertex_id);
+};
+
+std::size_t Edge::num_micro_edges() const { return d_micro_edges.size(); };
+
+const std::vector<MicroPrimitive> &Edge::micro_edges() const { return d_micro_edges; };
+
+const std::vector<MicroPrimitive> &Edge::micro_vertices() const { return d_micro_vertices; }
 
 const std::vector<std::size_t> &Edge::get_vertex_neighbors() const {
   return p_neighbors;
 };
 
+const MicroPrimitive& Edge::left_micro_vertex() const {
+  assert(!d_micro_vertices.empty());
+  return d_micro_vertices[0];
+}
+const MicroPrimitive& Edge::right_micro_vertex() const {
+  assert(!d_micro_vertices.empty());
+  return d_micro_vertices.back();
+}
+
 GraphStorage::GraphStorage()
-    : p_next_edge_id(0), p_next_vertex_id(0){};
+    : p_next_edge_id(0),
+      p_next_vertex_id(0),
+      d_num_micro_edges(0),
+      d_num_micro_vertices(0){};
 
 std::shared_ptr<Edge> GraphStorage::get_edge(std::size_t id) {
   return p_edges.at(id);
@@ -173,11 +207,11 @@ std::shared_ptr<Vertex> GraphStorage::create_vertex() {
   return vertex;
 };
 
-std::shared_ptr<Edge> GraphStorage::connect(Vertex &v1, Vertex &v2) {
-  return connect(v1, v2, p_next_edge_id++);
+std::shared_ptr<Edge> GraphStorage::connect(Vertex &v1, Vertex &v2, std::size_t num_micro_edges) {
+  return connect(v1, v2, p_next_edge_id++, num_micro_edges);
 }
 
-std::shared_ptr<Edge> GraphStorage::connect(Vertex &v1, Vertex &v2, std::size_t edge_id) {
+std::shared_ptr<Edge> GraphStorage::connect(Vertex &v1, Vertex &v2, std::size_t edge_id, std::size_t num_local_micro_edges) {
   if (p_vertices.find(v1.get_id()) == p_vertices.end() || p_vertices.find(v2.get_id()) == p_vertices.end())
     throw std::runtime_error("vertices not found in storage");
 
@@ -187,11 +221,14 @@ std::shared_ptr<Edge> GraphStorage::connect(Vertex &v1, Vertex &v2, std::size_t 
   if (p_edges.find(edge_id) != p_edges.end())
     throw std::runtime_error("edge with given id already in the graph");
 
-  auto edge = std::make_shared<Edge>(edge_id, v1, v2);
+  auto edge = std::make_shared<Edge>(edge_id, v1, v2, d_num_micro_edges, d_num_micro_vertices, num_local_micro_edges);
   p_edges[edge_id] = edge;
 
   v1.p_neighbors.push_back(edge->get_id());
   v2.p_neighbors.push_back(edge->get_id());
+
+  d_num_micro_edges += num_local_micro_edges;
+  d_num_micro_vertices += num_local_micro_edges + 1;
 
   return edge;
 }

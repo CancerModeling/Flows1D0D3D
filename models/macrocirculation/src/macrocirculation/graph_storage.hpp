@@ -46,6 +46,23 @@ struct EmbeddingData {
   std::vector<Point> points;
 };
 
+class MicroPrimitive {
+public:
+  MicroPrimitive(std::size_t local_id, std::size_t global_id)
+      : d_local_id(local_id),
+        d_global_id(global_id) {}
+
+  std::size_t get_local_id() const { return d_local_id; }
+  std::size_t get_global_id() const { return d_local_id; }
+
+private:
+  std::size_t d_local_id;
+  std::size_t d_global_id;
+};
+
+using MicroVertex = MicroPrimitive;
+using MicroEdge = MicroPrimitive;
+
 class Primitive {
 public:
   explicit Primitive(std::size_t id);
@@ -90,8 +107,6 @@ private:
 
 class Edge : public Primitive {
 public:
-  Edge(std::size_t id, const Vertex &v1, const Vertex &v2);
-
   const std::vector<std::size_t> &get_vertex_neighbors() const;
 
   const PhysicalData &get_physical_data() const;
@@ -112,6 +127,22 @@ public:
   /*! @brief Returns the rank to which the dof on the given edge are assigned. */
   int rank() const;
 
+  std::size_t num_micro_edges() const;
+
+  const std::vector<MicroPrimitive> &micro_edges() const;
+
+  const std::vector<MicroPrimitive> &micro_vertices() const;
+
+  const MicroPrimitive& left_micro_vertex() const;
+  const MicroPrimitive& right_micro_vertex() const;
+
+  Edge(std::size_t id,
+       const Vertex &v1,
+       const Vertex &v2,
+       std::size_t first_micro_edge_id,
+       std::size_t first_micro_vertex_id,
+       std::size_t num_micro_edges);
+
 protected:
   /*! @brief Assigns the edge to a certain rank.
     *
@@ -129,6 +160,9 @@ protected:
 
   int d_rank;
 
+  std::vector<MicroPrimitive> d_micro_edges;
+  std::vector<MicroPrimitive> d_micro_vertices;
+
   friend GraphStorage;
 };
 
@@ -143,7 +177,7 @@ public:
   std::shared_ptr<const Vertex> get_vertex(std::size_t id) const;
 
   std::shared_ptr<Vertex> create_vertex();
-  std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2);
+  std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t num_micro_edges);
   void remove(Edge &e);
 
   std::vector<std::size_t> get_edge_ids() const;
@@ -169,7 +203,7 @@ public:
   void assign_edge_to_rank(Edge &edge, int rank);
 
 private:
-  std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_id);
+  std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_id, std::size_t num_micro_edges);
 
   /// @brief
   ///
@@ -190,6 +224,9 @@ private:
 
   std::size_t p_next_edge_id;
   std::size_t p_next_vertex_id;
+
+  std::size_t d_num_micro_edges;
+  std::size_t d_num_micro_vertices;
 };
 
 } // namespace macrocirculation

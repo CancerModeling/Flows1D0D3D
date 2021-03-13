@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     64.0 / num_macro_edges // 4 cm
   };
 
-  // create the geometry of the ascending aorta
+  // create_for_node the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
   const mc::Point start_point = mc::Point{0, 0, 0};
   const mc::Point end_point = mc::Point{4, 0, 0};
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
   auto previous_vertex = start;
   for (std::size_t macro_edge_index = 0; macro_edge_index < num_macro_edges; macro_edge_index += 1) {
     auto next_vertex = graph->create_vertex();
-    auto vessel = graph->connect(*previous_vertex, *next_vertex);
+    auto vessel = graph->connect(*previous_vertex, *next_vertex, num_edges_per_segment);
     vessel->add_embedding_data(mc::EmbeddingData{
       {mc::convex_combination(start_point, end_point, static_cast<double>(macro_edge_index) / num_macro_edges),
        mc::convex_combination(
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
 
   // configure solver
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
-  fill(MPI_COMM_WORLD, *graph, *dof_map, 2, degree, num_edges_per_segment);
+  dof_map->create_for_node(MPI_COMM_WORLD, *graph, 2, degree);
   mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
   solver.set_tau(tau);
   solver.use_ssp_method();
