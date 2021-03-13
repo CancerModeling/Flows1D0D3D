@@ -12,7 +12,10 @@
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/graph_csv_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
+#include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
+#include "macrocirculation/interpolate_to_vertices.hpp"
+#include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
 namespace mc = macrocirculation;
@@ -39,9 +42,12 @@ int main(int argc, char *argv[]) {
     1.        // length
   };
 
-  mc::PhysicalData other_vessel_data{1706.7e2 / std::sqrt(2), 0.13 / 2, 1.028, std::sqrt(2) / 2.};
-
-  const double scale = 1;
+  mc::PhysicalData other_vessel_data{
+    1706.7e2 / std::sqrt(2), // [hPa]
+    0.13 / 2,                // [cm^2]
+    1.028,                   // [kg/cm^3]
+    std::sqrt(2) / 2.        // [cm]
+  };
 
   // create the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
@@ -65,6 +71,19 @@ int main(int argc, char *argv[]) {
   e3_2->add_physical_data(other_vessel_data);
   auto e4 = graph->connect(*midpoint2, *endpoint);
   e4->add_physical_data(main_vessel_data);
+  // to embed the graph in 3D, we define and assign coordinates to the edges:
+  auto start_coord = mc::Point(0, 0, 0);
+  auto midpoint1_coord = mc::Point(1, 0, 0);
+  auto upper_point_coord = mc::Point(2, 1, 0);
+  auto lower_point_coord = mc::Point(2, -1, 0);
+  auto midpoint2_coord = mc::Point(3, 0, 0);
+  auto endpoint_coord = mc::Point(4, 0, 0);
+  e1->add_embedding_data({ {start_coord, midpoint1_coord } });
+  e2_1->add_embedding_data({ {midpoint1_coord, upper_point_coord } });
+  e2_2->add_embedding_data({ {midpoint1_coord, lower_point_coord } });
+  e3_1->add_embedding_data({ {upper_point_coord, midpoint2_coord } });
+  e3_2->add_embedding_data({ {lower_point_coord, midpoint2_coord } });
+  e4->add_embedding_data({ {midpoint2_coord ,endpoint_coord } });
 
   // set inflow boundary conditions
   start->set_to_inflow(mc::heart_beat_inflow());
@@ -82,14 +101,14 @@ int main(int argc, char *argv[]) {
   solver.set_tau(tau);
   solver.use_ssp_method();
 
-  /*
-  std::vector<double> Q_vertex_values(graph->num_edges() * 2, 0);
-  std::vector<double> A_vertex_values(graph->num_edges() * 2, 0);
-  std::vector<double> p_vertex_values(graph->num_edges() * 2, 0);
-  std::vector<double> p_static_vertex_values(graph->num_edges() * 2, 0);
-   */
+  std::vector<mc::Point> points;
+  std::vector<double> Q_vertex_values;
+  std::vector<double> A_vertex_values;
+  std::vector<double> p_total_vertex_values;
+  std::vector<double> p_static_vertex_values;
 
   mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map, {"Q", "A"});
+  mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "bifurcation_solution");
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
@@ -100,17 +119,18 @@ int main(int argc, char *argv[]) {
 
       // save solution
       csv_writer.write(solver.get_time(), solver.get_solution());
-      /*
-       solver.get_solution_on_vertices(Q_vertex_values, A_vertex_values);
-       solver.get_total_pressure_on_vertices(p_vertex_values);
-       solver.get_static_pressure_on_vertices(p_static_vertex_values);
-       mc::GraphDataWriter writer;
-       writer.add_vertex_data("Q", Q_vertex_values);
-       writer.add_vertex_data("A", A_vertex_values);
-       writer.add_vertex_data("p_total", p_vertex_values);
-       writer.add_vertex_data("p_static", p_static_vertex_values);
-       writer.write_vtk("bifurcation_solution", *graph, it);
-        */
+
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 0, solver.get_solution(), points, Q_vertex_values);
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 1, solver.get_solution(), points, A_vertex_values);
+      mc::calculate_total_pressure(MPI_COMM_WORLD, *graph, *dof_map, solver.get_solution(), points, p_total_vertex_values);
+      mc::calculate_static_pressure(MPI_COMM_WORLD, *graph, *dof_map, solver.get_solution(), points, p_static_vertex_values);
+
+      pvd_writer.set_points(points);
+      pvd_writer.add_vertex_data("Q", Q_vertex_values);
+      pvd_writer.add_vertex_data("A", A_vertex_values);
+      pvd_writer.add_vertex_data("p_static", p_static_vertex_values);
+      pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
+      pvd_writer.write(solver.get_time());
     }
 
     // break
