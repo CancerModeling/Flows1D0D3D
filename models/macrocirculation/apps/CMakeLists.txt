@@ -14,6 +14,10 @@ SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/macrocirculation/)
 # Create executable
 # ****************************************************************************
 
+# advection solver:
+add_executable(${ProjectName}Advection advection.cpp)
+target_link_libraries(${ProjectName}Advection ${ProjectLib})
+
 # nonlinear flow solver line:
 add_executable(${ProjectName}NonlinearFlowLine nonlinear_flow_line.cpp)
 target_link_libraries(${ProjectName}NonlinearFlowLine ${ProjectLib})
@@ -30,7 +34,7 @@ target_link_libraries(${ProjectName}BifurcationFlow ${ProjectLib})
 add_executable(${ProjectName}ConvergenceStudy convergence_study.cpp)
 target_link_libraries(${ProjectName}ConvergenceStudy ${ProjectLib})
 
-foreach(TargetName ${ProjectName}NonlinearFlowLine ${ProjectName}NonlinearFlowBifurcation ${ProjectName}ConvergenceStudy)
+foreach(TargetName ${ProjectName}NonlinearFlowLine ${ProjectName}NonlinearFlowBifurcation ${ProjectName}ConvergenceStudy ${ProjectName}Advection)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)

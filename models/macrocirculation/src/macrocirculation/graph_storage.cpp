@@ -153,28 +153,48 @@ Edge::Edge(std::size_t id,
       d_rank(0),
       d_micro_edges(),
       d_micro_vertices() {
+  assert(num_micro_edges > 0);
+
+  // create micro edges
   for (std::size_t local_micro_edge_id = 0; local_micro_edge_id < num_micro_edges; local_micro_edge_id += 1)
     d_micro_edges.emplace_back(local_micro_edge_id, first_micro_edge_id + local_micro_edge_id);
 
+  // create micro vertices
   for (std::size_t local_micro_vertex_id = 0; local_micro_vertex_id < num_micro_edges + 1; local_micro_vertex_id += 1)
     d_micro_vertices.emplace_back(local_micro_vertex_id, first_micro_vertex_id + local_micro_vertex_id);
+
+  // connect inner micro_vertices
+  d_micro_vertices[0].d_right_edge = &d_micro_edges[0];
+  d_micro_vertices[0].d_right_vertex = &d_micro_vertices[1];
+  for (std::size_t local_micro_vertex_id = 1; local_micro_vertex_id < num_micro_edges; local_micro_vertex_id += 1) {
+    d_micro_vertices[local_micro_vertex_id].d_left_edge = &d_micro_edges[local_micro_vertex_id - 1];
+    d_micro_vertices[local_micro_vertex_id].d_right_edge = &d_micro_edges[local_micro_vertex_id];
+    d_micro_vertices[local_micro_vertex_id].d_left_vertex = &d_micro_vertices[local_micro_vertex_id - 1];
+    d_micro_vertices[local_micro_vertex_id].d_right_vertex = &d_micro_vertices[local_micro_vertex_id + 1];
+  }
+  d_micro_vertices.back().d_left_edge = &d_micro_edges.back();
+  d_micro_vertices.back().d_left_vertex = &d_micro_vertices.back() - 1;
 };
 
 std::size_t Edge::num_micro_edges() const { return d_micro_edges.size(); };
 
-const std::vector<MicroPrimitive> &Edge::micro_edges() const { return d_micro_edges; };
+const std::vector<MicroEdge> &Edge::micro_edges() const { return d_micro_edges; };
 
-const std::vector<MicroPrimitive> &Edge::micro_vertices() const { return d_micro_vertices; }
+const std::vector<MicroVertex> &Edge::micro_vertices() const { return d_micro_vertices; }
 
 const std::vector<std::size_t> &Edge::get_vertex_neighbors() const {
   return p_neighbors;
 };
 
-const MicroPrimitive& Edge::left_micro_vertex() const {
+Edge::InnerVerticesIterator Edge::inner_micro_vertices() const {
+  return InnerVerticesIterator{d_micro_vertices};
+}
+
+const MicroVertex &Edge::left_micro_vertex() const {
   assert(!d_micro_vertices.empty());
   return d_micro_vertices[0];
 }
-const MicroPrimitive& Edge::right_micro_vertex() const {
+const MicroVertex &Edge::right_micro_vertex() const {
   assert(!d_micro_vertices.empty());
   return d_micro_vertices.back();
 }

@@ -34,6 +34,10 @@ void LocalDofMap::dof_indices(std::size_t micro_edge_index,
   assert(dof_indices.back() < d_dof_interval_end);
 }
 
+void LocalDofMap::dof_indices(const MicroEdge &micro_edge, std::size_t component, std::vector<std::size_t> &dof_indices_vec) const {
+  dof_indices(micro_edge.get_local_id(), component, dof_indices_vec);
+}
+
 std::size_t LocalDofMap::num_local_dof() const {
   return d_num_components * d_num_basis_functions * d_num_micro_edges;
 }
@@ -92,8 +96,7 @@ void DofMap::create(MPI_Comm comm,
                     std::size_t num_components,
                     std::size_t degree,
                     bool global) {
-  for (int rank=0; rank<mpi::size(comm); rank+=1)
-  {
+  for (int rank = 0; rank < mpi::size(comm); rank += 1) {
     // if we do not assign all the ranks AND this is not the calling rank we add nothing
     if (!global && (rank != mpi::rank(comm)))
       continue;

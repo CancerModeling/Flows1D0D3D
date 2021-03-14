@@ -17,6 +17,7 @@ namespace macrocirculation {
 // forward declarations
 class Edge;
 class GraphStorage;
+class MicroEdge;
 
 /*! @brief Simple dof map, which orders the dofs by the formula
  *         dof_interval_start + edge_id * num_components * num_basis_functions + num_basis_functions * component_id + basis_function_id
@@ -29,6 +30,8 @@ public:
               std::size_t num_micro_edges);
 
   void dof_indices(std::size_t local_micro_edge_id, std::size_t component, std::vector<std::size_t> &dof_indices) const;
+
+  void dof_indices(const MicroEdge& micro_edge, std::size_t component, std::vector<std::size_t> &dof_indices) const;
 
   std::size_t num_local_dof() const;
   std::size_t num_micro_edges() const;
