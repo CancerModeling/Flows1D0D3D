@@ -8,6 +8,7 @@
 #ifndef TUMORMODELS_GRAPH_STORAGE_H
 #define TUMORMODELS_GRAPH_STORAGE_H
 
+#include <cassert>
 #include <functional>
 #include <map>
 #include <memory>
@@ -17,6 +18,10 @@
 namespace macrocirculation {
 
 class GraphStorage;
+class Edge;
+class Vertex;
+class MicroEdge;
+class MicroVertex;
 
 struct Point {
   Point(double x, double y, double z);
@@ -46,11 +51,11 @@ struct EmbeddingData {
   std::vector<Point> points;
 };
 
-class MicroPrimitive {
+class MicroEdge {
 public:
-  MicroPrimitive(std::size_t local_id, std::size_t global_id)
-      : d_local_id(local_id),
-        d_global_id(global_id) {}
+  MicroEdge(std::size_t local_id, std::size_t global_id)
+  : d_local_id(local_id),
+    d_global_id(global_id) {}
 
   std::size_t get_local_id() const { return d_local_id; }
   std::size_t get_global_id() const { return d_local_id; }
@@ -60,8 +65,50 @@ private:
   std::size_t d_global_id;
 };
 
-using MicroVertex = MicroPrimitive;
-using MicroEdge = MicroPrimitive;
+class MicroVertex {
+public:
+  MicroVertex(std::size_t local_id, std::size_t global_id)
+      : d_local_id(local_id),
+        d_global_id(global_id),
+        d_left_edge(nullptr),
+        d_right_edge(nullptr),
+        d_left_vertex(nullptr),
+        d_right_vertex(nullptr) {}
+
+  std::size_t get_local_id() const { return d_local_id; }
+  std::size_t get_global_id() const { return d_local_id; }
+
+  MicroEdge *get_left_edge() const {
+    assert(d_left_edge != nullptr);
+    return d_left_edge;
+  }
+
+  MicroEdge *get_right_edge() const {
+    assert(d_right_edge != nullptr);
+    return d_right_edge;
+  }
+
+  MicroVertex *get_left_vertex() const {
+    assert(d_left_vertex != nullptr);
+    return d_left_vertex;
+  }
+  MicroVertex *get_right_vertex() const {
+    assert(d_right_vertex != nullptr);
+    return d_right_vertex;
+  }
+
+protected:
+  std::size_t d_local_id;
+  std::size_t d_global_id;
+
+  MicroEdge *d_left_edge;
+  MicroEdge *d_right_edge;
+
+  MicroVertex *d_left_vertex;
+  MicroVertex *d_right_vertex;
+
+  friend Edge;
+};
 
 class Primitive {
 public:
@@ -107,6 +154,19 @@ private:
 
 class Edge : public Primitive {
 public:
+  struct InnerVerticesIterator {
+    explicit InnerVerticesIterator(const std::vector<MicroVertex> &vertices)
+        : d_vertices(vertices) {
+      assert(d_vertices.size() > 2);
+    }
+
+    const MicroVertex *begin() const { return (&d_vertices.front()) + 1; }
+    const MicroVertex *end() const { return (&d_vertices.back()) - 1; }
+
+  private:
+    const std::vector<MicroVertex> &d_vertices;
+  };
+
   const std::vector<std::size_t> &get_vertex_neighbors() const;
 
   const PhysicalData &get_physical_data() const;
@@ -129,12 +189,14 @@ public:
 
   std::size_t num_micro_edges() const;
 
-  const std::vector<MicroPrimitive> &micro_edges() const;
+  const std::vector<MicroEdge> &micro_edges() const;
 
-  const std::vector<MicroPrimitive> &micro_vertices() const;
+  const std::vector<MicroVertex> &micro_vertices() const;
 
-  const MicroPrimitive& left_micro_vertex() const;
-  const MicroPrimitive& right_micro_vertex() const;
+  InnerVerticesIterator inner_micro_vertices() const;
+
+  const MicroVertex &left_micro_vertex() const;
+  const MicroVertex &right_micro_vertex() const;
 
   Edge(std::size_t id,
        const Vertex &v1,
@@ -160,8 +222,8 @@ protected:
 
   int d_rank;
 
-  std::vector<MicroPrimitive> d_micro_edges;
-  std::vector<MicroPrimitive> d_micro_vertices;
+  std::vector<MicroEdge> d_micro_edges;
+  std::vector<MicroVertex> d_micro_vertices;
 
   friend GraphStorage;
 };
