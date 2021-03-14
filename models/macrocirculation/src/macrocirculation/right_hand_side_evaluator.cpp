@@ -549,11 +549,11 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
         }
 
         // boundary contributions  - tau [ F(U_up) phi ] ds, keep attention to the minus!
-        f_loc_Q[i] -= F_Q_eval(Q_up_1, A_up_1) * phi_b[i][1];
-        f_loc_Q[i] += F_Q_eval(Q_up_0, A_up_0) * phi_b[i][0];
+        f_loc_Q[i] -= F_Q_eval(Q_up_1, A_up_1) * phi_b[1][i];
+        f_loc_Q[i] += F_Q_eval(Q_up_0, A_up_0) * phi_b[0][i];
 
-        f_loc_A[i] -= Q_up_1 * phi_b[i][1];
-        f_loc_A[i] += Q_up_0 * phi_b[i][0];
+        f_loc_A[i] -= Q_up_1 * phi_b[1][i];
+        f_loc_A[i] += Q_up_0 * phi_b[0][i];
       }
 
       // copy into global vector

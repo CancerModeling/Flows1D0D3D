@@ -16,7 +16,7 @@ FETypeNetwork::FETypeNetwork(QuadratureFormula qf, std::size_t degree)
     : d_qf(std::move(qf)),
       d_degree(degree),
       d_phi(d_degree + 1, std::vector<double>(d_qf.size())),
-      d_phi_boundary(d_degree + 1, std::vector<double>(2)),
+      d_phi_boundary(2, std::vector<double>(d_degree + 1)),
       d_dphi(d_degree + 1, std::vector<double>(d_qf.size())), d_JxW(d_qf.size()) {
   // we only have lagrange polynomials up to order three
   assert(d_degree < 4);
@@ -47,21 +47,21 @@ FETypeNetwork::FETypeNetwork(QuadratureFormula qf, std::size_t degree)
   // phi on boundary
   {
     d_phi_boundary[0][0] = 1;
-    d_phi_boundary[0][1] = 1;
+    d_phi_boundary[1][0] = 1;
 
     if (d_degree > 0) {
-      d_phi_boundary[1][0] = legendre<1>(-1.);
+      d_phi_boundary[0][1] = legendre<1>(-1.);
       d_phi_boundary[1][1] = legendre<1>(+1.);
     }
 
     if (d_degree > 1) {
-      d_phi_boundary[2][0] = legendre<2>(-1.);
-      d_phi_boundary[2][1] = legendre<2>(+1.);
+      d_phi_boundary[0][2] = legendre<2>(-1.);
+      d_phi_boundary[1][2] = legendre<2>(+1.);
     }
 
     if (d_degree > 2) {
-      d_phi_boundary[3][0] = legendre<3>(-1.);
-      d_phi_boundary[3][1] = legendre<3>(+1.);
+      d_phi_boundary[0][3] = legendre<3>(-1.);
+      d_phi_boundary[1][3] = legendre<3>(+1.);
     }
   }
 }

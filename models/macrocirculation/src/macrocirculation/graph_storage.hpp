@@ -161,7 +161,7 @@ public:
     }
 
     const MicroVertex *begin() const { return (&d_vertices.front()) + 1; }
-    const MicroVertex *end() const { return (&d_vertices.back()) - 1; }
+    const MicroVertex *end() const { return (&d_vertices.back()); }
 
   private:
     const std::vector<MicroVertex> &d_vertices;
