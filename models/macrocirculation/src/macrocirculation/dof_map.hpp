@@ -58,18 +58,24 @@ public:
 
   std::size_t num_dof() const;
 
-  /*! @brief Creates the dof-map just for the given node,
-   *         i.e. edges not assigned to the given node are ignored.
+  /*! @brief Creates the dof-map.
    *
-   * @param comm The communicator.
-   * @param graph The graph storage
-   * @param num_components The number of components which we want to calculate.
-   * @param degree The degree of the FE-shape functions.
+   * @param comm    The communicator.
+   * @param graph   The graph storage
+   * @param num_components  The number of components which we want to calculate.
+   * @param degree          The degree of the FE-shape functions.
+   * @param global          If global is true, the dofs are distributed to all macro-edges,
+   *                        starting with the edges assigned to rank 0, then rank 1 and so on.
+   *                        If global is false, then the dofs are only distributed to the macro-edges
+   *                        which belong to the calling rank.
+   *                        The first approach is useful if you want to assemble a global matrix with e.g. petsc.
+   *                        The second approach is useful if you have a fully explicit scheme and only need the local dofs.
    */
-  void create_for_node(MPI_Comm comm,
-                       const GraphStorage &graph,
-                       std::size_t num_components,
-                       std::size_t degree);
+  void create(MPI_Comm comm,
+              const GraphStorage &graph,
+              std::size_t num_components,
+              std::size_t degree,
+              bool global);
 
 private:
   std::vector<std::unique_ptr<LocalDofMap>> d_local_dof_maps;

@@ -88,7 +88,7 @@ double run_scenario(std::size_t num_micro_edges_per_segment, double tau, bool us
   vessel->add_physical_data(mc::PhysicalData{G0, A0, rho, length});
 
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
-  dof_map->create_for_node(MPI_COMM_WORLD, *graph, 2, degree);
+  dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   //mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
@@ -162,7 +162,7 @@ void run_temporal_convergence_study(std::size_t num_micro_edges_per_segment, std
   vessel->add_physical_data(mc::PhysicalData{G0, A0, rho, length});
 
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
-  dof_map->create_for_node(MPI_COMM_WORLD, *graph, 2, degree);
+  dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   //mc::naive_mesh_partitioner( *graph, MPI_COMM_WORLD );
 
