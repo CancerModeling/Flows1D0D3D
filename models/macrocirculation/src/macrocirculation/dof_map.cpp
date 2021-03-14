@@ -87,13 +87,21 @@ void extract_dof(const std::vector<std::size_t> &dof_indices,
     local[i] = global[dof_indices[i]];
 }
 
-void DofMap::create_for_node(MPI_Comm comm,
+void DofMap::create(MPI_Comm comm,
                     const GraphStorage &graph,
                     std::size_t num_components,
-                    std::size_t degree) {
-  for (const auto &e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
-    const auto edge = graph.get_edge(e_id);
-    add_local_dof_map(*edge, num_components, degree + 1, edge->num_micro_edges());
+                    std::size_t degree,
+                    bool global) {
+  for (int rank=0; rank<mpi::size(comm); rank+=1)
+  {
+    // if we do not assign all the ranks AND this is not the calling rank we add nothing
+    if (!global && (rank != mpi::rank(comm)))
+      continue;
+
+    for (const auto &e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
+      const auto edge = graph.get_edge(e_id);
+      add_local_dof_map(*edge, num_components, degree + 1, edge->num_micro_edges());
+    }
   }
 }
 

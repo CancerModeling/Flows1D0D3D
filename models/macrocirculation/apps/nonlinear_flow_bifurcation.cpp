@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
 
   // initialize dof map
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
-  dof_map->create_for_node(MPI_COMM_WORLD, *graph, 2, degree);
+  dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   // configure solver
   mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
