@@ -54,8 +54,8 @@ struct EmbeddingData {
 class MicroEdge {
 public:
   MicroEdge(std::size_t local_id, std::size_t global_id)
-  : d_local_id(local_id),
-    d_global_id(global_id) {}
+      : d_local_id(local_id),
+        d_global_id(global_id) {}
 
   std::size_t get_local_id() const { return d_local_id; }
   std::size_t get_global_id() const { return d_local_id; }
@@ -263,6 +263,8 @@ public:
   std::vector<std::size_t> get_active_vertex_ids(int rank) const;
 
   void assign_edge_to_rank(Edge &edge, int rank);
+
+  std::vector<std::shared_ptr<Vertex>> find_embedded_vertices(const Point &p) const;
 
 private:
   std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_id, std::size_t num_micro_edges);

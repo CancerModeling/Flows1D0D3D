@@ -35,7 +35,7 @@ void interpolate_constant(MPI_Comm comm,
                           std::vector<double> &result);
 
 /*! @brief Sets the given function to A=A0 and Q=0. WARNING: Assumes legendre basis! */
-void set_to_A0(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, double A0, std::vector<double> &result);
+void set_to_A0(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, std::vector<double> &result);
 
 template<std::size_t degree>
 class ExplicitNonlinearFlowSolver {
