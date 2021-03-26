@@ -159,192 +159,58 @@ void RightHandSideEvaluator::evaluate_macro_edge_boundary_values(const std::vect
   }
 }
 
-
-void RightHandSideEvaluator::calculate_bifurcation_fluxes(const std::vector<double> &u_prev) {
+void RightHandSideEvaluator::calculate_nfurcation_fluxes(const std::vector<double> &u_prev) {
   for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
     // we only handle bifurcations
-    if (vertex->get_edge_neighbors().size() != 3)
+    if (!vertex->is_bifurcation())
       continue;
 
-    // get vertices
-    const auto e0 = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
-    const auto e1 = d_graph->get_edge(vertex->get_edge_neighbors()[1]);
-    const auto e2 = d_graph->get_edge(vertex->get_edge_neighbors()[2]);
+    const size_t num_vessels = vertex->get_edge_neighbors().size();
+
+    // get edges
+    std::vector<std::shared_ptr<Edge>> e;
+    for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1)
+      e.push_back(d_graph->get_edge(vertex->get_edge_neighbors()[vessel_idx]));
 
     // check orientation
-    const bool e0_in = e0->is_pointing_to(vertex->get_id());
-    const bool e1_in = e1->is_pointing_to(vertex->get_id());
-    const bool e2_in = e2->is_pointing_to(vertex->get_id());
+    std::vector<bool> e_in;
+    for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1)
+      e_in.push_back(e[vessel_idx]->is_pointing_to(vertex->get_id()));
 
     // get data
-    const auto &data_e0 = e0->get_physical_data();
-    const auto &data_e1 = e1->get_physical_data();
-    const auto &data_e2 = e2->get_physical_data();
-    const VesselParameters p_e0{data_e0.G0, data_e0.A0, data_e0.rho};
-    const VesselParameters p_e1{data_e1.G0, data_e1.A0, data_e1.rho};
-    const VesselParameters p_e2{data_e2.G0, data_e2.A0, data_e2.rho};
+    std::vector<VesselParameters> p_e;
+    for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
+      const auto &data_e = e[vessel_idx]->get_physical_data();
+      p_e.emplace_back(data_e.G0, data_e.A0, data_e.rho);
+    }
 
-    // evaluate on edge e0
-    const double Q_e0 = e0_in ? d_Q_macro_edge_boundary_value[2 * e0->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * e0->get_id()];
-    const double A_e0 = e0_in ? d_A_macro_edge_boundary_value[2 * e0->get_id() + 1] : d_A_macro_edge_boundary_value[2 * e0->get_id()];
-
-    // evaluate on edge e1
-    const double Q_e1 = e1_in ? d_Q_macro_edge_boundary_value[2 * e1->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * e1->get_id()];
-    const double A_e1 = e1_in ? d_A_macro_edge_boundary_value[2 * e1->get_id() + 1] : d_A_macro_edge_boundary_value[2 * e1->get_id()];
-
-    // evaluate on edge e2
-    const double Q_e2 = e2_in ? d_Q_macro_edge_boundary_value[2 * e2->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * e2->get_id()];
-    const double A_e2 = e2_in ? d_A_macro_edge_boundary_value[2 * e2->get_id() + 1] : d_A_macro_edge_boundary_value[2 * e2->get_id()];
+    // evaluate on edges
+    std::vector<double> Q_e;
+    std::vector<double> A_e;
+    for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
+      const double Q = e_in[vessel_idx] ? d_Q_macro_edge_boundary_value[2 * e[vessel_idx]->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * e[vessel_idx]->get_id()];
+      const double A = e_in[vessel_idx] ? d_A_macro_edge_boundary_value[2 * e[vessel_idx]->get_id() + 1] : d_A_macro_edge_boundary_value[2 * e[vessel_idx]->get_id()];
+      Q_e.push_back(Q);
+      A_e.push_back(A);
+    }
 
     // get upwinded values at bifurcation
-    double Q_e0_up, A_e0_up;
-    double Q_e1_up, A_e1_up;
-    double Q_e2_up, A_e2_up;
-    // clang-format off
-      const auto num_iter = solve_at_bifurcation(
-          Q_e0, A_e0, p_e0, e0_in,
-          Q_e1, A_e1, p_e1, e1_in,
-          Q_e2, A_e2, p_e2, e2_in,
-          Q_e0_up, A_e0_up,
-          Q_e1_up, A_e1_up,
-          Q_e2_up, A_e2_up);
-    // clang-format on
+    std::vector<double> Q_up(num_vessels, 0);
+    std::vector<double> A_up(num_vessels, 0);
+    solve_at_nfurcation(Q_e, A_e, p_e, e_in, Q_up, A_up);
 
     // save upwinded values into upwind vector
-    if (e0_in) {
-      d_Q_macro_edge_flux_r[e0->get_id()] = Q_e0_up;
-      d_A_macro_edge_flux_r[e0->get_id()] = A_e0_up;
-    } else {
-      d_Q_macro_edge_flux_l[e0->get_id()] = Q_e0_up;
-      d_A_macro_edge_flux_l[e0->get_id()] = A_e0_up;
+    for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
+      if (e_in[vessel_idx]) {
+        d_Q_macro_edge_flux_r[e[vessel_idx]->get_id()] = Q_up[vessel_idx];
+        d_A_macro_edge_flux_r[e[vessel_idx]->get_id()] = A_up[vessel_idx];
+      } else {
+        d_Q_macro_edge_flux_l[e[vessel_idx]->get_id()] = Q_up[vessel_idx];
+        d_A_macro_edge_flux_l[e[vessel_idx]->get_id()] = A_up[vessel_idx];
+      }
     }
-
-    if (e1_in) {
-      d_Q_macro_edge_flux_r[e1->get_id()] = Q_e1_up;
-      d_A_macro_edge_flux_r[e1->get_id()] = A_e1_up;
-    } else {
-      d_Q_macro_edge_flux_l[e1->get_id()] = Q_e1_up;
-      d_A_macro_edge_flux_l[e1->get_id()] = A_e1_up;
-    }
-
-    if (e2_in) {
-      d_Q_macro_edge_flux_r[e2->get_id()] = Q_e2_up;
-      d_A_macro_edge_flux_r[e2->get_id()] = A_e2_up;
-    } else {
-      d_Q_macro_edge_flux_l[e2->get_id()] = Q_e2_up;
-      d_A_macro_edge_flux_l[e2->get_id()] = A_e2_up;
-    }
-  }
-}
-
-// TODO: Generalize this and share the implementation with the bifurcation implementation
-void RightHandSideEvaluator::calculate_trifurcation_fluxes(const std::vector<double> &u_prev) {
-  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
-    const auto vertex = d_graph->get_vertex(v_id);
-
-    // we only handle trifurcations
-    if (vertex->get_edge_neighbors().size() != 4)
-      continue;
-
-    // get vertices
-    const auto e0 = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
-    const auto e1 = d_graph->get_edge(vertex->get_edge_neighbors()[1]);
-    const auto e2 = d_graph->get_edge(vertex->get_edge_neighbors()[2]);
-    const auto e3 = d_graph->get_edge(vertex->get_edge_neighbors()[3]);
-
-    // check orientation
-    const bool e0_in = e0->is_pointing_to(vertex->get_id());
-    const bool e1_in = e1->is_pointing_to(vertex->get_id());
-    const bool e2_in = e2->is_pointing_to(vertex->get_id());
-    const bool e3_in = e3->is_pointing_to(vertex->get_id());
-
-    // get data
-    const auto &data_e0 = e0->get_physical_data();
-    const auto &data_e1 = e1->get_physical_data();
-    const auto &data_e2 = e2->get_physical_data();
-    const auto &data_e3 = e3->get_physical_data();
-    const VesselParameters p_e0{data_e0.G0, data_e0.A0, data_e0.rho};
-    const VesselParameters p_e1{data_e1.G0, data_e1.A0, data_e1.rho};
-    const VesselParameters p_e2{data_e2.G0, data_e2.A0, data_e2.rho};
-    const VesselParameters p_e3{data_e3.G0, data_e3.A0, data_e3.rho};
-
-    // evaluate on edge e0
-    const double Q_e0 = e0_in ? d_Q_macro_edge_boundary_value[2 * e0->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * e0->get_id()];
-    const double A_e0 = e0_in ? d_A_macro_edge_boundary_value[2 * e0->get_id() + 1] : d_A_macro_edge_boundary_value[2 * e0->get_id()];
-
-    // evaluate on edge e1
-    const double Q_e1 = e1_in ? d_Q_macro_edge_boundary_value[2 * e1->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * e1->get_id()];
-    const double A_e1 = e1_in ? d_A_macro_edge_boundary_value[2 * e1->get_id() + 1] : d_A_macro_edge_boundary_value[2 * e1->get_id()];
-
-    // evaluate on edge e2
-    const double Q_e2 = e2_in ? d_Q_macro_edge_boundary_value[2 * e2->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * e2->get_id()];
-    const double A_e2 = e2_in ? d_A_macro_edge_boundary_value[2 * e2->get_id() + 1] : d_A_macro_edge_boundary_value[2 * e2->get_id()];
-
-    // evaluate on edge e3
-    const double Q_e3 = e3_in ? d_Q_macro_edge_boundary_value[2 * e3->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * e3->get_id()];
-    const double A_e3 = e3_in ? d_A_macro_edge_boundary_value[2 * e3->get_id() + 1] : d_A_macro_edge_boundary_value[2 * e3->get_id()];
-
-    // get upwinded values at bifurcation
-    double Q_e0_up, A_e0_up;
-    double Q_e1_up, A_e1_up;
-    double Q_e2_up, A_e2_up;
-    double Q_e3_up, A_e3_up;
-    // clang-format off
-    const auto num_iter = solve_at_trifurcation(
-      Q_e0, A_e0, p_e0, e0_in,
-      Q_e1, A_e1, p_e1, e1_in,
-      Q_e2, A_e2, p_e2, e2_in,
-      Q_e3, A_e3, p_e3, e3_in,
-      Q_e0_up, A_e0_up,
-      Q_e1_up, A_e1_up,
-      Q_e2_up, A_e2_up,
-      Q_e3_up, A_e3_up);
-    // clang-format on
-
-    // save upwinded values into upwind vector
-    if (e0_in) {
-      d_Q_macro_edge_flux_r[e0->get_id()] = Q_e0_up;
-      d_A_macro_edge_flux_r[e0->get_id()] = A_e0_up;
-    } else {
-      d_Q_macro_edge_flux_l[e0->get_id()] = Q_e0_up;
-      d_A_macro_edge_flux_l[e0->get_id()] = A_e0_up;
-    }
-
-    if (e1_in) {
-      d_Q_macro_edge_flux_r[e1->get_id()] = Q_e1_up;
-      d_A_macro_edge_flux_r[e1->get_id()] = A_e1_up;
-    } else {
-      d_Q_macro_edge_flux_l[e1->get_id()] = Q_e1_up;
-      d_A_macro_edge_flux_l[e1->get_id()] = A_e1_up;
-    }
-
-    if (e2_in) {
-      d_Q_macro_edge_flux_r[e2->get_id()] = Q_e2_up;
-      d_A_macro_edge_flux_r[e2->get_id()] = A_e2_up;
-    } else {
-      d_Q_macro_edge_flux_l[e2->get_id()] = Q_e2_up;
-      d_A_macro_edge_flux_l[e2->get_id()] = A_e2_up;
-    }
-
-    if (e3_in) {
-      d_Q_macro_edge_flux_r[e3->get_id()] = Q_e3_up;
-      d_A_macro_edge_flux_r[e3->get_id()] = A_e3_up;
-    } else {
-      d_Q_macro_edge_flux_l[e3->get_id()] = Q_e3_up;
-      d_A_macro_edge_flux_l[e3->get_id()] = A_e3_up;
-    }
-  }
-}
-
-void RightHandSideEvaluator::check_and_fail_for_higher_bifurcation_geometries() const {
-  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
-    const auto vertex = d_graph->get_vertex(v_id);
-
-    // we only handle trifurcations
-    if (vertex->get_edge_neighbors().size() > 4)
-      throw std::runtime_error("only bi- and trifurcations possible.");
   }
 }
 
@@ -465,9 +331,7 @@ void RightHandSideEvaluator::calculate_inner_fluxes(const std::vector<double> &u
 }
 
 void RightHandSideEvaluator::calculate_fluxes(const double t, const std::vector<double> &u_prev) {
-  calculate_bifurcation_fluxes(u_prev);
-  calculate_trifurcation_fluxes(u_prev);
-  check_and_fail_for_higher_bifurcation_geometries();
+  calculate_nfurcation_fluxes(u_prev);
   calculate_inner_fluxes(u_prev);
   calculate_inout_fluxes(t, u_prev);
 }
