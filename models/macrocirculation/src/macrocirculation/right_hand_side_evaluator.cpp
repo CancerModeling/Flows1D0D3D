@@ -117,7 +117,7 @@ void RightHandSideEvaluator::evaluate(const double t, const std::vector<double> 
   //std::cout << "rhs " << rhs << std::endl;
   apply_inverse_mass(rhs);
   if (std::isnan(rhs.front()) || std::isnan(rhs.back())) {
-    exit(0);
+    throw std::runtime_error("contains nans");
   }
 }
 
