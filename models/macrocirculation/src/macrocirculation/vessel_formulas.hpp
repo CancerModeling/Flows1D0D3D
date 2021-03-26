@@ -720,6 +720,159 @@ inline std::size_t solve_at_trifurcation( double Q_a, double A_a, const VesselPa
   return it;
 }
 
+// nurcation:
+// TODO: delete other stuff as soon as this is working!
+
+inline void nfurcation_equation(const std::vector<double> &w1,
+                                const std::vector<double> &w2,
+                                const std::vector<VesselParameters> &p,
+                                const std::vector<bool> &in,
+                                std::vector<double> &out) {
+  const size_t num_vessels = w1.size();
+
+  assert(num_vessels == w2.size());
+  assert(num_vessels == p.size());
+  assert(num_vessels == in.size());
+  assert(num_vessels == out.size());
+  assert(num_vessels > 2);
+
+  // flow equation (all flows add up to zero):
+  double eq_Q = 0;
+  for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1)
+    eq_Q += (in[vessel_idx] ? -1 : +1) * calculate_Q(w1[vessel_idx], w2[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
+  out[0] = eq_Q;
+
+  // pressure equation (all pressures are equal):
+  for (size_t vessel_idx = 1; vessel_idx < num_vessels; vessel_idx += 1)
+    out[vessel_idx] = calculate_p_from_w1w2(w1[0], w2[0], p[0].G0, p[0].rho, p[0].A0) -
+                      calculate_p_from_w1w2(w1[vessel_idx], w2[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
+}
+
+inline void nfurcation_equation_jacobian(const std::vector<double> &w1,
+                                         const std::vector<double> &w2,
+                                         const std::vector<VesselParameters> &p,
+                                         const std::vector<bool> &in,
+                                         gmm::row_matrix<gmm::wsvector<double>> &J) {
+  const size_t num_vessels = w1.size();
+
+  assert(num_vessels == w2.size());
+  assert(num_vessels == p.size());
+  assert(num_vessels == in.size());
+  assert(J.ncols() == num_vessels && J.nrows() == num_vessels);
+  assert(num_vessels > 2);
+
+  // line 0, Q derivative:
+  for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
+    if (in[vessel_idx])
+      J[0][vessel_idx] = -calculate_diff_Q_w1(w1[vessel_idx], w2[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
+    else
+      J[0][vessel_idx] = +calculate_diff_Q_w2(w1[vessel_idx], w2[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
+  }
+
+  // line 1-(n-1), pressure derivatives:
+  for (size_t vessel_idx = 1; vessel_idx < num_vessels; vessel_idx += 1) {
+    if (in[0])
+      J[vessel_idx][0] = +calculate_diff_p_w1(w1[0], w2[0], p[0].G0, p[0].rho, p[0].A0);
+    else
+      J[vessel_idx][0] = +calculate_diff_p_w2(w1[0], w2[0], p[0].G0, p[0].rho, p[0].A0);
+
+    if (in[vessel_idx])
+      J[vessel_idx][vessel_idx] = -calculate_diff_p_w1(w1[vessel_idx], w2[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
+    else
+      J[vessel_idx][vessel_idx] = -calculate_diff_p_w2(w1[vessel_idx], w2[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
+  }
+}
+
+inline void extract_vector(std::vector<double> &w1,
+                           std::vector<double> &w2,
+                           const std::vector<bool> &in,
+                           const std::vector<double> &vec) {
+  const size_t num_vessels = w1.size();
+
+  assert(num_vessels == w2.size());
+  assert(num_vessels == in.size());
+  assert(num_vessels == vec.size());
+  assert(num_vessels > 2);
+
+  // line 0, Q derivative:
+  for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
+    if (in[vessel_idx])
+      w1[vessel_idx] = vec[vessel_idx];
+    else
+      w2[vessel_idx] = vec[vessel_idx];
+  }
+}
+
+inline void fill_vector(const std::vector<double> &w1,
+                        const std::vector<double> &w2,
+                        const std::vector<bool> &in,
+                        std::vector<double> &vec) {
+  const size_t num_vessels = w1.size();
+
+  assert(num_vessels == w2.size());
+  assert(num_vessels == in.size());
+  assert(num_vessels == vec.size());
+  assert(num_vessels > 2);
+
+  for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
+    if (in[vessel_idx])
+      vec[vessel_idx] = w1[vessel_idx];
+    else
+      vec[vessel_idx] = w2[vessel_idx];
+  }
+}
+
+inline std::size_t solve_at_nfurcation(const std::vector<double> &Q,
+                                       const std::vector<double> &A,
+                                       const std::vector<VesselParameters> &p,
+                                       const std::vector<bool> &in,
+                                       std::vector<double> &Q_up,
+                                       std::vector<double> &A_up) {
+  const size_t num_vessels = Q.size();
+
+  assert(num_vessels == A.size());
+  assert(num_vessels == p.size());
+  assert(num_vessels == in.size());
+  assert(num_vessels == Q_up.size());
+  assert(num_vessels == A_up.size());
+  assert(num_vessels > 2);
+
+  const std::size_t max_iter = 1000;
+
+  // calculate w1, w2 at all the bifurcations
+  std::vector<double> w1(num_vessels, 0);
+  std::vector<double> w2(num_vessels, 0);
+  for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
+    w1[vessel_idx] = calculate_W1_value(Q[vessel_idx], A[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
+    w2[vessel_idx] = calculate_W2_value(Q[vessel_idx], A[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
+  }
+
+  // solve for w1, w2 with a newton iteration
+  gmm::row_matrix<gmm::wsvector<double>> Jac(num_vessels, num_vessels);
+  std::vector<double> x(num_vessels, 0);
+  std::vector<double> f(num_vessels, 0);
+  std::vector<double> delta_x(num_vessels, 0);
+
+  fill_vector(w1, w2, in, x);
+  std::size_t it = 0;
+  for (; it < max_iter; it += 1) {
+    nfurcation_equation_jacobian(w1, w2, p, in, Jac);
+    nfurcation_equation(w1, w2, p, in, f);
+    gmm::lu_solve(Jac, delta_x, f);
+    gmm::add(x, gmm::scaled(delta_x, -1), x);
+    extract_vector(w1, w2, in, x);
+
+    if (gmm::vect_norm2(delta_x) < 1e-14 || gmm::vect_norm2(delta_x) < 1e-14 * gmm::vect_norm2(x))
+      break;
+  }
+
+  // copy back into the input variables
+  for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1)
+    convert_w1w2_to_QA(w1[vessel_idx], w2[vessel_idx], p[vessel_idx], Q_up[vessel_idx], A_up[vessel_idx]);
+
+  return it;
+}
+
 } // namespace macrocirculation
 
 #endif //TUMORMODELS_VESSEL_FORMULAS_HPP
