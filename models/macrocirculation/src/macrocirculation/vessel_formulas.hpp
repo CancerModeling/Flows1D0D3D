@@ -88,202 +88,6 @@ inline double calculate_diff_p_w2(double w1, double w2, double G0, double rho, d
   return +0.25 * rho * (w2 - w1) + 2 * G0 * (w1 + w2) / std::pow((8 * c0), 2);
 }
 
-/*! @brief Evaluates the bifurcation equation at a vertex, for three vessels a, b and c.
- *         The bifurcation equation is given by
- *              B = (s_a*Q(a) + s_b*Q(b) + s_c*Q(c), p(a) - p(b), p(a) - p(c)),
- *         where s_a = -1 if the vessel a points towards the vertex and s_a = +1 otherwise.
- *
- * @param w1_a The back propagating characteristic for vessel a.
- * @param w2_a The forward propagating characteristic for vessel a.
- * @param p_a  The vessel parameters for vessel a.
- * @param in_a True if vessel a points towards the vertex, false if it points away.
- * @param w1_b The back propagating characteristic for vessel b.
- * @param w2_b The forward propagating characteristic for vessel b.
- * @param p_b  The vessel parameters for vessel b.
- * @param in_b True if vessel b points towards the vertex, false if it points away.
- * @param w1_c The back propagating characteristic for vessel c.
- * @param w2_c The forward propagating characteristic for vessel c.
- * @param p_c  The vessel parameters for vessel c.
- * @param in_c True if vessel c points towards the vertex, false if it points away.
- * @param out  A vector containing the three equations of the bifurcation system.
- */
-// clang-format off
-inline void bifurcation_equation( double w1_a, double w2_a, const VesselParameters& p_a, bool in_a, // flow vessel a
-                                  double w1_b, double w2_b, const VesselParameters& p_b, bool in_b, // flow vessel b
-                                  double w1_c, double w2_c, const VesselParameters& p_c, bool in_c, // flow vessel c
-                                  std::vector< double >&  out )
-// clang-format on
-{
-  assert(out.size() == 3);
-  double eq_Q = 0;
-  eq_Q += (in_a ? -1 : +1) * calculate_Q(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-  eq_Q += (in_b ? -1 : +1) * calculate_Q(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  eq_Q += (in_c ? -1 : +1) * calculate_Q(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-  out[0] = eq_Q;
-  double eq_p1 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) -
-                 calculate_p_from_w1w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  double eq_p2 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) -
-                 calculate_p_from_w1w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-  out[0] = eq_Q;
-  out[1] = eq_p1;
-  out[2] = eq_p2;
-}
-
-/*! @brief Evaluates the jacobian 3x3 of the bifurcation equation system at a vertex.
- *         The evaluation depends on which vessels point towards the vertex.
- *         If a points towards the vertex and b and c point away, then we get
- *              [[ dQ(a)/dw_1, dQ(b)/dw_2, dQ(c)/dw_2],
- *               [ dp(a)/dw_1, dp(b)/dw_2, 0         ],
- *               [ dp(a)/dw_1, 0         , dp(c)/dw_2]]
- *         If the vessel point differently other derivatives are used.
- *
- * @param w1_a The back propagating characteristic for vessel a.
- * @param w2_a The forward propagating characteristic for vessel a.
- * @param p_a  The vessel parameters for vessel a.
- * @param in_a True if vessel a points towards the vertex, false if it points away.
- * @param w1_b The back propagating characteristic for vessel b.
- * @param w2_b The forward propagating characteristic for vessel b.
- * @param p_b  The vessel parameters for vessel b.
- * @param in_b True if vessel b points towards the vertex, false if it points away.
- * @param w1_c The back propagating characteristic for vessel c.
- * @param w2_c The forward propagating characteristic for vessel c.
- * @param p_c  The vessel parameters for vessel c.
- * @param in_c True if vessel c points towards the vertex, false if it points away.
- * @param J    The 3x3 Jacobian of the bifurcation equation system.
- */
-// clang-format off
-inline void bifurcation_equation_jacobian( double w1_a, double w2_a, const VesselParameters& p_a, bool in_a, // flow vessel a
-                                           double w1_b, double w2_b, const VesselParameters& p_b, bool in_b, // flow vessel b
-                                           double w1_c, double w2_c, const VesselParameters& p_c, bool in_c, // flow vessel c
-                                           gmm::row_matrix< gmm::wsvector< double > >& J )
-// clang-format on
-{
-  assert(J.ncols() == 3 && J.nrows() == 3);
-
-  // line 0
-  if (in_a)
-    J[0][0] = -calculate_diff_Q_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-  else
-    J[0][0] = +calculate_diff_Q_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-
-  if (in_b)
-    J[0][1] = -calculate_diff_Q_w1(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  else
-    J[0][1] = +calculate_diff_Q_w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-
-  if (in_c)
-    J[0][2] = -calculate_diff_Q_w1(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-  else
-    J[0][2] = +calculate_diff_Q_w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-
-  // line 1
-  if (in_a)
-    J[1][0] = +calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-  else
-    J[1][0] = +calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-
-  if (in_b)
-    J[1][1] = -calculate_diff_p_w1(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  else
-    J[1][1] = -calculate_diff_p_w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-
-  // line 2
-  if (in_a)
-    J[2][0] = +calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-  else
-    J[2][0] = +calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-
-  if (in_c)
-    J[2][2] = -calculate_diff_p_w1(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-  else
-    J[2][2] = -calculate_diff_p_w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-}
-
-/*! @brief Takes the unknown characteristic quantities from a vector and
- *         copies them into the given values of the characteristics.
- *         E.g. if vessel a points towards a given vertex (in_a = true),
- *         then vec[0] is copied to the unknown w1_a, while w2_a remains unchanged.
- *         The same applies for the vessels b and c.
- *
- * @param w1_a The back propagating characteristic for vessel a.
- * @param w2_a The forward propagating characteristic for vessel a.
- * @param p_a  The vessel parameters for vessel a.
- * @param in_a True if vessel a points towards the vertex, false if it points away.
- * @param w1_b The back propagating characteristic for vessel b.
- * @param w2_b The forward propagating characteristic for vessel b.
- * @param p_b  The vessel parameters for vessel b.
- * @param in_b True if vessel b points towards the vertex, false if it points away.
- * @param w1_c The back propagating characteristic for vessel c.
- * @param w2_c The forward propagating characteristic for vessel c.
- * @param p_c  The vessel parameters for vessel c.
- * @param in_c True if vessel c points towards the vertex, false if it points away.
- * @param vec  The vector of length 3, whose quantities we want to transfer to w{1,2}_{a,b,c}.
- */
-// clang-format off
-inline void extract_vector( double& w1_a, double& w2_a, bool in_a,
-                            double& w1_b, double& w2_b, bool in_b,
-                            double& w1_c, double& w2_c, bool in_c,
-                            const std::vector< double >& vec )
-// clang-format on
-{
-  if (in_a)
-    w1_a = vec[0];
-  else
-    w2_a = vec[0];
-
-  if (in_b)
-    w1_b = vec[1];
-  else
-    w2_b = vec[1];
-
-  if (in_c)
-    w1_c = vec[2];
-  else
-    w2_c = vec[2];
-}
-
-/*! @brief Copies the unknown characteristic quantities into a vector.
- *         E.g. if vessel a points towards a given vertex (in_a = true),
- *         then w1_a is copied to vec[0], while w2_a is not used at all.
- *         The same applies for the vessels b and c.
- *
- * @param w1_a The back propagating characteristic for vessel a.
- * @param w2_a The forward propagating characteristic for vessel a.
- * @param p_a  The vessel parameters for vessel a.
- * @param in_a True if vessel a points towards the vertex, false if it points away.
- * @param w1_b The back propagating characteristic for vessel b.
- * @param w2_b The forward propagating characteristic for vessel b.
- * @param p_b  The vessel parameters for vessel b.
- * @param in_b True if vessel b points towards the vertex, false if it points away.
- * @param w1_c The back propagating characteristic for vessel c.
- * @param w2_c The forward propagating characteristic for vessel c.
- * @param p_c  The vessel parameters for vessel c.
- * @param in_c True if vessel c points towards the vertex, false if it points away.
- * @param vec  The vector of length 3, which we want to update with w{1,2}_{a,b,c}.
- */
-// clang-format off
-inline void fill_vector( double w1_a, double w2_a, bool in_a,
-                         double w1_b, double w2_b, bool in_b,
-                         double w1_c, double w2_c, bool in_c,
-                         std::vector< double >& vec )
-// clang-format on
-{
-  if (in_a)
-    vec[0] = w1_a;
-  else
-    vec[0] = w2_a;
-
-  if (in_b)
-    vec[1] = w1_b;
-  else
-    vec[1] = w2_b;
-
-  if (in_c)
-    vec[2] = w1_c;
-  else
-    vec[2] = w2_c;
-}
-
 /*! @brief Evaluates the back propagating wave from Q and A. */
 inline double calculate_W1_value(const double Q, const double A, const double G0, const double rho, const double A0) {
   return -Q / A + 4 * std::sqrt(G0 / (2 * rho)) * std::pow(A / A0, 1. / 4.);
@@ -299,76 +103,6 @@ inline void convert_w1w2_to_QA(double w1, double w2, const VesselParameters &p, 
   const double c0 = calculate_c0(p.G0, p.rho, p.A0);
   A = std::pow((w1 + w2) / (8 * c0), 4) * p.A0;
   Q = 0.5 * (w2 - w1) * A;
-}
-
-/*! @brief Solves the bifurcation equations at the intersection of vessel a,
- *         vessel b and vessel c and calculates the upwinded values for the
- *         respective vessels, taking into consideration the vessel orientation.
- *         Internally a Newton iteration is used to solve the system.
- *
- * @param w1_a   The back propagating characteristic for vessel a.
- * @param w2_a   The forward propagating characteristic for vessel a.
- * @param p_a    The vessel parameters for vessel a.
- * @param in_a   True if vessel a points towards the vertex, false if it points away.
- * @param w1_b   The back propagating characteristic for vessel b.
- * @param w2_b   The forward propagating characteristic for vessel b.
- * @param p_b    The vessel parameters for vessel b.
- * @param in_b   True if vessel b points towards the vertex, false if it points away.
- * @param w1_c   The back propagating characteristic for vessel c.
- * @param w2_c   The forward propagating characteristic for vessel c.
- * @param p_c    The vessel parameters for vessel c.
- * @param in_c   True if vessel c points towards the vertex, false if it points away.
- * @param Q_a_up The upwinded flow Q at vessel a.
- * @param A_a_up The upwinded area A at vessel a.
- * @param Q_b_up The upwinded flow Q at vessel b.
- * @param A_b_up The upwinded area A at vessel b.
- * @param Q_c_up The upwinded flow Q at vessel c.
- * @param A_c_up The upwinded area A at vessel c.
- */
-// clang-format off
-inline std::size_t solve_at_bifurcation( double Q_a, double A_a, const VesselParameters& p_a, bool in_a, // flow vessel a
-                                         double Q_b, double A_b, const VesselParameters& p_b, bool in_b, // flow vessel b
-                                         double Q_c, double A_c, const VesselParameters& p_c, bool in_c, // flow vessel c
-                                         double& Q_a_up, double& A_a_up,
-                                         double& Q_b_up, double& A_b_up,
-                                         double& Q_c_up, double& A_c_up )
-// clang-format on
-{
-  const std::size_t max_iter = 1000;
-
-  // calculate w1, w2 at all the bifurcations
-  double w1_a = calculate_W1_value(Q_a, A_a, p_a.G0, p_a.rho, p_a.A0);
-  double w2_a = calculate_W2_value(Q_a, A_a, p_a.G0, p_a.rho, p_a.A0);
-  double w1_b = calculate_W1_value(Q_b, A_b, p_b.G0, p_b.rho, p_b.A0);
-  double w2_b = calculate_W2_value(Q_b, A_b, p_b.G0, p_b.rho, p_b.A0);
-  double w1_c = calculate_W1_value(Q_c, A_c, p_c.G0, p_c.rho, p_c.A0);
-  double w2_c = calculate_W2_value(Q_c, A_c, p_c.G0, p_c.rho, p_c.A0);
-
-  // solve for w1, w2 with a newton iteration
-  gmm::row_matrix<gmm::wsvector<double>> Jac(3, 3);
-  std::vector<double> x(3, 0);
-  std::vector<double> f(3, 0);
-  std::vector<double> delta_x(3, 0);
-
-  fill_vector(w1_a, w2_a, in_a, w1_b, w2_b, in_b, w1_c, w2_c, in_c, x);
-  std::size_t it = 0;
-  for (; it < max_iter; it += 1) {
-    bifurcation_equation_jacobian(w1_a, w2_a, p_a, in_a, w1_b, w2_b, p_b, in_b, w1_c, w2_c, p_c, in_c, Jac);
-    bifurcation_equation(w1_a, w2_a, p_a, in_a, w1_b, w2_b, p_b, in_b, w1_c, w2_c, p_c, in_c, f);
-    gmm::lu_solve(Jac, delta_x, f);
-    gmm::add(x, gmm::scaled(delta_x, -1), x);
-    extract_vector(w1_a, w2_a, in_a, w1_b, w2_b, in_b, w1_c, w2_c, in_c, x);
-
-    if (gmm::vect_norm2(delta_x) < 1e-14 || gmm::vect_norm2(delta_x) < 1e-14 * gmm::vect_norm2(x))
-      break;
-  }
-
-  // copy back into the input variables
-  convert_w1w2_to_QA(w1_a, w2_a, p_a, Q_a_up, A_a_up);
-  convert_w1w2_to_QA(w1_b, w2_b, p_b, Q_b_up, A_b_up);
-  convert_w1w2_to_QA(w1_c, w2_c, p_c, Q_c_up, A_c_up);
-
-  return it;
 }
 
 /*! @brief Solves the system of equation
@@ -496,233 +230,17 @@ inline double assemble_in_flow(const double Q,
   return A_star;
 }
 
-// trifurcation equations:
-// TODO: generalize this and merge with bifurcation code
-
-// clang-format off
-inline void trifurcation_equation( double w1_a, double w2_a, const VesselParameters& p_a, bool in_a, // flow vessel a
-                                  double w1_b, double w2_b, const VesselParameters& p_b, bool in_b, // flow vessel b
-                                  double w1_c, double w2_c, const VesselParameters& p_c, bool in_c, // flow vessel c
-                                   double w1_d, double w2_d, const VesselParameters& p_d, bool in_d, // flow vessel d
-                                  std::vector< double >&  out )
-// clang-format on
-{
-  assert(out.size() == 4);
-  double eq_Q = 0;
-  eq_Q += (in_a ? -1 : +1) * calculate_Q(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-  eq_Q += (in_b ? -1 : +1) * calculate_Q(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  eq_Q += (in_c ? -1 : +1) * calculate_Q(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-  eq_Q += (in_d ? -1 : +1) * calculate_Q(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
-  out[0] = eq_Q;
-  double eq_p1 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) -
-                 calculate_p_from_w1w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  double eq_p2 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) -
-                 calculate_p_from_w1w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-  double eq_p3 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) -
-                 calculate_p_from_w1w2(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
-  out[0] = eq_Q;
-  out[1] = eq_p1;
-  out[2] = eq_p2;
-  out[3] = eq_p3;
-}
-
-// clang-format off
-inline void trifurcation_equation_jacobian( double w1_a, double w2_a, const VesselParameters& p_a, bool in_a, // flow vessel a
-                                           double w1_b, double w2_b, const VesselParameters& p_b, bool in_b, // flow vessel b
-                                           double w1_c, double w2_c, const VesselParameters& p_c, bool in_c, // flow vessel c
-                                           double w1_d, double w2_d, const VesselParameters& p_d, bool in_d, // flow vessel c
-                                           gmm::row_matrix< gmm::wsvector< double > >& J )
-// clang-format on
-{
-  assert(J.ncols() == 4 && J.nrows() == 4);
-
-  // line 0
-  if (in_a)
-    J[0][0] = -calculate_diff_Q_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-  else
-    J[0][0] = +calculate_diff_Q_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-
-  if (in_b)
-    J[0][1] = -calculate_diff_Q_w1(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  else
-    J[0][1] = +calculate_diff_Q_w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-
-  if (in_c)
-    J[0][2] = -calculate_diff_Q_w1(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-  else
-    J[0][2] = +calculate_diff_Q_w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-
-  if (in_d)
-    J[0][3] = -calculate_diff_Q_w1(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
-  else
-    J[0][3] = +calculate_diff_Q_w2(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
-
-  // line 1
-  if (in_a)
-    J[1][0] = +calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-  else
-    J[1][0] = +calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-
-  if (in_b)
-    J[1][1] = -calculate_diff_p_w1(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-  else
-    J[1][1] = -calculate_diff_p_w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
-
-  // line 2
-  if (in_a)
-    J[2][0] = +calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-  else
-    J[2][0] = +calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-
-  if (in_c)
-    J[2][2] = -calculate_diff_p_w1(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-  else
-    J[2][2] = -calculate_diff_p_w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
-
-  // line 3
-  if (in_a)
-    J[3][0] = +calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-  else
-    J[3][0] = +calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
-
-  if (in_c)
-    J[3][3] = -calculate_diff_p_w1(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
-  else
-    J[3][3] = -calculate_diff_p_w2(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
-}
-
-// clang-format off
-inline void extract_vector( double& w1_a, double& w2_a, bool in_a,
-                            double& w1_b, double& w2_b, bool in_b,
-                            double& w1_c, double& w2_c, bool in_c,
-                            double& w1_d, double& w2_d, bool in_d,
-                            const std::vector< double >& vec )
-// clang-format on
-{
-  if (in_a)
-    w1_a = vec[0];
-  else
-    w2_a = vec[0];
-
-  if (in_b)
-    w1_b = vec[1];
-  else
-    w2_b = vec[1];
-
-  if (in_c)
-    w1_c = vec[2];
-  else
-    w2_c = vec[2];
-
-  if (in_d)
-    w1_d = vec[3];
-  else
-    w2_d = vec[3];
-}
-
-// clang-format off
-inline void fill_vector( double w1_a, double w2_a, bool in_a,
-                         double w1_b, double w2_b, bool in_b,
-                         double w1_c, double w2_c, bool in_c,
-                         double w1_d, double w2_d, bool in_d,
-                         std::vector< double >& vec )
-// clang-format on
-{
-  if (in_a)
-    vec[0] = w1_a;
-  else
-    vec[0] = w2_a;
-
-  if (in_b)
-    vec[1] = w1_b;
-  else
-    vec[1] = w2_b;
-
-  if (in_c)
-    vec[2] = w1_c;
-  else
-    vec[2] = w2_c;
-
-  if (in_d)
-    vec[3] = w1_d;
-  else
-    vec[3] = w2_d;
-}
-
-// clang-format off
-inline std::size_t solve_at_trifurcation( double Q_a, double A_a, const VesselParameters& p_a, bool in_a, // flow vessel a
-                                         double Q_b, double A_b, const VesselParameters& p_b, bool in_b, // flow vessel b
-                                         double Q_c, double A_c, const VesselParameters& p_c, bool in_c, // flow vessel c
-                                         double Q_d, double A_d, const VesselParameters& p_d, bool in_d, // flow vessel d
-                                         double& Q_a_up, double& A_a_up,
-                                         double& Q_b_up, double& A_b_up,
-                                         double& Q_c_up, double& A_c_up,
-                                         double& Q_d_up, double& A_d_up)
-// clang-format on
-{
-  const std::size_t max_iter = 1000;
-
-  // calculate w1, w2 at all the bifurcations
-  double w1_a = calculate_W1_value(Q_a, A_a, p_a.G0, p_a.rho, p_a.A0);
-  double w2_a = calculate_W2_value(Q_a, A_a, p_a.G0, p_a.rho, p_a.A0);
-  double w1_b = calculate_W1_value(Q_b, A_b, p_b.G0, p_b.rho, p_b.A0);
-  double w2_b = calculate_W2_value(Q_b, A_b, p_b.G0, p_b.rho, p_b.A0);
-  double w1_c = calculate_W1_value(Q_c, A_c, p_c.G0, p_c.rho, p_c.A0);
-  double w2_c = calculate_W2_value(Q_c, A_c, p_c.G0, p_c.rho, p_c.A0);
-  double w1_d = calculate_W1_value(Q_d, A_d, p_d.G0, p_d.rho, p_d.A0);
-  double w2_d = calculate_W2_value(Q_d, A_d, p_d.G0, p_d.rho, p_d.A0);
-
-  // solve for w1, w2 with a newton iteration
-  gmm::row_matrix<gmm::wsvector<double>> Jac(4, 4);
-  std::vector<double> x(4, 0);
-  std::vector<double> f(4, 0);
-  std::vector<double> delta_x(4, 0);
-
-  fill_vector(
-    w1_a, w2_a, in_a,
-    w1_b, w2_b, in_b,
-    w1_c, w2_c, in_c,
-    w1_d, w2_d, in_d,
-    x);
-  std::size_t it = 0;
-  for (; it < max_iter; it += 1) {
-    trifurcation_equation_jacobian(
-      w1_a, w2_a, p_a, in_a,
-      w1_b, w2_b, p_b, in_b,
-      w1_c, w2_c, p_c, in_c,
-      w1_d, w2_d, p_d, in_d,
-      Jac);
-    trifurcation_equation(
-      w1_a, w2_a, p_a, in_a,
-      w1_b, w2_b, p_b, in_b,
-      w1_c, w2_c, p_c, in_c,
-      w1_d, w2_d, p_d, in_d,
-      f);
-    gmm::lu_solve(Jac, delta_x, f);
-    gmm::add(x, gmm::scaled(delta_x, -1), x);
-    extract_vector(
-      w1_a, w2_a, in_a,
-      w1_b, w2_b, in_b,
-      w1_c, w2_c, in_c,
-      w1_d, w2_d, in_d,
-      x);
-
-    if (gmm::vect_norm2(delta_x) < 1e-14 || gmm::vect_norm2(delta_x) < 1e-14 * gmm::vect_norm2(x))
-      break;
-  }
-
-  // copy back into the input variables
-  convert_w1w2_to_QA(w1_a, w2_a, p_a, Q_a_up, A_a_up);
-  convert_w1w2_to_QA(w1_b, w2_b, p_b, Q_b_up, A_b_up);
-  convert_w1w2_to_QA(w1_c, w2_c, p_c, Q_c_up, A_c_up);
-  convert_w1w2_to_QA(w1_d, w2_d, p_d, Q_d_up, A_d_up);
-
-  return it;
-}
-
-// nurcation:
-// TODO: delete other stuff as soon as this is working!
-
+/*! @brief Evaluates the bifurcation equation at a vertex, for n vessels meeting at that point.
+ *         For three vessels a, b and c, the bifurcation equation is given by
+ *              B = (s_a*Q(a) + s_b*Q(b) + s_c*Q(c), p(a) - p(b), p(a) - p(c)),
+ *         where s_a = -1 if the vessel a points towards the vertex and s_a = +1 otherwise.
+ *
+ * @param w1 The back propagating characteristic for vessel 1 to n.
+ * @param w2 The forward propagating characteristic for vessel 1 to n.
+ * @param p  The vessel parameters for vessel 1 to n.
+ * @param in True if a vessel points towards the vertex, false if it points away.
+ * @param out  A vector containing the three equations of the bifurcation system.
+ */
 inline void nfurcation_equation(const std::vector<double> &w1,
                                 const std::vector<double> &w2,
                                 const std::vector<VesselParameters> &p,
@@ -748,6 +266,21 @@ inline void nfurcation_equation(const std::vector<double> &w1,
                       calculate_p_from_w1w2(w1[vessel_idx], w2[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
 }
 
+/*! @brief Evaluates the jacobian nxn of the bifurcation equation system at a vertex,
+ *         where n is the number of vessels meeting at one point.
+ *         The evaluation depends on which vessels point towards the vertex.
+ *         If a points towards the vertex and b and c point away, then we get
+ *              [[ dQ(a)/dw_1, dQ(b)/dw_2, dQ(c)/dw_2],
+ *               [ dp(a)/dw_1, dp(b)/dw_2, 0         ],
+ *               [ dp(a)/dw_1, 0         , dp(c)/dw_2]]
+ *         If the vessel point differently other derivatives are used.
+ *
+ * @param w1 The back propagating characteristic for vessel 1 to n.
+ * @param w2 The forward propagating characteristic for vessel  1 to n.
+ * @param p  The vessel parameters for vessel 1 to n.
+ * @param in True if a vessel points towards the vertex, false if it points away.
+ * @param J  The nxn Jacobian of the bifurcation equation system.
+ */
 inline void nfurcation_equation_jacobian(const std::vector<double> &w1,
                                          const std::vector<double> &w2,
                                          const std::vector<VesselParameters> &p,
@@ -783,6 +316,17 @@ inline void nfurcation_equation_jacobian(const std::vector<double> &w1,
   }
 }
 
+/*! @brief Takes the unknown characteristic quantities from a vector and
+ *         copies them into the given values of the characteristics.
+ *         E.g. if a vessel points towards a given vertex (in[vessel_idx] = true),
+ *         then vec[vessel_idx] is copied to the unknown w1[vessel_idx], while w2[vessel_idx remains unchanged.
+ *         This applies to all 0 <= vessel_idx < n.
+ *
+ * @param w1 The back propagating characteristic for vessel 1 to n.
+ * @param w2 The forward propagating characteristic for vessel 1 to n.
+ * @param in True if a vessel points towards the vertex, false if it points away.
+ * @param vec  The vector of length n, whose quantities we want to transfer to w{1,2}.
+ */
 inline void extract_vector(std::vector<double> &w1,
                            std::vector<double> &w2,
                            const std::vector<bool> &in,
@@ -803,6 +347,16 @@ inline void extract_vector(std::vector<double> &w1,
   }
 }
 
+/*! @brief Copies the unknown characteristic quantities into a vector.
+ *         E.g. if vessel a points towards a given vertex (in[vessel_idx] = true),
+ *         then w1[vessel_idx] is copied to vec[vessel_idx], while w2[vessel_idx] is not used at all.
+ *         This applies to all 0 <= vessel_idx < num-vessels.
+ *
+ * @param w1 The back propagating characteristic for vessel 1 to n.
+ * @param w2 The forward propagating characteristic for vessel 1 to n.
+ * @param in True if vessel a points towards the vertex, false if it points away.
+ * @param vec The vector, which we want to update with w{1,2}.
+ */
 inline void fill_vector(const std::vector<double> &w1,
                         const std::vector<double> &w2,
                         const std::vector<bool> &in,
@@ -822,6 +376,18 @@ inline void fill_vector(const std::vector<double> &w1,
   }
 }
 
+/*! @brief Solves the nfurcation equations at the intersection of n-vessels,
+ *         and calculates the upwinded values for the respective vessels,
+ *         taking into consideration the vessel orientation.
+ *         Internally a Newton iteration is used to solve the system.
+ *
+ * @param w1   The back propagating characteristics for vessel 1 to n.
+ * @param w2   The forward propagating characteristics for vessel 1 to n.
+ * @param p    The vessel parameters for vessel 1 to n.
+ * @param in   True if a vessel points towards the vertex, false if it points away.
+ * @param Q_up The upwinded flow Q at vessel tips.
+ * @param A_up The upwinded area A at vessel tips.
+ */
 inline std::size_t solve_at_nfurcation(const std::vector<double> &Q,
                                        const std::vector<double> &A,
                                        const std::vector<VesselParameters> &p,
