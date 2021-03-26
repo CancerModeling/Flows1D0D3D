@@ -126,6 +126,26 @@ EdgeBoundaryValues FETypeNetwork::evaluate_dof_at_boundary_points(const std::vec
   return values;
 }
 
+void FETypeNetwork::interpolate_linear_function(double v0, double v1, std::vector<double> &dof_values) const {
+  assert(dof_values.size() == d_degree + 1);
+
+  {
+    const double avg = 0.5 * (v0 + v1);
+    dof_values[0] = avg;
+  }
+
+  if (d_degree > 0) {
+    const double diff = 0.5 * (v1 - v0);
+    dof_values[1] = diff;
+  }
+
+  if (d_degree > 1)
+    dof_values[2] = 0;
+
+  if (d_degree > 2)
+    dof_values[3] = 0;
+}
+
 QuadraturePointMapper::QuadraturePointMapper(const QuadratureFormula &qf)
     : d_qf(qf), d_quadrature_points(qf.size()) {}
 

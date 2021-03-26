@@ -123,6 +123,9 @@ public:
   /*! @brief Evaluates the function with the given dof values at the quadratures points. */
   EdgeBoundaryValues evaluate_dof_at_boundary_points(const std::vector<double> &dof_values) const;
 
+  /*! @brief Returns the dof values for the linear function with value v0 at the left and v1 at the right. */
+  void interpolate_linear_function(double v0, double v1, std::vector<double> &dof_values) const;
+
   std::size_t num_quad_points() const;
 
   std::size_t get_degree() const;

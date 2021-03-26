@@ -342,4 +342,29 @@ void GraphStorage::assign_edge_to_rank(Edge &edge, int rank) {
   edge.assign_to_rank(rank);
 }
 
+std::vector<std::shared_ptr<Vertex>> GraphStorage::find_embedded_vertices(const Point &p) const {
+  std::vector<std::shared_ptr<Vertex>> found_vertices;
+
+  for (const auto &it : p_vertices) {
+    const auto vertex = it.second;
+
+    bool has_coordinates = false;
+    for (const auto e_id : vertex->get_edge_neighbors()) {
+      const auto edge = get_edge(e_id);
+      if (edge->has_embedding_data() && edge->get_embedding_data().points.size() >= 2) {
+        const auto &points = edge->get_embedding_data().points;
+        const auto p_edge = edge->is_pointing_to(vertex->get_id()) ? points.back() : points.front();
+        const double norm = std::abs(p_edge.x - p.x) + std::abs(p_edge.y - p.y) + std::abs(p_edge.z - p.z);
+        if (norm < 1e-12)
+          has_coordinates = true;
+      }
+    }
+
+    if (has_coordinates)
+      found_vertices.push_back(vertex);
+  }
+
+  return found_vertices;
+}
+
 } // namespace macrocirculation
