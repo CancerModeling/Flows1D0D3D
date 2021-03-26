@@ -143,6 +143,15 @@ private:
    */
   void calculate_bifurcation_fluxes(const std::vector<double> &u_prev);
 
+  /*! @brief Calculates the fluxes at trifurcations for the given time step at the macro edge boundaries.
+   *
+   * @param u_prev  The solution for which we calculate the fluxes.
+   */
+  void calculate_trifurcation_fluxes(const std::vector<double> &u_prev);
+
+  /*! @brief Checks if there are points where more than 4 vessels are joining and throws an exception if this is the case. */
+  void check_and_fail_for_higher_bifurcation_geometries() const;
+
   /*! @brief Calculates the in and outflow fluxes for the given timestep at the macro edge boundaries.
    *
    * @param u_prev  The solution for which we calculate the fluxes.
