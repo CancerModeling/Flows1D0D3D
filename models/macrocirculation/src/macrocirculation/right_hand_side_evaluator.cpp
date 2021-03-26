@@ -228,17 +228,17 @@ void RightHandSideEvaluator::calculate_inout_fluxes(double t, const std::vector<
 
       const auto &param = edge->get_physical_data();
 
+      // does the vessel point towards the vertex?
+      const bool in = edge->is_pointing_to(vertex->get_id());
+
+      const double Q =
+        in ? d_Q_macro_edge_boundary_value[2 * edge->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * edge->get_id()];
+      const double A =
+        in ? d_A_macro_edge_boundary_value[2 * edge->get_id() + 1] : d_A_macro_edge_boundary_value[2 * edge->get_id()];
+
       // inflow boundary
       if (vertex->is_inflow()) {
-        // does the vessel point towards the vertex?
-        const bool in = edge->is_pointing_to(vertex->get_id());
-
-        const double Q =
-          in ? d_Q_macro_edge_boundary_value[2 * edge->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * edge->get_id()];
-        const double A =
-          in ? d_A_macro_edge_boundary_value[2 * edge->get_id() + 1] : d_A_macro_edge_boundary_value[2 * edge->get_id()];
-
-        const double Q_star = vertex->get_inflow_value(t);
+        const double Q_star = (in ? -1 : + 1) * vertex->get_inflow_value(t);
         const double A_up = assemble_in_flow(Q, A, in, Q_star, param.G0, param.rho, param.A0);
 
         if (in) {
@@ -251,24 +251,29 @@ void RightHandSideEvaluator::calculate_inout_fluxes(double t, const std::vector<
       }
       // free outflow boundary
       else {
-        // we assert that the edge direction fits our assumptions
-        // TODO: Make this assumption more generic!
-        assert(edge->is_pointing_to(vertex->get_id()));
-
         // TODO: make this more generic for other initial flow values
         const double A_init = param.A0;
 
-        const double Q = d_Q_macro_edge_boundary_value[2 * edge->get_id() + 1];
-        const double A = d_A_macro_edge_boundary_value[2 * edge->get_id() + 1];
+        double W1, W2;
 
-        const double W1 = calculate_W1_value(Q_init, A_init, param.G0, param.rho, param.A0);
-        const double W2 = calculate_W2_value(Q, A, param.G0, param.rho, param.A0);
+        if (in) {
+          W1 = calculate_W1_value(Q_init, A_init, param.G0, param.rho, param.A0);
+          W2 = calculate_W2_value(Q, A, param.G0, param.rho, param.A0);
+        } else {
+          W1 = calculate_W1_value(Q, A, param.G0, param.rho, param.A0);
+          W2 = calculate_W2_value(Q_init, A_init, param.G0, param.rho, param.A0);
+        }
 
         double Q_up = 0, A_up = 0;
         solve_W12(Q_up, A_up, W1, W2, param.G0, param.rho, param.A0);
 
-        d_Q_macro_edge_flux_r[edge->get_id()] = Q_up;
-        d_A_macro_edge_flux_r[edge->get_id()] = A_up;
+        if (in) {
+          d_Q_macro_edge_flux_r[edge->get_id()] = Q_up;
+          d_A_macro_edge_flux_r[edge->get_id()] = A_up;
+        } else {
+          d_Q_macro_edge_flux_l[edge->get_id()] = Q_up;
+          d_A_macro_edge_flux_l[edge->get_id()] = A_up;
+        }
       }
     }
   }
