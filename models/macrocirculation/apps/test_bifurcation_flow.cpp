@@ -148,7 +148,53 @@ void test2()
   std::cout << "diff p2 = " << calculate_p_from_QA(Q_a_up, A_a_up, param_a) - calculate_p_from_QA(Q_c_up, A_c_up, param_c) << std::endl;
 }
 
+void test3()
+{
+  const double Q_a = 1;
+  const double Q_b = 0.5/2;
+  const double Q_c = 0.5;
+  const double Q_d = 0.1;
+
+  const double A_a = 6.97;
+  const double A_b = 6.97/2;
+  const double A_c = 6.97;
+  const double A_d = 6.97/5;
+
+  mc::VesselParameters param_a { 592.4e2,  6.97, 1.028 };
+  mc::VesselParameters param_b { 592.4e2,  6.97/2, 1.028 };
+  mc::VesselParameters param_c { 592.4e2,  6.97, 1.028 };
+  mc::VesselParameters param_d { 592.4e2,  6.97/3, 1.028 };
+
+  double Q_a_up, A_a_up;
+  double Q_b_up, A_b_up;
+  double Q_c_up, A_c_up;
+  double Q_d_up, A_d_up;
+
+  const auto num_iter = mc::solve_at_trifurcation(
+    Q_a, A_a, param_a, true,
+    Q_b, A_b, param_b, false,
+    Q_c, A_c, param_c, false,
+    Q_d, A_d, param_d, false,
+    Q_a_up, A_a_up,
+    Q_b_up, A_b_up,
+    Q_c_up, A_c_up,
+    Q_d_up, A_d_up);
+
+  std::cout << num_iter << " iterations" << std::endl;
+
+  std::cout << "Q_a_up = " << Q_a_up << ", A_a_up = " << A_a_up << std::endl;
+  std::cout << "Q_b_up = " << Q_b_up << ", A_b_up = " << A_b_up << std::endl;
+  std::cout << "Q_c_up = " << Q_c_up << ", A_c_up = " << A_c_up << std::endl;
+  std::cout << "Q_d_up = " << Q_d_up << ", A_d_up = " << A_d_up << std::endl;
+
+  std::cout << "diff Q = " << Q_a_up - Q_b_up - Q_c_up - Q_d_up <<std::endl;
+  std::cout << "diff p1 = " << calculate_p_from_QA(Q_a_up, A_a_up, param_a) - calculate_p_from_QA(Q_b_up, A_b_up, param_b) << std::endl;
+  std::cout << "diff p2 = " << calculate_p_from_QA(Q_a_up, A_a_up, param_a) - calculate_p_from_QA(Q_c_up, A_c_up, param_c) << std::endl;
+  std::cout << "diff p3 = " << calculate_p_from_QA(Q_a_up, A_a_up, param_a) - calculate_p_from_QA(Q_d_up, A_d_up, param_d) << std::endl;
+}
+
 int main(int argc, char *argv[]) {
   test1();
   test2();
+  test3();
 }
