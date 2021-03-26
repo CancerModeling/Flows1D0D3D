@@ -496,6 +496,230 @@ inline double assemble_in_flow(const double Q,
   return A_star;
 }
 
+// trifurcation equations:
+// TODO: generalize this and merge with bifurcation code
+
+// clang-format off
+inline void trifurcation_equation( double w1_a, double w2_a, const VesselParameters& p_a, bool in_a, // flow vessel a
+                                  double w1_b, double w2_b, const VesselParameters& p_b, bool in_b, // flow vessel b
+                                  double w1_c, double w2_c, const VesselParameters& p_c, bool in_c, // flow vessel c
+                                   double w1_d, double w2_d, const VesselParameters& p_d, bool in_d, // flow vessel d
+                                  std::vector< double >&  out )
+// clang-format on
+{
+  assert(out.size() == 4);
+  double eq_Q = 0;
+  eq_Q += (in_a ? -1 : +1) * calculate_Q(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+  eq_Q += (in_b ? -1 : +1) * calculate_Q(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+  eq_Q += (in_c ? -1 : +1) * calculate_Q(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+  eq_Q += (in_d ? -1 : +1) * calculate_Q(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
+  out[0] = eq_Q;
+  double eq_p1 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) -
+                 calculate_p_from_w1w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+  double eq_p2 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) -
+                 calculate_p_from_w1w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+  double eq_p3 = calculate_p_from_w1w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0) -
+                 calculate_p_from_w1w2(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
+  out[0] = eq_Q;
+  out[1] = eq_p1;
+  out[2] = eq_p2;
+  out[3] = eq_p3;
+}
+
+// clang-format off
+inline void trifurcation_equation_jacobian( double w1_a, double w2_a, const VesselParameters& p_a, bool in_a, // flow vessel a
+                                           double w1_b, double w2_b, const VesselParameters& p_b, bool in_b, // flow vessel b
+                                           double w1_c, double w2_c, const VesselParameters& p_c, bool in_c, // flow vessel c
+                                           double w1_d, double w2_d, const VesselParameters& p_d, bool in_d, // flow vessel c
+                                           gmm::row_matrix< gmm::wsvector< double > >& J )
+// clang-format on
+{
+  assert(J.ncols() == 4 && J.nrows() == 4);
+
+  // line 0
+  if (in_a)
+    J[0][0] = -calculate_diff_Q_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+  else
+    J[0][0] = +calculate_diff_Q_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+
+  if (in_b)
+    J[0][1] = -calculate_diff_Q_w1(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+  else
+    J[0][1] = +calculate_diff_Q_w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+
+  if (in_c)
+    J[0][2] = -calculate_diff_Q_w1(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+  else
+    J[0][2] = +calculate_diff_Q_w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+
+  if (in_d)
+    J[0][3] = -calculate_diff_Q_w1(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
+  else
+    J[0][3] = +calculate_diff_Q_w2(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
+
+  // line 1
+  if (in_a)
+    J[1][0] = +calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+  else
+    J[1][0] = +calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+
+  if (in_b)
+    J[1][1] = -calculate_diff_p_w1(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+  else
+    J[1][1] = -calculate_diff_p_w2(w1_b, w2_b, p_b.G0, p_b.rho, p_b.A0);
+
+  // line 2
+  if (in_a)
+    J[2][0] = +calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+  else
+    J[2][0] = +calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+
+  if (in_c)
+    J[2][2] = -calculate_diff_p_w1(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+  else
+    J[2][2] = -calculate_diff_p_w2(w1_c, w2_c, p_c.G0, p_c.rho, p_c.A0);
+
+  // line 3
+  if (in_a)
+    J[3][0] = +calculate_diff_p_w1(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+  else
+    J[3][0] = +calculate_diff_p_w2(w1_a, w2_a, p_a.G0, p_a.rho, p_a.A0);
+
+  if (in_c)
+    J[3][3] = -calculate_diff_p_w1(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
+  else
+    J[3][3] = -calculate_diff_p_w2(w1_d, w2_d, p_d.G0, p_d.rho, p_d.A0);
+}
+
+// clang-format off
+inline void extract_vector( double& w1_a, double& w2_a, bool in_a,
+                            double& w1_b, double& w2_b, bool in_b,
+                            double& w1_c, double& w2_c, bool in_c,
+                            double& w1_d, double& w2_d, bool in_d,
+                            const std::vector< double >& vec )
+// clang-format on
+{
+  if (in_a)
+    w1_a = vec[0];
+  else
+    w2_a = vec[0];
+
+  if (in_b)
+    w1_b = vec[1];
+  else
+    w2_b = vec[1];
+
+  if (in_c)
+    w1_c = vec[2];
+  else
+    w2_c = vec[2];
+
+  if (in_d)
+    w1_d = vec[3];
+  else
+    w2_d = vec[3];
+}
+
+// clang-format off
+inline void fill_vector( double w1_a, double w2_a, bool in_a,
+                         double w1_b, double w2_b, bool in_b,
+                         double w1_c, double w2_c, bool in_c,
+                         double w1_d, double w2_d, bool in_d,
+                         std::vector< double >& vec )
+// clang-format on
+{
+  if (in_a)
+    vec[0] = w1_a;
+  else
+    vec[0] = w2_a;
+
+  if (in_b)
+    vec[1] = w1_b;
+  else
+    vec[1] = w2_b;
+
+  if (in_c)
+    vec[2] = w1_c;
+  else
+    vec[2] = w2_c;
+
+  if (in_d)
+    vec[3] = w1_d;
+  else
+    vec[3] = w2_d;
+}
+
+// clang-format off
+inline std::size_t solve_at_trifurcation( double Q_a, double A_a, const VesselParameters& p_a, bool in_a, // flow vessel a
+                                         double Q_b, double A_b, const VesselParameters& p_b, bool in_b, // flow vessel b
+                                         double Q_c, double A_c, const VesselParameters& p_c, bool in_c, // flow vessel c
+                                         double Q_d, double A_d, const VesselParameters& p_d, bool in_d, // flow vessel d
+                                         double& Q_a_up, double& A_a_up,
+                                         double& Q_b_up, double& A_b_up,
+                                         double& Q_c_up, double& A_c_up,
+                                         double& Q_d_up, double& A_d_up)
+// clang-format on
+{
+  const std::size_t max_iter = 1000;
+
+  // calculate w1, w2 at all the bifurcations
+  double w1_a = calculate_W1_value(Q_a, A_a, p_a.G0, p_a.rho, p_a.A0);
+  double w2_a = calculate_W2_value(Q_a, A_a, p_a.G0, p_a.rho, p_a.A0);
+  double w1_b = calculate_W1_value(Q_b, A_b, p_b.G0, p_b.rho, p_b.A0);
+  double w2_b = calculate_W2_value(Q_b, A_b, p_b.G0, p_b.rho, p_b.A0);
+  double w1_c = calculate_W1_value(Q_c, A_c, p_c.G0, p_c.rho, p_c.A0);
+  double w2_c = calculate_W2_value(Q_c, A_c, p_c.G0, p_c.rho, p_c.A0);
+  double w1_d = calculate_W1_value(Q_d, A_d, p_d.G0, p_d.rho, p_d.A0);
+  double w2_d = calculate_W2_value(Q_d, A_d, p_d.G0, p_d.rho, p_d.A0);
+
+  // solve for w1, w2 with a newton iteration
+  gmm::row_matrix<gmm::wsvector<double>> Jac(4, 4);
+  std::vector<double> x(4, 0);
+  std::vector<double> f(4, 0);
+  std::vector<double> delta_x(4, 0);
+
+  fill_vector(
+    w1_a, w2_a, in_a,
+    w1_b, w2_b, in_b,
+    w1_c, w2_c, in_c,
+    w1_d, w2_d, in_d,
+    x);
+  std::size_t it = 0;
+  for (; it < max_iter; it += 1) {
+    trifurcation_equation_jacobian(
+      w1_a, w2_a, p_a, in_a,
+      w1_b, w2_b, p_b, in_b,
+      w1_c, w2_c, p_c, in_c,
+      w1_d, w2_d, p_d, in_d,
+      Jac);
+    trifurcation_equation(
+      w1_a, w2_a, p_a, in_a,
+      w1_b, w2_b, p_b, in_b,
+      w1_c, w2_c, p_c, in_c,
+      w1_d, w2_d, p_d, in_d,
+      f);
+    gmm::lu_solve(Jac, delta_x, f);
+    gmm::add(x, gmm::scaled(delta_x, -1), x);
+    extract_vector(
+      w1_a, w2_a, in_a,
+      w1_b, w2_b, in_b,
+      w1_c, w2_c, in_c,
+      w1_d, w2_d, in_d,
+      x);
+
+    if (gmm::vect_norm2(delta_x) < 1e-14 || gmm::vect_norm2(delta_x) < 1e-14 * gmm::vect_norm2(x))
+      break;
+  }
+
+  // copy back into the input variables
+  convert_w1w2_to_QA(w1_a, w2_a, p_a, Q_a_up, A_a_up);
+  convert_w1w2_to_QA(w1_b, w2_b, p_b, Q_b_up, A_b_up);
+  convert_w1w2_to_QA(w1_c, w2_c, p_c, Q_c_up, A_c_up);
+  convert_w1w2_to_QA(w1_d, w2_d, p_d, Q_d_up, A_d_up);
+
+  return it;
+}
+
 } // namespace macrocirculation
 
 #endif //TUMORMODELS_VESSEL_FORMULAS_HPP
