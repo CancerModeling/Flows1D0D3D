@@ -11,7 +11,6 @@
 
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
-#include "fe_type.hpp"
 #include "graph_storage.hpp"
 #include "right_hand_side_evaluator.hpp"
 #include "time_integrators.hpp"
@@ -58,7 +57,15 @@ template<std::size_t degree>
 ExplicitNonlinearFlowSolver<degree>::ExplicitNonlinearFlowSolver(MPI_Comm comm,
                                                                  std::shared_ptr<GraphStorage> graph,
                                                                  std::shared_ptr<DofMap> dof_map)
-    : d_comm(comm), d_graph(std::move(graph)), d_dof_map(std::move(dof_map)), d_right_hand_side_evaluator(std::make_shared<RightHandSideEvaluator>(d_comm, d_graph, d_dof_map, degree)), d_time_integrator(std::make_unique<TimeIntegrator>(create_explicit_euler(), d_dof_map->num_dof())), d_tau(2.5e-4 / 4), d_t_now(0), d_u_now(d_dof_map->num_dof()), d_u_prev(d_dof_map->num_dof()) {
+    : d_comm(comm),
+      d_graph(std::move(graph)),
+      d_dof_map(std::move(dof_map)),
+      d_right_hand_side_evaluator(std::make_shared<RightHandSideEvaluator>(d_comm, d_graph, d_dof_map, degree)),
+      d_time_integrator(std::make_unique<TimeIntegrator>(create_explicit_euler(), d_dof_map->num_dof())),
+      d_tau(2.5e-4 / 4),
+      d_t_now(0),
+      d_u_now(d_dof_map->num_dof()),
+      d_u_prev(d_dof_map->num_dof()) {
   // set A constant to A0
   set_to_A0(d_comm, *d_graph, *d_dof_map, d_u_prev);
   set_to_A0(d_comm, *d_graph, *d_dof_map, d_u_now);

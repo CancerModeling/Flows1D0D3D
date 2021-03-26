@@ -34,6 +34,15 @@ target_link_libraries(${ProjectName}BifurcationFlow ${ProjectLib})
 add_executable(${ProjectName}ConvergenceStudy convergence_study.cpp)
 target_link_libraries(${ProjectName}ConvergenceStudy ${ProjectLib})
 
+# test the 1d network:
+add_executable(${ProjectName}BreastGeometry breast_geometry.cpp)
+target_link_libraries(${ProjectName}BreastGeometry ${ProjectLib})
+
+add_custom_command(
+        TARGET ${ProjectName}BreastGeometry PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data/coarse-network-geometry.json $<TARGET_FILE_DIR:${ProjectName}BreastGeometry>/coarse-network-geometry.json
+        COMMENT "Copying file: coarse-network-geometry")
+
 foreach(TargetName ${ProjectName}NonlinearFlowLine ${ProjectName}NonlinearFlowBifurcation ${ProjectName}ConvergenceStudy ${ProjectName}Advection)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
