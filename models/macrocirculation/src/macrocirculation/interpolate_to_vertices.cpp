@@ -24,6 +24,17 @@ void linear_interpolate_points(const Point &left,
   }
 }
 
+void add_discontinuous_points( const std::vector< Point >& embedded_points, std::vector< Point >& points )
+{
+  if (embedded_points.size() < 2)
+    throw std::runtime_error("not enough points in embedding");
+
+  for (std::size_t micro_edge_id = 0; micro_edge_id < embedded_points.size()-1; micro_edge_id += 1) {
+    points.push_back(embedded_points[micro_edge_id]);
+    points.push_back(embedded_points[micro_edge_id + 1]);
+  }
+}
+
 void interpolate_to_vertices(const MPI_Comm comm,
                              const GraphStorage &graph,
                              const DofMap &map,
@@ -51,7 +62,7 @@ void interpolate_to_vertices(const MPI_Comm comm,
     if (embedding.points.size() == 2 && local_dof_map.num_micro_edges() > 1)
       linear_interpolate_points(embedding.points[0], embedding.points[1], local_dof_map.num_micro_edges(), points);
     else if (embedding.points.size() == local_dof_map.num_micro_edges() + 1)
-      points.insert(points.end(), embedding.points.begin(), embedding.points.end());
+      add_discontinuous_points(embedding.points, points);
     else
       throw std::runtime_error("this type of embedding is not implemented");
 
