@@ -43,7 +43,7 @@ void calculate_total_pressure(const MPI_Comm comm,
     if (embedding.points.size() == 2 && local_dof_map.num_micro_edges() > 1)
       linear_interpolate_points(embedding.points[0], embedding.points[1], local_dof_map.num_micro_edges(), points);
     else if (embedding.points.size() == local_dof_map.num_micro_edges() + 1)
-      points.insert(points.end(), embedding.points.begin(), embedding.points.end());
+      add_discontinuous_points(embedding.points, points);
     else
       throw std::runtime_error("this type of embedding is not implemented");
 
@@ -94,7 +94,7 @@ void calculate_static_pressure(const MPI_Comm comm,
     if (embedding.points.size() == 2 && local_dof_map.num_micro_edges() > 1)
       linear_interpolate_points(embedding.points[0], embedding.points[1], local_dof_map.num_micro_edges(), points);
     else if (embedding.points.size() == local_dof_map.num_micro_edges() + 1)
-      points.insert(points.end(), embedding.points.begin(), embedding.points.end());
+      add_discontinuous_points(embedding.points, points);
     else
       throw std::runtime_error("this type of embedding is not implemented");
 
