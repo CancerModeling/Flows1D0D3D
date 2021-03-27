@@ -39,7 +39,9 @@ int main(int argc, char *argv[]) {
     exit(-1);
   }
 
-  inflow_vertices[0]->set_to_inflow(mc::heart_beat_inflow());
+  inflow_vertices[0]->set_to_inflow(mc::heart_beat_inflow(4.8));
+
+  mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
@@ -59,7 +61,7 @@ int main(int argc, char *argv[]) {
   pvd_writer.write(0);
    */
 
-  const double t_end = 4e-1;
+  const double t_end = 2.;
   const std::size_t max_iter = 160000000;
 
   const double tau = 2.5e-4 / 32 / 4;
