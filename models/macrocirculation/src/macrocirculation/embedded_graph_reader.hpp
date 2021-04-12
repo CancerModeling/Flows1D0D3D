@@ -19,7 +19,7 @@ public:
   EmbeddedGraphReader()
     : d_elastic_modulus(0.8)
     , d_wall_width(0.034)
-    , d_rho(1.028)
+    , d_rho(1.028e-3)
     , d_poisson_ratio(0.5)
   {}
 

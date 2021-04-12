@@ -125,7 +125,7 @@ solve_W12(double &Q_up, double &A_up, const double W1, const double W2, const do
  */
 class heart_beat_inflow {
 public:
-  explicit heart_beat_inflow(double amplitude = 485., double t_period = 1.0, double t_systole = 0.3)
+  explicit heart_beat_inflow(double amplitude = 4.85, double t_period = 1.0, double t_systole = 0.3)
       : d_amplitude(amplitude),
         d_t_period(t_period),
         d_t_systole(t_systole) {}
