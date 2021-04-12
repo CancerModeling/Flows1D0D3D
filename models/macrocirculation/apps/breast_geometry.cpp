@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
   std::vector<double> p_static_vertex_values;
 
   mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map, {"Q", "A"});
-  mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "bifurcation_solution");
+  mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "breast_geometry_solution");
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {

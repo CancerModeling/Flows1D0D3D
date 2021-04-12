@@ -50,9 +50,13 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
       r_avg += r;
     r_avg /= vessel["radii"].size();
 
+    const double wall_thickness = vessel["wall_thickness"];
+    double E = vessel["elastic_modulus"];
+    E /= 100.;
+
     const double A0 = std::pow(r_avg, 2) * M_PI;
     // const double G0 = calculate_G0(d_wall_width, d_elastic_modulus, d_poisson_ratio, A0);
-    const double G0 = 592.4e1 * std::sqrt(6.97) / std::sqrt(A0);
+    const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * E * wall_thickness / std::sqrt(A0);
     const double length = vessel["vessel_length"];
 
     edge->add_physical_data({
