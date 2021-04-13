@@ -252,7 +252,7 @@ inline void nfurcation_equation(const std::vector<double> &w1,
   assert(num_vessels == p.size());
   assert(num_vessels == in.size());
   assert(num_vessels == out.size());
-  assert(num_vessels > 2);
+  assert(num_vessels > 1);
 
   // flow equation (all flows add up to zero):
   double eq_Q = 0;
@@ -292,7 +292,7 @@ inline void nfurcation_equation_jacobian(const std::vector<double> &w1,
   assert(num_vessels == p.size());
   assert(num_vessels == in.size());
   assert(J.ncols() == num_vessels && J.nrows() == num_vessels);
-  assert(num_vessels > 2);
+  assert(num_vessels > 1);
 
   // line 0, Q derivative:
   for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
@@ -336,7 +336,7 @@ inline void extract_vector(std::vector<double> &w1,
   assert(num_vessels == w2.size());
   assert(num_vessels == in.size());
   assert(num_vessels == vec.size());
-  assert(num_vessels > 2);
+  assert(num_vessels > 1);
 
   // line 0, Q derivative:
   for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
@@ -366,7 +366,7 @@ inline void fill_vector(const std::vector<double> &w1,
   assert(num_vessels == w2.size());
   assert(num_vessels == in.size());
   assert(num_vessels == vec.size());
-  assert(num_vessels > 2);
+  assert(num_vessels > 1);
 
   for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
     if (in[vessel_idx])
@@ -401,7 +401,7 @@ inline std::size_t solve_at_nfurcation(const std::vector<double> &Q,
   assert(num_vessels == in.size());
   assert(num_vessels == Q_up.size());
   assert(num_vessels == A_up.size());
-  assert(num_vessels > 2);
+  assert(num_vessels > 1);
 
   const std::size_t max_iter = 1000;
 

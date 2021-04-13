@@ -84,8 +84,9 @@ def create_uniform_mesh(data, h):
             'abstract_coordinates': abstract_coordinates,
             'vessel_length': vessel_length,
             'micro_edge_length': vessel_length/(num_points-1),
-            'wall_thickness': 0.067,      # completely artificial
-            'elastic_modulus': 2000.0,    # completely artificial
+            'wall_thickness': 0.1,      # completely artificial
+            #'elastic_modulus': 6.4e5,    # completely artificial
+            'elastic_modulus': 1.3e6,    # completely artificial
             'radii': radii,
             # 'pv0': pv0
         }

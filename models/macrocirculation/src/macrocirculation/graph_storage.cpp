@@ -56,7 +56,7 @@ bool Vertex::is_unconnected() const {
 }
 
 bool Vertex::is_bifurcation() const {
-  return p_neighbors.size() > 2;
+  return p_neighbors.size() > 1;
 }
 
 void Vertex::set_to_inflow(std::function<double(double)> value) {

@@ -35,14 +35,15 @@ int main(int argc, char *argv[]) {
   // auto inflow_vertices = graph->find_embedded_vertices({ 9.093333333333334, 9.173333333333334, 8.053333333333335 });
   std::vector<mc::Point> inflow_points = {
     {9.093333333333334, 9.173333333333334, 8.053333333333335},
-    {2.9333333333333336, 9.973333333333334, 10.933333333333334}};
+    {2.9333333333333336, 9.973333333333334, 10.933333333333334}
+  };
   for (auto &p : inflow_points) {
     auto inflow_vertices = graph->find_embedded_vertices(p );
     if (inflow_vertices.size() != 1) {
       std::cerr << "expected to find a single vertex, not " << std::to_string(inflow_vertices.size()) << " vertices" << std::endl;
       exit(-1);
     }
-    inflow_vertices[0]->set_to_inflow(mc::heart_beat_inflow(4.8));
+    inflow_vertices[0]->set_to_inflow(mc::heart_beat_inflow(4.85 / 8.));
   }
 
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
@@ -68,8 +69,9 @@ int main(int argc, char *argv[]) {
   const double t_end = 2.;
   const std::size_t max_iter = 160000000;
 
-  const double tau = 2.5e-4 / 32 / 4;
+  const double tau = 2.5e-4 / 32 / 4 / 2;
   const double tau_out = 1e-3;
+  // const double tau_out = tau;
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
   // configure solver
@@ -85,6 +87,20 @@ int main(int argc, char *argv[]) {
 
   mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map, {"Q", "A"});
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "breast_geometry_solution");
+
+  {
+    mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 0, solver.get_solution(), points, Q_vertex_values);
+    mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 1, solver.get_solution(), points, A_vertex_values);
+    mc::calculate_total_pressure(MPI_COMM_WORLD, *graph, *dof_map, solver.get_solution(), points, p_total_vertex_values);
+    mc::calculate_static_pressure(MPI_COMM_WORLD, *graph, *dof_map, solver.get_solution(), points, p_static_vertex_values);
+
+    pvd_writer.set_points(points);
+    pvd_writer.add_vertex_data("Q", Q_vertex_values);
+    pvd_writer.add_vertex_data("A", A_vertex_values);
+    pvd_writer.add_vertex_data("p_static", p_static_vertex_values);
+    pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
+    pvd_writer.write(solver.get_time());
+  }
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
