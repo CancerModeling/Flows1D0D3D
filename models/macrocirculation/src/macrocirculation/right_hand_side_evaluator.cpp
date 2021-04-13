@@ -337,7 +337,7 @@ void RightHandSideEvaluator::calculate_inner_fluxes(const std::vector<double> &u
 
 void RightHandSideEvaluator::calculate_fluxes(const double t, const std::vector<double> &u_prev) {
   calculate_nfurcation_fluxes(u_prev);
-  calculate_inner_fluxes(u_prev);
+  // calculate_inner_fluxes(u_prev);
   calculate_inout_fluxes(t, u_prev);
 }
 
