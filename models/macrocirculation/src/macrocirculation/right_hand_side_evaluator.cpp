@@ -86,7 +86,7 @@ RightHandSideEvaluator::RightHandSideEvaluator(MPI_Comm comm,
       d_edge_boundary_communicator(Communicator::create_edge_boundary_value_communicator(comm, d_graph)),
       d_S_evaluator(default_S{
         4.5, // 4.5 m Pa/s
-        2,   // Poiseuille flow
+        9,   // Poiseuille flow
         0    // 0 cm^2/s, no wall permeability
       }),
       d_degree(degree),

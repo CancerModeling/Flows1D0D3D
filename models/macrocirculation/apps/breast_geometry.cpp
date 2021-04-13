@@ -32,14 +32,18 @@ int main(int argc, char *argv[]) {
   mc::EmbeddedGraphReader graph_reader;
   graph_reader.append("coarse-network-geometry.json", *graph);
 
-  auto inflow_vertices = graph->find_embedded_vertices({ 9.093333333333334, 9.173333333333334, 8.053333333333335 });
-  if (inflow_vertices.size() != 1)
-  {
-    std::cerr << "expected to find a single vertex, not " << std::to_string(inflow_vertices.size()) << " vertices" << std::endl;
-    exit(-1);
+  // auto inflow_vertices = graph->find_embedded_vertices({ 9.093333333333334, 9.173333333333334, 8.053333333333335 });
+  std::vector<mc::Point> inflow_points = {
+    {9.093333333333334, 9.173333333333334, 8.053333333333335},
+    {2.9333333333333336, 9.973333333333334, 10.933333333333334}};
+  for (auto &p : inflow_points) {
+    auto inflow_vertices = graph->find_embedded_vertices(p );
+    if (inflow_vertices.size() != 1) {
+      std::cerr << "expected to find a single vertex, not " << std::to_string(inflow_vertices.size()) << " vertices" << std::endl;
+      exit(-1);
+    }
+    inflow_vertices[0]->set_to_inflow(mc::heart_beat_inflow(4.8));
   }
-
-  inflow_vertices[0]->set_to_inflow(mc::heart_beat_inflow(4.8));
 
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
