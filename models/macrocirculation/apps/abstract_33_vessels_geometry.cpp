@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
-  auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
+  auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   const double t_end = 1.5;

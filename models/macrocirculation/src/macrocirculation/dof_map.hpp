@@ -15,6 +15,7 @@
 namespace macrocirculation {
 
 // forward declarations
+class Vertex;
 class Edge;
 class GraphStorage;
 class MicroEdge;
@@ -22,9 +23,9 @@ class MicroEdge;
 /*! @brief Simple dof map, which orders the dofs by the formula
  *         dof_interval_start + edge_id * num_components * num_basis_functions + num_basis_functions * component_id + basis_function_id
  */
-class LocalDofMap {
+class LocalEdgeDofMap {
 public:
-  LocalDofMap(std::size_t dof_interval_start,
+  LocalEdgeDofMap(std::size_t dof_interval_start,
               std::size_t num_components,
               std::size_t num_basis_functions,
               std::size_t num_micro_edges);
@@ -48,16 +49,32 @@ private:
   std::size_t d_num_micro_edges;
 };
 
+class LocalVertexDofMap {
+public:
+  LocalVertexDofMap(std::size_t dof_interval_start, std::size_t num_components);
+
+  std::size_t num_local_dof() const;
+
+  const std::vector< std::size_t > & dof_indices() const;
+
+private:
+  std::vector< std::size_t > d_dof_indices;
+};
+
 class DofMap {
 public:
-  explicit DofMap(std::size_t num_edges);
+  explicit DofMap(std::size_t num_vertices, std::size_t num_edges);
 
-  const LocalDofMap &get_local_dof_map(const Edge &e) const;
+  const LocalEdgeDofMap &get_local_dof_map(const Edge &e) const;
+
+  const LocalVertexDofMap &get_local_dof_map(const Vertex &e) const;
 
   void add_local_dof_map(const Edge &e,
                          std::size_t num_components,
                          std::size_t num_basis_functions,
                          std::size_t num_micro_edges);
+
+  void add_local_dof_map(const Vertex &v, std::size_t num_components);
 
   std::size_t num_dof() const;
 
@@ -81,7 +98,9 @@ public:
               bool global);
 
 private:
-  std::vector<std::unique_ptr<LocalDofMap>> d_local_dof_maps;
+  std::vector<std::unique_ptr<LocalEdgeDofMap>> d_local_dof_maps;
+
+  std::vector<std::unique_ptr<LocalVertexDofMap>> d_local_vertex_dof_maps;
 
   std::size_t d_num_dof;
 };

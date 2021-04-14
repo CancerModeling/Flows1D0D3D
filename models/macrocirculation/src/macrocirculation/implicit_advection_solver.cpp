@@ -35,7 +35,7 @@ void ImplicitAdvectionSolver::solve() const {
   const std::size_t num_components = 1;
   const std::size_t num_basis_functions = d_degree + 1;
 
-  const auto dof_map = std::make_shared<DofMap>(d_graph->num_edges());
+  const auto dof_map = std::make_shared<DofMap>(d_graph->num_vertices(), d_graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *d_graph, num_components, d_degree, true);
 
   const std::size_t num_dofs = dof_map->num_dof();

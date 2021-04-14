@@ -250,7 +250,7 @@ void RightHandSideEvaluator::calculate_inout_fluxes(double t, const std::vector<
         }
       }
       // free outflow boundary
-      else {
+      else if (vertex->is_free_outflow()) {
         // TODO: make this more generic for other initial flow values
         const double A_init = param.A0;
 
@@ -274,6 +274,11 @@ void RightHandSideEvaluator::calculate_inout_fluxes(double t, const std::vector<
           d_Q_macro_edge_flux_l[edge->get_id()] = Q_up;
           d_A_macro_edge_flux_l[edge->get_id()] = A_up;
         }
+      } else if (vertex->is_windkessel_outflow()) {
+        throw std::runtime_error("not implemented!");
+      }
+      else {
+        throw std::runtime_error("undefined boundary type!");
       }
     }
   }
