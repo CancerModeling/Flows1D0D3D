@@ -91,6 +91,7 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
 
     if (v.is_leaf()) {
       if (vertex.contains("peripheral_resistance") || vertex.contains("peripheral_compliance")) {
+      // if (false) {
         const double r = vertex["peripheral_resistance"];
         const double c = vertex["peripheral_compliance"];
         v.set_to_windkessel_outflow(r, c);

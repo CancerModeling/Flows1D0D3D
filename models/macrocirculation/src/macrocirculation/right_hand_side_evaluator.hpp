@@ -129,7 +129,7 @@ private:
    * @param t       The current time for the inflow boundary conditions.
    * @param u_prev  The solution for which we calculate the fluxes.
    */
-  void calculate_fluxes(double t, const std::vector<double> &u_prev);
+  void calculate_fluxes(double t, std::vector<double> &rhs, const std::vector<double> &u_prev);
 
   /*! @brief Recalculates the fluxes inside of the macro-edges for the given time step at the micro-vertices.
     *
@@ -147,7 +147,7 @@ private:
    *
    * @param u_prev  The solution for which we calculate the fluxes.
    */
-  void calculate_inout_fluxes(double t, const std::vector<double> &u_prev);
+  void calculate_inout_fluxes(double t, std::vector<double> &rhs, const std::vector<double> &u_prev);
 
   /*! @brief Assembles from the fluxes and the previous values a new right hand side function. */
   void calculate_rhs(double t, const std::vector<double> &u_prev, std::vector<double> &rhs);

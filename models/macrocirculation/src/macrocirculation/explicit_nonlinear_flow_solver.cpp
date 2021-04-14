@@ -14,6 +14,7 @@
 #include "graph_storage.hpp"
 #include "right_hand_side_evaluator.hpp"
 #include "time_integrators.hpp"
+#include "vessel_formulas.hpp"
 
 namespace macrocirculation {
 
@@ -50,6 +51,29 @@ void set_to_A0(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, 
       local_dof_map.dof_indices(micro_edge_id, 1, dof_indices);
       result[dof_indices[0]] = data.A0;
     }
+  }
+
+  for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
+    const auto vertex = graph.get_vertex(v_id);
+
+    if (!vertex->is_windkessel_outflow())
+      continue;
+
+    assert(vertex->is_leaf());
+
+    const auto edge = graph.get_edge(vertex->get_edge_neighbors()[0]);
+
+    const auto& vertex_dof_map = dof_map.get_local_dof_map(*vertex);
+
+    assert(vertex_dof_map.num_local_dof() == 2);
+
+    const auto &data = edge->get_physical_data();
+    const auto& vertex_dof_indices = vertex_dof_map.dof_indices();
+
+    // set Q
+    result[vertex_dof_indices[0]] = 0;
+    // set p
+    result[vertex_dof_indices[1]] = calculate_p_from_QA(0, data.A0, data.G0, data.rho, data.A0);
   }
 }
 

@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
-  const double t_end = 1.5;
+  const double t_end = 10;
   const std::size_t max_iter = 160000000;
 
   const double tau = 2.5e-4 / 16 ;
