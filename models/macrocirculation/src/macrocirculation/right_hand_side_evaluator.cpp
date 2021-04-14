@@ -293,7 +293,7 @@ void RightHandSideEvaluator::calculate_inout_fluxes(double t, const std::vector<
         const auto &vertex_dof_map = d_dof_map->get_local_dof_map(*vertex);
 
         // check that we have dofs assigned for q and p
-        assert(vertex_dof_map.num_local_dof() == 2);
+        assert(vertex_dof_map.num_local_dof() == 1);
 
         // get Q and p add vessel tip
         const auto &vertex_dofs = vertex_dof_map.dof_indices();

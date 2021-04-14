@@ -65,15 +65,13 @@ void set_to_A0(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, 
 
     const auto& vertex_dof_map = dof_map.get_local_dof_map(*vertex);
 
-    assert(vertex_dof_map.num_local_dof() == 2);
+    assert(vertex_dof_map.num_local_dof() == 1);
 
     const auto &data = edge->get_physical_data();
     const auto& vertex_dof_indices = vertex_dof_map.dof_indices();
 
-    // set Q
-    result[vertex_dof_indices[0]] = 0;
     // set p
-    result[vertex_dof_indices[1]] = calculate_p_from_QA(0, data.A0, data.G0, data.rho, data.A0);
+    result[vertex_dof_indices[0]] = calculate_p_from_QA(0, data.A0, data.G0, data.rho, data.A0);
   }
 }
 
