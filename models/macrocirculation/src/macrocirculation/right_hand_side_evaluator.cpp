@@ -76,16 +76,15 @@ void assemble_inverse_mass(MPI_Comm comm, const GraphStorage &graph, const DofMa
   }
 
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
-    auto& vertex = *graph.get_vertex(v_id);
+    auto &vertex = *graph.get_vertex(v_id);
 
     if (!vertex.is_windkessel_outflow())
       continue;
 
-    auto& vertex_dof_map = dof_map.get_local_dof_map(vertex);
-    auto& indices = vertex_dof_map.dof_indices();
-    for (auto i : indices){
+    auto &vertex_dof_map = dof_map.get_local_dof_map(vertex);
+    auto &indices = vertex_dof_map.dof_indices();
+    for (auto i : indices) {
       inv_mass[i] = 1;
-      std::cout << std::endl;
     }
   }
 }
@@ -100,8 +99,8 @@ RightHandSideEvaluator::RightHandSideEvaluator(MPI_Comm comm,
       d_edge_boundary_communicator(Communicator::create_edge_boundary_value_communicator(comm, d_graph)),
       d_S_evaluator(default_S{
         4.0e-5, // 4.5 m Pa/s
-        9,   // Poiseuille flow
-        0    // 0 cm^2/s, no wall permeability
+        9,      // Poiseuille flow
+        0       // 0 cm^2/s, no wall permeability
       }),
       d_degree(degree),
       d_Q_macro_edge_boundary_value(2 * d_graph->num_edges()),
@@ -119,15 +118,11 @@ void RightHandSideEvaluator::evaluate(const double t, const std::vector<double> 
   d_edge_boundary_communicator.update_ghost_layer(d_Q_macro_edge_boundary_value);
   d_edge_boundary_communicator.update_ghost_layer(d_A_macro_edge_boundary_value);
 
-  // first zero rhs
-  for (std::size_t idx = 0; idx < rhs.size(); idx += 1)
-    rhs[idx] = 0;
-
   //std::cout << "fluxes Q_macro_edge_boundary_value_l " << d_Q_macro_edge_boundary_value_l << std::endl;
   //std::cout << "fluxes Q_macro_edge_boundary_value_r " << d_Q_macro_edge_boundary_value_r << std::endl;
   //std::cout << "fluxes A_macro_edge_boundary_value_l " << d_A_macro_edge_boundary_value_l << std::endl;
   //std::cout << "fluxes A_macro_edge_boundary_value_r " << d_A_macro_edge_boundary_value_r << std::endl;
-  calculate_fluxes(t, rhs, u_prev);
+  calculate_fluxes(t, u_prev);
   //std::cout << "fluxes d_Q_macro_edge_flux_r " << d_Q_macro_edge_flux_r << std::endl;
   //std::cout << "fluxes d_A_macro_edge_flux_r " << d_A_macro_edge_flux_r << std::endl;
   //std::cout << "fluxes d_Q_macro_edge_flux_l " << d_Q_macro_edge_flux_l << std::endl;
@@ -233,7 +228,7 @@ void RightHandSideEvaluator::calculate_nfurcation_fluxes(const std::vector<doubl
   }
 }
 
-void RightHandSideEvaluator::calculate_inout_fluxes(double t, std::vector<double> &rhs, const std::vector<double> &u_prev) {
+void RightHandSideEvaluator::calculate_inout_fluxes(double t, const std::vector<double> &u_prev) {
   // initial value of the flow
   // TODO: make this more generic for other initial flow values
   const double Q_init = 0;
@@ -257,7 +252,7 @@ void RightHandSideEvaluator::calculate_inout_fluxes(double t, std::vector<double
 
       // inflow boundary
       if (vertex->is_inflow()) {
-        const double Q_star = (in ? -1 : + 1) * vertex->get_inflow_value(t);
+        const double Q_star = (in ? -1 : +1) * vertex->get_inflow_value(t);
         const double A_up = assemble_in_flow(Q, A, in, Q_star, param.G0, param.rho, param.A0);
 
         if (in) {
@@ -293,141 +288,67 @@ void RightHandSideEvaluator::calculate_inout_fluxes(double t, std::vector<double
         }
       } else if (vertex->is_windkessel_outflow()) {
         // only one direction at the beginning.
-        assert( edge->is_pointing_to(vertex->get_id()) );
+        assert(edge->is_pointing_to(vertex->get_id()));
 
-        auto& vertex_dof_map = d_dof_map->get_local_dof_map(*vertex);
+        const auto &vertex_dof_map = d_dof_map->get_local_dof_map(*vertex);
 
         // check that we have dofs assigned for q and p
-        assert( vertex_dof_map.num_local_dof() == 2 );
+        assert(vertex_dof_map.num_local_dof() == 2);
 
         // get Q and p add vessel tip
-        auto vertex_dofs = vertex_dof_map.dof_indices();
+        const auto &vertex_dofs = vertex_dof_map.dof_indices();
 
-        auto p_c = u_prev[vertex_dofs[1]];
+        const auto p_c = u_prev[vertex_dofs[0]];
 
-        double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
-        double R1 = param.rho * c0 / param.A0;
-        double R2 = vertex->get_peripheral_vessel_data().resistance - R1;
+        const double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
+        const double R1 = param.rho * c0 / param.A0;
 
         const auto W2 = calculate_W2_value(Q, A, param.G0, param.rho, param.A0);
 
-        auto f = [&](auto A_out) {
+        const auto f = [&](auto A_out) {
           auto p = param.G0 * (std::sqrt(A_out / param.A0) - 1);
-          return W2 - (p - p_c)/( A_out * R1 ) - 4 * c0  * std::pow(A_out/ param.A0, 0.25);
+          return W2 - (p - p_c) / (A_out * R1) - 4 * c0 * std::pow(A_out / param.A0, 0.25);
         };
 
-        auto df = [&](auto A_out) {
+        const auto df = [&](auto A_out) {
           auto p = param.G0 * (std::sqrt(A_out / param.A0) - 1);
           auto dp = param.G0 * 0.5 / std::sqrt(A_out * param.A0);
-          return - dp/(A_out * R1 ) + (p - p_c)/( A_out * A_out * R1 ) - c0  * std::pow(A_out, - 0.75) * std::pow(param.A0, 0.25);
+          return -dp / (A_out * R1) + (p - p_c) / (A_out * A_out * R1) - c0 * std::pow(A_out, -0.75) * std::pow(param.A0, 0.25);
         };
 
         const double TOL = 1.0e-10;
-
         const double omega = 0.5 / 2.;
-
         double error = INFINITY;
+        int num_iter = 0;
 
-        int numbIter = 0;
+        double A_out = A;
 
-        double x = A;
+        while (num_iter < 250 && error > TOL) {
+          const double f_value = f(A_out);
+          const double df_value = df(A_out);
+          const double dx = -f_value / df_value;
 
-        while (numbIter < 250 && error > TOL) {
-
-          auto f_value = f(x);
-          auto df_value = df(x);
-
-          auto dx = - f_value/df_value;
-
-          x = x + omega*dx;
+          A_out = A_out + omega * dx;
 
           error = std::abs(dx);
-          numbIter = numbIter + 1;
+          num_iter += 1;
         }
 
-        // std::cout << "numbIter = " << numbIter << " " << " error = " << error << std::endl;
-
-        double A_out = x;
-        double Q_out = (calculate_static_p(A_out, param.G0, param.A0) - p_c)/R1;
+        const double Q_out = (calculate_static_p(A_out, param.G0, param.A0) - p_c) / R1;
 
         d_Q_macro_edge_flux_r[edge->get_id()] = Q_out;
         d_A_macro_edge_flux_r[edge->get_id()] = A_out;
-
-        // pressure in the veins:
-        const double p_v = 5.0 * 1.333322;
-
-        rhs[vertex_dofs[0]] = 0;
-        rhs[vertex_dofs[1]] = 1./vertex->get_peripheral_vessel_data().compliance * (Q_out - (p_c - p_v)/R2);
-
-        // std::cout << "p_c = " << p_c << ", rhs = " << rhs[vertex_dofs[1]] << std::endl;
-      }
-      else {
+      } else {
         throw std::runtime_error("undefined boundary type!");
       }
     }
   }
 }
 
-void RightHandSideEvaluator::calculate_inner_fluxes(const std::vector<double> &u_prev) {
-  // initial value of the flow
-  // TODO: make this more generic for other initial flow values
-  const double Q_init = 0;
-
-  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
-    const auto vertex = d_graph->get_vertex(v_id);
-
-    if (vertex->get_edge_neighbors().size() == 2) {
-      // get vertices
-      const auto e0 = d_graph->get_edge(vertex->get_edge_neighbors()[0]);
-      const auto e1 = d_graph->get_edge(vertex->get_edge_neighbors()[1]);
-
-      // check orientation
-      const bool e0_in = e0->is_pointing_to(vertex->get_id());
-      const bool e1_in = e1->is_pointing_to(vertex->get_id());
-
-      // get data
-      const auto &data_e0 = e0->get_physical_data();
-      const auto &data_e1 = e1->get_physical_data();
-      const VesselParameters p_e0{data_e0.G0, data_e0.A0, data_e0.rho};
-      const VesselParameters p_e1{data_e1.G0, data_e1.A0, data_e1.rho};
-
-      // evaluate on edge e0
-      const double Q_e0 =
-        e0_in ? d_Q_macro_edge_boundary_value[2 * e0->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * e0->get_id()];
-      const double A_e0 =
-        e0_in ? d_A_macro_edge_boundary_value[2 * e0->get_id() + 1] : d_A_macro_edge_boundary_value[2 * e0->get_id()];
-
-      // evaluate on edge e1
-      const double Q_e1 =
-        e1_in ? d_Q_macro_edge_boundary_value[2 * e1->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * e1->get_id()];
-      const double A_e1 =
-        e1_in ? d_A_macro_edge_boundary_value[2 * e1->get_id() + 1] : d_A_macro_edge_boundary_value[2 * e1->get_id()];
-
-      assert(e0->get_vertex_neighbors()[1] == vertex->get_id() && e1->get_vertex_neighbors()[0] == vertex->get_id());
-
-      const double W2_l = calculate_W2_value(Q_e0, A_e0, p_e0.G0, p_e0.rho, p_e0.A0);
-      const double W1_r = calculate_W1_value(Q_e1, A_e1, p_e1.G0, p_e1.rho, p_e1.A0);
-
-      assert(p_e0.G0 == p_e1.G0);
-      assert(p_e0.rho == p_e1.rho);
-      assert(p_e0.A0 == p_e1.A0);
-
-      double Q_up = 0, A_up = 0;
-
-      solve_W12(Q_up, A_up, W1_r, W2_l, p_e0.G0, p_e0.rho, p_e0.A0);
-
-      d_Q_macro_edge_flux_r[e0->get_id()] = Q_up;
-      d_Q_macro_edge_flux_l[e1->get_id()] = Q_up;
-      d_A_macro_edge_flux_r[e0->get_id()] = A_up;
-      d_A_macro_edge_flux_l[e1->get_id()] = A_up;
-    }
-  }
-}
-
-void RightHandSideEvaluator::calculate_fluxes(const double t, std::vector<double> &rhs, const std::vector<double> &u_prev) {
+void RightHandSideEvaluator::calculate_fluxes(const double t, const std::vector<double> &u_prev) {
   calculate_nfurcation_fluxes(u_prev);
   // calculate_inner_fluxes(u_prev);
-  calculate_inout_fluxes(t, rhs, u_prev);
+  calculate_inout_fluxes(t, u_prev);
 }
 
 void RightHandSideEvaluator::calculate_fluxes_on_macro_edge(const Edge &edge,
@@ -515,6 +436,9 @@ void RightHandSideEvaluator::calculate_fluxes_on_macro_edge(const Edge &edge,
 }
 
 void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<double> &u_prev, std::vector<double> &rhs) {
+  // first zero rhs
+  for (std::size_t idx = 0; idx < rhs.size(); idx += 1)
+    rhs[idx] = 0;
 
   std::vector<double> Q_up_macro_edge(0, 0);
   std::vector<double> A_up_macro_edge(0, 0);
@@ -626,6 +550,36 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
       for (std::size_t i = 0; i < A_dof_indices.size(); i += 1) {
         rhs[A_dof_indices[i]] += f_loc_A[i];
       }
+    }
+  }
+
+  // add windkessel contributions
+  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+    const auto vertex = d_graph->get_vertex(v_id);
+
+    if (vertex->is_leaf() && vertex->is_windkessel_outflow()) {
+      const auto &edge = *d_graph->get_edge(vertex->get_edge_neighbors()[0]);
+      assert(edge.has_physical_data());
+      const auto &param = edge.get_physical_data();
+
+      // only one direction at the beginning.
+      assert(edge.is_pointing_to(vertex->get_id()));
+
+      const auto &vertex_dof_map = d_dof_map->get_local_dof_map(*vertex);
+      const auto &vertex_dofs = vertex_dof_map.dof_indices();
+
+      const auto p_c = u_prev[vertex_dofs[0]];
+
+      auto Q_out = d_Q_macro_edge_flux_r[edge.get_id()];
+
+      const double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
+      const double R1 = param.rho * c0 / param.A0;
+      const double R2 = vertex->get_peripheral_vessel_data().resistance - R1;
+
+      // pressure in the veins:
+      const double p_v = 5.0 * 1.333322;
+
+      rhs[vertex_dofs[0]] = 1. / vertex->get_peripheral_vessel_data().compliance * (Q_out - (p_c - p_v) / R2);
     }
   }
 }

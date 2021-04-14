@@ -36,21 +36,15 @@ for idx, vessel_id in enumerate(args.vessels):
 
     t = np.loadtxt('output/data_times.csv', delimiter=',')
 
-    #start_index = len(t < args.t_start)
+    start_index = np.sum(t < args.t_start)
 
-    #t = t[start_index:]
-    #a = a[start_index:]
-    #p = p[start_index:]
-    #q = q[start_index:]
+    t = t[start_index:]
+    a = a[start_index:]
+    p = p[start_index:]
+    q = q[start_index:]
 
-    #t = np.linspace(0, args.t_end, len(q))
-
-
-    print(len(t), len(a))
     ax0.plot(t, a, label='a ({})'.format(vessel_id))
-    print(len(t), len(q))
     ax1.plot(t, q, label='q ({})'.format(vessel_id))
-    print(len(t), len(p))
     ax2.plot(t, p, label='p ({})'.format(vessel_id))
     ax0.legend()
     ax1.legend()

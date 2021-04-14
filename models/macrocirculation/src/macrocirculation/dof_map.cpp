@@ -117,16 +117,17 @@ void DofMap::create(MPI_Comm comm,
 
     for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
       const auto vertex = graph.get_vertex(v_id);
-      // TODO: generalize this to allow other boundary conditions
-      if (!vertex->is_inflow() && vertex->is_leaf()) {
-        add_local_dof_map(*vertex, num_components);
+      if (vertex->is_windkessel_outflow()) {
+        add_local_dof_map(*vertex, 1);
       }
     }
   }
 }
 
 const LocalVertexDofMap &DofMap::get_local_dof_map(const Vertex &v) const {
-  return *d_local_vertex_dof_maps[v.get_id()];
+  if (d_local_vertex_dof_maps.at(v.get_id()) == nullptr)
+    throw std::runtime_error("dof map for vertex with id " + std::to_string(v.get_id()) + " was not initialized.");
+  return *d_local_vertex_dof_maps.at(v.get_id());
 }
 
 LocalVertexDofMap::LocalVertexDofMap(std::size_t dof_interval_start, std::size_t num_components) {
