@@ -5,7 +5,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Plots the vessel data.')
 parser.add_argument('--vessels', type=int, nargs='+', help='A list of ids of the vessels to plot.', default=[15])
-parser.add_argument('--t-end', type=float, default=10)
+parser.add_argument('--t-start', type=float, default=0)
 
 args = parser.parse_args()
 
@@ -35,6 +35,13 @@ for idx, vessel_id in enumerate(args.vessels):
     p = p[:, int(p.shape[1]/2)]
 
     t = np.loadtxt('output/data_times.csv', delimiter=',')
+
+    #start_index = len(t < args.t_start)
+
+    #t = t[start_index:]
+    #a = a[start_index:]
+    #p = p[start_index:]
+    #q = q[start_index:]
 
     #t = np.linspace(0, args.t_end, len(q))
 
