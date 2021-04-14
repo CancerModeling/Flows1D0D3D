@@ -35,20 +35,33 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
     size_t left_vertex_id = vessel["left_vertex_id"];
     size_t right_vertex_id = vessel["right_vertex_id"];
 
-    size_t num_micro_edges = vessel["abstract_coordinates"].size() - 1;
+    size_t num_micro_edges = 0;
+    if (vessel.contains("number_edges"))
+      num_micro_edges = vessel["number_edges"];
+    else if (vessel.contains("abstract_coordinates"))
+      num_micro_edges = vessel["abstract_coordinates"].size() - 1;
+    else
+      throw std::runtime_error("cannot infer number of micro edges");
 
     auto edge = graph.connect(*vertices[left_vertex_id], *vertices[right_vertex_id], num_micro_edges);
 
-    std::vector<Point> points;
-    for (auto p : vessel["embedded_coordinates"])
-      points.emplace_back(p[0], p[1], p[2]);
-
-    edge->add_embedding_data({ points });
+    if (vessel.contains("embedded_coordiantes")) {
+      std::vector<Point> points;
+      for (auto p : vessel["embedded_coordinates"])
+        points.emplace_back(p[0], p[1], p[2]);
+      edge->add_embedding_data({points});
+    }
 
     double r_avg = 0;
-    for (double r : vessel["radii"])
-      r_avg += r;
-    r_avg /= vessel["radii"].size();
+    if (vessel.contains("radius")) {
+      r_avg = vessel["radius"];
+    } else if (vessel.contains("radii")) {
+      for (double r : vessel["radii"])
+        r_avg += r;
+      r_avg /= vessel["radii"].size();
+    } else {
+      throw std::runtime_error("cannot infer radius");
+    }
 
     const double wall_thickness = vessel["wall_thickness"];
     double E = vessel["elastic_modulus"];
@@ -59,12 +72,10 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
     const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * E * wall_thickness / std::sqrt(A0);
     const double length = vessel["vessel_length"];
 
-    edge->add_physical_data({
-      G0,
-      A0,
-      d_rho,
-      length
-    });
+    edge->add_physical_data({G0,
+                             A0,
+                             d_rho,
+                             length});
   }
 }
 
