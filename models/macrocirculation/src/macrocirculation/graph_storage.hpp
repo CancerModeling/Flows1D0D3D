@@ -51,6 +51,11 @@ struct EmbeddingData {
   std::vector<Point> points;
 };
 
+struct PeripheralVesselData {
+  double resistance;
+  double compliance;
+};
+
 class MicroEdge {
 public:
   MicroEdge(std::size_t local_id, std::size_t global_id)
@@ -120,6 +125,11 @@ protected:
   std::size_t p_id;
 };
 
+// TODO: add securicty assertion to Vertex for a flow type
+enum class FlowType {
+  Undefined, Inflow, FreeOutflow, Windkessel
+};
+
 class Vertex : public Primitive {
 public:
   explicit Vertex(std::size_t id);
@@ -133,8 +143,11 @@ public:
   /*! @brief Marks the given vertex as part of the inflow boundary, where the given time dependent function provides the boundary values. */
   void set_to_inflow(std::function<double(double)> inflow_value);
 
-  /*! @brief Marks the given vertex as part of the outflow boundary. */
-  void set_to_outflow();
+  /*! @brief Marks the given vertex as part of the free outflow boundary. */
+  void set_to_free_outflow();
+
+  /*! @brief Marks the given vertex as part of the free outflow boundary. */
+  void set_to_windkessel_outflow(double r, double c);
 
   /*! @brief Returns whether the given vertex is part of the inflow boundary. */
   bool is_inflow() const;
@@ -142,10 +155,18 @@ public:
   /*! @brief Returns the inflow value at the given vertex. */
   double get_inflow_value(double time) const;
 
-private:
-  bool p_inflow;
+  const PeripheralVesselData& get_peripheral_vessel_data() const;
 
+  bool is_free_outflow() const;
+
+  bool is_windkessel_outflow() const;
+
+private:
   std::function<double(double)> p_inflow_value;
+
+  FlowType p_flow_type;
+
+  PeripheralVesselData p_peripheral_vessel_data;
 
   std::vector<std::size_t> p_neighbors;
 

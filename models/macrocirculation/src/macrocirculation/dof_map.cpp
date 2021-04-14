@@ -14,19 +14,19 @@
 
 namespace macrocirculation {
 
-LocalDofMap::LocalDofMap(std::size_t dof_interval_start,
-                         std::size_t num_components,
-                         std::size_t num_basis_functions,
-                         std::size_t num_micro_edges)
+LocalEdgeDofMap::LocalEdgeDofMap(std::size_t dof_interval_start,
+                                 std::size_t num_components,
+                                 std::size_t num_basis_functions,
+                                 std::size_t num_micro_edges)
     : d_dof_interval_start(dof_interval_start),
       d_dof_interval_end(dof_interval_start + num_micro_edges * num_components * num_basis_functions),
       d_num_components(num_components),
       d_num_basis_functions(num_basis_functions),
       d_num_micro_edges(num_micro_edges) {}
 
-void LocalDofMap::dof_indices(std::size_t micro_edge_index,
-                              std::size_t component,
-                              std::vector<std::size_t> &dof_indices) const {
+void LocalEdgeDofMap::dof_indices(std::size_t micro_edge_index,
+                                  std::size_t component,
+                                  std::vector<std::size_t> &dof_indices) const {
   assert(dof_indices.size() == d_num_basis_functions);
   for (auto idx = 0; idx < d_num_basis_functions; idx += 1)
     dof_indices[idx] = d_dof_interval_start + micro_edge_index * d_num_basis_functions * d_num_components +
@@ -34,44 +34,53 @@ void LocalDofMap::dof_indices(std::size_t micro_edge_index,
   assert(dof_indices.back() < d_dof_interval_end);
 }
 
-void LocalDofMap::dof_indices(const MicroEdge &micro_edge, std::size_t component, std::vector<std::size_t> &dof_indices_vec) const {
+void LocalEdgeDofMap::dof_indices(const MicroEdge &micro_edge, std::size_t component, std::vector<std::size_t> &dof_indices_vec) const {
   dof_indices(micro_edge.get_local_id(), component, dof_indices_vec);
 }
 
-std::size_t LocalDofMap::num_local_dof() const {
+std::size_t LocalEdgeDofMap::num_local_dof() const {
   return d_num_components * d_num_basis_functions * d_num_micro_edges;
 }
 
-std::size_t LocalDofMap::num_micro_edges() const {
+std::size_t LocalEdgeDofMap::num_micro_edges() const {
   return d_num_micro_edges;
 }
 
-std::size_t LocalDofMap::num_micro_vertices() const {
+std::size_t LocalEdgeDofMap::num_micro_vertices() const {
   return d_num_micro_edges + 1;
 }
 
-std::size_t LocalDofMap::num_components() const {
+std::size_t LocalEdgeDofMap::num_components() const {
   return d_num_components;
 }
 
-std::size_t LocalDofMap::num_basis_functions() const {
+std::size_t LocalEdgeDofMap::num_basis_functions() const {
   return d_num_basis_functions;
 }
 
-DofMap::DofMap(std::size_t num_edges)
-    : d_local_dof_maps(num_edges), d_num_dof(0) {}
+DofMap::DofMap(std::size_t num_vertices, std::size_t num_edges)
+    : d_local_dof_maps(num_edges),
+      d_local_vertex_dof_maps(num_vertices),
+      d_num_dof(0) {}
 
 void DofMap::add_local_dof_map(const Edge &e,
                                std::size_t num_components,
                                std::size_t num_basis_functions,
                                std::size_t num_local_micro_edges) {
   assert(d_local_dof_maps[e.get_id()] == nullptr);
-  auto local_dof_map = std::make_unique<LocalDofMap>(d_num_dof, num_components, num_basis_functions, num_local_micro_edges);
+  auto local_dof_map = std::make_unique<LocalEdgeDofMap>(d_num_dof, num_components, num_basis_functions, num_local_micro_edges);
   d_num_dof += local_dof_map->num_local_dof();
   d_local_dof_maps[e.get_id()] = std::move(local_dof_map);
 }
 
-const LocalDofMap &DofMap::get_local_dof_map(const Edge &e) const {
+void DofMap::add_local_dof_map(const Vertex &v, std::size_t num_components) {
+  assert(d_local_vertex_dof_maps[v.get_id()] == nullptr);
+  auto local_dof_map = std::make_unique<LocalVertexDofMap>(d_num_dof, num_components);
+  d_num_dof += local_dof_map->num_local_dof();
+  d_local_vertex_dof_maps[v.get_id()] = std::move(local_dof_map);
+}
+
+const LocalEdgeDofMap &DofMap::get_local_dof_map(const Edge &e) const {
   if (d_local_dof_maps.at(e.get_id()) == nullptr)
     throw std::runtime_error("dof map for edge with id " + std::to_string(e.get_id()) + " was not initialized.");
   return *d_local_dof_maps.at(e.get_id());
@@ -105,7 +114,28 @@ void DofMap::create(MPI_Comm comm,
       const auto edge = graph.get_edge(e_id);
       add_local_dof_map(*edge, num_components, degree + 1, edge->num_micro_edges());
     }
+
+    for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
+      const auto vertex = graph.get_vertex(v_id);
+      // TODO: generalize this to allow other boundary conditions
+      if (!vertex->is_inflow() && vertex->is_leaf()) {
+        add_local_dof_map(*vertex, num_components);
+      }
+    }
   }
 }
+
+const LocalVertexDofMap &DofMap::get_local_dof_map(const Vertex &v) const {
+  return *d_local_vertex_dof_maps[v.get_id()];
+}
+
+LocalVertexDofMap::LocalVertexDofMap(std::size_t dof_interval_start, std::size_t num_components) {
+  for (size_t c = 0; c < num_components; c += 1)
+    d_dof_indices.push_back(dof_interval_start + c);
+}
+
+std::size_t LocalVertexDofMap::num_local_dof() const { return d_dof_indices.size(); }
+
+const std::vector<std::size_t> &LocalVertexDofMap::dof_indices() const { return d_dof_indices; }
 
 } // namespace macrocirculation

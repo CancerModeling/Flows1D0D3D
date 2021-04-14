@@ -23,7 +23,7 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
   json j;
   file >> j;
 
-  const std::size_t num_vertices = j["num_vertices"];
+  const std::size_t num_vertices = j["vertices"].size();
 
   // create the vertices for the given mesh
   std::vector<Vertex *> vertices;
@@ -35,6 +35,9 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
     size_t left_vertex_id = vessel["left_vertex_id"];
     size_t right_vertex_id = vessel["right_vertex_id"];
 
+    assert(left_vertex_id < num_vertices);
+    assert(right_vertex_id < num_vertices);
+
     size_t num_micro_edges = 0;
     if (vessel.contains("number_edges"))
       num_micro_edges = vessel["number_edges"];
@@ -45,7 +48,7 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
 
     auto edge = graph.connect(*vertices[left_vertex_id], *vertices[right_vertex_id], num_micro_edges);
 
-    if (vessel.contains("embedded_coordiantes")) {
+    if (vessel.contains("embedded_coordinates")) {
       std::vector<Point> points;
       for (auto p : vessel["embedded_coordinates"])
         points.emplace_back(p[0], p[1], p[2]);
@@ -76,6 +79,25 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
                              A0,
                              d_rho,
                              length});
+  }
+
+  for (auto vertex : j["vertices"]) {
+    size_t id = vertex["id"];
+
+    auto &v = *graph.get_vertex(id);
+
+    if (!v.is_leaf() && (vertex.contains("peripheral_resistance") || vertex.contains("peripheral_compliance")))
+      throw std::runtime_error("malformed network");
+
+    if (v.is_leaf()) {
+      if (vertex.contains("peripheral_resistance") || vertex.contains("peripheral_compliance")) {
+        const double r = vertex["peripheral_resistance"];
+        const double c = vertex["peripheral_compliance"];
+        v.set_to_windkessel_outflow(r, c);
+      } else {
+        v.set_to_free_outflow();
+      }
+    }
   }
 }
 

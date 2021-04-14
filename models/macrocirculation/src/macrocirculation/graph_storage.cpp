@@ -41,7 +41,10 @@ double default_inflow_function(double) {
 }
 
 Vertex::Vertex(std::size_t id)
-    : Primitive(id), p_inflow(false), p_inflow_value(default_inflow_function) {}
+    : Primitive(id),
+      p_flow_type(FlowType::Undefined),
+      p_inflow_value(default_inflow_function)
+{}
 
 const std::vector<std::size_t> &Vertex::get_edge_neighbors() const {
   return p_neighbors;
@@ -56,21 +59,35 @@ bool Vertex::is_unconnected() const {
 }
 
 bool Vertex::is_bifurcation() const {
+  // TODO: move quick and dirty sanity check somewhere else
+  assert(is_leaf() ? p_flow_type != FlowType::Undefined : true);
   return p_neighbors.size() > 1;
 }
 
 void Vertex::set_to_inflow(std::function<double(double)> value) {
-  p_inflow = true;
+  p_flow_type = FlowType::Inflow;
   p_inflow_value = std::move(value);
 }
 
-void Vertex::set_to_outflow() {
-  p_inflow = false;
+void Vertex::set_to_free_outflow() {
+  p_flow_type = FlowType::FreeOutflow;
   p_inflow_value = default_inflow_function;
 }
 
+void Vertex::set_to_windkessel_outflow(double r, double c) {
+  p_flow_type = FlowType::Windkessel;
+  p_peripheral_vessel_data.resistance = r;
+  p_peripheral_vessel_data.compliance = c;
+}
+
+const PeripheralVesselData& Vertex::get_peripheral_vessel_data() const { return p_peripheral_vessel_data; }
+
+bool Vertex::is_free_outflow() const { return p_flow_type == FlowType::FreeOutflow; }
+
+bool Vertex::is_windkessel_outflow() const { return p_flow_type == FlowType::Windkessel; };
+
 bool Vertex::is_inflow() const {
-  return p_inflow;
+  return p_flow_type == FlowType::Inflow;
 }
 
 double Vertex::get_inflow_value(double time) const {
