@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <utility>
+#include <cmath>
 
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
@@ -48,9 +49,22 @@ GraphCSVWriter::GraphCSVWriter(MPI_Comm comm,
       }
       filecsv << std::endl;
     }
+
+    {
+      std::fstream filecsv;
+      std::stringstream name;
+      name << d_foldername << "/" << d_datasetname << "_" << "p" << "_vessel" << std::setfill('0') << std::setw(5) << eid << ".csv";
+      filecsv.open(name.str(), std::ios::out);
+      for (std::size_t micro_edge = 0; micro_edge < local_dof_map.num_micro_edges(); micro_edge += 1) {
+        if (micro_edge > 0)
+          filecsv << ",";
+        filecsv << h * micro_edge << "," << h * (micro_edge + 1);
+      }
+      filecsv << std::endl;
+    }
   }
 
-  {
+  if (mpi::rank(d_comm) == 0) {
     std::fstream filecsv;
     filecsv.open(get_name_times(), std::ios::out);
     filecsv << "";
@@ -70,7 +84,7 @@ std::string GraphCSVWriter::get_name_times() const {
 
 void GraphCSVWriter::write(double time, const std::vector<double> &data) const {
   // write time step information
-  {
+  if (mpi::rank(d_comm) == 0) {
     std::fstream filecsv;
     filecsv.open(get_name_times(), std::ios::app);
     filecsv << time << std::endl;
@@ -101,6 +115,29 @@ void GraphCSVWriter::write(double time, const std::vector<double> &data) const {
         auto boundary_values = fe.evaluate_dof_at_boundary_points(local_data);
 
         filecsv << boundary_values.left << "," << boundary_values.right;
+      }
+      filecsv << std::endl;
+    }
+
+    if (edge->has_physical_data()) {
+      const auto A0 = edge->get_physical_data().A0;
+      const auto G0 = edge->get_physical_data().G0;
+
+      const auto pressure = [=](auto A){ return G0 * (std::sqrt(A / A0) - 1.0) / 1.33332; };
+
+      std::fstream filecsv;
+      std::stringstream name;
+      name << d_foldername << "/" << d_datasetname << "_" << "p" << "_vessel" << std::setfill('0') << std::setw(5) << eid << ".csv";
+      filecsv.open(name.str(), std::ios::app);
+      for (std::size_t micro_edge = 0; micro_edge < local_dof_map.num_micro_edges(); micro_edge += 1) {
+        if (micro_edge > 0)
+          filecsv << ",";
+
+        local_dof_map.dof_indices(micro_edge, 1, dof_indices);
+        extract_dof(dof_indices, data, local_data);
+        auto boundary_values_A = fe.evaluate_dof_at_boundary_points(local_data);
+
+        filecsv << pressure(boundary_values_A.left) << "," << pressure(boundary_values_A.right);
       }
       filecsv << std::endl;
     }
