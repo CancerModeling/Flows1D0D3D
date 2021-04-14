@@ -42,7 +42,11 @@ def get_points(segment):
 
 def create_uniform_mesh(data, h):
     json_data = {}
-    json_data['num_vertices'] = len(data['Network']['Nodes'][0][0][0])
+    num_vertices = len(data['Network']['Nodes'][0][0][0])
+    json_data['vertices'] = []
+    for id in range (num_vertices):
+        json_data['vertices'].append({'id': id})
+
     json_data['vessels'] = []
     num_segments = len(data["Network"]["Links"][0][0][0])
     for seg_id in range(num_segments):
@@ -97,7 +101,7 @@ def create_uniform_mesh(data, h):
 
 def reduce_network(data, max_num_vessels):
     vertices_to_edges = []
-    for i in range(data['num_vertices']):
+    for i in range(len(data['vertices'])):
         vertices_to_edges.append([])
 
     for vessel in data['vessels']:
@@ -148,8 +152,14 @@ def reduce_network(data, max_num_vessels):
         edge['right_vertex_id'] = vertex_renumbering[edge['right_vertex_id']]
         edges_list.append(edge)
 
+    vertices_list = []
+    for vid in added_vertices:
+        v = data['vertices'][vid]
+        v['id'] = vertex_renumbering[vid]
+        vertices_list.append(v)
+
     data['vessels'] = edges_list
-    data['num_vertices'] = len(added_vertices)
+    data['vertices'] = vertices_list
 
     print(added_edges)
     print(added_vertices)
