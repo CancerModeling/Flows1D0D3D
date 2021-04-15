@@ -25,18 +25,19 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
 
   const std::size_t num_vertices = j["vertices"].size();
 
+  const size_t vertex_offset = graph.num_vertices();
+
   // create the vertices for the given mesh
-  std::vector<Vertex *> vertices;
   for (std::size_t idx = 0; idx < num_vertices; idx += 1)
-    vertices.push_back(graph.create_vertex().get());
+    graph.create_vertex();
 
   // create the edges between the vertices
   for (auto vessel : j["vessels"]) {
-    size_t left_vertex_id = vessel["left_vertex_id"];
-    size_t right_vertex_id = vessel["right_vertex_id"];
+    size_t left_vertex_id = vertex_offset + vessel["left_vertex_id"].get< size_t >();
+    size_t right_vertex_id = vertex_offset + vessel["right_vertex_id"].get< size_t >();
 
-    assert(left_vertex_id < num_vertices);
-    assert(right_vertex_id < num_vertices);
+    assert(left_vertex_id < num_vertices + vertex_offset);
+    assert(right_vertex_id < num_vertices + vertex_offset);
 
     size_t num_micro_edges = 0;
     if (vessel.contains("number_edges"))
@@ -46,7 +47,7 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
     else
       throw std::runtime_error("cannot infer number of micro edges");
 
-    auto edge = graph.connect(*vertices[left_vertex_id], *vertices[right_vertex_id], num_micro_edges);
+    auto edge = graph.connect(*graph.get_vertex(left_vertex_id), *graph.get_vertex(right_vertex_id), num_micro_edges);
 
     if (vessel.contains("embedded_coordinates")) {
       std::vector<Point> points;
@@ -75,16 +76,13 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
     const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * E * wall_thickness / std::sqrt(A0);
     const double length = vessel["vessel_length"];
 
-    edge->add_physical_data({G0,
-                             A0,
-                             d_rho,
-                             length});
+    edge->add_physical_data({G0, A0, d_rho, length});
   }
 
   for (auto vertex : j["vertices"]) {
     size_t id = vertex["id"];
 
-    auto &v = *graph.get_vertex(id);
+    auto &v = *graph.get_vertex(id+vertex_offset);
 
     if (!v.is_leaf() && (vertex.contains("peripheral_resistance") || vertex.contains("peripheral_compliance")))
       throw std::runtime_error("malformed network");
