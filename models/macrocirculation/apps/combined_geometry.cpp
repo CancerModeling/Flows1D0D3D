@@ -43,13 +43,14 @@ int main(int argc, char *argv[]) {
   graph_reader.append("coarse-network-geometry.json", *graph);
 
   // connect both geometries
-  const double wall_thickness = 0.067;
-  const double elastic_modulus = 400000.0 / 100;
+  const double wall_thickness = 0.1;
+  const double elastic_modulus = 1.3e6 / 100;
   const double vessel_length = 10;
   const double radius = 0.12;
   const double A0 = std::pow(radius, 2) * M_PI;
   const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * elastic_modulus * wall_thickness / std::sqrt(A0);
   const double rho = 1.028e-3;
+  const size_t num_micro_edges = 60;
 
   {
     auto inflow_vertices = graph->find_embedded_vertices( {9.093333333333334, 9.173333333333334, 8.053333333333335} );
@@ -58,7 +59,7 @@ int main(int argc, char *argv[]) {
       exit(-1);
     }
 
-    auto e1 = graph->connect(v1, *inflow_vertices[0], 10);
+    auto e1 = graph->connect(v1, *inflow_vertices[0], num_micro_edges);
     e1->add_physical_data({ G0, A0, rho, vessel_length });
 
     if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
@@ -72,7 +73,7 @@ int main(int argc, char *argv[]) {
       exit(-1);
     }
 
-    auto e2 = graph->connect(v2, *inflow_vertices[0], 10);
+    auto e2 = graph->connect(v2, *inflow_vertices[0], num_micro_edges);
     e2->add_physical_data({ G0, A0, rho, vessel_length });
 
     if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
