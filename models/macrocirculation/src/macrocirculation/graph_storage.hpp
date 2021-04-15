@@ -266,8 +266,8 @@ public:
   std::vector<std::size_t> get_edge_ids() const;
   std::vector<std::size_t> get_vertex_ids() const;
 
-  double num_vertices() const;
-  double num_edges() const;
+  size_t num_vertices() const;
+  size_t num_edges() const;
 
   /*! @brief Returns all the edge ids assigned to the given rank. */
   std::vector<std::size_t> get_active_edge_ids(int rank) const;

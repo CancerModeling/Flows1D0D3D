@@ -31,9 +31,7 @@
     { "id": 28, "peripheral_resistance": 110.8, "peripheral_compliance": 0.0062 },
     { "id": 29, "peripheral_resistance": 110.8, "peripheral_compliance": 0.0062 },
     { "id": 30 },
-    { "id": 31 },
-    { "id": 32 },
-    { "id": 33 }
+    { "id": 31 }
   ],
   "vessels": [
     {
@@ -385,26 +383,6 @@
       "number_edges": 10,
       "left_vertex_id": 7,
       "right_vertex_id": 31
-    },
-    {
-      "id": 35,
-      "vessel_length": 40.5,
-      "radius": 0.203,
-      "wall_thickness": 0.067,
-      "elastic_modulus": 400000.0,
-      "number_edges": 50,
-      "left_vertex_id": 30,
-      "right_vertex_id": 32
-    },
-    {
-      "id": 36,
-      "vessel_length": 40.5,
-      "radius": 0.203,
-      "wall_thickness": 0.067,
-      "elastic_modulus": 400000.0,
-      "number_edges": 50,
-      "left_vertex_id": 31,
-      "right_vertex_id": 33
     }
   ]
 }

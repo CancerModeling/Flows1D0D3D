@@ -42,6 +42,9 @@ target_link_libraries(${ProjectName}BreastGeometry ${ProjectLib})
 add_executable(${ProjectName}Abstract33VesselsGeometry abstract_33_vessels_geometry.cpp)
 target_link_libraries(${ProjectName}Abstract33VesselsGeometry ${ProjectLib})
 
+add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
+target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})
+
 add_custom_command(
         TARGET ${ProjectName}BreastGeometry PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data/coarse-network-geometry.json $<TARGET_FILE_DIR:${ProjectName}BreastGeometry>/coarse-network-geometry.json
@@ -50,6 +53,11 @@ add_custom_command(
 add_custom_command(
         TARGET ${ProjectName}Abstract33VesselsGeometry PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data/network-33-vessels.json $<TARGET_FILE_DIR:${ProjectName}Abstract33VesselsGeometry>/network-33-vessels.json
+        COMMENT "Copying file: network-33-vessels")
+
+add_custom_command(
+        TARGET ${ProjectName}CombinedGeometry PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data/network-33-vessels-with-connection.json $<TARGET_FILE_DIR:${ProjectName}CombinedGeometry>/network-33-vessels-with-connection.json
         COMMENT "Copying file: network-33-vessels")
 
 foreach(TargetName ${ProjectName}NonlinearFlowLine ${ProjectName}NonlinearFlowBifurcation ${ProjectName}ConvergenceStudy ${ProjectName}Advection)

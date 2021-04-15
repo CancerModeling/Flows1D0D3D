@@ -291,11 +291,11 @@ std::vector<std::size_t> GraphStorage::get_vertex_ids() const {
   return keys;
 }
 
-double GraphStorage::num_vertices() const {
+size_t GraphStorage::num_vertices() const {
   return p_vertices.size();
 }
 
-double GraphStorage::num_edges() const {
+size_t GraphStorage::num_edges() const {
   return p_edges.size();
 }
 
