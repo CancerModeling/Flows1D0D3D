@@ -13,7 +13,7 @@ AUX_SOURCE_DIRECTORY(./ SOURCES)
 AUX_SOURCE_DIRECTORY(src/macrocirculation SOURCES)
 AUX_SOURCE_DIRECTORY(src/macrocirculation/communication SOURCES)
 
-add_library(${ProjectLib} ${SOURCES})
+add_library(${ProjectLib} ${SOURCES} src/macrocirculation/Transport.cpp src/macrocirculation/Transport.h)
 target_link_libraries(${ProjectLib} PUBLIC Utils)
 target_include_directories(${ProjectLib} INTERFACE ./src)
 target_link_libraries(${ProjectLib} PRIVATE nlohmann_json::nlohmann_json)
