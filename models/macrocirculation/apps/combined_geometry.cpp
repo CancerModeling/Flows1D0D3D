@@ -24,6 +24,27 @@ namespace mc = macrocirculation;
 
 constexpr std::size_t degree = 2;
 
+void connect(mc::GraphStorage& graph, mc::Vertex& start, mc::Vertex& end, const size_t num_micro_edges, const std::vector< mc::PhysicalData >& physical_data){
+  const auto num_macro_edges = physical_data.size();
+
+  mc::Vertex* previous_vertex = &start;
+  for (std::size_t macro_edge_index = 0; macro_edge_index < num_macro_edges-1; macro_edge_index += 1) {
+    auto next_vertex = graph.create_vertex();
+    auto vessel = graph.connect(*previous_vertex, *next_vertex, num_micro_edges);
+    vessel->add_physical_data(physical_data[macro_edge_index]);
+    if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
+      std::cout << "added vessel with id = " << vessel->get_id() << "(length = " << physical_data[macro_edge_index].length << ", #edges = " << num_micro_edges << ")" << std::endl;
+    previous_vertex = next_vertex.get();
+  }
+
+  // connect to end point
+  auto vessel = graph.connect(*previous_vertex, end, num_micro_edges);
+  vessel->add_physical_data(physical_data.back());
+
+  if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
+    std::cout << "added vessel with id = " << vessel->get_id() << "(length = " << physical_data.back().length << ", #edges = " << num_micro_edges << ")" << std::endl;
+}
+
 int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
@@ -32,7 +53,8 @@ int main(int argc, char *argv[]) {
 
   mc::EmbeddedGraphReader graph_reader;
   // graph_reader.append("coarse-network-geometry.json", *graph);
-  graph_reader.append("network-33-vessels-with-connection.json", *graph);
+  //graph_reader.append("network-33-vessels-with-connection.json", *graph);
+  graph_reader.append("network-33-vessels.json", *graph);
 
   auto& v_in = *graph->get_vertex(0);
   auto& v1 = *graph->get_vertex(30);
@@ -40,44 +62,61 @@ int main(int argc, char *argv[]) {
 
   v_in.set_to_inflow(mc::heart_beat_inflow(485.0 ));
 
-  graph_reader.append("coarse-network-geometry.json", *graph);
+  //graph_reader.append("coarse-network-geometry.json", *graph);
+
+  auto create_physical_data = [](double radius, double vessel_length) -> mc::PhysicalData {
+    const double wall_thickness = 0.1;
+    const double elastic_modulus = 1.3e6 / 100;
+    const double A0 = std::pow(radius, 2) * M_PI;
+    const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * elastic_modulus * wall_thickness / std::sqrt(A0);
+    const double rho = 1.028e-3;
+    return { G0, A0, rho, vessel_length };
+  };
+
+  auto interpolate_physical_data = [create_physical_data]( size_t num_macro_edges, double start_radius, double end_radius, double vessel_length) {
+    std::vector< mc::PhysicalData > physical_data;
+    for (int i=1; i <= num_macro_edges; i+=1) {
+      auto r = start_radius * double(num_macro_edges+1-i) / double(num_macro_edges+1) + end_radius * double(i) / double(num_macro_edges+1);
+      physical_data.push_back(create_physical_data(r, vessel_length/num_macro_edges));
+    }
+    return physical_data;
+  };
 
   // connect both geometries
-  const double wall_thickness = 0.1;
-  const double elastic_modulus = 1.3e6 / 100;
   const double vessel_length = 10;
-  const double radius = 0.12;
-  const double A0 = std::pow(radius, 2) * M_PI;
-  const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * elastic_modulus * wall_thickness / std::sqrt(A0);
-  const double rho = 1.028e-3;
   const size_t num_micro_edges = 60;
+  const size_t num_macro_edges = 10;
 
   {
-    auto inflow_vertices = graph->find_embedded_vertices( {9.093333333333334, 9.173333333333334, 8.053333333333335} );
+    // auto inflow_vertices = graph->find_embedded_vertices( {9.093333333333334, 9.173333333333334, 8.053333333333335} );
+    std::vector< mc::Vertex* > inflow_vertices = { graph->create_vertex().get() };
+    inflow_vertices[0]->set_to_free_outflow();
     if (inflow_vertices.size() != 1) {
       std::cerr << "expected to find a single vertex, not " << std::to_string(inflow_vertices.size()) << " vertices" << std::endl;
       exit(-1);
     }
 
-    auto e1 = graph->connect(v1, *inflow_vertices[0], num_micro_edges);
-    e1->add_physical_data({ G0, A0, rho, vessel_length });
+    auto physical_data = interpolate_physical_data(num_macro_edges, 0.24, 0.04, vessel_length);
+    connect(*graph, v1, *inflow_vertices[0], std::ceil(num_micro_edges/num_macro_edges), physical_data );
 
     if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-      std::cout << "created vessel with id = " << e1->get_id() << " connecting " << " (" << v1.get_id() << " " << inflow_vertices[0]->get_id() << ")" << std::endl;
+      std::cout << "finished inter-network connection" << std::endl;
   }
 
   {
-    auto inflow_vertices = graph->find_embedded_vertices( {2.9333333333333336, 9.973333333333334, 10.933333333333334} );
+    // auto inflow_vertices = graph->find_embedded_vertices( {2.9333333333333336, 9.973333333333334, 10.933333333333334} );
+    std::vector< mc::Vertex* > inflow_vertices = { graph->create_vertex().get() };
+    inflow_vertices[0]->set_to_free_outflow();
     if (inflow_vertices.size() != 1) {
       std::cerr << "expected to find a single vertex, not " << std::to_string(inflow_vertices.size()) << " vertices" << std::endl;
       exit(-1);
     }
 
-    auto e2 = graph->connect(v2, *inflow_vertices[0], num_micro_edges);
-    e2->add_physical_data({ G0, A0, rho, vessel_length });
+    auto physical_data = interpolate_physical_data(num_macro_edges, 0.24, 0.026, vessel_length);
+    connect(*graph, v1, *inflow_vertices[0], std::ceil(num_micro_edges/num_macro_edges), physical_data );
 
     if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-      std::cout << "created vessel with id = " << e2->get_id() << " connecting " << " (" << v2.get_id() << " " << inflow_vertices[0]->get_id() << ")" << std::endl;
+      std::cout << "finished inter-network connection" << std::endl;
   }
 
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
