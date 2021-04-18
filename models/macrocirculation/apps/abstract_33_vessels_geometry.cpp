@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
 
   mc::EmbeddedGraphReader graph_reader;
   // graph_reader.append("coarse-network-geometry.json", *graph);
-  graph_reader.append("network-33-vessels.json", *graph);
+  graph_reader.append("data/network-33-vessels.json", *graph);
 
   graph->get_vertex(0)->set_to_inflow(mc::heart_beat_inflow(485.0 ));
 

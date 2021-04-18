@@ -45,22 +45,13 @@ target_link_libraries(${ProjectName}Abstract33VesselsGeometry ${ProjectLib})
 add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
 target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})
 
-add_custom_command(
-        TARGET ${ProjectName}BreastGeometry PRE_BUILD
-        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data/coarse-network-geometry.json $<TARGET_FILE_DIR:${ProjectName}BreastGeometry>/coarse-network-geometry.json
-        COMMENT "Copying file: coarse-network-geometry")
-
-add_custom_command(
-        TARGET ${ProjectName}Abstract33VesselsGeometry PRE_BUILD
-        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data/network-33-vessels.json $<TARGET_FILE_DIR:${ProjectName}Abstract33VesselsGeometry>/network-33-vessels.json
-        COMMENT "Copying file: network-33-vessels")
-
-add_custom_command(
-        TARGET ${ProjectName}CombinedGeometry PRE_BUILD
-        COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data/network-33-vessels-with-connection.json $<TARGET_FILE_DIR:${ProjectName}CombinedGeometry>/network-33-vessels-with-connection.json
-        COMMENT "Copying file: network-33-vessels")
-
-foreach(TargetName ${ProjectName}NonlinearFlowLine ${ProjectName}NonlinearFlowBifurcation ${ProjectName}ConvergenceStudy ${ProjectName}AdvectionImplicit)
+foreach(TargetName ${ProjectName}NonlinearFlowLine
+                   ${ProjectName}NonlinearFlowBifurcation
+                   ${ProjectName}ConvergenceStudy
+                   ${ProjectName}AdvectionImplicit
+                   ${ProjectName}BreastGeometry
+                   ${ProjectName}Abstract33VesselsGeometry
+                   ${ProjectName}CombinedGeometry)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
@@ -69,4 +60,14 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine ${ProjectName}NonlinearFlowBi
             TARGET ${TargetName} PRE_BUILD
             COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/animation.py $<TARGET_FILE_DIR:${TargetName}>/animation.py
             COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/animation.py")
+
+    add_custom_command(
+            TARGET ${TargetName} PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessels.py $<TARGET_FILE_DIR:${TargetName}>/plot_vessels.py
+            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessels.py")
+
+    add_custom_command(
+            TARGET ${TargetName} PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data $<TARGET_FILE_DIR:${ProjectName}CombinedGeometry>/data
+            COMMENT "Copying symlinking folder: data")
 endforeach()
