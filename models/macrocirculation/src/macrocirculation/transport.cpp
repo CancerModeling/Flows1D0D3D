@@ -12,6 +12,7 @@
 #include "fe_type.hpp"
 #include "gmm.h"
 #include "graph_storage.hpp"
+#include "right_hand_side_evaluator.hpp"
 
 namespace macrocirculation {
 
@@ -26,7 +27,11 @@ Transport::Transport(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::sh
       d_gamma_flux_l(d_graph->num_edges()),
       d_gamma_flux_r(d_graph->num_edges()),
       d_rhs(d_dof_map_transport->num_dof()),
-      d_solution(d_dof_map_transport->num_dof()) {}
+      d_solution(d_dof_map_transport->num_dof()),
+      d_inverse_mass(d_dof_map_transport->num_dof())
+{
+  assemble_inverse_mass(d_comm, *d_graph, *d_dof_map_transport, d_inverse_mass);
+}
 
 void Transport::evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev, const std::vector<double> &gamma_prev) {
   std::vector<std::size_t> dof_indices(4, 0);
@@ -63,6 +68,8 @@ void Transport::solve(double t, double dt, const std::vector<double> &u_prev) {
   calculate_fluxes_at_nfurcations(t, u_prev);
   assemble_rhs(t, u_prev, d_solution, d_rhs);
   apply_inverse_mass();
+  // explicit euler step:
+  gmm::add(gmm::scaled(d_rhs, dt), d_solution);
 }
 
 void Transport::calculate_fluxes_on_macro_edge(const double t,
@@ -304,7 +311,9 @@ void Transport::calculate_fluxes_at_nfurcations(double t, const std::vector<doub
   }
 }
 
-void Transport::apply_inverse_mass() {}
-
+void Transport::apply_inverse_mass() {
+  for (std::size_t i = 0; i < d_dof_map_transport->num_dof(); i += 1)
+    d_rhs[i] = d_inverse_mass[i] * d_rhs[i];
+}
 
 } // namespace macrocirculation
