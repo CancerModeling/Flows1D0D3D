@@ -64,6 +64,9 @@ private:
 
   std::vector<double> d_rhs;
   std::vector<double> d_solution;
+
+  /*! @brief Our current inverse mass vector, defining the diagonal inverse mass matrix. */
+  std::vector<double> d_inverse_mass;
 };
 
 } // namespace macrocirculation
