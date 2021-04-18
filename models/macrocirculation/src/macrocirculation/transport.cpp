@@ -7,6 +7,12 @@
 
 #include "transport.hpp"
 
+#include "communication/mpi.hpp"
+#include "dof_map.hpp"
+#include "fe_type.hpp"
+#include "gmm.h"
+#include "graph_storage.hpp"
+
 namespace macrocirculation {
 
 Transport::Transport(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map_flow, std::shared_ptr<DofMap> dof_map_transport)

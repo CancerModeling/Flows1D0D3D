@@ -10,18 +10,18 @@
 
 #include <cmath>
 #include <memory>
+#include <mpi.h>
 #include <utility>
 #include <vector>
 
-#include "communication/mpi.hpp"
-#include "dof_map.hpp"
-#include "fe_type.hpp"
 #include "flow_upwind_evaluator.hpp"
-#include "gmm.h"
-#include "graph_storage.hpp"
-#include "right_hand_side_evaluator.hpp"
 
 namespace macrocirculation {
+
+// forward declaration
+class GraphStorage;
+class DofMap;
+class Edge;
 
 class Transport {
 public:
