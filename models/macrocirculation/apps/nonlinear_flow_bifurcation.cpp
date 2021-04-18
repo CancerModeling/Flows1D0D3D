@@ -25,14 +25,14 @@ constexpr std::size_t degree = 2;
 int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
-  const double t_end = 4e-1;
+  const double t_end = 5e-2;
   const std::size_t max_iter = 160000000;
 
-  const double tau = 2.5e-4 / 32 / 4;
+  const double tau = 2.5e-4 / 8;
   const double tau_out = 1e-3;
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
-  const std::size_t num_edges_per_segment = 80;
+  const std::size_t num_edges_per_segment = 10;
 
   // we create_for_node data for celiac ii
   mc::PhysicalData main_vessel_data{

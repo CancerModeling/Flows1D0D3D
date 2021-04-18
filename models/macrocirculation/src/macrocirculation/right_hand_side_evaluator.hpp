@@ -19,6 +19,7 @@ namespace macrocirculation {
 // forward declarations
 class GraphStorage;
 class DofMap;
+class Vertex;
 class Edge;
 
 /*! @brief Functional to evaluate the right-hand-side S. */
@@ -51,6 +52,74 @@ private:
 void assemble_inverse_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, std::vector<double> &inv_mass);
 
 void calculate_inner_fluxes_on_macro_edge(const DofMap &dof_map, const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &Q_up_macro_edge, std::vector<double> &A_up_macro_edge);
+
+/*! Class for calculating the currently upwinded values for the flow (Q, A). */
+class FlowUpwindEvaluator {
+public:
+  FlowUpwindEvaluator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map);
+
+  void init(double t, const std::vector< double > &u_prev);
+
+  /*! @brief Recalculates the current fluxes from the given time.
+   *
+   * @param t       The current time for the inflow boundary conditions.
+   * @param u_prev  The solution for which we calculate the fluxes.
+   */
+  void get_fluxes_on_macro_edge(double t, const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &Q_up, std::vector<double> &A_up) const;
+
+  /*! @brief Recalculates the current flux values of (Q, A) at the given nfurcation.
+   *
+   * @param t       The current time for the inflow boundary conditions.
+   * @param u_prev  The solution for which we calculate the fluxes.
+   */
+  void get_fluxes_on_nfurcation(double t, const Vertex &v, std::vector<double> &Q_up, std::vector<double> &A_up) const;
+
+private:
+  void evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev);
+
+  /*! @brief Calculates the fluxes at nfurcations for the given time step at the macro edge boundaries.
+   *
+   * @param u_prev  The solution for which we calculate the fluxes.
+   */
+  void calculate_nfurcation_fluxes(const std::vector<double> &u_prev);
+
+  /*! @brief Calculates the in and outflow fluxes for the given timestep at the macro edge boundaries.
+   *
+   * @param u_prev  The solution for which we calculate the fluxes.
+   */
+  void calculate_inout_fluxes(double t, const std::vector<double> &u_prev);
+
+private:
+  MPI_Comm d_comm;
+
+  /*! @brief The current domain for solving the equation. */
+  std::shared_ptr<GraphStorage> d_graph;
+
+  /*! @brief The dof map for our domain */
+  std::shared_ptr<DofMap> d_dof_map;
+
+  Communicator d_edge_boundary_communicator;
+
+  /*! @brief Contains the values of Q at the left and right boundary point of the given macro-edge.
+    *         For the 2i-th edge the left boundary value is at 2*i, while the right entry is at 2*i+1.
+    */
+  std::vector<double> d_Q_macro_edge_boundary_value;
+
+  /*! @brief Contains the values of A at the left and right boundary point of the given macro-edge.
+    *         For the 2i-th edge the left boundary value is at 2*i, while the right entry is at 2*i+1.
+    */
+  std::vector<double> d_A_macro_edge_boundary_value;
+
+  /*! @brief Contains the flux-values of Q at the left boundary point of the given macro-edge.
+    *         The ith vector entry corresponds to the ith macro-edge id.
+    */
+  std::vector<double> d_Q_macro_edge_flux_l;
+  std::vector<double> d_Q_macro_edge_flux_r;
+  std::vector<double> d_A_macro_edge_flux_l;
+  std::vector<double> d_A_macro_edge_flux_r;
+
+  double d_current_t;
+};
 
 /*! @brief Our flow equation d/dt u + d/dz F(u) = 0, can be written with a DG ansatz as,
  *              d/dt u - M^{-1}( (F(u), d/dz v) - F(u(x_r))v(x_r) + F(u(x_l))v(x_l) )  = 0,
@@ -91,7 +160,7 @@ private:
   /*! @brief The dof map for our domain */
   std::shared_ptr<DofMap> d_dof_map;
 
-  Communicator d_edge_boundary_communicator;
+  FlowUpwindEvaluator d_flow_upwind_evaluator;
 
   /*! @brief Evaluates the Q- and A-component of the right-hand side S,
    *         given Q and A at eacht of the quadrature points.
@@ -101,53 +170,8 @@ private:
   /*! @brief The degree of the finite-element shape functions. */
   std::size_t d_degree;
 
-  /*! @brief Contains the values of Q at the left and right boundary point of the given macro-edge.
-    *         For the 2i-th edge the left boundary value is at 2*i, while the right entry is at 2*i+1.
-    */
-  std::vector<double> d_Q_macro_edge_boundary_value;
-
-  /*! @brief Contains the values of A at the left and right boundary point of the given macro-edge.
-    *         For the 2i-th edge the left boundary value is at 2*i, while the right entry is at 2*i+1.
-    */
-  std::vector<double> d_A_macro_edge_boundary_value;
-
-  /*! @brief Contains the flux-values of Q at the left boundary point of the given macro-edge.
-    *         The ith vector entry corresponds to the ith macro-edge id.
-    */
-  std::vector<double> d_Q_macro_edge_flux_l;
-  std::vector<double> d_Q_macro_edge_flux_r;
-  std::vector<double> d_A_macro_edge_flux_l;
-  std::vector<double> d_A_macro_edge_flux_r;
-
   /*! @brief Our current inverse mass vector, defining the diagonal inverse mass matrix. */
   std::vector<double> d_inverse_mass;
-
-  void evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev);
-
-  /*! @brief Recalculates the current fluxes from the previous time step.
-   *
-   * @param t       The current time for the inflow boundary conditions.
-   * @param u_prev  The solution for which we calculate the fluxes.
-   */
-  void calculate_fluxes(double t, const std::vector<double> &u_prev);
-
-  /*! @brief Recalculates the fluxes inside of the macro-edges for the given time step at the micro-vertices.
-    *
-    * @param u_prev  The solution for which we calculate the fluxes.
-    */
-  void calculate_fluxes_on_macro_edge(const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &Q_up, std::vector<double> &A_up);
-
-  /*! @brief Calculates the fluxes at nfurcations for the given time step at the macro edge boundaries.
-   *
-   * @param u_prev  The solution for which we calculate the fluxes.
-   */
-  void calculate_nfurcation_fluxes(const std::vector<double> &u_prev);
-
-  /*! @brief Calculates the in and outflow fluxes for the given timestep at the macro edge boundaries.
-   *
-   * @param u_prev  The solution for which we calculate the fluxes.
-   */
-  void calculate_inout_fluxes(double t, const std::vector<double> &u_prev);
 
   /*! @brief Assembles from the fluxes and the previous values a new right hand side function. */
   void calculate_rhs(double t, const std::vector<double> &u_prev, std::vector<double> &rhs);
