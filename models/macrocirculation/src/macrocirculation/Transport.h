@@ -51,11 +51,11 @@ public:
       local_dofs.resize(local_dof_map.num_basis_functions());
 
       local_dof_map.dof_indices(0, 0, dof_indices);
-      extract_dof(dof_indices, u_prev, local_dofs);
+      extract_dof(dof_indices, gamma_prev, local_dofs);
       d_gamma_macro_edge_boundary_value[2 * edge->get_id() + 0] = fe.evaluate_dof_at_boundary_points(local_dofs).left;
 
       local_dof_map.dof_indices(local_dof_map.num_micro_edges() - 1, 0, dof_indices);
-      extract_dof(dof_indices, u_prev, local_dofs);
+      extract_dof(dof_indices, gamma_prev, local_dofs);
       d_gamma_macro_edge_boundary_value[2 * edge->get_id() + 1] = fe.evaluate_dof_at_boundary_points(local_dofs).right;
     }
   }
@@ -65,15 +65,15 @@ public:
   void solve(double t, double dt, const std::vector<double> &u_prev) {
     evaluate_macro_edge_boundary_values(u_prev, d_solution);
     d_edge_boundary_communicator.update_ghost_layer(d_gamma_macro_edge_boundary_value);
-
     calculate_fluxes_at_nfurcations(t, u_prev);
-    assemble_rhs(u_prev, d_rhs);
+    assemble_rhs(t, u_prev, d_solution, d_rhs);
     apply_inverse_mass();
   }
 
   void calculate_fluxes_on_macro_edge(const double t,
                                       const Edge &edge,
                                       const std::vector<double> &u_prev,
+                                      const std::vector<double> &gamma_prev,
                                       std::vector<double> &gamma_fluxes_edge) {
 
     const auto local_dof_map_flow = d_dof_map_flow->get_local_dof_map(edge);
@@ -112,10 +112,10 @@ public:
 
       // get gamma:
       local_dof_map_transport.dof_indices(local_micro_edge_id_l, 0, dof_indices);
-      extract_dof(dof_indices, u_prev, extracted_dof);
+      extract_dof(dof_indices, gamma_prev, extracted_dof);
       const double gamma_l = fe.evaluate_dof_at_boundary_points(extracted_dof).right;
       local_dof_map_transport.dof_indices(local_micro_edge_id_r, 0, dof_indices);
-      extract_dof(dof_indices, u_prev, extracted_dof);
+      extract_dof(dof_indices, gamma_prev, extracted_dof);
       const double gamma_r = fe.evaluate_dof_at_boundary_points(extracted_dof).left;
 
       const double v = Q_up_macro_edge[micro_vertex_id] / A_up_macro_edge[micro_vertex_id];
@@ -131,7 +131,7 @@ public:
     gamma_fluxes_edge[local_dof_map_transport.num_micro_vertices() - 1] = d_gamma_flux_r[edge.get_id()];
   }
 
-  void assemble_rhs(double t, const std::vector<double> &u_prev, std::vector<double> &rhs) {
+  void assemble_rhs(double t, const std::vector<double> &u_prev, const std::vector<double> &gamma_prev, std::vector<double> &rhs) {
     // first zero rhs
     for (std::size_t idx = 0; idx < rhs.size(); idx += 1)
       rhs[idx] = 0;
@@ -146,12 +146,9 @@ public:
 
       // calculate fluxes on macro edge
       gamma_flux_macro_edge.resize(local_dof_map_transport.num_micro_vertices());
-      calculate_fluxes_on_macro_edge(t, *edge, u_prev, gamma_flux_macro_edge);
+      calculate_fluxes_on_macro_edge(t, *edge, u_prev, gamma_prev, gamma_flux_macro_edge);
 
       const std::size_t num_basis_functions = local_dof_map_transport.num_basis_functions();
-
-      std::vector<double> f_loc_Q(num_basis_functions);
-      std::vector<double> f_loc_A(num_basis_functions);
 
       QuadratureFormula qf = create_gauss4();
       FETypeNetwork fe(qf, local_dof_map_transport.num_basis_functions() - 1);
@@ -161,90 +158,60 @@ public:
       const auto &dphi = fe.get_dphi();
       const auto &JxW = fe.get_JxW();
 
-      // some right hand sides need the physical location of the quadrature points
-      QuadraturePointMapper qpm(qf);
-      const auto &points = qpm.get_quadrature_points();
-
       std::vector<std::size_t> Q_dof_indices(num_basis_functions, 0);
       std::vector<std::size_t> A_dof_indices(num_basis_functions, 0);
+      std::vector<std::size_t> gamma_dof_indices(num_basis_functions, 0);
 
       std::vector<double> Q_prev_loc(num_basis_functions, 0);
       std::vector<double> A_prev_loc(num_basis_functions, 0);
+      std::vector<double> gamma_prev_loc(num_basis_functions, 0);
 
       std::vector<double> Q_prev_qp(fe.num_quad_points(), 0);
       std::vector<double> A_prev_qp(fe.num_quad_points(), 0);
+      std::vector<double> gamma_prev_qp(fe.num_quad_points(), 0);
 
-      const auto &F_A = Q_prev_qp;
-      std::vector<double> F_Q(Q_prev_qp.size(), 0);
-
-      std::vector<double> S_Q(fe.num_quad_points(), 0);
-      std::vector<double> S_A(fe.num_quad_points(), 0);
+      std::vector<double> rhs_loc(num_basis_functions);
 
       const auto &param = edge->get_physical_data();
 
-      const double h = param.length / local_dof_map.num_micro_edges();
+      const double h = param.length / local_dof_map_transport.num_micro_edges();
 
-      for (std::size_t micro_edge_id = 0; micro_edge_id < local_dof_map.num_micro_edges(); micro_edge_id += 1) {
+      for (std::size_t micro_edge_id = 0; micro_edge_id < local_dof_map_transport.num_micro_edges(); micro_edge_id += 1) {
         fe.reinit(h);
-        qpm.reinit(micro_edge_id * h, static_cast<double>(1 + micro_edge_id) * h);
 
         // evaluate Q and A inside cell
-        local_dof_map.dof_indices(micro_edge_id, 0, Q_dof_indices);
-        local_dof_map.dof_indices(micro_edge_id, 1, A_dof_indices);
+        local_dof_map_flow.dof_indices(micro_edge_id, 0, Q_dof_indices);
+        local_dof_map_flow.dof_indices(micro_edge_id, 1, A_dof_indices);
+        local_dof_map_transport.dof_indices(micro_edge_id, 0, gamma_dof_indices);
 
         extract_dof(Q_dof_indices, u_prev, Q_prev_loc);
         extract_dof(A_dof_indices, u_prev, A_prev_loc);
+        extract_dof(gamma_dof_indices, gamma_prev, gamma_prev_loc);
 
         fe.evaluate_dof_at_quadrature_points(Q_prev_loc, Q_prev_qp);
         fe.evaluate_dof_at_quadrature_points(A_prev_loc, A_prev_qp);
+        fe.evaluate_dof_at_quadrature_points(gamma_prev_loc, gamma_prev_qp);
 
-        // evaluate Q and A on boundary
-        const double Q_up_0 = Q_up_macro_edge[micro_edge_id];
-        const double Q_up_1 = Q_up_macro_edge[micro_edge_id + 1];
-        const double A_up_0 = A_up_macro_edge[micro_edge_id];
-        const double A_up_1 = A_up_macro_edge[micro_edge_id + 1];
-
-        // the A-component of our F function
-        const auto F_Q_eval = [&param](double Q, double A) -> double {
-          return std::pow(Q, 2) / A + param.G0 / (3 * param.rho * std::sqrt(param.A0)) * std::pow(A, 3. / 2.);
-        };
-
-        // evaluate F = (F_Q, F_A) at the quadrature points
-        for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
-          F_Q[qp] = F_Q_eval(Q_prev_qp[qp], A_prev_qp[qp]);
-
-        // evaluate S = (S_Q, S_A) at the quadrature points
-        d_S_evaluator(t, points, Q_prev_qp, A_prev_qp, S_Q, S_A);
+        // get flux of the given rhs
+        const double flux_up_l = gamma_flux_macro_edge[micro_edge_id];
+        const double flux_up_r = gamma_flux_macro_edge[micro_edge_id + 1];
 
         for (std::size_t i = 0; i < num_basis_functions; i += 1) {
           // rhs integral
-          f_loc_A[i] = 0;
-          f_loc_Q[i] = 0;
+          rhs_loc[i] = 0;
 
           // cell contributions
-          for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1) {
-            f_loc_Q[i] += phi[i][qp] * S_Q[qp] * JxW[qp];
-            f_loc_Q[i] += dphi[i][qp] * F_Q[qp] * JxW[qp];
+          for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
+            rhs_loc[i] += Q_prev_qp[qp] / A_prev_qp[qp] * gamma_prev_qp[qp] * dphi[i][qp] * JxW[qp];
 
-            f_loc_A[i] += phi[i][qp] * S_A[qp] * JxW[qp];
-            f_loc_A[i] += dphi[i][qp] * F_A[qp] * JxW[qp];
-          }
-
-          // boundary contributions  - tau [ F(U_up) phi ] ds, keep attention to the minus!
-          f_loc_Q[i] -= F_Q_eval(Q_up_1, A_up_1) * phi_b[1][i];
-          f_loc_Q[i] += F_Q_eval(Q_up_0, A_up_0) * phi_b[0][i];
-
-          f_loc_A[i] -= Q_up_1 * phi_b[1][i];
-          f_loc_A[i] += Q_up_0 * phi_b[0][i];
+          // boundary contributions  - (Q/A\Gamma) ds, keep attention to the minus!
+          rhs_loc[i] -= flux_up_r * phi_b[1][i];
+          rhs_loc[i] += flux_up_l * phi_b[0][i];
         }
 
         // copy into global vector
-        for (std::size_t i = 0; i < Q_dof_indices.size(); i += 1) {
-          rhs[Q_dof_indices[i]] += f_loc_Q[i];
-        }
-        for (std::size_t i = 0; i < A_dof_indices.size(); i += 1) {
-          rhs[A_dof_indices[i]] += f_loc_A[i];
-        }
+        for (std::size_t i = 0; i < gamma_dof_indices.size(); i += 1)
+          rhs[gamma_dof_indices[i]] += rhs_loc[i];
       }
     }
   }
