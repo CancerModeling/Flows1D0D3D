@@ -15,8 +15,8 @@ SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/macrocirculation/)
 # ****************************************************************************
 
 # advection solver:
-#add_executable(${ProjectName}Advection advection.cpp)
-#target_link_libraries(${ProjectName}Advection ${ProjectLib})
+add_executable(${ProjectName}AdvectionImplicit advection_implicit.cpp)
+target_link_libraries(${ProjectName}AdvectionImplicit ${ProjectLib})
 
 # nonlinear flow solver line:
 #add_executable(${ProjectName}NonlinearFlowLine nonlinear_flow_line.cpp)
