@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
   // configure solver
-  auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
+  auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
   mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
   solver.set_tau(tau);

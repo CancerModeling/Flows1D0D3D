@@ -87,7 +87,7 @@ double run_scenario(std::size_t num_micro_edges_per_segment, double tau, bool us
   vessel->add_embedding_data(mc::EmbeddingData{{mc::Point(0, 0, 0), mc::Point(length, 0, 0)}});
   vessel->add_physical_data(mc::PhysicalData{G0, A0, rho, length});
 
-  auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
+  auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   //mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
@@ -161,7 +161,7 @@ void run_temporal_convergence_study(std::size_t num_micro_edges_per_segment, std
   vessel->add_embedding_data(mc::EmbeddingData{{mc::Point(0, 0, 0), mc::Point(length, 0, 0)}});
   vessel->add_physical_data(mc::PhysicalData{G0, A0, rho, length});
 
-  auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
+  auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   //mc::naive_mesh_partitioner( *graph, MPI_COMM_WORLD );
@@ -235,17 +235,21 @@ void run_spatial_convergence_study(std::size_t max_m) {
   std::cout << "spatial convergence study for degree " << std::to_string(degree) << std::endl;
   std::ofstream f("spatial_convergence_error_dg" + std::to_string(degree) + ".csv");
   const double tau = get_tau(20. / (1 << (3 + max_m)), K_CFL, c0);
+  double previous_error = NAN;
   for (std::size_t m = 0; m < max_m; m += 1) {
     const auto begin = std::chrono::steady_clock::now();
 
     const std::size_t num_edges_per_segment = 1 << (3 + m);
     const double error = run_scenario<degree>(num_edges_per_segment, tau, true);
     const double h = 20. / num_edges_per_segment;
+    const double rate = error/previous_error;
     f << h << ", " << error << std::endl;
 
     const auto end = std::chrono::steady_clock::now();
     const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-    std::cout << "finished h = " << h << " (error = " << error << ", time = " << elapsed_ms * 1e-6 << " s)" << std::endl;
+    std::cout << "finished h = " << h << " (error = " << error << ", time = " << elapsed_ms * 1e-6 << " s, rate = " << rate << ")" << std::endl;
+
+    previous_error = error;
   }
 }
 
