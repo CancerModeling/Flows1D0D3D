@@ -166,57 +166,128 @@ void calculate_inner_fluxes_on_macro_edge(const DofMap &dof_map,
   }
 }
 
-RightHandSideEvaluator::RightHandSideEvaluator(MPI_Comm comm,
-                                               std::shared_ptr<GraphStorage> graph,
-                                               std::shared_ptr<DofMap> dof_map,
-                                               std::size_t degree)
+FlowUpwindEvaluator::FlowUpwindEvaluator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map)
     : d_comm(comm),
       d_graph(std::move(graph)),
       d_dof_map(std::move(dof_map)),
       d_edge_boundary_communicator(Communicator::create_edge_boundary_value_communicator(comm, d_graph)),
-      d_S_evaluator(default_S{
-        4.0e-5, // 4.5 m Pa/s
-        9,      // Poiseuille flow
-        0       // 0 cm^2/s, no wall permeability
-      }),
-      d_degree(degree),
       d_Q_macro_edge_boundary_value(2 * d_graph->num_edges()),
       d_A_macro_edge_boundary_value(2 * d_graph->num_edges()),
       d_Q_macro_edge_flux_l(d_graph->num_edges()),
       d_Q_macro_edge_flux_r(d_graph->num_edges()),
       d_A_macro_edge_flux_l(d_graph->num_edges()),
       d_A_macro_edge_flux_r(d_graph->num_edges()),
-      d_inverse_mass(d_dof_map->num_dof()) {
-  assemble_inverse_mass(d_comm, *d_graph, *d_dof_map, d_inverse_mass);
-}
+      d_current_t(NAN) {}
 
-void RightHandSideEvaluator::evaluate(const double t, const std::vector<double> &u_prev, std::vector<double> &rhs) {
+void FlowUpwindEvaluator::init(double t, const std::vector<double> &u_prev) {
+  d_current_t = t;
+
   evaluate_macro_edge_boundary_values(u_prev);
   d_edge_boundary_communicator.update_ghost_layer(d_Q_macro_edge_boundary_value);
   d_edge_boundary_communicator.update_ghost_layer(d_A_macro_edge_boundary_value);
 
-  //std::cout << "fluxes Q_macro_edge_boundary_value_l " << d_Q_macro_edge_boundary_value_l << std::endl;
-  //std::cout << "fluxes Q_macro_edge_boundary_value_r " << d_Q_macro_edge_boundary_value_r << std::endl;
-  //std::cout << "fluxes A_macro_edge_boundary_value_l " << d_A_macro_edge_boundary_value_l << std::endl;
-  //std::cout << "fluxes A_macro_edge_boundary_value_r " << d_A_macro_edge_boundary_value_r << std::endl;
-  calculate_fluxes(t, u_prev);
-  //std::cout << "fluxes d_Q_macro_edge_flux_r " << d_Q_macro_edge_flux_r << std::endl;
-  //std::cout << "fluxes d_A_macro_edge_flux_r " << d_A_macro_edge_flux_r << std::endl;
-  //std::cout << "fluxes d_Q_macro_edge_flux_l " << d_Q_macro_edge_flux_l << std::endl;
-  //std::cout << "fluxes d_A_macro_edge_flux_l " << d_A_macro_edge_flux_l << std::endl;
-  calculate_rhs(t, u_prev, rhs);
-  // std::cout << "rhs " << rhs << std::endl;
-  apply_inverse_mass(rhs);
-  if (std::isnan(rhs.front()) || std::isnan(rhs.back())) {
-    throw std::runtime_error("contains nans");
+  // std::cout << "fluxes Q_macro_edge_boundary_value_l " << d_Q_macro_edge_boundary_value_l << std::endl;
+  // std::cout << "fluxes Q_macro_edge_boundary_value_r " << d_Q_macro_edge_boundary_value_r << std::endl;
+  // std::cout << "fluxes A_macro_edge_boundary_value_l " << d_A_macro_edge_boundary_value_l << std::endl;
+  // std::cout << "fluxes A_macro_edge_boundary_value_r " << d_A_macro_edge_boundary_value_r << std::endl;
+
+  calculate_nfurcation_fluxes(u_prev);
+  calculate_inout_fluxes(t, u_prev);
+
+  // std::cout << "fluxes d_Q_macro_edge_flux_r " << d_Q_macro_edge_flux_r << std::endl;
+  // std::cout << "fluxes d_A_macro_edge_flux_r " << d_A_macro_edge_flux_r << std::endl;
+  // std::cout << "fluxes d_Q_macro_edge_flux_l " << d_Q_macro_edge_flux_l << std::endl;
+  // std::cout << "fluxes d_A_macro_edge_flux_l " << d_A_macro_edge_flux_l << std::endl;
+}
+
+void FlowUpwindEvaluator::get_fluxes_on_macro_edge(double t, const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &Q_up_macro_edge, std::vector<double> &A_up_macro_edge) const {
+  // evaluator was initialized with the correct time step
+  if (d_current_t != t)
+    throw std::runtime_error("FlowUpwindEvaluator was not initialized for the given time step");
+
+  const auto local_dof_map = d_dof_map->get_local_dof_map(edge);
+
+  assert(Q_up_macro_edge.size() == local_dof_map.num_micro_vertices());
+  assert(A_up_macro_edge.size() == local_dof_map.num_micro_vertices());
+
+  const auto &param = edge.get_physical_data();
+  const double h = param.length / local_dof_map.num_micro_edges();
+
+  const std::size_t num_basis_functions = local_dof_map.num_basis_functions();
+
+  // TODO: Make this more efficient by not recalculating the gradients.
+  // finite-element for left and right edge
+  FETypeNetwork fe(create_trapezoidal_rule(), num_basis_functions - 1);
+
+  // dof indices for left and right edge
+  std::vector<std::size_t> Q_dof_indices_l(num_basis_functions, 0);
+  std::vector<std::size_t> A_dof_indices_l(num_basis_functions, 0);
+  std::vector<std::size_t> Q_dof_indices_r(num_basis_functions, 0);
+  std::vector<std::size_t> A_dof_indices_r(num_basis_functions, 0);
+
+  // local views of our previous solution
+  std::vector<double> Q_prev_loc_l(num_basis_functions, 0);
+  std::vector<double> A_prev_loc_l(num_basis_functions, 0);
+  std::vector<double> Q_prev_loc_r(num_basis_functions, 0);
+  std::vector<double> A_prev_loc_r(num_basis_functions, 0);
+
+  // previous solution evaluated at quadrature points
+  // we have 2 quadrature points for the trapezoidal rule
+  std::vector<double> Q_prev_qp_l(2, 0);
+  std::vector<double> A_prev_qp_l(2, 0);
+  std::vector<double> Q_prev_qp_r(2, 0);
+  std::vector<double> A_prev_qp_r(2, 0);
+
+  fe.reinit(h);
+
+  // TODO: the boundary values of each cell are evaluated twice
+  for (std::size_t micro_vertex_id = 1; micro_vertex_id < local_dof_map.num_micro_vertices() - 1; micro_vertex_id += 1) {
+    const std::size_t local_micro_edge_id_l = micro_vertex_id - 1;
+    const std::size_t local_micro_edge_id_r = micro_vertex_id;
+
+    local_dof_map.dof_indices(local_micro_edge_id_l, 0, Q_dof_indices_l);
+    local_dof_map.dof_indices(local_micro_edge_id_r, 0, Q_dof_indices_r);
+    local_dof_map.dof_indices(local_micro_edge_id_l, 1, A_dof_indices_l);
+    local_dof_map.dof_indices(local_micro_edge_id_r, 1, A_dof_indices_r);
+
+    extract_dof(Q_dof_indices_l, u_prev, Q_prev_loc_l);
+    extract_dof(A_dof_indices_l, u_prev, A_prev_loc_l);
+    extract_dof(Q_dof_indices_r, u_prev, Q_prev_loc_r);
+    extract_dof(A_dof_indices_r, u_prev, A_prev_loc_r);
+
+    fe.evaluate_dof_at_quadrature_points(Q_prev_loc_l, Q_prev_qp_l);
+    fe.evaluate_dof_at_quadrature_points(A_prev_loc_l, A_prev_qp_l);
+    fe.evaluate_dof_at_quadrature_points(Q_prev_loc_r, Q_prev_qp_r);
+    fe.evaluate_dof_at_quadrature_points(A_prev_loc_r, A_prev_qp_r);
+
+    const double Q_l = Q_prev_qp_l[1];
+    const double A_l = A_prev_qp_l[1];
+    const double Q_r = Q_prev_qp_r[0];
+    const double A_r = A_prev_qp_r[0];
+
+    const double W2_l = calculate_W2_value(Q_l, A_l, param.G0, param.rho, param.A0);
+    const double W1_r = calculate_W1_value(Q_r, A_r, param.G0, param.rho, param.A0);
+
+    double Q_up = 0, A_up = 0;
+
+    solve_W12(Q_up, A_up, W1_r, W2_l, param.G0, param.rho, param.A0);
+
+    Q_up_macro_edge[micro_vertex_id] = Q_up;
+    A_up_macro_edge[micro_vertex_id] = A_up;
   }
+
+  calculate_inner_fluxes_on_macro_edge(*d_dof_map, edge, u_prev, Q_up_macro_edge, A_up_macro_edge);
+
+  // update left fluxes
+  Q_up_macro_edge[0] = d_Q_macro_edge_flux_l[edge.get_id()];
+  A_up_macro_edge[0] = d_A_macro_edge_flux_l[edge.get_id()];
+
+  // update right fluxes
+  Q_up_macro_edge[local_dof_map.num_micro_vertices() - 1] = d_Q_macro_edge_flux_r[edge.get_id()];
+  A_up_macro_edge[local_dof_map.num_micro_vertices() - 1] = d_A_macro_edge_flux_r[edge.get_id()];
 }
 
-void RightHandSideEvaluator::set_rhs_S(VectorEvaluator S_evaluator) {
-  d_S_evaluator = std::move(S_evaluator);
-}
-
-void RightHandSideEvaluator::evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev) {
+void FlowUpwindEvaluator::evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev) {
   std::vector<std::size_t> dof_indices(4, 0);
   std::vector<double> local_dofs(4, 0);
 
@@ -250,7 +321,28 @@ void RightHandSideEvaluator::evaluate_macro_edge_boundary_values(const std::vect
   }
 }
 
-void RightHandSideEvaluator::calculate_nfurcation_fluxes(const std::vector<double> &u_prev) {
+void FlowUpwindEvaluator::get_fluxes_on_nfurcation(double t, const Vertex &v, std::vector<double> &Q_up, std::vector<double> &A_up) const {
+  // evaluator was initialized with the correct time step
+  if (d_current_t != t)
+    throw std::runtime_error("FlowUpwindEvaluator was not initialized for the given time step");
+
+  Q_up.resize(v.get_edge_neighbors().size());
+  A_up.resize(v.get_edge_neighbors().size());
+
+  for (size_t neighbor_edge_idx = 0; neighbor_edge_idx < v.get_edge_neighbors().size(); neighbor_edge_idx += 1) {
+    const auto &edge = *d_graph->get_edge(v.get_edge_neighbors()[neighbor_edge_idx]);
+
+    if (edge.is_pointing_to(v.get_id())) {
+      Q_up[neighbor_edge_idx] = d_Q_macro_edge_flux_r[edge.get_id()];
+      A_up[neighbor_edge_idx] = d_A_macro_edge_flux_r[edge.get_id()];
+    } else {
+      Q_up[neighbor_edge_idx] = d_Q_macro_edge_flux_l[edge.get_id()];
+      A_up[neighbor_edge_idx] = d_A_macro_edge_flux_l[edge.get_id()];
+    }
+  }
+}
+
+void FlowUpwindEvaluator::calculate_nfurcation_fluxes(const std::vector<double> &u_prev) {
   for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
@@ -305,7 +397,7 @@ void RightHandSideEvaluator::calculate_nfurcation_fluxes(const std::vector<doubl
   }
 }
 
-void RightHandSideEvaluator::calculate_inout_fluxes(double t, const std::vector<double> &u_prev) {
+void FlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<double> &u_prev) {
   // initial value of the flow
   // TODO: make this more generic for other initial flow values
   const double Q_init = 0;
@@ -422,27 +514,36 @@ void RightHandSideEvaluator::calculate_inout_fluxes(double t, const std::vector<
   }
 }
 
-void RightHandSideEvaluator::calculate_fluxes(const double t, const std::vector<double> &u_prev) {
-  calculate_nfurcation_fluxes(u_prev);
-  // calculate_inner_fluxes(u_prev);
-  calculate_inout_fluxes(t, u_prev);
+RightHandSideEvaluator::RightHandSideEvaluator(MPI_Comm comm,
+                                               std::shared_ptr<GraphStorage> graph,
+                                               std::shared_ptr<DofMap> dof_map,
+                                               std::size_t degree)
+    : d_comm(comm),
+      d_graph(std::move(graph)),
+      d_dof_map(std::move(dof_map)),
+      d_flow_upwind_evaluator(comm, d_graph, d_dof_map),
+      d_S_evaluator(default_S{
+        4.0e-5, // 4.5 m Pa/s
+        9,      // Poiseuille flow
+        0       // 0 cm^2/s, no wall permeability
+      }),
+      d_degree(degree),
+      d_inverse_mass(d_dof_map->num_dof()) {
+  assemble_inverse_mass(d_comm, *d_graph, *d_dof_map, d_inverse_mass);
 }
 
-void RightHandSideEvaluator::calculate_fluxes_on_macro_edge(const Edge &edge,
-                                                            const std::vector<double> &u_prev,
-                                                            std::vector<double> &Q_up_macro_edge,
-                                                            std::vector<double> &A_up_macro_edge) {
-  const auto local_dof_map = d_dof_map->get_local_dof_map(edge);
+void RightHandSideEvaluator::evaluate(const double t, const std::vector<double> &u_prev, std::vector<double> &rhs) {
+  d_flow_upwind_evaluator.init(t, u_prev);
+  calculate_rhs(t, u_prev, rhs);
+  std::cout << "rhs " << rhs << std::endl;
+  apply_inverse_mass(rhs);
+  if (std::isnan(rhs.front()) || std::isnan(rhs.back())) {
+    throw std::runtime_error("contains nans");
+  }
+}
 
-  calculate_inner_fluxes_on_macro_edge(*d_dof_map, edge, u_prev, Q_up_macro_edge, A_up_macro_edge);
-
-  // update left fluxes
-  Q_up_macro_edge[0] = d_Q_macro_edge_flux_l[edge.get_id()];
-  A_up_macro_edge[0] = d_A_macro_edge_flux_l[edge.get_id()];
-
-  // update right fluxes
-  Q_up_macro_edge[local_dof_map.num_micro_vertices() - 1] = d_Q_macro_edge_flux_r[edge.get_id()];
-  A_up_macro_edge[local_dof_map.num_micro_vertices() - 1] = d_A_macro_edge_flux_r[edge.get_id()];
+void RightHandSideEvaluator::set_rhs_S(VectorEvaluator S_evaluator) {
+  d_S_evaluator = std::move(S_evaluator);
 }
 
 void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<double> &u_prev, std::vector<double> &rhs) {
@@ -461,7 +562,7 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
     // calculate fluxes on macro edge
     Q_up_macro_edge.resize(local_dof_map.num_micro_vertices());
     A_up_macro_edge.resize(local_dof_map.num_micro_vertices());
-    calculate_fluxes_on_macro_edge(*edge, u_prev, Q_up_macro_edge, A_up_macro_edge);
+    d_flow_upwind_evaluator.get_fluxes_on_macro_edge(t, *edge, u_prev, Q_up_macro_edge, A_up_macro_edge);
 
     const std::size_t num_basis_functions = local_dof_map.num_basis_functions();
 
@@ -567,6 +668,9 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
   for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
+    Q_up_macro_edge.resize(1);
+    A_up_macro_edge.resize(1);
+
     if (vertex->is_leaf() && vertex->is_windkessel_outflow()) {
       const auto &edge = *d_graph->get_edge(vertex->get_edge_neighbors()[0]);
       assert(edge.has_physical_data());
@@ -578,9 +682,10 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
       const auto &vertex_dof_map = d_dof_map->get_local_dof_map(*vertex);
       const auto &vertex_dofs = vertex_dof_map.dof_indices();
 
-      const auto p_c = u_prev[vertex_dofs[0]];
+      d_flow_upwind_evaluator.get_fluxes_on_nfurcation(t, *vertex, Q_up_macro_edge, A_up_macro_edge);
+      auto Q_out = Q_up_macro_edge.front();
 
-      auto Q_out = d_Q_macro_edge_flux_r[edge.get_id()];
+      const auto p_c = u_prev[vertex_dofs[0]];
 
       const double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
       const double R1 = param.rho * c0 / param.A0;
