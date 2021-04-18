@@ -51,8 +51,6 @@ private:
 /*! @brief Assembles the inverse mass. WARNING: Assumes legendre basis! */
 void assemble_inverse_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, std::vector<double> &inv_mass);
 
-void calculate_inner_fluxes_on_macro_edge(const DofMap &dof_map, const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &Q_up_macro_edge, std::vector<double> &A_up_macro_edge);
-
 /*! Class for calculating the currently upwinded values for the flow (Q, A). */
 class FlowUpwindEvaluator {
 public:
