@@ -50,6 +50,8 @@ private:
 /*! @brief Assembles the inverse mass. WARNING: Assumes legendre basis! */
 void assemble_inverse_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, std::vector<double> &inv_mass);
 
+void calculate_inner_fluxes_on_macro_edge(const DofMap &dof_map, const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &Q_up_macro_edge, std::vector<double> &A_up_macro_edge);
+
 /*! @brief Our flow equation d/dt u + d/dz F(u) = 0, can be written with a DG ansatz as,
  *              d/dt u - M^{-1}( (F(u), d/dz v) - F(u(x_r))v(x_r) + F(u(x_l))v(x_l) )  = 0,
  *         where M^{-1} is the inverse of the mass matrix, v a test function and x_r and x_l
