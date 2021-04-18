@@ -85,6 +85,13 @@ int main(int argc, char *argv[]) {
   e3_2->add_embedding_data({ {lower_point_coord, midpoint2_coord } });
   e4->add_embedding_data({ {midpoint2_coord ,endpoint_coord } });
 
+  // we define the boundary conditions:
+  midpoint1->set_to_free_outflow();
+  upper_point->set_to_free_outflow();
+  lower_point->set_to_free_outflow();
+  midpoint2->set_to_free_outflow();
+  endpoint->set_to_free_outflow();
+
   // set inflow boundary conditions
   start->set_to_inflow(mc::heart_beat_inflow());
 
@@ -93,7 +100,7 @@ int main(int argc, char *argv[]) {
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
   // initialize dof map
-  auto dof_map = std::make_shared<mc::DofMap>(graph->num_edges());
+  auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   // configure solver
