@@ -193,8 +193,6 @@ void Transport::assemble_rhs(double t, const std::vector<double> &u_prev, const 
 
     const double h = param.length / local_dof_map_transport.num_micro_edges();
 
-    double prev_gamma_t_right = 0;
-
     for (std::size_t micro_edge_id = 0; micro_edge_id < local_dof_map_transport.num_micro_edges(); micro_edge_id += 1) {
       fe.reinit(h);
 
@@ -222,13 +220,10 @@ void Transport::assemble_rhs(double t, const std::vector<double> &u_prev, const 
         // cell contributions
         for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
           rhs_loc[i] += Q_prev_qp[qp] / A_prev_qp[qp] * gamma_prev_qp[qp] * dphi[i][qp] * JxW[qp];
-        for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
-          rhs_loc[i] += 1. * gamma_prev_qp[qp] * dphi[i][qp] * JxW[qp];
 
         // boundary contributions  - (Q/A\Gamma) ds, keep attention to the minus!
         rhs_loc[i] -= flux_up_r * phi_b[1][i];
         rhs_loc[i] += flux_up_l * phi_b[0][i];
-
       }
 
       if (micro_edge_id == local_dof_map_transport.num_micro_edges()-1)
@@ -308,10 +303,10 @@ void Transport::calculate_fluxes_at_nfurcations(double t, const std::vector<doub
         auto &edge = *d_graph->get_edge(vertex.get_edge_neighbors()[k]);
         double gamma_value = edge.is_pointing_to(vertex.get_id()) ? d_gamma_macro_edge_boundary_value[2 * edge.get_id() + 1] : d_gamma_macro_edge_boundary_value[2 * edge.get_id() + 0];
         double v = Q_up_values[k] / A_up_values[k];
-        const bool is_inflow_value = (v > 1e-8 && !edge.is_pointing_to(vertex.get_id())) || (v < 1e-8 && edge.is_pointing_to(vertex.get_id()));
+        const bool is_inflow_value = (v > 1e-8 && edge.is_pointing_to(vertex.get_id())) || (v < 1e-8 && !edge.is_pointing_to(vertex.get_id()));
 
         gamma.push_back(gamma_value);
-        is_in.push_back((is_inflow_value));
+        is_in.push_back(is_inflow_value);
 
         if (!is_inflow_value)
           Q_out += std::abs(Q_up_values[k]);
@@ -330,7 +325,7 @@ void Transport::calculate_fluxes_at_nfurcations(double t, const std::vector<doub
           else
             d_gamma_flux_l[edge.get_id()] = v * d_gamma_macro_edge_boundary_value[2 * edge.get_id() + 0];
         } else {
-          double flux = v * N_in / Q_out * std::abs(Q_up_values[i]) * A_up_values[i] / std::abs(Q_up_values[i]);
+          const double flux = v * (A_up_values[i] / std::abs(Q_up_values[i])) * (std::abs(Q_up_values[i]) / Q_out ) * N_in;
           if (edge.is_pointing_to(v_id))
             d_gamma_flux_r[edge.get_id()] = flux;
           else
