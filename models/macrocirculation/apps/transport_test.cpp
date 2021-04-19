@@ -23,12 +23,12 @@
 
 namespace mc = macrocirculation;
 
-constexpr std::size_t degree = 0;
+constexpr std::size_t degree = 2;
 
 int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
-  const double t_end = 1;
+  const double t_end = 0.9;
   const std::size_t max_iter = 1600000;
   // const std::size_t max_iter = 1;
 
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   // const double tau_out = tau;
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
-  const std::size_t num_macro_edges = 1;
+  const std::size_t num_macro_edges = 2;
   const std::size_t num_edges_per_segment = 44;
 
   const mc::PhysicalData physical_data = {
@@ -84,8 +84,8 @@ int main(int argc, char *argv[]) {
 
   std::vector< double > u_prev(dof_map_flow->num_dof(), 0);
 
-  interpolate_constant(MPI_COMM_WORLD, *graph, *dof_map_flow, 6.97, 0, u_prev);
-  interpolate_constant(MPI_COMM_WORLD, *graph, *dof_map_flow, 6.97, 1, u_prev);
+  interpolate_constant(MPI_COMM_WORLD, *graph, *dof_map_flow, 1., 0, u_prev);
+  interpolate_constant(MPI_COMM_WORLD, *graph, *dof_map_flow, 1., 1, u_prev);
 
   std::vector<mc::Point> points;
   points.reserve(graph->num_edges() * 2);
