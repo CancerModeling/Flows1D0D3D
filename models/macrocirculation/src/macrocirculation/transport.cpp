@@ -16,6 +16,12 @@
 
 namespace macrocirculation {
 
+double current_inflow(double t) {
+  // return -2 * std::pow(t / delta, 3) + 3 * std::pow(t / delta, 2);
+  return std::sin(M_PI * t * 3);
+  //return 1.;
+}
+
 Transport::Transport(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map_flow, std::shared_ptr<DofMap> dof_map_transport)
     : d_comm(comm),
       d_graph(std::move(graph)),
@@ -24,12 +30,11 @@ Transport::Transport(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::sh
       d_flow_upwind_evaluator(comm, d_graph, d_dof_map_flow),
       d_edge_boundary_communicator(Communicator::create_edge_boundary_value_communicator(comm, d_graph)),
       d_gamma_macro_edge_boundary_value(2 * d_graph->num_edges()),
-      d_gamma_flux_l(d_graph->num_edges()),
-      d_gamma_flux_r(d_graph->num_edges()),
-      d_rhs(d_dof_map_transport->num_dof()),
-      d_solution(d_dof_map_transport->num_dof()),
-      d_inverse_mass(d_dof_map_transport->num_dof())
-{
+      d_gamma_flux_l(d_graph->num_edges(), 0),
+      d_gamma_flux_r(d_graph->num_edges(), 0),
+      d_rhs(d_dof_map_transport->num_dof(), 0),
+      d_solution(d_dof_map_transport->num_dof(), 0),
+      d_inverse_mass(d_dof_map_transport->num_dof()) {
   assemble_inverse_mass(d_comm, *d_graph, *d_dof_map_transport, d_inverse_mass);
 }
 
@@ -63,13 +68,23 @@ void Transport::evaluate_macro_edge_boundary_values(const std::vector<double> &u
 std::vector<double> &Transport::get_solution() { return d_solution; }
 
 void Transport::solve(double t, double dt, const std::vector<double> &u_prev) {
+  std::cout << "u_prev = " << u_prev << std::endl;
+  std::cout << "solution = " << d_solution << std::endl;
+  d_flow_upwind_evaluator.init(t, u_prev);
   evaluate_macro_edge_boundary_values(u_prev, d_solution);
   d_edge_boundary_communicator.update_ghost_layer(d_gamma_macro_edge_boundary_value);
+  std::cout << "boundary_values = " << d_gamma_macro_edge_boundary_value << std::endl;
   calculate_fluxes_at_nfurcations(t, u_prev);
+  std::cout << "gamma_flux_l = " << d_gamma_flux_l << std::endl;
+  std::cout << "gamma_flux_r = " << d_gamma_flux_r << std::endl;
   assemble_rhs(t, u_prev, d_solution, d_rhs);
+  std::cout << "rhs = " << d_rhs << std::endl;
   apply_inverse_mass();
   // explicit euler step:
+  std::cout << "rhs = " << d_rhs << std::endl;
+  std::cout << "solution = " << d_solution << std::endl;
   gmm::add(gmm::scaled(d_rhs, dt), d_solution);
+  std::cout << "solution = " << d_solution << std::endl;
 }
 
 void Transport::calculate_fluxes_on_macro_edge(const double t,
@@ -84,7 +99,7 @@ void Transport::calculate_fluxes_on_macro_edge(const double t,
   assert(gamma_fluxes_edge.size() == local_dof_map_transport.num_micro_vertices());
   assert(gamma_fluxes_edge.size() == local_dof_map_flow.num_micro_vertices());
   // TODO: relax this precondition:
-  assert(local_dof_map_flow.num_basis_functions() == local_dof_map_transport.num_micro_vertices());
+  assert(local_dof_map_flow.num_basis_functions() == local_dof_map_transport.num_basis_functions());
 
   std::vector<double> Q_up_macro_edge(local_dof_map_flow.num_micro_vertices(), 0);
   std::vector<double> A_up_macro_edge(local_dof_map_flow.num_micro_vertices(), 0);
@@ -178,6 +193,8 @@ void Transport::assemble_rhs(double t, const std::vector<double> &u_prev, const 
 
     const double h = param.length / local_dof_map_transport.num_micro_edges();
 
+    double prev_gamma_t_right = 0;
+
     for (std::size_t micro_edge_id = 0; micro_edge_id < local_dof_map_transport.num_micro_edges(); micro_edge_id += 1) {
       fe.reinit(h);
 
@@ -205,10 +222,24 @@ void Transport::assemble_rhs(double t, const std::vector<double> &u_prev, const 
         // cell contributions
         for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
           rhs_loc[i] += Q_prev_qp[qp] / A_prev_qp[qp] * gamma_prev_qp[qp] * dphi[i][qp] * JxW[qp];
+        for (std::size_t qp = 0; qp < fe.num_quad_points(); qp += 1)
+          rhs_loc[i] += 1. * gamma_prev_qp[qp] * dphi[i][qp] * JxW[qp];
 
         // boundary contributions  - (Q/A\Gamma) ds, keep attention to the minus!
         rhs_loc[i] -= flux_up_r * phi_b[1][i];
         rhs_loc[i] += flux_up_l * phi_b[0][i];
+
+      }
+
+      if (micro_edge_id == local_dof_map_transport.num_micro_edges()-1)
+      {
+        double t = fe.evaluate_dof_at_boundary_points(gamma_prev_loc).right;
+        if (std::abs(t - flux_up_r) > 1e-14)
+        {
+          std::cout << flux_up_r << std::endl;
+          std::cout << t << std::endl;
+          std::cout << endl;
+        }
       }
 
       // copy into global vector
@@ -235,30 +266,31 @@ void Transport::calculate_fluxes_at_nfurcations(double t, const std::vector<doub
 
       const double v = Q / A;
 
-      const bool is_inflow = (v > 1e-8 && !edge.is_pointing_to(vertex.get_id())) || (v < 1e-8 && edge.is_pointing_to(vertex.get_id()));
+      const bool is_inflow = (v > 0 && !edge.is_pointing_to(vertex.get_id())) || (v < 0 && edge.is_pointing_to(vertex.get_id()));
 
       const double delta = 0.05;
 
       auto inflow_function = [=](double t) {
         if (vertex.is_inflow())
-          return -2 * std::pow(t / delta, 3) + 3 * std::pow(t / delta, 2);
+          // return -2 * std::pow(t / delta, 3) + 3 * std::pow(t / delta, 2);
+          return current_inflow(t);
         else
           return 0.;
       };
 
       if (is_inflow) {
         // inflow
-        if (!edge.is_pointing_to(vertex.get_id())) {
-          d_gamma_flux_l[edge.get_id()] = Q * inflow_function(t);
-        } else {
+        if (edge.is_pointing_to(vertex.get_id())) {
           d_gamma_flux_r[edge.get_id()] = Q * inflow_function(t);
+        } else {
+          d_gamma_flux_l[edge.get_id()] = Q * inflow_function(t);
         }
       } else {
         // outflow:
-        if (!edge.is_pointing_to(vertex.get_id())) {
-          d_gamma_flux_l[edge.get_id()] = v * d_gamma_macro_edge_boundary_value[2 * edge.get_id() + 0];
-        } else {
+        if (edge.is_pointing_to(vertex.get_id())) {
           d_gamma_flux_r[edge.get_id()] = v * d_gamma_macro_edge_boundary_value[2 * edge.get_id() + 1];
+        } else {
+          d_gamma_flux_l[edge.get_id()] = v * d_gamma_macro_edge_boundary_value[2 * edge.get_id() + 0];
         }
       }
     } else if (vertex.is_bifurcation()) {

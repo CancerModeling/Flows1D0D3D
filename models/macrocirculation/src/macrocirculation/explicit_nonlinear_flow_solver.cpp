@@ -28,10 +28,11 @@ void interpolate_constant(MPI_Comm comm,
   for (const auto &e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
     const auto edge = graph.get_edge(e_id);
     const auto local_dof_map = dof_map.get_local_dof_map(*edge);
+    dof_indices.resize(local_dof_map.num_basis_functions());
     for (std::size_t micro_edge_id = 0; micro_edge_id < local_dof_map.num_micro_edges(); micro_edge_id += 1) {
       local_dof_map.dof_indices(micro_edge_id, component, dof_indices);
+      result[dof_indices[0]] = value;
     }
-    result[dof_indices[0]] = value;
   }
 }
 
