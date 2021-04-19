@@ -45,13 +45,17 @@ target_link_libraries(${ProjectName}Abstract33VesselsGeometry ${ProjectLib})
 add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
 target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})
 
+add_executable(${ProjectName}Transport transport_test.cpp)
+target_link_libraries(${ProjectName}Transport ${ProjectLib})
+
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
                    ${ProjectName}ConvergenceStudy
                    ${ProjectName}AdvectionImplicit
                    ${ProjectName}BreastGeometry
                    ${ProjectName}Abstract33VesselsGeometry
-                   ${ProjectName}CombinedGeometry)
+                   ${ProjectName}CombinedGeometry
+                   ${ProjectName}Transport)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)

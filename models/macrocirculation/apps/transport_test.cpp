@@ -18,37 +18,39 @@
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
+#include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
 namespace mc = macrocirculation;
 
-constexpr std::size_t degree = 2;
+constexpr std::size_t degree = 0;
 
 int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
-  const double t_end = 0.4;
+  const double t_end = 1;
   const std::size_t max_iter = 1600000;
   // const std::size_t max_iter = 1;
 
-  const double tau = 2.5e-4 / 4 / 2 / 6;
-  const double tau_out = 1e-3;
+  const double tau = 1e-4 / 8.;
+  const double tau_out = 1e-2;
+  // const double tau_out = tau;
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
-  const std::size_t num_macro_edges = 4 * 6;
+  const std::size_t num_macro_edges = 1;
   const std::size_t num_edges_per_segment = 44;
 
   const mc::PhysicalData physical_data = {
-    592.4e2,               // 592.4 10^2 Pa,
-    6.97,                  // 6.97 cm^2,
-    1.028,                 // 1.028 kg/cm^3,
-    1.0 / num_macro_edges // 4 cm
+    592.4e2,
+    6.97,
+    1.028e-3,
+    1. / num_macro_edges
   };
 
   // create_for_node the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
   const mc::Point start_point = mc::Point{0, 0, 0};
-  const mc::Point end_point = mc::Point{4, 0, 0};
+  const mc::Point end_point = mc::Point{1, 0, 0};
   auto start = graph->create_vertex();
   auto previous_vertex = start;
   for (std::size_t macro_edge_index = 0; macro_edge_index < num_macro_edges; macro_edge_index += 1) {
@@ -56,8 +58,8 @@ int main(int argc, char *argv[]) {
     auto vessel = graph->connect(*previous_vertex, *next_vertex, num_edges_per_segment);
     vessel->add_embedding_data(mc::EmbeddingData{
       {mc::convex_combination(start_point, end_point, static_cast<double>(macro_edge_index) / num_macro_edges),
-       mc::convex_combination(
-         start_point, end_point, static_cast<double>(macro_edge_index + 1) / num_macro_edges)}});
+        mc::convex_combination(
+          start_point, end_point, static_cast<double>(macro_edge_index + 1) / num_macro_edges)}});
     vessel->add_physical_data(physical_data);
     previous_vertex = next_vertex;
   }
@@ -65,59 +67,52 @@ int main(int argc, char *argv[]) {
   end->set_to_free_outflow();
 
   // set inflow boundary conditions
-  start->set_to_inflow(mc::heart_beat_inflow());
+  // start->set_to_inflow(mc::heart_beat_inflow());
+  start->set_to_inflow([](double t) { return 1.;});
 
   // partition graph
   // TODO: app crashes if not enabled -> fix this!
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
   // configure solver
-  auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
-  dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
-  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
-  solver.set_tau(tau);
-  solver.use_ssp_method();
+  auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
+  dof_map_flow->create(MPI_COMM_WORLD, *graph, 2, degree, false);
+  auto dof_map_transport = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
+  dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, false);
+
+  mc::Transport transport(MPI_COMM_WORLD, graph,  dof_map_flow, dof_map_transport);
+
+  std::vector< double > u_prev(dof_map_flow->num_dof(), 0);
+
+  interpolate_constant(MPI_COMM_WORLD, *graph, *dof_map_flow, 6.97, 0, u_prev);
+  interpolate_constant(MPI_COMM_WORLD, *graph, *dof_map_flow, 6.97, 1, u_prev);
 
   std::vector<mc::Point> points;
   points.reserve(graph->num_edges() * 2);
-  std::vector<double> Q_vertex_values;
-  Q_vertex_values.reserve(graph->num_edges() * 2);
-  std::vector<double> A_vertex_values;
-  A_vertex_values.reserve(graph->num_edges() * 2);
-  std::vector<double> p_total_vertex_values;
-  p_total_vertex_values.reserve(graph->num_edges() * 2);
-  std::vector<double> p_static_vertex_values;
-  p_static_vertex_values.reserve(graph->num_edges() * 2);
+  std::vector<double> c_vertex_values;
+  c_vertex_values.reserve(graph->num_edges() * 2);
 
-  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map, {"Q", "A"});
-  mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "line_solution");
+  mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "transport_solution");
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    solver.solve();
+
+    transport.solve(it*tau, tau, u_prev);
 
     if (it % output_interval == 0) {
-      if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-        std::cout << "iter = " << it << ", time = " << solver.get_time() << std::endl;
-
-      csv_writer.write(solver.get_time(), solver.get_solution());
+      // if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
+      //   std::cout << "iter = " << it << ", time = " << solver.get_time() << std::endl;
 
       // save solution
-      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 0, solver.get_solution(), points, Q_vertex_values);
-      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 1, solver.get_solution(), points, A_vertex_values);
-      mc::calculate_total_pressure(MPI_COMM_WORLD, *graph, *dof_map, solver.get_solution(), points, p_total_vertex_values);
-      mc::calculate_static_pressure(MPI_COMM_WORLD, *graph, *dof_map, solver.get_solution(), points, p_static_vertex_values);
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_transport, 0, transport.get_solution(), points, c_vertex_values);
 
       pvd_writer.set_points(points);
-      pvd_writer.add_vertex_data("Q", Q_vertex_values);
-      pvd_writer.add_vertex_data("A", A_vertex_values);
-      pvd_writer.add_vertex_data("p_static", p_static_vertex_values);
-      pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
-      pvd_writer.write(solver.get_time());
+      pvd_writer.add_vertex_data("c", c_vertex_values);
+      pvd_writer.write(it*tau);
     }
 
     // break
-    if (solver.get_time() > t_end + 1e-12)
+    if (it*tau > t_end + 1e-12)
       break;
   }
 

@@ -34,14 +34,16 @@ for idx, vessel_id in enumerate(args.vessels):
     p = p[1:]
     p = p[:, int(p.shape[1]/2)]
 
-    t = np.loadtxt('output/data_times.csv', delimiter=',')
+    #t = np.loadtxt('output/data_times.csv', delimiter=',')
 
-    start_index = np.sum(t < args.t_start)
+    #start_index = np.sum(t < args.t_start)
 
-    t = t[start_index:]
-    a = a[start_index:]
-    p = p[start_index:]
-    q = q[start_index:]
+    t = np.arange(0,len(p))
+
+    #t = t[start_index:]
+    #a = a[start_index:]
+    #p = p[start_index:]
+    #q = q[start_index:]
 
     ax0.plot(t, a, label='a ({})'.format(vessel_id))
     ax1.plot(t, q, label='q ({})'.format(vessel_id))
