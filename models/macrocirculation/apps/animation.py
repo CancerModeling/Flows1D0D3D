@@ -14,11 +14,12 @@ def load_data(vessel_id):
     with open(filename_times, 'r') as file:
         numeric_data = np.loadtxt(file)
         data['t'] = numeric_data
-    for component in ['Q', 'A']:
+    for component in ['Q', 'A', 'p', 'c']:
         with open(filename_data.format(component, vessel_id), 'r') as file:
             numeric_data = np.loadtxt(file, delimiter=',')
             data['grid'] = numeric_data[0,:]
             data[component] = numeric_data[1:,:]
+    data['c'] = data['c'] / data['A']
     return data
 
 
@@ -31,7 +32,7 @@ data_sets = [load_data(index) for index in list(args.vessels) ]
 
 fig = plt.figure()
 fig.tight_layout()
-axes = fig.subplots(2, len(data_sets), sharey='row', sharex='col')
+axes = fig.subplots(3, len(data_sets), sharey='row', sharex='col')
 
 lines = []
 t_index = 0 
@@ -39,11 +40,15 @@ for dset_index in range(len(data_sets)):
     if len(data_sets) < 2:
         ax_Q = axes[0]
         ax_A = axes[1]
+        ax_c = axes[2]
     else:
         ax_Q = axes[0, dset_index]
         ax_A = axes[1, dset_index]
+        ax_c = axes[2, dset_index]
     data_Q = data_sets[dset_index]['Q'][t_index]
     data_A = data_sets[dset_index]['A'][t_index]
+    data_c = data_sets[dset_index]['c'][t_index]
+    print(data_c)
     grid = data_sets[dset_index]['grid'] 
     ax_Q.clear()
     l1, = ax_Q.plot(grid, data_Q, label='Q')
@@ -53,7 +58,11 @@ for dset_index in range(len(data_sets)):
     l2, = ax_A.plot(grid, data_A, label='A')
     ax_A.legend()
     ax_A.grid(True)
-    lines.append([l1, l2])
+    ax_c.clear()
+    l3, = ax_c.plot(grid, data_c, label='c/a')
+    ax_c.legend()
+    ax_c.grid(True)
+    lines.append([l1, l2, l3])
 fig.suptitle('t={}'.format(data_sets[0]['t'][t_index]))
 
 for ax, vid in zip(axes if len(data_sets) < 2 else axes[0], args.vessels):
@@ -65,20 +74,27 @@ def animate(i):
         if len(data_sets) < 2:
             ax_Q = axes[0]
             ax_A = axes[1]
+            ax_c = axes[2]
         else:
             ax_Q = axes[0, dset_index]
             ax_A = axes[1, dset_index]
+            ax_c = axes[2, dset_index]
         data_Q = data_sets[dset_index]['Q'][t_index]
         data_A = data_sets[dset_index]['A'][t_index]
+        data_c = data_sets[dset_index]['c'][t_index]
         lQ = lines[dset_index][0]
         lA = lines[dset_index][1]
+        lc = lines[dset_index][2]
         grid = data_sets[dset_index]['grid'] 
         lQ.set_ydata(data_Q)
         lA.set_ydata(data_A)
+        lc.set_ydata(data_c)
         ax_Q.relim()
         ax_A.relim()
+        ax_c.set_ylim([0, 1])
         ax_Q.autoscale_view()
         ax_A.autoscale_view()
+        ax_c.autoscale_view()
     fig.suptitle('t={}'.format(data_sets[0]['t'][t_index]))
 
 num_frames = len(data_sets[0]['t'])

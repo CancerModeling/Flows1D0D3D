@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <macrocirculation/graph_flow_and_concentration_writer.hpp>
 #include <memory>
 
 #include "macrocirculation/communication/mpi.hpp"
@@ -23,29 +24,31 @@
 
 namespace mc = macrocirculation;
 
-constexpr std::size_t degree = 2;
+constexpr std::size_t degree = 1;
 
 int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
-  const double t_end = 0.9;
+  const double t_end = 3.;
   const std::size_t max_iter = 1600000;
   // const std::size_t max_iter = 1;
 
-  const double tau = 1e-4 / 8.;
+  const double tau = 1e-4 / 16.;
   const double tau_out = 1e-2;
   // const double tau_out = tau;
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
-  const std::size_t num_macro_edges = 2;
-  const std::size_t num_edges_per_segment = 44;
+  const std::size_t num_macro_edges = 4;
+  const std::size_t num_edges_per_segment = 11;
 
   const mc::PhysicalData physical_data = {
-    592.4e2,
-    6.97,
+      4.0 / 3.0 * std::sqrt(M_PI) * 4000 * 0.1 / std::sqrt(1.),
+    1,
     1.028e-3,
     1. / num_macro_edges
   };
+
+  std::cout << mc::calculate_c0(physical_data.G0, physical_data.rho, physical_data.A0) << std::endl;
 
   // create_for_node the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
@@ -68,7 +71,8 @@ int main(int argc, char *argv[]) {
 
   // set inflow boundary conditions
   // start->set_to_inflow(mc::heart_beat_inflow());
-  start->set_to_inflow([](double t) { return 1.;});
+  start->set_to_inflow(mc::heart_beat_inflow(4.));
+  //start->set_to_inflow([](double t) { return 1.;});
 
   // partition graph
   // TODO: app crashes if not enabled -> fix this!
@@ -82,6 +86,10 @@ int main(int argc, char *argv[]) {
 
   mc::Transport transport(MPI_COMM_WORLD, graph,  dof_map_flow, dof_map_transport);
 
+  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map_flow);
+  solver.set_tau(tau);
+  solver.use_ssp_method();
+
   std::vector< double > u_prev(dof_map_flow->num_dof(), 0);
 
   interpolate_constant(MPI_COMM_WORLD, *graph, *dof_map_flow, 1., 0, u_prev);
@@ -94,17 +102,23 @@ int main(int argc, char *argv[]) {
 
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "transport_solution");
 
+  mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map_flow, dof_map_transport);
+
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
 
-    transport.solve(it*tau, tau, u_prev);
+    transport.solve(it*tau, tau, solver.get_solution());
+    solver.solve();
 
     if (it % output_interval == 0) {
+      std::cout << "iter " << it << std::endl;
       // if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
       //   std::cout << "iter = " << it << ", time = " << solver.get_time() << std::endl;
 
       // save solution
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_transport, 0, transport.get_solution(), points, c_vertex_values);
+
+      csv_writer.write(solver.get_time(), solver.get_solution(), transport.get_solution());
 
       pvd_writer.set_points(points);
       pvd_writer.add_vertex_data("c", c_vertex_values);
