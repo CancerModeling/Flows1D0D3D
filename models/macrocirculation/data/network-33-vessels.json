@@ -1,6 +1,6 @@
 {
   "vertices": [
-    { "id": 0 },
+    { "id": 0, "inflow": true },
     { "id": 1 },
     { "id": 2 },
     { "id": 3 },
@@ -29,11 +29,7 @@
     { "id": 26, "peripheral_resistance": 84.8, "peripheral_compliance": 0.0082 },
     { "id": 27, "peripheral_resistance": 84.8, "peripheral_compliance": 0.0082 },
     { "id": 28, "peripheral_resistance": 110.8, "peripheral_compliance": 0.0062 },
-    { "id": 29, "peripheral_resistance": 110.8, "peripheral_compliance": 0.0062 },
-    { "id": 30 },
-    { "id": 31 },
-    { "id": 32 },
-    { "id": 33 }
+    { "id": 29, "peripheral_resistance": 110.8, "peripheral_compliance": 0.0062 }
   ],
   "vessels": [
     {
@@ -98,13 +94,13 @@
     },
     {
       "id": 6,
-      "vessel_length": 1.7,
+      "vessel_length": 3.4,
       "radius": 0.423,
       "wall_thickness": 0.067,
       "elastic_modulus": 400000.0,
-      "number_edges": 10,
+      "number_edges": 20,
       "left_vertex_id": 3,
-      "right_vertex_id": 30
+      "right_vertex_id": 7
     },
     {
       "id": 7,
@@ -178,12 +174,12 @@
     },
     {
       "id": 14,
-      "vessel_length": 40.5,
+      "vessel_length": 42.2,
       "radius": 0.403,
       "wall_thickness": 0.067,
       "elastic_modulus": 400000.0,
       "number_edges": 50,
-      "left_vertex_id": 31,
+      "left_vertex_id": 7,
       "right_vertex_id": 15
     },
     {
@@ -365,46 +361,6 @@
       "number_edges": 20,
       "left_vertex_id": 19,
       "right_vertex_id": 29
-    },
-    {
-      "id": 33,
-      "vessel_length": 1.7,
-      "radius": 0.423,
-      "wall_thickness": 0.067,
-      "elastic_modulus": 400000.0,
-      "number_edges": 10,
-      "left_vertex_id": 30,
-      "right_vertex_id": 7
-    },
-    {
-      "id": 34,
-      "vessel_length": 1.7,
-      "radius": 0.403,
-      "wall_thickness": 0.067,
-      "elastic_modulus": 400000.0,
-      "number_edges": 10,
-      "left_vertex_id": 7,
-      "right_vertex_id": 31
-    },
-    {
-      "id": 35,
-      "vessel_length": 40.5,
-      "radius": 0.203,
-      "wall_thickness": 0.067,
-      "elastic_modulus": 400000.0,
-      "number_edges": 50,
-      "left_vertex_id": 30,
-      "right_vertex_id": 32
-    },
-    {
-      "id": 36,
-      "vessel_length": 40.5,
-      "radius": 0.203,
-      "wall_thickness": 0.067,
-      "elastic_modulus": 400000.0,
-      "number_edges": 50,
-      "left_vertex_id": 31,
-      "right_vertex_id": 33
     }
   ]
 }
