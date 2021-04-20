@@ -18,8 +18,14 @@ namespace macrocirculation {
 
 double current_inflow(double t) {
   // return -2 * std::pow(t / delta, 3) + 3 * std::pow(t / delta, 2);
-  return std::sin(M_PI * t * 3);
+  // return std::sin(M_PI * t * 3);
   //return 1.;
+
+  const double delta = 0.05;
+  if (t < delta)
+    return -2 * std::pow(t / delta, 3) + 3 * std::pow(t / delta, 2);
+  else
+    return 1.;
 }
 
 Transport::Transport(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map_flow, std::shared_ptr<DofMap> dof_map_transport)
@@ -68,23 +74,23 @@ void Transport::evaluate_macro_edge_boundary_values(const std::vector<double> &u
 std::vector<double> &Transport::get_solution() { return d_solution; }
 
 void Transport::solve(double t, double dt, const std::vector<double> &u_prev) {
-  std::cout << "u_prev = " << u_prev << std::endl;
-  std::cout << "solution = " << d_solution << std::endl;
+  //std::cout << "u_prev = " << u_prev << std::endl;
+  //std::cout << "solution = " << d_solution << std::endl;
   d_flow_upwind_evaluator.init(t, u_prev);
   evaluate_macro_edge_boundary_values(u_prev, d_solution);
   d_edge_boundary_communicator.update_ghost_layer(d_gamma_macro_edge_boundary_value);
-  std::cout << "boundary_values = " << d_gamma_macro_edge_boundary_value << std::endl;
+  //std::cout << "boundary_values = " << d_gamma_macro_edge_boundary_value << std::endl;
   calculate_fluxes_at_nfurcations(t, u_prev);
-  std::cout << "gamma_flux_l = " << d_gamma_flux_l << std::endl;
-  std::cout << "gamma_flux_r = " << d_gamma_flux_r << std::endl;
+  //std::cout << "gamma_flux_l = " << d_gamma_flux_l << std::endl;
+  //std::cout << "gamma_flux_r = " << d_gamma_flux_r << std::endl;
   assemble_rhs(t, u_prev, d_solution, d_rhs);
-  std::cout << "rhs = " << d_rhs << std::endl;
+  //std::cout << "rhs = " << d_rhs << std::endl;
   apply_inverse_mass();
   // explicit euler step:
-  std::cout << "rhs = " << d_rhs << std::endl;
-  std::cout << "solution = " << d_solution << std::endl;
+  //std::cout << "rhs = " << d_rhs << std::endl;
+  //std::cout << "solution = " << d_solution << std::endl;
   gmm::add(gmm::scaled(d_rhs, dt), d_solution);
-  std::cout << "solution = " << d_solution << std::endl;
+  //std::cout << "solution = " << d_solution << std::endl;
 }
 
 void Transport::calculate_fluxes_on_macro_edge(const double t,
@@ -226,17 +232,6 @@ void Transport::assemble_rhs(double t, const std::vector<double> &u_prev, const 
         rhs_loc[i] += flux_up_l * phi_b[0][i];
       }
 
-      if (micro_edge_id == local_dof_map_transport.num_micro_edges()-1)
-      {
-        double t = fe.evaluate_dof_at_boundary_points(gamma_prev_loc).right;
-        if (std::abs(t - flux_up_r) > 1e-14)
-        {
-          std::cout << flux_up_r << std::endl;
-          std::cout << t << std::endl;
-          std::cout << endl;
-        }
-      }
-
       // copy into global vector
       for (std::size_t i = 0; i < gamma_dof_indices.size(); i += 1)
         rhs[gamma_dof_indices[i]] += rhs_loc[i];
@@ -263,11 +258,8 @@ void Transport::calculate_fluxes_at_nfurcations(double t, const std::vector<doub
 
       const bool is_inflow = (v > 0 && !edge.is_pointing_to(vertex.get_id())) || (v < 0 && edge.is_pointing_to(vertex.get_id()));
 
-      const double delta = 0.05;
-
       auto inflow_function = [=](double t) {
         if (vertex.is_inflow())
-          // return -2 * std::pow(t / delta, 3) + 3 * std::pow(t / delta, 2);
           return current_inflow(t);
         else
           return 0.;

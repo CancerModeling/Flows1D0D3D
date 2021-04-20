@@ -119,7 +119,8 @@ void GraphCSVWriter::write(double time, const std::vector<double> &data) const {
       filecsv << std::endl;
     }
 
-    if (edge->has_physical_data()) {
+    // TODO: make the pressure calculation clearer
+    if (edge->has_physical_data() && d_component_names[0] == "Q" && d_component_names[0] == "A") {
       const auto A0 = edge->get_physical_data().A0;
       const auto G0 = edge->get_physical_data().G0;
 

@@ -110,7 +110,7 @@ RightHandSideEvaluator::RightHandSideEvaluator(MPI_Comm comm,
 void RightHandSideEvaluator::evaluate(const double t, const std::vector<double> &u_prev, std::vector<double> &rhs) {
   d_flow_upwind_evaluator.init(t, u_prev);
   calculate_rhs(t, u_prev, rhs);
-  std::cout << "rhs " << rhs << std::endl;
+  // std::cout << "rhs " << rhs << std::endl;
   apply_inverse_mass(rhs);
   if (std::isnan(rhs.front()) || std::isnan(rhs.back())) {
     throw std::runtime_error("contains nans");

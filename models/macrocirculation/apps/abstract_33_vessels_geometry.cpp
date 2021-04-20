@@ -6,17 +6,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
-#include <macrocirculation/dof_map.hpp>
-#include <macrocirculation/explicit_nonlinear_flow_solver.hpp>
-#include <macrocirculation/graph_csv_writer.hpp>
-#include <macrocirculation/graph_pvd_writer.hpp>
-#include <macrocirculation/interpolate_to_vertices.hpp>
-#include <macrocirculation/quantities_of_interest.hpp>
 #include <memory>
 
+#include "macrocirculation/dof_map.hpp"
+#include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
+#include "macrocirculation/graph_csv_writer.hpp"
+#include "macrocirculation/graph_flow_and_concentration_writer.hpp"
+#include "macrocirculation/graph_pvd_writer.hpp"
+#include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_storage.hpp"
+#include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
 namespace mc = macrocirculation;
@@ -37,8 +38,10 @@ int main(int argc, char *argv[]) {
 
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
-  auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
-  dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
+  auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
+  dof_map_flow->create(MPI_COMM_WORLD, *graph, 2, degree, false);
+  auto dof_map_transport = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
+  dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, false);
 
   const double t_end = 10;
   const std::size_t max_iter = 160000000;
@@ -49,9 +52,11 @@ int main(int argc, char *argv[]) {
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
-  solver.set_tau(tau);
-  solver.use_ssp_method();
+  mc::ExplicitNonlinearFlowSolver<degree> flow_solver(MPI_COMM_WORLD, graph, dof_map_flow);
+  flow_solver.set_tau(tau);
+  flow_solver.use_ssp_method();
+
+  mc::Transport transport_solver(MPI_COMM_WORLD, graph,  dof_map_flow, dof_map_transport);
 
   std::vector<mc::Point> points;
   std::vector<double> Q_vertex_values;
@@ -59,21 +64,21 @@ int main(int argc, char *argv[]) {
   std::vector<double> p_total_vertex_values;
   std::vector<double> p_static_vertex_values;
 
-  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map, {"Q", "A"});
+  mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map_flow, dof_map_transport);
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    solver.solve();
+    transport_solver.solve(it*tau, tau, flow_solver.get_solution());
+    flow_solver.solve();
 
     if (it % output_interval == 0) {
-      std::cout << "iter = " << it << ", t = " << solver.get_time() << std::endl;
+      std::cout << "iter = " << it << ", t = " << flow_solver.get_time() << std::endl;
 
-      // save solution
-      csv_writer.write(solver.get_time(), solver.get_solution());
+      csv_writer.write(it*tau, flow_solver.get_solution(), transport_solver.get_solution());
     }
 
     // break
-    if (solver.get_time() > t_end + 1e-12)
+    if (flow_solver.get_time() > t_end + 1e-12)
       break;
   }
 
