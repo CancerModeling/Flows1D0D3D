@@ -32,6 +32,8 @@ void interpolate_to_vertices(MPI_Comm comm,
 
 void add_discontinuous_points( const std::vector< Point >& embedded_points, std::vector< Point >& points );
 
+void fill_with_vessel_id(const MPI_Comm comm, const GraphStorage &graph, std::vector<Point> &points, std::vector<double> &interpolated);
+
 } // namespace macrocirculation
 
 #endif //TUMORMODELS_INTERPOLATE_TO_VERTICES_HPP

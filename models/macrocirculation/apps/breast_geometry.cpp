@@ -12,6 +12,7 @@
 #include <macrocirculation/graph_pvd_writer.hpp>
 #include <macrocirculation/interpolate_to_vertices.hpp>
 #include <macrocirculation/quantities_of_interest.hpp>
+#include <macrocirculation/transport.hpp>
 #include <memory>
 
 #include "macrocirculation/embedded_graph_reader.hpp"
@@ -48,8 +49,11 @@ int main(int argc, char *argv[]) {
 
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
-  auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
-  dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
+  auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
+  dof_map_flow->create(MPI_COMM_WORLD, *graph, 2, degree, false);
+
+  auto dof_map_transport = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
+  dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, false);
 
   /*
   std::vector< mc::Point > points;
@@ -75,58 +79,55 @@ int main(int argc, char *argv[]) {
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
-  solver.set_tau(tau);
-  solver.use_ssp_method();
+  mc::ExplicitNonlinearFlowSolver<degree> flow_solver(MPI_COMM_WORLD, graph, dof_map_flow);
+  flow_solver.set_tau(tau);
+  flow_solver.use_ssp_method();
+
+  mc::Transport transport_solver(MPI_COMM_WORLD, graph, dof_map_flow, dof_map_transport);
 
   std::vector<mc::Point> points;
   std::vector<double> Q_vertex_values;
   std::vector<double> A_vertex_values;
   std::vector<double> p_total_vertex_values;
   std::vector<double> p_static_vertex_values;
+  std::vector<double> c_vertex_values;
+  std::vector<double> vessel_ids;
 
-  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map, {"Q", "A"});
+  // vessels ids do not change, thus we can precalculate them
+  mc::fill_with_vessel_id(MPI_COMM_WORLD, *graph, points, vessel_ids);
+
+  // mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map, {"Q", "A"});
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "breast_geometry_solution");
-
-  {
-    mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 0, solver.get_solution(), points, Q_vertex_values);
-    mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 1, solver.get_solution(), points, A_vertex_values);
-    mc::calculate_total_pressure(MPI_COMM_WORLD, *graph, *dof_map, solver.get_solution(), points, p_total_vertex_values);
-    mc::calculate_static_pressure(MPI_COMM_WORLD, *graph, *dof_map, solver.get_solution(), points, p_static_vertex_values);
-
-    pvd_writer.set_points(points);
-    pvd_writer.add_vertex_data("Q", Q_vertex_values);
-    pvd_writer.add_vertex_data("A", A_vertex_values);
-    pvd_writer.add_vertex_data("p_static", p_static_vertex_values);
-    pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
-    pvd_writer.write(solver.get_time());
-  }
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    solver.solve();
+    transport_solver.solve(it*tau, tau, flow_solver.get_solution());
+    flow_solver.solve();
 
     if (it % output_interval == 0) {
       std::cout << "iter " << it << std::endl;
 
       // save solution
-      csv_writer.write(solver.get_time(), solver.get_solution());
+      // csv_writer.write(flow_solver.get_time(), flow_solver.get_solution());
 
-      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 0, solver.get_solution(), points, Q_vertex_values);
-      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 1, solver.get_solution(), points, A_vertex_values);
-      mc::calculate_total_pressure(MPI_COMM_WORLD, *graph, *dof_map, solver.get_solution(), points, p_total_vertex_values);
-      mc::calculate_static_pressure(MPI_COMM_WORLD, *graph, *dof_map, solver.get_solution(), points, p_static_vertex_values);
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, 0, flow_solver.get_solution(), points, Q_vertex_values);
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, 1, flow_solver.get_solution(), points, A_vertex_values);
+      mc::calculate_total_pressure(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver.get_solution(), points, p_total_vertex_values);
+      mc::calculate_static_pressure(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver.get_solution(), points, p_static_vertex_values);
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_transport, 0, transport_solver.get_solution(), points, c_vertex_values);
 
       pvd_writer.set_points(points);
       pvd_writer.add_vertex_data("Q", Q_vertex_values);
       pvd_writer.add_vertex_data("A", A_vertex_values);
       pvd_writer.add_vertex_data("p_static", p_static_vertex_values);
       pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
-      pvd_writer.write(solver.get_time());
+      pvd_writer.add_vertex_data("c", c_vertex_values);
+      pvd_writer.add_vertex_data("vessel_id", vessel_ids);
+      pvd_writer.write(flow_solver.get_time());
     }
 
     // break
-    if (solver.get_time() > t_end + 1e-12)
+    if (flow_solver.get_time() > t_end + 1e-12)
       break;
   }
 
