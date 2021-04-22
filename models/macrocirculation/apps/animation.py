@@ -25,6 +25,10 @@ def load_data(vessel_id):
 
 parser = argparse.ArgumentParser(description='Animator for the vessel data.')
 parser.add_argument('--vessels', type=int, nargs='+', help='A list of ids of the vessels to plot.', default=[0])
+parser.add_argument('--t-end', type=float, default=10000)
+parser.add_argument('--no-a', help='do not output A', action='store_true')
+parser.add_argument('--no-q', help='do not output Q', action='store_true')
+parser.add_argument('--no-c', help='do not output c', action='store_true')
 
 args = parser.parse_args()
 
@@ -99,7 +103,7 @@ def animate(i):
 
 num_frames = len(data_sets[0]['t'])
 
-anim = FuncAnimation(fig, animate, interval=2)
+anim = FuncAnimation(fig, animate, interval=20)
 
 is_running = True 
 def toggle_animation(event):
