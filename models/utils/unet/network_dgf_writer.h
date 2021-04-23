@@ -1,4 +1,11 @@
-#pragma once
+////////////////////////////////////////////////////////////////////////////////
+//  Copyright (c) 2020-2021 Prashant K. Jha, Tobias Koeppl, Andreas Wagner
+//
+//  Distributed under the Boost Software License, Version 1.0. (See accompanying
+//  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+////////////////////////////////////////////////////////////////////////////////
+#ifndef TUMORMODELS_NETWORK_DGF_WRITER_HPP
+#define TUMORMODELS_NETWORK_DGF_WRITER_HPP
 
 #include "network.hpp"
 #include <cassert>
@@ -10,9 +17,9 @@ namespace unet {
  * @brief Writes the current 1D network into a dgf file, which we can read back into our simulation.
  *        Note: Only the at the d
  */
-class NetworkDGFWriter {
+class network_dgf_writer {
 public:
-  NetworkDGFWriter(const libMesh::Parallel::Communicator *comm_p, std::string outfilename)
+  network_dgf_writer(const libMesh::Parallel::Communicator *comm_p, std::string outfilename)
       : d_comm_p(comm_p),
         d_outfilename(std::move(outfilename)) {}
 
@@ -94,3 +101,5 @@ private:
 };
 } // namespace unet
 } // namespace util
+
+#endif

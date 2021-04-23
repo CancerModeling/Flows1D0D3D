@@ -14,9 +14,9 @@
 #include "systems/systems.hpp"
 #include "umodel/model.hpp"
 
-#include "unet/NetworkDGFWriter.h"
-#include "unet/NetworkVTKWriter.h"
 #include "unet/network.hpp"
+#include "unet/network_dgf_writer.h"
+#include "unet/network_vtk_writer.h"
 #include "usystem/ghosting_functor.hpp"
 #include <utility>
 
@@ -153,8 +153,8 @@ private:
   Net d_network;
 
   /*! @brief Saves the network as a vtk file. */
-  util::unet::NetworkVTKWriter d_networkVtkWriter;
-  util::unet::NetworkDGFWriter d_networkDGFWriter;
+  util::unet::network_vtk_writer d_networkVtkWriter;
+  util::unet::network_dgf_writer d_networkDGFWriter;
 
   util::MatlabQoIWriter d_qoi_writer;
   util::CSVQoIWriter d_csv_qoi_writer;

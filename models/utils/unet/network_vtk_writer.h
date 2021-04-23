@@ -1,13 +1,19 @@
-#ifndef TUMORMODELS_NETWORKVTKWRITER_HPP
-#define TUMORMODELS_NETWORKVTKWRITER_HPP
+////////////////////////////////////////////////////////////////////////////////
+//  Copyright (c) 2020-2021 Prashant K. Jha, Tobias Koeppl, Andreas Wagner
+//
+//  Distributed under the Boost Software License, Version 1.0. (See accompanying
+//  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+////////////////////////////////////////////////////////////////////////////////
+#ifndef TUMORMODELS_NETWORK_VTK_WRITER_HPP
+#define TUMORMODELS_NETWORK_VTK_WRITER_HPP
 
 #include "network.hpp"
 
 namespace util {
 namespace unet {
-class NetworkVTKWriter {
+class network_vtk_writer {
 public:
-  NetworkVTKWriter(const libMesh::Parallel::Communicator *comm_p, std::string outfilename)
+  network_vtk_writer(const libMesh::Parallel::Communicator *comm_p, std::string outfilename)
       : d_comm_p(comm_p),
         d_outfilename(std::move(outfilename)) {}
 
@@ -135,4 +141,4 @@ private:
 } // namespace unet
 } // namespace util
 
-#endif //TUMORMODELS_NETWORKVTKWRITER_HPP
+#endif //TUMORMODELS_NETWORK_VTK_WRITER_HPP
