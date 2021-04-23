@@ -33,6 +33,7 @@ if (USE_EXTERNAL_JSON)
     find_package(nlohmann_json 3.2.0 REQUIRED)
 else ()
     include(FetchContent)
+    set(JSON_BuildTests OFF)
     FetchContent_Declare(json
             GIT_REPOSITORY https://github.com/nlohmann/json.git
             GIT_TAG v3.7.3)

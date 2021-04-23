@@ -12,7 +12,7 @@ TEST_CASE( "TestBufferSystem", "[BufferSystem]" )
    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
    MPI_Comm_size( MPI_COMM_WORLD, &size );
 
-   if ( size < 2 )
+  if ( size < 2 )
    {
       std::cerr << "Executing this test only works with 2 processes or more!" << std::endl;
       return;
