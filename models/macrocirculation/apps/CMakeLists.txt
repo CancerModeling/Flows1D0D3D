@@ -41,6 +41,7 @@ target_link_libraries(${ProjectName}BreastGeometry ${ProjectLib})
 # test the 1d network:
 add_executable(${ProjectName}Abstract33VesselsGeometry abstract_33_vessels_geometry.cpp)
 target_link_libraries(${ProjectName}Abstract33VesselsGeometry ${ProjectLib})
+target_link_libraries(${ProjectName}Abstract33VesselsGeometry argparse)
 
 add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
 target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})

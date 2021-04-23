@@ -5,18 +5,18 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <argparse.hpp>
 #include <chrono>
 #include <memory>
 
 #include "macrocirculation/dof_map.hpp"
-#include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
-#include "macrocirculation/graph_csv_writer.hpp"
-#include "macrocirculation/graph_flow_and_concentration_writer.hpp"
-#include "macrocirculation/graph_pvd_writer.hpp"
-#include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
+#include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
+#include "macrocirculation/graph_flow_and_concentration_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
+#include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
+#include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
@@ -27,14 +27,37 @@ constexpr std::size_t degree = 2;
 int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
+  argparse::ArgumentParser program("Abstract 33 vessel geometry");
+  program.add_argument("--input-file")
+    .help("path to the input file")
+    .default_value(std::string("./data/network-33-vessels.json"));
+  program.add_argument("--heart-amplitude")
+    .help("the amplitude of a heartbeat")
+    .default_value(485.0)
+    .action([](const std::string &value) { return std::stod(value); });
+  program.add_argument("--tau")
+    .help("time step size")
+    .default_value(2.5e-4 / 16.)
+    .action([](const std::string &value) { return std::stod(value); });
+  program.add_argument("--tau-out")
+    .help("time step size for the output")
+    .default_value(1e-3)
+    .action([](const std::string &value) { return std::stod(value); });
+  try {
+    program.parse_args(argc, argv);
+  } catch (const std::runtime_error &err) {
+    std::cout << err.what() << std::endl;
+    std::cout << program;
+    exit(0);
+  }
+
   // create_for_node the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
 
   mc::EmbeddedGraphReader graph_reader;
-  // graph_reader.append("coarse-network-geometry.json", *graph);
-  graph_reader.append("data/network-33-vessels.json", *graph);
+  graph_reader.append(program.get<std::string>("--input-file"), *graph);
 
-  graph->get_vertex(0)->set_to_inflow(mc::heart_beat_inflow(485.0 ));
+  graph->get_vertex(0)->set_to_inflow(mc::heart_beat_inflow(program.get<double>("--heart-amplitude")));
 
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
@@ -46,17 +69,18 @@ int main(int argc, char *argv[]) {
   const double t_end = 10;
   const std::size_t max_iter = 160000000;
 
-  const double tau = 2.5e-4 / 16 ;
-  const double tau_out = 1e-3;
+  const auto tau = program.get<double>("--tau");
+  const auto tau_out = program.get<double>("--tau-out");
   // const double tau_out = tau;
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
+  std::cout << "tau = " << tau << ", tau_out = " << tau_out << ", output_interval = " << output_interval << std::endl;
 
   // configure solver
   mc::ExplicitNonlinearFlowSolver<degree> flow_solver(MPI_COMM_WORLD, graph, dof_map_flow);
   flow_solver.set_tau(tau);
   flow_solver.use_ssp_method();
 
-  mc::Transport transport_solver(MPI_COMM_WORLD, graph,  dof_map_flow, dof_map_transport);
+  mc::Transport transport_solver(MPI_COMM_WORLD, graph, dof_map_flow, dof_map_transport);
 
   std::vector<mc::Point> points;
   std::vector<double> Q_vertex_values;
@@ -68,13 +92,13 @@ int main(int argc, char *argv[]) {
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    transport_solver.solve(it*tau, tau, flow_solver.get_solution());
+    transport_solver.solve(it * tau, tau, flow_solver.get_solution());
     flow_solver.solve();
 
     if (it % output_interval == 0) {
       std::cout << "iter = " << it << ", t = " << flow_solver.get_time() << std::endl;
 
-      csv_writer.write(it*tau, flow_solver.get_solution(), transport_solver.get_solution());
+      csv_writer.write(it * tau, flow_solver.get_solution(), transport_solver.get_solution());
     }
 
     // break
