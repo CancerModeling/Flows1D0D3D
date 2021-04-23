@@ -9,8 +9,10 @@
 - unittests: A few catch2 unittests for critical components
 
 ## Run unittests
+
+The unittests can be run right after building the project with ctest
 ```
-cmake <cmake-options-here>
+cmake <cmake-options-here> ..
 make 
 ctest
 ```
