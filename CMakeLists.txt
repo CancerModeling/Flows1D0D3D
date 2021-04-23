@@ -43,6 +43,17 @@ else ()
     endif()
 endif()
 
+# argparse
+include(FetchContent)
+FetchContent_Declare(argparse
+        GIT_REPOSITORY https://github.com/p-ranav/argparse.git
+        GIT_TAG v2.1)
+FetchContent_GetProperties(argparse)
+if(NOT argparse_POPULATED)
+    FetchContent_Populate(argparse)
+    add_subdirectory(${argparse_SOURCE_DIR} ${argparse_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
 # debug output flags
 message("LIBMESH_DEFINITIONS = ${PC_LIBMESH_CFLAGS_DEFS}")
 message("LIBMESH_FLAGS = ${PC_LIBMESH_CFLAGS_FLAGS}")
