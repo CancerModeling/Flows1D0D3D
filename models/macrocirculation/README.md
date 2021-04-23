@@ -7,3 +7,10 @@
 - scripts: contains utility scripts for creating e.g. the geometry 
 - src: the source code of the library behind this submodule 
 - unittests: A few catch2 unittests for critical components
+
+## Run unittests
+```
+cmake <cmake-options-here>
+make 
+ctest
+```
