@@ -20,7 +20,7 @@ class Edge;
 class GraphStorage;
 class MicroEdge;
 
-/*! @brief Simple dof map, which orders the dofs by the formula
+/*! @brief Simple dof map, which orders the dofs on the macro edge by the formula
  *         dof_interval_start + edge_id * num_components * num_basis_functions + num_basis_functions * component_id + basis_function_id
  */
 class LocalEdgeDofMap {
@@ -49,6 +49,7 @@ private:
   std::size_t d_num_micro_edges;
 };
 
+/** @brief Simple dof map, which saves the dofs on the macro vertex. These could for instance belong to 0D model. */
 class LocalVertexDofMap {
 public:
   LocalVertexDofMap(std::size_t dof_interval_start, std::size_t num_components);
@@ -61,6 +62,7 @@ private:
   std::vector< std::size_t > d_dof_indices;
 };
 
+/** @brief Stores and returns the local dof-maps for all macro primitives. */
 class DofMap {
 public:
   explicit DofMap(std::size_t num_vertices, std::size_t num_edges);

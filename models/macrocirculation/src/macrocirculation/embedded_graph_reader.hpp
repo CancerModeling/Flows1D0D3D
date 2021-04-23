@@ -17,10 +17,7 @@ class GraphStorage;
 class EmbeddedGraphReader {
 public:
   EmbeddedGraphReader()
-    : d_elastic_modulus(0.8)
-    , d_wall_width(0.034)
-    , d_rho(1.028e-3)
-    , d_poisson_ratio(0.5)
+    : d_rho(1.028e-3)
   {}
 
   /*! @brief Appends the data from the input file to the given graph storage. */
@@ -30,9 +27,6 @@ public:
   void set_parameter(double poisson_ratio, double wall_width, double nu, double rho);
 
 private:
-  double d_elastic_modulus;
-  double d_wall_width;
-  double d_poisson_ratio;
   double d_rho;
 };
 
