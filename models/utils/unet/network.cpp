@@ -423,6 +423,7 @@ void util::unet::Network::solve3D1DFlowProblem(BaseAssembly &pres_sys,
 
 void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
                                                    BaseAssembly &tum_sys) {
+  std::cout << "called" << std::endl;
 
   if (nut_sys.d_sys_name != "Nutrient" or tum_sys.d_sys_name != "Tumor")
     libmesh_error_msg("Must pass Nutrient and Tumor system to solve 3D-1D "
@@ -430,12 +431,6 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
 
   const auto &input = d_model_p->get_input_deck();
   const auto timeStep = d_model_p->d_step;
-
-  for (int i = 0; i < phi_sigma_old.size(); i++) {
-
-    if (phi_sigma_old[i] > 1.0)
-      phi_sigma_old[i] = 1.0;
-  }
 
   assemble3D1DSystemForNutrients(nut_sys, tum_sys);
 
@@ -448,11 +443,12 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
 
   size_t restart = 150;
 
-  gmm::iteration iter(1.0E-10);
+  gmm::iteration iter(1.0E-12);
 
   gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A_nut_3D1D);
 
   gmm::gmres(A_nut_3D1D, phi_sigma, b_nut_3D1D, PR, restart, iter);
+  //gmm::lu_solve(A_nut_3D1D, phi_sigma, b_nut_3D1D);
 
   auto pointer = VGM.getHead();
 
@@ -461,11 +457,6 @@ void util::unet::Network::solve3D1DNutrientProblem(BaseAssembly &nut_sys,
     int indexOfNode = pointer->index;
 
     pointer->c_v = phi_sigma[N_tot_3D + indexOfNode];
-
-    if (pointer->c_v > 1.0) {
-
-      pointer->c_v = 1.0;
-    }
 
     pointer = pointer->global_successor;
   }
@@ -588,12 +579,6 @@ void util::unet::Network::solveVGMforNutrient(BaseAssembly &pres_sys,
       int indexOfNode = pointer->index;
 
       pointer->c_v = C_v[indexOfNode];
-
-      if (C_v[indexOfNode] > 1.0) {
-
-        pointer->c_v = 1.0;
-        C_v[indexOfNode] = 1.0;
-      }
 
       pointer = pointer->global_successor;
     }
