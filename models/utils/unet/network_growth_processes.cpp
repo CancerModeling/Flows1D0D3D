@@ -221,6 +221,8 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
         pointer = pointer->global_successor;
       }
 
+      delete_old_sprouters();
+
       d_model_p->d_log("Rescale the 1D matrices and vectors \n", "net update");
       if (!d_coupled_solver and numberOfNodesOld != numberOfNodes) {
         A_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes,
@@ -1442,7 +1444,7 @@ void util::unet::Network::markSproutingGrowth() {
           pointer->neighbors[i]->sprouting_edge[local_index] = false;
           pointer->sprouting_edge[i] = true;
 
-          //pointer->is_sprouting_node = true;
+          // pointer->is_sprouting_node = true;
 
         } else {
 
@@ -1799,6 +1801,7 @@ void util::unet::Network::processSproutingGrowth() {
           sp_newNode_1->neighbors.push_back(VGM.findNode(index_pointer));
           sp_newNode_1->neighbors.push_back(pointer->neighbors[i]);
           sp_newNode_1->neighbors.push_back(sp_newNode_2);
+          sp_newNode_1->is_sprouting_node = true;
 
           std::cout << " "
                     << "\n";
