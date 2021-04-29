@@ -1094,7 +1094,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
     new_node.p_boundary = pointer->p_v;
     new_node.p_v = pointer->p_v;
     new_node.c_boundary = 0.0;
-    new_node.c_v = pointer->c_v;
+    new_node.c_v = d_extrapolate_nutrients_at_tips ? pointer->c_v : 0;
     new_node.apicalGrowth = false;
     new_node.radii.push_back(radius);
     new_node.radii_initial.push_back(radius);
@@ -1778,7 +1778,7 @@ void util::unet::Network::processSproutingGrowth() {
           new_node_2.p_boundary = pointer->p_v;
           new_node_2.p_v = pointer->p_v;
           new_node_2.c_boundary = 0.0;
-          new_node_2.c_v = pointer->c_v;
+          new_node_2.c_v = d_extrapolate_nutrients_at_tips ? pointer->c_v : 0;
           new_node_2.apicalGrowth = false;
           new_node_2.radii.push_back(radius_new);
           new_node_2.radii_initial.push_back(radius_new);
