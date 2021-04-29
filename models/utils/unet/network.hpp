@@ -47,6 +47,7 @@ public:
         d_model_p(model),
         d_update_number(0),
         d_coupled_solver(false),
+        d_extrapolate_nutrients_at_tips(false),
         d_comm_p(model->get_comm()),
         d_procRank(0),
         d_procSize(0),
@@ -382,6 +383,8 @@ public:
   unsigned int d_update_interval;
 
   bool d_coupled_solver;
+
+  bool d_extrapolate_nutrients_at_tips;
 
   std::ostringstream oss;
 
