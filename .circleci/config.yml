@@ -1,0 +1,68 @@
+# ----------------------------------
+# Copyright (c) 2021 Prashant K. Jha
+# ----------------------------------
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+version: 2.1
+parameters:
+  docker-img-os:
+    type: string
+    default: u1804
+    
+commands:
+  libcmake:
+    parameters:
+      cmake-args:
+        type: string
+        default: -DCMAKE_BUILD_TYPE=Release -DEnable_Tests=ON -DLIBMESH_DIR="/usr/local/" -DPETSC_LIB="/usr/local/lib" -DVTK_DIR="/usr/local/cmake/vtk-7.1"
+    steps:
+      - run: 
+          name: Configure
+          command: |
+            mkdir -p build 
+            cd build 
+            cmake <<parameters.cmake-args>> ..
+  libmake:
+    steps:
+      - run: 
+          name: Build
+          command: |
+            cd build 
+            make -j 2
+  libtest:
+    parameters:
+      verb-flag:
+        type: string
+        default: --verbose
+    steps:
+      - run: 
+          name: Test
+          command: |
+            cd build 
+            ctest <<parameters.verb-flag>>
+  libdoc:
+    steps:
+      - run: 
+          name: Documentation
+          command: |
+            cd build 
+            make doc        
+
+jobs:
+    build:
+        docker:
+          - image: prashjha/<<pipeline.parameters.docker-img-os>>-comp:latest
+        steps:
+            - checkout
+            - libcmake
+            - libmake
+workflows:
+  version: 2
+  build_code:
+    jobs:
+      - build:
+          filters:
+            branches:
+              ignore: gh-pages
