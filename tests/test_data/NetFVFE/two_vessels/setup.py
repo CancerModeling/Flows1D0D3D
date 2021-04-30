@@ -413,55 +413,22 @@ def gen_init_network_file(file_dir, dp):
     inpf.write("#")
     inpf.close()
 
-def setup():
+if __name__=="__main__":
 
-  n = 1
-  dps = []
-  for i in range(n):
+  # create sim params
+  dp = SimParams()
+  dp.pp_tag = 'two_vessels'
+  dp.run_path = './' 
+  dp.set_time(5., 0.05, 10)
 
-    # create sim params
-    dp = SimParams()
-    dp.pp_tag = 'angio_' + str(i)
-    dp.run_path = 'tests_sim/' + dp.model_name + '/' + dp.pp_tag + '/' 
+  # create input file
+  fo = open(dp.run_path + 'input.in', 'w')
+  fo.write(dp.write_str())
+  fo.close()
 
-    dps.append(dp)
+  # create tumor ic file
+  gen_tumor_ic_file(dp.run_path, dp)
 
-  return dps
-
-def run():
-
-  dps = setup()
-  run_screen = 0 # 1 - true, 0 - false
-
-  for dp in dps:
-    print('setting up input parameters ... ')
-
-    pathlib.Path('tests_sim').mkdir(parents=True, exist_ok=True)
-    pathlib.Path('tests_sim/' + dp.model_name).mkdir(parents=True, exist_ok=True)
-    pathlib.Path(dp.run_path).mkdir(parents=True, exist_ok=True) 
-
-    # create input file
-    fo = open(dp.run_path + 'input.in', 'w')
-    fo.write(dp.write_str())
-    fo.close()
-
-    # create tumor ic file
-    gen_tumor_ic_file(dp.run_path, dp)
-
-    # create network file
-    if dp.create_init_vessel:
-      gen_init_network_file(dp.run_path, dp)
-    else:
-      if dp.run_path != './':
-        os.system('cp ' + dp.network_init_file + ' ' + dp.run_path)
-
-    # run
-    print('calling executible ... ')
-    os.system('./run.sh ' + dp.model_name + ' ' + dp.run_path + ' ' + str(dp.n_mpi) + ' ' + str(run_screen) + ' ' + dp.pp_tag)
-
-#### 
-if len(sys.argv) > 1:
-  if str(sys.argv[1]) == 'run':
-    run()
-else:
-    print('To run sim, run script with argument "run"')
+  # create network file
+  if dp.create_init_vessel:
+    gen_init_network_file(dp.run_path, dp)
