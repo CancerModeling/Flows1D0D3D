@@ -8,7 +8,7 @@
 # ****************************************************************************
 # Model tests
 # ****************************************************************************
-add_test(NAME two_vessels_angio
+add_test(NAME two_vessels
         COMMAND ${BASH_PROGRAM} ./run.sh
-        WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/../tests/test_data/NetFVFE/two_vessels_angio
+        WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/../tests/test_data/NetFVFE/two_vessels
         )
