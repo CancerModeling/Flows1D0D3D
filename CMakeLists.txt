@@ -1,123 +1,168 @@
+#////////////////////////////////////////////////////////////////////////////////
+#//  Copyright (c) 2020-2021 Prashant K. Jha, Tobias Koeppl, Andreas Wagner
+#//
+#//  Distributed under the Boost Software License, Version 1.0. (See accompanying
+#//  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#////////////////////////////////////////////////////////////////////////////////
+
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 
 # ****************************************************************************
 # Project information
 # ****************************************************************************
-project(TumorModels CXX)
+project(TumorModels LANGUAGES CXX)
+
+set(CMAKE_PROJECT_DESCRIPTION "Collection of tumor growth models")
+
+# version
+set(VERSION_MAJOR 0)
+set(VERSION_MINOR 1)
+set(VERSION_UPDATE 0)
 
 # ****************************************************************************
-# Append directory containing important modules
+# Project setting
 # ****************************************************************************
+# cmake scripts to help search dependencies
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
+
+# set default build type "Release"
+if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
+endif()
+
+# set flag for information dump during cmake build
+set(Enable_CMAKE_Debug_Build TRUE CACHE BOOL "Output important information during cmake for isolating build issues")
+
+# set flag for documentation
+set(Enable_Documentation FALSE CACHE BOOL "Generate documentation")
+
+# set flag that enables or disables tests
+set(Enable_Tests FALSE CACHE BOOL "Build test executibles and perform tests")
+
+# add flag which allows user to restrict building only specific models
+set(LIBTG_BUILD_FLAG "Build_All" CACHE STRING "Specify which if all or subset
+of models to be built")
+
+# ****************************************************************************
+# Testing
+# ****************************************************************************
+enable_testing()
+
+if (${Enable_CMAKE_Debug_Build})
+    message("Enable_Tests = ${Enable_Tests}")
+endif()
 
 # ****************************************************************************
 # Package search
 # ****************************************************************************
-# MPI
-find_package(MPI REQUIRED)      # Built-in in CMake
+
+# **** bash ****#
+find_program (BASH_PROGRAM bash REQUIRED)
+
+# **** MPI ****#
+find_package(MPI REQUIRED)
 # add this line only when you are using openmpi which has a different c++ bindings
 add_definitions(-DOMPI_SKIP_MPICXX)
 
-# pthreads
+# **** pthreads ****#
 find_package(Threads REQUIRED)
 
-# libmesh
+# **** libmesh ****#
 find_package(LibMesh REQUIRED)
 
-# petsc
+# **** petsc ****#
 # Note: -DPETSC_DIR should point to the same directory that libmesh was compiled with
 find_package(Petsc REQUIRED)
 
 # debug output flags
+if (${Enable_CMAKE_Debug_Build})
 message("LIBMESH_DEFINITIONS = ${PC_LIBMESH_CFLAGS_DEFS}")
 message("LIBMESH_FLAGS = ${PC_LIBMESH_CFLAGS_FLAGS}")
 message("LIBMESH_INCLUDE_DIRS = ${LIBMESH_INCLUDE_DIRS}")
 message("LIBMESH_LIBRARIES = ${LIBMESH_LIBRARIES}")
 message("PETSC_LIBRARIES = ${PETSC_LIBRARIES}")
+endif()
 
-
-# VTK
+# **** vtk ****#
 find_package(VTK REQUIRED)
-#find_package(VTK COMPONENTS vtkCommonCore QUIET)
 
 if (VTK_VERSION VERSION_LESS "6")
     message(FATAL_ERROR "ERROR: Only VTK library 6+ supported")
 endif ()
-message("VTK Lib: ${VTK_LIBRARIES}")
-message("VTK Dir: ${VTK_DIR}")
-message("VTK Include: ${VTK_INCLUDE_DIRS}")
+
+if (${Enable_CMAKE_Debug_Build})
+    message("VTK_DIR = ${VTK_DIR}")
+    message("VTK_LIBRARIES = ${VTK_LIBRARIES}")
+    message("VTK_INCLUDE_DIRS = ${VTK_INCLUDE_DIRS}")
+endif()
 
 # issue error and exit
 if ((NOT MPI_FOUND) AND (NOT LIBMESH_FOUND))
     message(FATAL_ERROR "ERROR: MPI and LIBMESH are required")
 endif ()
 
-#if ("${PETSC_DIR}" STREQUAL "")
-#    message(FATAL_ERROR "ERROR: Please specify petsc directory")
-#endif ()
-
 # ****************************************************************************
 # Build, compiler, linker flags
 # ****************************************************************************
-# enable_language(CXX)
-# set(CMAKE_BUILD_TYPE RelWithDebInfo)
-
-message("Build type: ${CMAKE_BUILD_TYPE}")
-message("CMAKE_CXX_COMPILER_ID: ${CMAKE_CXX_COMPILER_ID}")
-
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    #if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-    #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -DNDEBUG")
-    #elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-    #    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -DNDEBUG")
-    #endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -xHost -std=c++14")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -DNDEBUG -std=c++11 -stdlib=libc++")
 endif ()
-#
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_FLAGS}")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -stdlib=libc++")
+
+if (${Enable_CMAKE_Debug_Build})
+    message("Build type: ${CMAKE_BUILD_TYPE}")
+    message("CMAKE_CXX_COMPILER_ID = ${CMAKE_CXX_COMPILER_ID}")
+    message("CMAKE_EXE_LINKER_FLAGS = ${CMAKE_EXE_LINKER_FLAGS}")
+    message("CMAKE_CXX_FLAGS = ${CMAKE_CXX_FLAGS}")
+    message("CMAKE_CXX_STANDARD = ${CMAKE_CXX_STANDARD}")
+endif()
 
 
 # ****************************************************************************
 # Include directories
 # ****************************************************************************
-# include_directories(${PETSC_DIR} ${EIGEN_DIR})
-# Note that LIBMESH_INCLUDE_DIRS contains the path to petsc and eigen directory
 include_directories(${LIBMESH_INCLUDE_DIRS})
 include_directories(${MPI_INCLUDE_PATH})
 
 # ****************************************************************************
 # Add subprojects
 # ****************************************************************************
-set(LIBTG_BUILD_FLAG "Build_All" CACHE STRING "Specify which if all or subset
-of models to build")
-
-message("LIBTG_BUILD_FLAG: ${LIBTG_BUILD_FLAG}")
-
-message("Gnerating build files for LibTG ")
-add_subdirectory(models)
-
-set(TEST_BUILD TRUE CACHE BOOL "Build Test")
-if(${TEST_BUILD})
-    message("Gnerating build files for Test ")
-    add_subdirectory(models/tests)
+if (${Enable_CMAKE_Debug_Build})
+    message("LIBTG_BUILD_FLAG: ${LIBTG_BUILD_FLAG}")
 endif()
 
-message("Adding applications ")
+if (${Enable_CMAKE_Debug_Build})
+    message("Gnerating build files for LibTG ")
+endif()
+add_subdirectory(models)
+
+if(${Enable_Tests})
+    message("Gnerating build files for Test ")
+    add_subdirectory(models/tests)
+    add_subdirectory(tests)
+endif()
+
+if (${Enable_CMAKE_Debug_Build})
+    message("Adding applications ")
+endif()
 add_subdirectory(applications)
 
+# documentation
+if(${Enable_Documentation})
+    add_subdirectory(docs)
+endif()
 
-INSTALL (
-        DIRECTORY ${CMAKE_SOURCE_DIR}/models
-        DESTINATION include
-        FILES_MATCHING PATTERN "*.h*")
-
-INSTALL (
-        DIRECTORY ${CMAKE_SOURCE_DIR}/external
-        DESTINATION include
-        FILES_MATCHING PATTERN "*.h*")
+# ****************************************************************************
+# Post build operations
+# ****************************************************************************
+# test directory
+if(${Enable_Tests})
+    add_custom_command(
+            TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/tests/test_data/
+            ${PROJECT_BINARY_DIR}/tests/test_data/)
+endif()

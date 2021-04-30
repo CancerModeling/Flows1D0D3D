@@ -116,21 +116,22 @@ if [[ $petsc_build -eq "1" ]]; then
 
     cd "$PETSC_BUILD_PATH"
 
-    ./configure --prefix="$PETSC_INSTALL_PATH" \
-                --COPTFLAGS='-O3' \
-                --CXXOPTFLAGS='-O3' \
-                --FOPTFLAGS='-O3' \
-                --download-fblaslapack=1 \
-                --with-mumps=1 --download-mumps=1 \
-                --with-metis=1 --download-metis=1 \
-                --with-mumps=1 --download-mumps=1 \
-                --with-blacs=1 --download-blacs=1 \
-                --with-hypre=1 --download-hypre=1 \
-                --with-parmetis=1 --download-parmetis=1 \
-                --with-scalapack=1 --download-scalapack=1 \
-                --with-superlu_dist=1 --download-superlu_dist=1 \
-                --with-superlu=1 --download-superlu=1 \
-                --download-hdf5=ifneeded
+    ${PETSC_SOURCE_DIR}/configure \
+        --prefix="$PETSC_INSTALL_PATH" \
+        --COPTFLAGS='-O3' \
+        --CXXOPTFLAGS='-O3' \
+        --FOPTFLAGS='-O3' \
+        --download-fblaslapack=1 \
+        --with-mumps=1 --download-mumps=1 \
+        --with-metis=1 --download-metis=1 \
+        --with-mumps=1 --download-mumps=1 \
+        --with-blacs=1 --download-blacs=1 \
+        --with-hypre=1 --download-hypre=1 \
+        --with-parmetis=1 --download-parmetis=1 \
+        --with-scalapack=1 --download-scalapack=1 \
+        --with-superlu_dist=1 --download-superlu_dist=1 \
+        --with-superlu=1 --download-superlu=1 \
+        --download-hdf5=ifneeded
   fi
 
   cd "$PETSC_BUILD_PATH"
@@ -173,8 +174,9 @@ if [[ $libmesh_build -eq "1" ]]; then
 
     export PETSC_DIR="$PETSC_INSTALL_PATH"
     unset PETSC_ARCH
-    ./configure --prefix="$LIBMESH_INSTALL_PATH" \
-                --with-metis=PETSc
+    ${LIBMESH_SOURCE_DIR}/configure \
+          --prefix="$LIBMESH_INSTALL_PATH" \
+          --with-metis=PETSc
   fi
   cd "$LIBMESH_BUILD_PATH"
   make -j -l$BUILDTHREADS

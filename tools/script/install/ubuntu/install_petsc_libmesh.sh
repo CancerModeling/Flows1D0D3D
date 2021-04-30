@@ -83,7 +83,7 @@ if [[ $petsc_build -eq "1" ]]; then
 
     cd "$PETSC_BUILD_PATH"
 
-    ./configure --prefix="$PETSC_INSTALL_PATH" \
+    ${PETSC_SOURCE_DIR}/configure --prefix="$PETSC_INSTALL_PATH" \
                 --COPTFLAGS='-O3' \
                 --CXXOPTFLAGS='-O3' \
                 --FOPTFLAGS='-O3' \
@@ -145,7 +145,7 @@ if [[ $libmesh_build -eq "1" ]]; then
 
     export PETSC_DIR="$PETSC_INSTALL_PATH"
     unset PETSC_ARCH
-    ./configure --prefix="$LIBMESH_INSTALL_PATH" \
+    ${LIBMESH_SOURCE_DIR}/configure --prefix="$LIBMESH_INSTALL_PATH" \
                 --with-metis=PETSc
   fi
   cd "$LIBMESH_BUILD_PATH"
