@@ -1,7 +1,11 @@
 FROM ubuntu:bionic
 
 ## build command
-## docker build --network=host --no-cache  -t u1804-comp -f Dockerfile .
+## docker build --network=host --no-cache  -t u1804-comp -f Dockerfile-u1804 .
+
+# Set metadata
+LABEL maintainer="Prashant K. Jha <pjha.sci@gmail.com>"
+LABEL description="Ubuntu 18.04 with petsc, libmesh, hpx"
 
 # -----------------------
 # apt-get
