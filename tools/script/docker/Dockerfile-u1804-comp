@@ -1,7 +1,18 @@
+# ----------------------------------
+# Copyright (c) 2021 Prashant K. Jha
+# ----------------------------------
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
 FROM ubuntu:bionic
 
 ## build command
-## docker build --network=host --no-cache  -t u1804-comp -f Dockerfile-u1804 .
+## docker build --network=host --no-cache  -t u1804-comp -f Dockerfile-u1804-comp .
+
+## push to hub
+## docker tag u1804-comp prashjha/u1804-comp
+## docker push prashjha/u1804-comp
 
 # Set metadata
 LABEL maintainer="Prashant K. Jha <pjha.sci@gmail.com>"
@@ -44,12 +55,6 @@ RUN apt-get update --fix-missing \
 &&  apt-get autoclean -y 
 
 # -----------------------
-# app directory
-# -----------------------
-RUN mkdir /app
-WORKDIR /app
-
-# -----------------------
 # PETSc
 # -----------------------
 ENV PETSC_VERSION 3.13.3
@@ -70,7 +75,7 @@ RUN cd /tmp && \
     --download-superlu \
     --download-superlu_dist \
     --with-debugging=0 \
-    COPTFLAGS='-O3' FOPTFLAGS='-O3' && \
+    COPTFLAGS='-O3' CXXOPTFLAGS='-O3' FOPTFLAGS='-O3' && \
     make VERBOSE=1 PETSC_DIR=`pwd` -j $(cat /proc/cpuinfo | grep processor | wc -l) all && \
     make PETSC_DIR=`pwd` install && \
     cd /tmp && rm -rf petsc-$PETSC_VERSION
@@ -96,6 +101,7 @@ RUN cd /tmp && \
     wget https://github.com/libMesh/libmesh/archive/refs/tags/v${LIBMESH_VERSION}.tar.gz && \
     mkdir -p libmesh-${LIBMESH_VERSION} && \
     tar -zxf v${LIBMESH_VERSION}.tar.gz -C libmesh-${LIBMESH_VERSION} --strip-components=1 && \
+    rm -f v${LIBMESH_VERSION}.tar.gz && \
     cd libmesh-${LIBMESH_VERSION} && \
     mkdir build && \
     cd build && \
@@ -120,6 +126,7 @@ RUN cd /tmp && \
     wget https://github.com/STEllAR-GROUP/hpx/archive/${HPX_VERSION}.tar.gz && \
     mkdir -p hpx-${HPX_VERSION} && \
     tar -zxf ${HPX_VERSION}.tar.gz -C hpx-${HPX_VERSION} --strip-components=1 && \
+    rm -f ${HPX_VERSION}.tar.gz && \
     mkdir -p hpx_build && \
     cd hpx_build && \
     cmake \

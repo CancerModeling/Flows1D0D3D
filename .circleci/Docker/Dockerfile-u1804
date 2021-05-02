@@ -2,7 +2,7 @@
 FROM prashjha/u1804-comp:latest
 
 ## build command
-## docker build --network=host --no-cache  -t u1804-tumormodels -f Dockerfile-u1804 .
+## docker build --network=host --no-cache  -t tumormodels-u1804 -f Dockerfile-u1804 .
 
 # Set metadata
 LABEL maintainer="Prashant K. Jha <pjha.sci@gmail.com>"
