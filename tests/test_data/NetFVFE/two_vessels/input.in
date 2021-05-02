@@ -1,0 +1,109 @@
+model_name                      = NetFVFE
+pp_tag                          = two_vessels
+scheme_name                     = solve_explicit
+advection_active                = true
+coupled_1d3d                    = false
+solve_ecm                       = true
+solve_pres_with_net_update      = true
+assembly_method                 = 2
+dimension                       = 3
+
+domain_xmin                     = 0.0
+domain_xmax                     = 2.0
+domain_ymin                     = 0.0
+domain_ymax                     = 2.0
+domain_zmin                     = 0.0
+domain_zmax                     = 2.0
+mesh_n_elements                 = 16
+final_time                      = 5.0
+time_step                       = 0.05
+perform_output                  = true
+output_interval                 = 10
+output_tag                      = two_vessels
+output_debug_info               = true
+
+linear_solver_max_iter          = 250
+linear_solver_tol               = 1e-08
+nonlinear_solver_max_iter       = 50
+nonlinear_solver_tol            = 1e-07
+
+chi_c                           = 0.0
+chi_h                           = 0.0
+ic_nutrient_value               = 0.6
+ECM_ic_val                      = 1.0
+MDE_ic_val                      = 0.0
+D_sigma                         = 1.0
+D_TAF                           = 0.5
+D_MDE                           = 0.5
+bar_phi_ECM_P                   = 0.5
+
+lambda_P                        = 5.0
+lambda_A                        = 0.005
+lambda_Ph                       = 0.5
+lambda_PH                       = 1.0
+lambda_HP                       = 1.0
+lambda_HN                       = 1.0
+lambda_TAF                      = 10.0
+lambda_ECM_D                    = 5.0
+lambda_ECM_P                    = 0.01
+lambda_MDE_D                    = 1.0
+lambda_MDE_P                    = 1.0
+sigma_PH                        = 0.55
+sigma_HP                        = 0.65
+sigma_HN                        = 0.44
+
+bar_M_P                         = 50.0
+bar_M_H                         = 25.0
+bar_E_phi_T                     = 0.045
+bar_E_phi_P                     = 0.0
+bar_E_phi_H                     = 0.0
+epsilon_P                       = 0.005
+epsilon_H                       = 0.005
+
+ic_tumor_file                   = tum_ic_data_two_vessels.csv
+
+tissue_flow_viscosity           = 1.0
+tissue_flow_K                   = 1e-09
+tissue_flow_density             = 1.0
+tissue_pressure_ic_val          = 5000.0
+
+vessel_D_sigma                  = 0.1
+osmotic_reflection_coeff        = 1.0
+scenario                        = none
+tissue_flow_L_p                 = 1e-07
+tissue_nut_L_s                  = 10.0
+assembly_factor_p_t             = 10000000.0
+assembly_factor_c_t             = 0.1
+vessel_in_nutrient              = 1.0
+vessel_in_nutrient_vein         = 0.0
+vessel_blood_density            = 1.0
+init_vessel_viscosity           = 1.0
+outlet_apply_neumann            = false
+outlet_neumann_val              = 0.0
+inlet_apply_neumann             = false
+inlet_neumann_val               = 0.0
+
+network_init_file               = two_vessels_two_vessels.dgf
+create_init_vessel              = True
+network_init_refinement         = 3
+network_discret_cyl_length      = 20
+network_discret_cyl_angle       = 20
+network_coupling_method_theta   = 1.0
+coupling_3d1d_integration_method= 2
+disable_remove_redundant_vessel = false
+network_compute_elem_weights    = true
+identify_vein_pressure          = 4995.0
+identify_artery_radius          = 0.1
+
+is_network_active               = true
+network_update_interval         = 3
+network_update_taf_threshold    = 0.0001
+log_normal_mean                 = 1.0
+log_normal_std_dev              = 0.2
+network_radius_exponent_gamma   = 3.0
+network_bifurcate_probability   = 0.94
+network_min_radius              = 0.009
+network_sprouting_prob          = 0.93
+min_length_for_sprouting        = 0.13
+seed                            = 100
+network_update                  = False

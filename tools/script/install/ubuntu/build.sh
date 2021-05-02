@@ -22,8 +22,10 @@ target_build=$(pwd)
 source="../../."
 cmake -DLIBMESH_DIR="$libmesh" \
 			-DPETSC_LIB="$petsc/lib" \
-			-DVTK_DIR="/usr/local/cmake/vtk-7.1" \
 			-DCMAKE_BUILD_TYPE=Release \
+			-DCMAKE_C_COMPILER=/usr/bin/gcc \
+			-DCMAKE_CXX_COMPILER=/usr/bin/g++
 			"$source"
-make -j 8
+
+make -j 4
 

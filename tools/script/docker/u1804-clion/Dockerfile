@@ -1,7 +1,8 @@
 # CLion remote docker environment (How to build docker container, run and stop it)
 #
 # Build and run:
-#   docker build -t u1804-clion .
+#   docker build --no-cache -t u1804-clion -f Dockerfile .
+#
 #   docker run -d --cap-add sys_ptrace -p127.0.0.1:2222:22 --name clion_remote_env u1804-clion
 #   ssh-keygen -f "$HOME/.ssh/known_hosts" -R "[localhost]:2222"
 #
@@ -12,10 +13,6 @@
 #   user@password 
 
 FROM u1804-comp
-
-# Set metadata
-LABEL maintainer="Prashant K. Jha <pjha.sci@gmail.com>"
-LABEL description="Docker image remote development using clion"
 
 RUN ( \
     echo 'LogLevel DEBUG2'; \
