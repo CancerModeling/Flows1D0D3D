@@ -40,7 +40,7 @@ set(Enable_Documentation FALSE CACHE BOOL "Generate documentation")
 set(Enable_Tests FALSE CACHE BOOL "Build test executibles and perform tests")
 
 # add flag which allows user to restrict building only specific models
-set(LIBTG_BUILD_FLAG "Build_All" CACHE STRING "Specify which if all or subset
+set(LIBTG_BUILD_FLAG "Build_NetFVFE" CACHE STRING "Specify which if all or subset
 of models to be built")
 
 # ****************************************************************************
@@ -105,11 +105,12 @@ endif ()
 # Build, compiler, linker flags
 # ****************************************************************************
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG ")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -fPIC -L /usr/lib/libmesh-1.6.1/lib/libtimpi_opt.so.2")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -xHost -std=c++14")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -DNDEBUG -std=c++11 -stdlib=libc++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG -std=c++11 -stdlib=libc++")
 endif ()
 
 if (${Enable_CMAKE_Debug_Build})
@@ -152,6 +153,9 @@ add_subdirectory(applications)
 
 # documentation
 if(${Enable_Documentation})
+    if (${Enable_CMAKE_Debug_Build})
+        message("Adding Documentation ")
+    endif()
     add_subdirectory(docs)
 endif()
 
@@ -160,6 +164,10 @@ endif()
 # ****************************************************************************
 # test directory
 if(${Enable_Tests})
+    if (${Enable_CMAKE_Debug_Build})
+        message("Copying test data to build directory ")
+    endif()
+
     add_custom_command(
             TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory
