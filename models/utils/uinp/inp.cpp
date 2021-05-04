@@ -547,7 +547,7 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   if (d_identify_artery_radius < 0.)
     libmesh_error_msg("Error. Must specify radius to identify artery.");
 
-  d_extrapolate_nutrients_at_tips = input("extrapolate_nutrients_at_tips", false);
+  d_extrapolate_nutrients_at_tips = input("extrapolate_nutrients_at_tips", true);
 
   d_coupling_3d1d_integration_method = input("coupling_3d1d_integration_method", 0);
   d_disable_remove_redundant_vessel = input("disable_remove_redundant_vessel", false);
@@ -592,6 +592,8 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   d_k_WSS = input("k_WSS", 0.45);
   d_k_s = input("k_s", 0.25);
   d_offset_tau = input("offset_tau", 0.02);
+
+  d_remove_old_sprouters = input("remove_old_sprouters", false);
 
   d_pressure_initial_guess_95_percent = input("pressure_initial_guess_95_percent", true);
 }
