@@ -163,7 +163,7 @@ class DefaultSimParams(FrozenAttributesTrait):
         self.run_path = ''
 
         self.remove_old_sprouters = False
-        self.pressure_initial_guess_95_percent = False
+        self.pressure_initial_guess_95_percent = True 
         self.extrapolate_nutrients_at_tips = True
 
         self._freeze_attributes()
