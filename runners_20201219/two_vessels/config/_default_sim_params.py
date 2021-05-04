@@ -89,7 +89,7 @@ class DefaultSimParams(FrozenAttributesTrait):
         self.hyp_noise_upper_bound = 0.9
         self.pro_noise_num_eigenfunctions = 0
         self.pro_noise_seed = 1
-        self.pro_noise_scale = 0.025
+        self.pro_noise_scale = 0.1
         self.pro_noise_lower_bound = 0.1
         self.pro_noise_upper_bound = 0.9
 
@@ -161,6 +161,10 @@ class DefaultSimParams(FrozenAttributesTrait):
         self.offset_tau = 0.02
 
         self.run_path = ''
+
+        self.remove_old_sprouters = False
+        self.pressure_initial_guess_95_percent = True 
+        self.extrapolate_nutrients_at_tips = True
 
         self._freeze_attributes()
 
@@ -376,6 +380,10 @@ class DefaultSimParams(FrozenAttributesTrait):
         strs += '{}= {}\n'.format('{0:{space}}'.format('k_WSS', space=space), self.k_WSS)
         strs += '{}= {}\n'.format('{0:{space}}'.format('k_s', space=space), self.k_s)
         strs += '{}= {}\n'.format('{0:{space}}'.format('offset_tau', space=space), self.offset_tau)
+
+        strs += '{}= {}\n'.format('{0:{space}}'.format('remove_old_sprouters', space=space), self.remove_old_sprouters)
+        strs += '{}= {}\n'.format('{0:{space}}'.format('pressure_initial_guess_95_percent', space=space), self.pressure_initial_guess_95_percent)
+        strs += '{}= {}\n'.format('{0:{space}}'.format('extrapolate_nutrients_at_tips', space=space), self.extrapolate_nutrients_at_tips)
 
         if to_inp == False:
             strs += '\n------------------------------------\n'
