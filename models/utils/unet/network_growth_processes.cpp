@@ -1034,8 +1034,8 @@ void util::unet::Network::createALinkingNode(std::vector<double> new_point,
 
     new_node.index = VGM.getNumberOfNodes();
     new_node.coord = new_point;
-    new_node.p_boundary = 0.95 * pointer->p_v;
-    new_node.p_v = 0.95 * pointer->p_v;
+    new_node.p_boundary = d_pressure_boundary_initial_guess(pointer->p_v);
+    new_node.p_v = d_pressure_boundary_initial_guess(pointer->p_v);
     new_node.c_boundary = input.d_in_nutrient;
     new_node.c_v = pointer->c_v; // 0.0;
     new_node.typeOfVGNode = TypeOfNode::NeumannNode;
@@ -1093,10 +1093,10 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
 
     new_node.index = VGM.getNumberOfNodes();
     new_node.coord = new_point;
-    new_node.p_boundary = 0.95 * pointer->p_v;
-    new_node.p_v = 0.95 * pointer->p_v;
+    new_node.p_boundary = d_pressure_boundary_initial_guess(pointer->p_v);
+    new_node.p_v = d_pressure_boundary_initial_guess(pointer->p_v);
     new_node.c_boundary = 0.0;
-    new_node.c_v = pointer->c_v;
+    new_node.c_v = d_extrapolate_nutrients_at_tips ? pointer->c_v : 0;
     new_node.apicalGrowth = false;
     new_node.radii.push_back(radius);
     new_node.radii_initial.push_back(radius);
@@ -1115,7 +1115,7 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
     total_added_volume += length * radius * radius * M_PI;
 
     double p_node = pointer->p_v;
-    double p_neighbor = 0.95 * pointer->p_v;
+    double p_neighbor = d_pressure_boundary_initial_guess(pointer->p_v);
     double delta_p = p_neighbor - p_node;
     double tau_w_ini = (radius * std::abs(delta_p)) / (2.0 * length);
 
@@ -1780,7 +1780,7 @@ void util::unet::Network::processSproutingGrowth() {
           new_node_2.p_boundary = pointer->p_v;
           new_node_2.p_v = pointer->p_v;
           new_node_2.c_boundary = 0.0;
-          new_node_2.c_v = pointer->c_v;
+          new_node_2.c_v = d_extrapolate_nutrients_at_tips ? pointer->c_v : 0;
           new_node_2.apicalGrowth = false;
           new_node_2.radii.push_back(radius_new);
           new_node_2.radii_initial.push_back(radius_new);

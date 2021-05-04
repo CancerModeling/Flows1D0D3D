@@ -30,6 +30,9 @@
 
 namespace util {
 
+inline double pressure_initial_guess_constant(double p){ return p; }
+inline double pressure_initial_guess_95_percent(double p){ return 0.95*p; }
+
 /*!
  * @brief Namespace for 1D network
  */
@@ -47,13 +50,16 @@ public:
         d_model_p(model),
         d_update_number(0),
         d_coupled_solver(false),
+        d_extrapolate_nutrients_at_tips(false),
         d_comm_p(model->get_comm()),
         d_procRank(0),
         d_procSize(0),
         total_added_length(0.0),
         total_removed_length(0.0),
         total_added_volume(0.0),
-        total_removed_volume(0.0) {
+        total_removed_volume(0.0),
+        d_pressure_boundary_initial_guess(model->get_input_deck().d_pressure_initial_guess_95_percent ? pressure_initial_guess_95_percent : pressure_initial_guess_constant)
+  {
 
     // initialize random distribution samplers
     const auto &input = d_model_p->get_input_deck();
@@ -386,11 +392,16 @@ public:
 
   bool d_coupled_solver;
 
+  bool d_extrapolate_nutrients_at_tips;
+
   std::ostringstream oss;
 
   util::DistributionSample<LogNormalDistribution> d_logNormalDist;
   util::DistributionSample<NormalDistribution> d_normalDist;
   util::DistributionSample<UniformDistribution> d_uniformDist;
+
+  /*! Provides an initial guess for the boundary value at the new grown vessel tips. */
+  std::function< double(double) > d_pressure_boundary_initial_guess;
 };
 
 } // namespace unet
