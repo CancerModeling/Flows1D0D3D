@@ -592,6 +592,8 @@ void util::NetworkDeck::read_parameters(const std::string &filename) {
   d_k_WSS = input("k_WSS", 0.45);
   d_k_s = input("k_s", 0.25);
   d_offset_tau = input("offset_tau", 0.02);
+
+  d_pressure_initial_guess_95_percent = input("pressure_initial_guess_95_percent", true);
 }
 
 void util::NetworkDeck::print(unsigned int level) {}
