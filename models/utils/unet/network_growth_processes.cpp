@@ -221,7 +221,8 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
         pointer = pointer->global_successor;
       }
 
-      delete_old_sprouters();
+      if (d_model_p->get_input_deck().d_remove_old_sprouters);
+        delete_old_sprouters();
 
       d_model_p->d_log("Rescale the 1D matrices and vectors \n", "net update");
       if (!d_coupled_solver and numberOfNodesOld != numberOfNodes) {

@@ -179,7 +179,6 @@ void util::unet::Network::delete_unconnected_nodes() {
 
 void util::unet::Network::delete_old_sprouters() {
   // all none initial nodes between two initial nodes are removed
-  // TODO: This does not account the case IN-OS-OS-IN, with IN = initial node, OS = old sprouter
   std::shared_ptr<VGNode> pointer = VGM.getHead();
   while (pointer) {
     if (pointer->neighbors.size() == 2 && pointer->is_sprouting_node) {
