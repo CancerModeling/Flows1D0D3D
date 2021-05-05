@@ -189,7 +189,7 @@ public:
 
   void createASingleNode(std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer);
 
-  void createALinkingNode(std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer);
+  void createALinkingNode(const std::vector<double>& new_point, double radius, std::shared_ptr<VGNode> &pointer);
 
   void linkTerminalVessels();
 

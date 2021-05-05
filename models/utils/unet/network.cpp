@@ -160,34 +160,35 @@ void util::unet::Network::delete_old_sprouters() {
   // all none initial nodes between two initial nodes are removed
   std::shared_ptr<VGNode> pointer = VGM.getHead();
   while (pointer) {
+    auto successor = pointer->global_successor;
     if (pointer->neighbors.size() == 2 && pointer->is_sprouting_node) {
       std::cout << "is sprouting " << pointer->index << std::endl;
       // remove node from its neighbors
       for (auto n : pointer->neighbors)
-        n->remove([=](auto& p) { return &p == pointer.get(); });
+        n->remove([=](auto &p) { return &p == pointer.get(); });
       VGM.remove(pointer);
       // connect neighbors to each other
       {
         pointer->neighbors[0]->neighbors.push_back(pointer->neighbors[1]);
-        pointer->neighbors[0]->radii.push_back(0.5*(pointer->radii[0]+pointer->radii[1]));
-        pointer->neighbors[0]->L_p.push_back(0.5*(pointer->L_p[0]+pointer->L_p[1]));
-        pointer->neighbors[0]->L_s.push_back(0.5*(pointer->L_s[0]+pointer->L_s[1]));
-        pointer->neighbors[0]->radii_initial.push_back(0.5*(pointer->radii_initial[0]+pointer->radii_initial[1]));
-        pointer->neighbors[0]->tau_w_initial.push_back(0.5*(pointer->tau_w_initial[0]+pointer->tau_w_initial[1]));
+        pointer->neighbors[0]->radii.push_back(0.5 * (pointer->radii[0] + pointer->radii[1]));
+        pointer->neighbors[0]->L_p.push_back(0.5 * (pointer->L_p[0] + pointer->L_p[1]));
+        pointer->neighbors[0]->L_s.push_back(0.5 * (pointer->L_s[0] + pointer->L_s[1]));
+        pointer->neighbors[0]->radii_initial.push_back(0.5 * (pointer->radii_initial[0] + pointer->radii_initial[1]));
+        pointer->neighbors[0]->tau_w_initial.push_back(0.5 * (pointer->tau_w_initial[0] + pointer->tau_w_initial[1]));
         pointer->neighbors[0]->edge_touched.push_back(pointer->edge_touched[1] || pointer->edge_touched[0]);
         pointer->neighbors[0]->sprouting_edge.push_back(pointer->sprouting_edge[1] || pointer->sprouting_edge[0]);
 
         pointer->neighbors[1]->neighbors.push_back(pointer->neighbors[0]);
-        pointer->neighbors[1]->radii.push_back(0.5*(pointer->radii[0]+pointer->radii[1]));
-        pointer->neighbors[1]->L_p.push_back(0.5*(pointer->L_p[0]+pointer->L_p[1]));
-        pointer->neighbors[1]->L_s.push_back(0.5*(pointer->L_s[0]+pointer->L_s[1]));
-        pointer->neighbors[1]->radii_initial.push_back(0.5*(pointer->radii_initial[0]+pointer->radii_initial[1]));
-        pointer->neighbors[1]->tau_w_initial.push_back(0.5*(pointer->tau_w_initial[0]+pointer->tau_w_initial[1]));
+        pointer->neighbors[1]->radii.push_back(0.5 * (pointer->radii[0] + pointer->radii[1]));
+        pointer->neighbors[1]->L_p.push_back(0.5 * (pointer->L_p[0] + pointer->L_p[1]));
+        pointer->neighbors[1]->L_s.push_back(0.5 * (pointer->L_s[0] + pointer->L_s[1]));
+        pointer->neighbors[1]->radii_initial.push_back(0.5 * (pointer->radii_initial[0] + pointer->radii_initial[1]));
+        pointer->neighbors[1]->tau_w_initial.push_back(0.5 * (pointer->tau_w_initial[0] + pointer->tau_w_initial[1]));
         pointer->neighbors[1]->edge_touched.push_back(pointer->edge_touched[1] || pointer->edge_touched[0]);
         pointer->neighbors[1]->sprouting_edge.push_back(pointer->sprouting_edge[1] || pointer->sprouting_edge[0]);
       }
     }
-    pointer = pointer->global_successor;
+    pointer = successor;
   } // loop over vertices
   reenumerate_dofs();
 }

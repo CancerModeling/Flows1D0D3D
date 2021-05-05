@@ -996,7 +996,7 @@ bool util::unet::Network::testIntersection(
   return isIntersecting;
 }
 
-void util::unet::Network::createALinkingNode(std::vector<double> new_point,
+void util::unet::Network::createALinkingNode(const std::vector<double>& new_point,
                                              double radius,
                                              std::shared_ptr<VGNode> &pointer) {
 
@@ -1010,48 +1010,40 @@ void util::unet::Network::createALinkingNode(std::vector<double> new_point,
 
   if (isInside) {
 
-    VGNode new_node;
+    auto new_node = std::make_shared<VGNode>();
 
-    new_node.index = VGM.getNumberOfNodes();
-    new_node.coord = new_point;
-    new_node.p_boundary = d_pressure_boundary_initial_guess(pointer->p_v);
-    new_node.p_v = d_pressure_boundary_initial_guess(pointer->p_v);
-    new_node.c_boundary = input.d_in_nutrient;
-    new_node.c_v = pointer->c_v; // 0.0;
-    new_node.typeOfVGNode = TypeOfNode::NeumannNode;
-    new_node.apicalGrowth = false;
-    new_node.radii.push_back(radius);
-    new_node.radii_initial.push_back(radius);
-    new_node.L_p.push_back(input.d_tissue_flow_L_p);
-    new_node.L_s.push_back(input.d_tissue_nut_L_s);
-    new_node.edge_touched.push_back(true);
-    new_node.sprouting_edge.push_back(false);
-    new_node.neighbors.push_back(pointer);
-    new_node.notUpdated = 0;
-
-    auto sp_newNode = std::make_shared<VGNode>(new_node);
-    /*
-        std::cout << "New index: " << new_node.index << "\n";
-        std::cout << "Neighbor index: " << pointer->index << "\n";
-
-        std::cout << "Update old node" << "\n";
-    */
+    new_node->index = VGM.getNumberOfNodes();
+    new_node->coord = new_point;
+    new_node->p_boundary = d_pressure_boundary_initial_guess(pointer->p_v);
+    new_node->p_v = d_pressure_boundary_initial_guess(pointer->p_v);
+    new_node->c_boundary = input.d_in_nutrient;
+    new_node->c_v = pointer->c_v; // 0.0;
+    new_node->typeOfVGNode = TypeOfNode::NeumannNode;
+    new_node->apicalGrowth = false;
+    new_node->radii.push_back(radius);
+    new_node->radii_initial.push_back(radius);
+    new_node->L_p.push_back(input.d_tissue_flow_L_p);
+    new_node->L_s.push_back(input.d_tissue_nut_L_s);
+    new_node->edge_touched.push_back(true);
+    new_node->sprouting_edge.push_back(false);
+    new_node->neighbors.push_back(pointer);
+    new_node->notUpdated = 0;
 
     pointer->p_boundary = 0.0;
     pointer->c_boundary = 0.0;
     pointer->typeOfVGNode = TypeOfNode::InnerNode;
     pointer->apicalGrowth = false;
     pointer->radii.push_back(radius);
-    new_node.radii_initial.push_back(radius);
+    new_node->radii_initial.push_back(radius);
     pointer->L_p.push_back(input.d_tissue_flow_L_p);
     pointer->L_s.push_back(input.d_tissue_nut_L_s);
     pointer->edge_touched.push_back(true);
     pointer->sprouting_edge.push_back(false);
-    pointer->neighbors.push_back(sp_newNode);
+    pointer->neighbors.push_back(new_node);
     pointer->notUpdated = 0;
     //   std::cout << "Attach new node as pointer" << "\n";
 
-    VGM.attachPointerToNode(sp_newNode);
+    VGM.attachPointerToNode(new_node);
   }
 }
 
@@ -1122,34 +1114,26 @@ void util::unet::Network::createASingleNode(std::vector<double> new_point,
 }
 
 bool util::unet::Network::testCollision(std::vector<double> point) {
-
-  bool isColliding = false;
-
-  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  auto pointer = VGM.getHead();
 
   while (pointer) {
 
-    std::vector<double> coord = pointer->coord;
-    std::vector<double> diff = std::vector<double>(3, 0.0);
+    const auto& coord = pointer->coord;
+    std::vector<double> diff(3, 0.0);
 
     for (int i = 0; i < 3; i++) {
-
       diff[i] = coord[i] - point[i];
     }
 
     double dist = gmm::vect_norm2(diff);
 
-    if (dist < 0.08) {
-
-      isColliding = true;
-
-      break;
-    }
+    if (dist < 0.08)
+      return true;
 
     pointer = pointer->global_successor;
   }
 
-  return isColliding;
+  return false;
 }
 
 void util::unet::Network::removeRedundantTerminalVessels() {
