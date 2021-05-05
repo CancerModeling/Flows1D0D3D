@@ -34,6 +34,37 @@ public:
     return (head == NULL);
   }
 
+  /*! Removes the given node from list by splicing it out. */
+  void remove(std::shared_ptr<Node> pointer) {
+    auto predecessor = pointer->global_predecessor;
+    auto successor = pointer->global_successor;
+
+    // case: we were the last node in the graph
+    if (predecessor == nullptr && successor == nullptr) {
+      setHead(nullptr);
+      setTail(nullptr);
+    }
+
+    if (predecessor != nullptr) {
+      predecessor->global_successor = successor;
+    }
+    // case: we were the first node
+    else {
+      setHead(successor);
+    }
+
+    if (successor != nullptr) {
+      successor->global_predecessor = predecessor;
+    }
+    // case: we were the last node
+    else {
+      setTail(predecessor);
+    }
+
+    pointer->global_predecessor = nullptr;
+    pointer->global_successor = nullptr;
+  }
+
   void attachNode(Node newNode) {
 
     auto sp_newNode = std::make_shared<Node>(newNode);
