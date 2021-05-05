@@ -132,39 +132,16 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
 
         int numberOfEdges = pointer->neighbors.size();
 
+        // we back up the successor for traversing the list after deleting a vessel
+        auto successor = pointer->global_successor;
+
+        // if it has no edges we can remove it
         if (numberOfEdges == 0) {
-
           std::cout << "Remove node: " << pointer->index << std::endl;
-
-          std::shared_ptr<VGNode> old_pointer = pointer;
-
-          if (pointer->global_predecessor) {
-
-            pointer->global_predecessor->global_successor =
-              pointer->global_successor;
-
-          } else {
-
-            pointer->global_successor->global_predecessor = NULL;
-            VGM.setHead(pointer->global_successor);
-          }
-
-          if (pointer->global_successor) {
-
-            pointer->global_successor->global_predecessor =
-              pointer->global_predecessor;
-
-          } else {
-
-            pointer->global_predecessor->global_successor = NULL;
-            VGM.setTail(pointer->global_predecessor);
-            break;
-          }
-
-          old_pointer.reset();
+          VGM.remove(pointer);
         }
 
-        pointer = pointer->global_successor;
+        pointer = successor;
       }
 
       std::cout << " " << std::endl;
@@ -1292,35 +1269,9 @@ void util::unet::Network::removeRedundantTerminalVessels() {
         pointer->neighbors[0]->c_boundary = 0.0;
       }
 
-      std::shared_ptr<VGNode> old_pointer = pointer;
-
-      if (pointer->global_predecessor) {
-
-        pointer->global_predecessor->global_successor =
-          pointer->global_successor;
-
-      } else {
-
-        pointer->global_successor->global_predecessor = NULL;
-        VGM.setHead(pointer->global_successor);
-
-      }
-
-      if (pointer->global_successor) {
-
-        pointer->global_successor->global_predecessor =
-          pointer->global_predecessor;
-
-      } else {
-
-        pointer->global_predecessor->global_successor = NULL;
-        VGM.setTail(pointer->global_predecessor);
-
-      }
-
-      pointer = pointer->global_successor;
-
-      old_pointer.reset();
+      auto successor = pointer;
+      VGM.remove(pointer);
+      pointer = successor;
 
     } else {
 
