@@ -126,34 +126,13 @@ void util::unet::Network::delete_unmarked_nodes() {
 
     while (pointer) {
 
-      auto predecessor = pointer->global_predecessor;
+      // we back up the successor, since the VGM.remove method will set it to a nullpointer
       auto successor = pointer->global_successor;
 
-      if (!pointer->node_marked) {
-        // case: we were the last node in the graph
-        if (predecessor == nullptr && successor == nullptr) {
-          VGM.setHead(nullptr);
-          VGM.setTail(nullptr);
-        }
+      if (!pointer->node_marked)
+        VGM.remove(pointer);
 
-        if (predecessor != nullptr) {
-          predecessor->global_successor = successor;
-        }
-        // case: we were the first node
-        else {
-          VGM.setHead(successor);
-        }
-
-        if (successor != nullptr) {
-          successor->global_predecessor = predecessor;
-        }
-        // case: we were the last node
-        else {
-          VGM.setTail(predecessor);
-        }
-      }
-
-      pointer = pointer->global_successor;
+      pointer = successor;
     } // loop over vertices
   }
 }
@@ -186,33 +165,7 @@ void util::unet::Network::delete_old_sprouters() {
       // remove node from its neighbors
       for (auto n : pointer->neighbors)
         n->remove([=](auto& p) { return &p == pointer.get(); });
-      // remove node from global list
-      {
-        auto predecessor = pointer->global_predecessor;
-        auto successor = pointer->global_successor;
-
-        // case: we were the last node in the graph
-        if (predecessor == nullptr && successor == nullptr) {
-          VGM.setHead(nullptr);
-          VGM.setTail(nullptr);
-        }
-
-        if (predecessor != nullptr) {
-          predecessor->global_successor = successor;
-        }
-        // case: we were the first node
-        else {
-          VGM.setHead(successor);
-        }
-
-        if (successor != nullptr) {
-          successor->global_predecessor = predecessor;
-        }
-        // case: we were the last node
-        else {
-          VGM.setTail(predecessor);
-        }
-      }
+      VGM.remove(pointer);
       // connect neighbors to each other
       {
         pointer->neighbors[0]->neighbors.push_back(pointer->neighbors[1]);
