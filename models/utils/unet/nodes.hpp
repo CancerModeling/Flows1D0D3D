@@ -132,22 +132,25 @@ public:
 
   std::vector<ElemWeights> J_b_points;
 
+  /*! @brief Marks nodes which have been there from the beginning. */
   bool is_initial_node;
 
   /*! @brief Generic attribute to mark the node to simplify algorithms on the graph. */
   bool node_marked;
 
-  void markEdge(int index) {
+  /*! @brief Marks the edge belonging to the neighbor node with the given global index. */
+  void markEdge(int globalIndex) {
+    edge_touched[getLocalNeighborIndex(globalIndex)] = true;
+  }
 
-    int numberOfNeighbors = neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      if (index == neighbors[i]->index) {
-
-        edge_touched[i] = true;
+  /*! @brief Returns the local index of the neighbor with the given global index. */
+  int getLocalNeighborIndex(int globalIndex) {
+    for (int i = 0; i < neighbors.size(); i++) {
+      if (globalIndex == neighbors[i]->index) {
+        return i;
       }
     }
+    throw std::runtime_error("the node with index " + std::to_string(index) + " has no neighbor with index " + std::to_string(globalIndex));
   }
 
   void markEdgeLocalIndex(int localIndex) {
