@@ -1,15 +1,13 @@
 #!/bin/bash
 MY_PWD=$(pwd)
 
-## Fixed variable which should be changed less often
+## executible
 EXEC_DIR="../../../../bin/"
 
 ## libmesh options
 LIBMESH_OPTS=" -ksp_type gmres -pc_type bjacobi -sub_pc_type ilu -sub_pc_factor_levels 10"
 
 (
-# locate executible
-execsrc="../../../../../bin/PeriDEM"
 echo "Setting up simulation ... "
 python3 -B setup.py
 echo "Running simulation ... "

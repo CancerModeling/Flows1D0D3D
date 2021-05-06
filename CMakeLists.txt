@@ -25,6 +25,9 @@ set(VERSION_UPDATE 0)
 # cmake scripts to help search dependencies
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
 
+# Create executible in main directory of build directory
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
+
 # set default build type "Release"
 if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
@@ -168,8 +171,9 @@ if(${Enable_Tests})
         message("Copying test data to build directory ")
     endif()
 
+    add_custom_target("copydata" ALL)
     add_custom_command(
-            TARGET ${PROJECT_NAME} POST_BUILD
+            TARGET "copydata" POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_SOURCE_DIR}/tests/test_data/
             ${PROJECT_BINARY_DIR}/tests/test_data/)
