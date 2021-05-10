@@ -100,11 +100,4 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
   }
 }
 
-void EmbeddedGraphReader::set_parameter(double poisson_ratio, double wall_width, double nu, double rho) {
-  d_elastic_modulus = poisson_ratio;
-  d_wall_width = wall_width;
-  d_poisson_ratio = nu;
-  d_rho = rho;
-}
-
 } // namespace macrocirculation

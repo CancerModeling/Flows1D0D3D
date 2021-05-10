@@ -23,9 +23,6 @@ public:
   /*! @brief Appends the data from the input file to the given graph storage. */
   void append(const std::string &filepath, GraphStorage & graph) const;
 
-  /*! @brief Sets some guesses for parameter not in the file. */
-  void set_parameter(double poisson_ratio, double wall_width, double nu, double rho);
-
 private:
   double d_rho;
 };
