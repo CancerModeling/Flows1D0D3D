@@ -197,6 +197,7 @@ public:
   /*! @brief Update network */
   void updateNetwork(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys);
 
+  /*! @brief Marks all candidates for apical growth by setting the apicalGrowth flag to true. */
   void markApicalGrowth();
 
   void processApicalGrowth();
@@ -205,6 +206,7 @@ public:
 
   void createALinkingNode(const std::vector<double> &new_point, double radius, std::shared_ptr<VGNode> &pointer);
 
+  /*! @brief Links the terminal vessels with other nearby vessels. */
   void linkTerminalVessels();
 
   bool linkToNearestNetworkNode(std::shared_ptr<VGNode> &pointer);
@@ -221,6 +223,7 @@ public:
 
   std::vector<double> findNearNetworkNode(std::vector<double> coord, std::vector<double> normal_plane);
 
+  /*! @brief Adapts the radii of all vessels. */
   void adaptRadius();
 
   /** @}*/
