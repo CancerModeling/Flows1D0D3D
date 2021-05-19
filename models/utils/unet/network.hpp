@@ -30,8 +30,8 @@
 
 namespace util {
 
-inline double pressure_initial_guess_constant(double p){ return p; }
-inline double pressure_initial_guess_95_percent(double p){ return 0.95*p; }
+inline double pressure_initial_guess_constant(double p) { return p; }
+inline double pressure_initial_guess_95_percent(double p) { return 0.95 * p; }
 
 /*!
  * @brief Namespace for 1D network
@@ -58,8 +58,7 @@ public:
         total_removed_length(0.0),
         total_added_volume(0.0),
         total_removed_volume(0.0),
-        d_pressure_boundary_initial_guess(model->get_input_deck().d_pressure_initial_guess_95_percent ? pressure_initial_guess_95_percent : pressure_initial_guess_constant)
-  {
+        d_pressure_boundary_initial_guess(model->get_input_deck().d_pressure_initial_guess_95_percent ? pressure_initial_guess_95_percent : pressure_initial_guess_constant) {
 
     // initialize random distribution samplers
     const auto &input = d_model_p->get_input_deck();
@@ -116,6 +115,21 @@ public:
 
   /*! @brief Returns the maximum pressure value in 3D. */
   double get_maximum_pressure_value_3D() const;
+
+  /*! @brief Sets the boundary condition of all vessel tips not present in the original mesh to Neumann. */
+  void set_bc_of_added_vessels_to_neumann();
+
+  /*! @brief Sets the edge_touched and sprouting_edge flags to false. */
+  void reset_edge_flags();
+
+  /*! @brief Resizes the matrices of the direct solver, after the network has changed. */
+  void resize_matrices_direct_solver();
+
+  /*! @brief Resizes the matrices of the coupled solver, after the network has changec. */
+  void resize_matrices_coupled_solver();
+
+  /*! @brief Copies the dof values stored on the network nodes (pressure and nutrients) into the vectors. */
+  void copy_network_to_vectors();
 
   /**
    * @name Input-output
@@ -183,30 +197,34 @@ public:
   /*! @brief Update network */
   void updateNetwork(BaseAssembly &taf_sys, BaseAssembly &grad_taf_sys);
 
+  /*! @brief Marks all candidates for apical growth by setting the apicalGrowth flag to true. */
   void markApicalGrowth();
 
   void processApicalGrowth();
 
   void createASingleNode(std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer);
 
-  void createALinkingNode(std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer);
-
+  /*! @brief Links the terminal vessels with other nearby vessels. */
   void linkTerminalVessels();
 
   bool linkToNearestNetworkNode(std::shared_ptr<VGNode> &pointer);
 
   bool testCollision(std::vector<double> point);
 
-  bool testIntersection(std::vector<double> point_1, std::vector<double> point_2, double radius, std::shared_ptr<VGNode> &pointer_test);
+  bool testIntersection(const std::vector<double>& point_1, const std::vector<double>& point_2, double radius, std::shared_ptr<VGNode> &pointer_test);
 
   void removeRedundantTerminalVessels();
 
+  /*! @brief Marks all edge candidates for sprouting growth.
+   *
+   */
   void markSproutingGrowth();
 
   void processSproutingGrowth();
 
   std::vector<double> findNearNetworkNode(std::vector<double> coord, std::vector<double> normal_plane);
 
+  /*! @brief Adapts the radii of all vessels. */
   void adaptRadius();
 
   /** @}*/
@@ -324,16 +342,16 @@ public:
   /*! @brief Right hand side nutrients 3D1D */
   std::vector<double> b_nut_3D1D;
 
-  /*! @brief Current vessel pressure */
+  /*! @brief Current vessel pressures used by the _direct_ solver. */
   std::vector<double> P_v;
 
-  /*! @brief Current vessel nutrient */
+  /*! @brief Current vessel nutrients used by the _direct_ solver. */
   std::vector<double> C_v;
 
-  /*! @brief Old vessel nutrient */
+  /*! @brief Old vessel nutrients used by the _direct_ solver. */
   std::vector<double> C_v_old;
 
-  /*! @brief Current 3D1D pressure */
+  /*! @brief Current pressure values, used by the _coupled_ solver. */
   std::vector<double> P_3D1D;
 
   /*! @brief Current 3D pressure */
@@ -401,7 +419,7 @@ public:
   util::DistributionSample<UniformDistribution> d_uniformDist;
 
   /*! Provides an initial guess for the boundary value at the new grown vessel tips. */
-  std::function< double(double) > d_pressure_boundary_initial_guess;
+  std::function<double(double)> d_pressure_boundary_initial_guess;
 };
 
 } // namespace unet
