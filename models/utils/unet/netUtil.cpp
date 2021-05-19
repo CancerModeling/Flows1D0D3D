@@ -213,16 +213,12 @@ int util::unet::getIndex(double value, double h_3D) {
 double util::unet::normVector(std::vector<double> &vec) {
 
   double norm_vec = 0.0;
-
   for (int j = 0; j < 3; j++) {
-
-    norm_vec = norm_vec + vec[j] * vec[j];
+    norm_vec += vec[j] * vec[j];
   }
-
   norm_vec = std::sqrt(norm_vec);
 
   for (int j = 0; j < 3; j++) {
-
     vec[j] = vec[j] / norm_vec;
   }
 
@@ -267,16 +263,18 @@ std::vector<double> util::unet::determineRotator(std::vector<double> dir) {
 }
 
 std::vector<double> util::unet::computeNodesOnCylinders(
-  std::vector<double> dir, std::vector<double> rotator,
-  std::vector<double> midpoint, double radius, double theta) {
+  const std::vector<double>& dir, const std::vector<double>& rotator,
+  const std::vector<double>& midpoint, double radius, double theta) {
 
   std::vector<double> cylinder_node(3);
 
-  double c = std::cos(theta);
-  double s = std::sin(theta);
+  const double c = std::cos(theta);
+  const double s = std::sin(theta);
 
   gmm::row_matrix<std::vector<double>> R(3, 3);
 
+  // Formula see, e.g.
+  // Tomas Akenine-Moller, Eric Haines - Real-time rendering 2nd edition - Chapter 3.2.4
   R(0, 0) = dir[0] * dir[0] * (1.0 - c) + c;
   R(1, 1) = dir[1] * dir[1] * (1.0 - c) + c;
   R(2, 2) = dir[2] * dir[2] * (1.0 - c) + c;
@@ -334,12 +332,10 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
                                         std::vector<int> &id_3D_elements) {
 
   std::vector<double> direction, rotator;
+
   double length = 0.;
-  double dx = 0.;
-
   for (int j = 0; j < 3; j++) {
-
-    dx = coord_neighbor[j] - coord[j];
+    const double dx = coord_neighbor[j] - coord[j];
     direction.push_back(dx);
     length += dx * dx;
   }
@@ -350,21 +346,16 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
 
   rotator = determineRotator(direction);
 
-  //double length_rotator = normVector(rotator);
-
-  double s = 0.;
-  double theta = 0.0;
-
   for (int i_s = 0; i_s < N_s; i_s++) {
 
-    s = ((i_s + 0.5) / (double) N_s) * length_edge;
+    const double s = ((i_s + 0.5) / (double) N_s) * length_edge;
     std::vector<double> midpoint(3);
     for (int j = 0; j < 3; j++)
       midpoint[j] = coord[j] + s * direction[j];
 
     for (int i_theta = 0; i_theta < N_theta; i_theta++) {
 
-      theta = ((i_theta + 0.5) / (double) N_theta) * 2.0 * M_PI;
+      const double theta = ((i_theta + 0.5) / (double) N_theta) * 2.0 * M_PI;
 
       std::vector<double> cylinder_node =
         computeNodesOnCylinders(direction, rotator, midpoint, radius, theta);
@@ -374,8 +365,7 @@ void util::unet::determineWeightsAndIds(int N_s, int N_theta, int N_3D,
         int elementIndex = getElementIndex(cylinder_node, h_3D, N_3D);
 
         // Compute weights and element ids
-        updateWeightsAndIds(N_s, N_theta, elementIndex, weights,
-                            id_3D_elements);
+        updateWeightsAndIds(N_s, N_theta, elementIndex, weights, id_3D_elements);
       }
     }
   }

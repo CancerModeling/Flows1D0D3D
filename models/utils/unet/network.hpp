@@ -204,8 +204,6 @@ public:
 
   void createASingleNode(std::vector<double> new_point, double radius, std::shared_ptr<VGNode> &pointer);
 
-  void createALinkingNode(const std::vector<double> &new_point, double radius, std::shared_ptr<VGNode> &pointer);
-
   /*! @brief Links the terminal vessels with other nearby vessels. */
   void linkTerminalVessels();
 
@@ -213,10 +211,13 @@ public:
 
   bool testCollision(std::vector<double> point);
 
-  bool testIntersection(std::vector<double> point_1, std::vector<double> point_2, double radius, std::shared_ptr<VGNode> &pointer_test);
+  bool testIntersection(const std::vector<double>& point_1, const std::vector<double>& point_2, double radius, std::shared_ptr<VGNode> &pointer_test);
 
   void removeRedundantTerminalVessels();
 
+  /*! @brief Marks all edge candidates for sprouting growth.
+   *
+   */
   void markSproutingGrowth();
 
   void processSproutingGrowth();

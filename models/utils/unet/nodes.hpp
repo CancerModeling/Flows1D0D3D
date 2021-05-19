@@ -158,21 +158,13 @@ public:
     edge_touched[localIndex] = true;
   }
 
+  /*! @brief Returns the local index of the given neighbor, and throws an exception if it is not present. */
   int getLocalIndexOfNeighbor(std::shared_ptr<VGNode> neighbor) {
-
-    int local_index_neighbor = 0;
-
-    int numberOfNeighbors = neighbors.size();
-
-    for (int i = 0; i < numberOfNeighbors; i++) {
-
-      if (util::dist_between_points(neighbor->coord, neighbors[i]->coord) < 1.0e-12) { // neighbor->index == neighbors[i]->index ){
-
-        local_index_neighbor = i;
-      }
+    for (int i = 0; i < neighbors.size(); i++) {
+      if (util::dist_between_points(neighbor->coord, neighbors[i]->coord) < 1.0e-12)
+        return i;
     }
-
-    return local_index_neighbor;
+    throw std::runtime_error("could not find neighbor");
   }
 
   void replacePointerWithIndex(int index_new, std::shared_ptr<VGNode> new_pointer) {
