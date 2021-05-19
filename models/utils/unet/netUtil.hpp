@@ -47,13 +47,16 @@ double getDirichletValue(std::vector<double> center_face, double L_p,
 
 int getIndex(double value, double h_3D);
 
+/*! @brief Returns the norm of a vector AND normalizes it. */
 double normVector(std::vector<double> &vec);
 
+/*! @brief Determines an arbitrary vector orthogonal to dir. */
 std::vector<double> determineRotator(std::vector<double> dir);
 
-std::vector<double> computeNodesOnCylinders(std::vector<double> dir,
-                                            std::vector<double> rotator,
-                                            std::vector<double> midpoint,
+/*! @brief Rotates the "rotator"-vector around the axis given by "dir" by theta radians, scales it with the given radius. */
+std::vector<double> computeNodesOnCylinders(const std::vector<double>& dir,
+                                            const std::vector<double>& rotator,
+                                            const std::vector<double>& midpoint,
                                             double radius, double theta);
 
 void updateWeightsAndIds(int N_s, int N_theta, int elementIndex,
