@@ -1253,7 +1253,7 @@ void util::unet::Network::removeRedundantTerminalVessels() {
         pointer->neighbors[0]->c_boundary = 0.0;
       }
 
-      auto successor = pointer;
+      auto successor = pointer->global_successor;
       VGM.remove(pointer);
       pointer = successor;
 
