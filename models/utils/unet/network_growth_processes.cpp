@@ -52,175 +52,67 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
       d_model_p->d_log("Mark nodes for apical growth \n", "net update");
       markApicalGrowth();
 
-      std::cout << " " << std::endl;
-      std::cout << "Process apical growth" << std::endl;
+      d_model_p->d_log("Process apical growth\n", "net update");
       processApicalGrowth();
 
       numberOfNodes = VGM.getNumberOfNodes();
+      d_model_p->d_log("Number of nodes after growing the network: " + std::to_string(numberOfNodes) + "\n", "net update");
 
-      std::cout << " " << std::endl;
-      std::cout << "Number of nodes after growing the network: "
-                << numberOfNodes << std::endl;
-
-      std::cout << " " << std::endl;
-      std::cout << "Mark edges for sprouting " << std::endl;
+      d_model_p->d_log("Mark edges for sprouting ", "net update");
       markSproutingGrowth();
 
-      std::cout << " " << std::endl;
-      std::cout << "Process sprouting growth" << std::endl;
+      d_model_p->d_log("Process sprouting growth", "net update");
       processSproutingGrowth();
 
-      numberOfNodes = VGM.getNumberOfNodes();
       d_model_p->d_log("Link terminal vessels \n", "net update");
       linkTerminalVessels();
 
       numberOfNodes = VGM.getNumberOfNodes();
 
-      d_model_p->d_log("Number of nodes after growing the network: " +
-                         std::to_string(numberOfNodes) + " \n",
-                       "net update");
-      d_model_p->d_log("Remove redundant vessels \n", "net update");
+      d_model_p->d_log("Number of nodes after growing the network: " + std::to_string(numberOfNodes) + " \n", "net update");
 
+      d_model_p->d_log("Remove redundant vessels \n", "net update");
       removeRedundantTerminalVessels();
 
       numberOfNodes = VGM.getNumberOfNodes();
-      d_model_p->d_log(
-        "Number of nodes after linking terminal vessels to the network: " +
-          std::to_string(numberOfNodes) + " \n",
-        "net update");
+      d_model_p->d_log("Number of nodes after linking terminal vessels to the network: " + std::to_string(numberOfNodes) + " \n", "net update");
 
       d_model_p->d_log("Adapt radius \n", "net update");
       adaptRadius();
 
       // delete all the unconnected nodes
+      d_model_p->d_log("Delete unconnected nodes\n", "net update");
       delete_unconnected_nodes();
 
-      std::cout << " " << std::endl;
-      std::cout << "Reset nodes" << std::endl;
-      auto pointer = VGM.getHead();
+      d_model_p->d_log("Reset nodes \n", "net update");
+      set_bc_of_added_vessels_to_neumann();
+      reset_edge_flags();
 
-      while (pointer) {
-
-        int numberOfNeighbors = pointer->neighbors.size();
-
-        if (numberOfNeighbors == 1 && !pointer->is_given) {
-
-          const auto &coord = pointer->coord;
-
-          std::cout << "Set inner node to boundary node" << std::endl;
-
-          pointer->typeOfVGNode = TypeOfNode::NeumannNode;
-        }
-
-        pointer = pointer->global_successor;
-      }
-
-      pointer = VGM.getHead();
-
-      while (pointer) {
-
-        int numberOfEdges = pointer->neighbors.size();
-
-        for (int i = 0; i < numberOfEdges; i++) {
-
-          pointer->edge_touched[i] = false;
-          pointer->sprouting_edge[i] = false;
-        }
-
-        pointer = pointer->global_successor;
-      }
-
-      VGM.determineNumberOfNodes();
-
-      numberOfNodes = VGM.getNumberOfNodes();
-
-      std::cout << "new numberOfNodes: " << numberOfNodes << std::endl;
-
-      d_model_p->d_log("Renumber vertices \n", "net update");
-
-      pointer = VGM.getHead();
-
-      int counter_index = 0;
-
-      while (pointer) {
-
-        pointer->index = counter_index;
-        counter_index = counter_index + 1;
-        pointer = pointer->global_successor;
-      }
-
-      if (d_model_p->get_input_deck().d_remove_old_sprouters)
-      {
+      if (d_model_p->get_input_deck().d_remove_old_sprouters) {
+        d_model_p->d_log("Remove old sprouting vessels \n", "net update");
         delete_old_sprouters();
       }
 
-      d_model_p->d_log("Rescale the 1D matrices and vectors \n", "net update");
-      if (!d_coupled_solver and numberOfNodesOld != numberOfNodes) {
-        A_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes,
-                                                       numberOfNodes);
-        b.resize(numberOfNodes);
-        P_v.resize(numberOfNodes);
+      reenumerate_dofs();
+      VGM.determineNumberOfNodes();
+      d_model_p->d_log("Renumber vertices \n", "net update");
+      numberOfNodes = VGM.getNumberOfNodes();
+      d_model_p->d_log("new numberOfNodes: " + std::to_string(numberOfNodes) + "\n", "net update");
 
-        C_v.resize(numberOfNodes);
-        C_v_old.resize(numberOfNodes);
+      d_model_p->d_log("Resizing matrices\n", "net update");
+      resize_matrices_direct_solver();
+      resize_matrices_coupled_solver();
 
-        // Ac_VGM =
-        //    gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes,
-        //    numberOfNodes);
-        b_c.resize(numberOfNodes);
-      } // update matrix and vector
-
-      if (d_coupled_solver) {
-
-        A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
-          N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
-        b_flow_3D1D.resize(N_tot_3D + numberOfNodes);
-
-        A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
-          N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
-        b_nut_3D1D.resize(N_tot_3D + numberOfNodes);
-
-        // resize function does not change the value of existing elements
-        phi_sigma.resize(N_tot_3D + numberOfNodes);
-        phi_sigma_old.resize(N_tot_3D + numberOfNodes);
-        P_3D1D.resize(N_tot_3D + numberOfNodes);
-
-        for (int i = 0; i < N_tot_3D; i++) {
-
-          phi_sigma[i] = phi_sigma_3D[i];
-          phi_sigma_old[i] = phi_sigma_3D[i];
-          P_3D1D[i] = P_3D[i];
-        }
-      } // update matrix and vector
-
-      pointer = VGM.getHead();
-      while (pointer) {
-
-        int indexOfNode = pointer->index;
-
-        if (d_coupled_solver) {
-          phi_sigma[N_tot_3D + indexOfNode] = pointer->c_v;
-          phi_sigma_old[N_tot_3D + indexOfNode] = pointer->c_v;
-          P_3D1D[N_tot_3D + indexOfNode] = pointer->p_v;
-        } else {
-          C_v[indexOfNode] = pointer->c_v;
-          C_v_old[indexOfNode] = pointer->c_v;
-          P_v[indexOfNode] = pointer->p_v;
-        }
-
-        pointer = pointer->global_successor;
-      } // loop for update solution in network
+      d_model_p->d_log("Copying values\n", "net update");
+      copy_network_to_vectors();
 
       // compute element and weights (iterative method may require this data)
       const auto &input = d_model_p->get_input_deck();
       if (input.d_compute_elem_weights and input.d_model_name != "NetFCFVFE")
         compute_elem_weights();
-      if (numberOfNodes != numberOfNodesOld) {
+      if (VGM.getNumberOfNodes() != numberOfNodesOld) {
         d_has_network_changed = true;
-        d_model_p->d_log("Added " +
-                           std::to_string(numberOfNodes - numberOfNodesOld) +
-                           " vertices to the network \n",
-                         "net update");
+        d_model_p->d_log("Added " + std::to_string(numberOfNodes - numberOfNodesOld) + " vertices to the network \n", "net update");
       }
     } // if zero processor
   }   // if network update step
@@ -947,7 +839,7 @@ bool util::unet::Network::testIntersection(
   return isIntersecting;
 }
 
-void util::unet::Network::createALinkingNode(const std::vector<double>& new_point,
+void util::unet::Network::createALinkingNode(const std::vector<double> &new_point,
                                              double radius,
                                              std::shared_ptr<VGNode> &pointer) {
 
@@ -1069,7 +961,7 @@ bool util::unet::Network::testCollision(std::vector<double> point) {
 
   while (pointer) {
 
-    const auto& coord = pointer->coord;
+    const auto &coord = pointer->coord;
     std::vector<double> diff(3, 0.0);
 
     for (int i = 0; i < 3; i++) {

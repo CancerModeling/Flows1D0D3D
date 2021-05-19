@@ -97,6 +97,8 @@ int util::unet::Network::get_number_of_bifurcations() {
 
     pointer = pointer->global_successor;
   } // loop over vertices
+
+  return num_bifurcations;
 }
 
 
@@ -154,6 +156,110 @@ void util::unet::Network::delete_unconnected_nodes() {
   add_lengths_and_volumes_of_unmarked_network(total_removed_length, total_removed_volume);
   delete_unmarked_nodes();
   reenumerate_dofs();
+}
+
+void util::unet::Network::resize_matrices_direct_solver() {
+  // if we use the coupled solver, we do not need to update the matrices of the direct solver
+  if (d_coupled_solver)
+    return;
+
+  const auto numberOfNodes = VGM.getNumberOfNodes();
+  const auto numberOfNodesOld = b.size();
+
+  // we rescale if the number of dof has changed:
+  d_model_p->d_log("Rescale the 1D matrices and vectors \n", "net update");
+  if (numberOfNodesOld != numberOfNodes) {
+    A_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes,
+                                                   numberOfNodes);
+    b.resize(numberOfNodes);
+    P_v.resize(numberOfNodes);
+
+    C_v.resize(numberOfNodes);
+    C_v_old.resize(numberOfNodes);
+
+    b_c.resize(numberOfNodes);
+  } // update matrix and vector
+}
+
+void util::unet::Network::copy_network_to_vectors() {
+  auto pointer = VGM.getHead();
+  while (pointer) {
+
+    int indexOfNode = pointer->index;
+
+    if (d_coupled_solver) {
+      phi_sigma[N_tot_3D + indexOfNode] = pointer->c_v;
+      phi_sigma_old[N_tot_3D + indexOfNode] = pointer->c_v;
+      P_3D1D[N_tot_3D + indexOfNode] = pointer->p_v;
+    } else {
+      C_v[indexOfNode] = pointer->c_v;
+      C_v_old[indexOfNode] = pointer->c_v;
+      P_v[indexOfNode] = pointer->p_v;
+    }
+
+    pointer = pointer->global_successor;
+  } // loop for update solution in network
+}
+
+void util::unet::Network::resize_matrices_coupled_solver() {
+  if (d_coupled_solver) {
+    auto numberOfNodes = VGM.getNumberOfNodes();
+
+    A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
+      N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
+    b_flow_3D1D.resize(N_tot_3D + numberOfNodes);
+
+    A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
+      N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
+    b_nut_3D1D.resize(N_tot_3D + numberOfNodes);
+
+    // resize function does not change the value of existing elements
+    phi_sigma.resize(N_tot_3D + numberOfNodes);
+    phi_sigma_old.resize(N_tot_3D + numberOfNodes);
+    P_3D1D.resize(N_tot_3D + numberOfNodes);
+
+    for (int i = 0; i < N_tot_3D; i++) {
+      phi_sigma[i] = phi_sigma_3D[i];
+      phi_sigma_old[i] = phi_sigma_3D[i];
+      P_3D1D[i] = P_3D[i];
+    }
+  } // update matrix and vector
+}
+
+void util::unet::Network::set_bc_of_added_vessels_to_neumann() {
+  auto pointer = VGM.getHead();
+
+  while (pointer) {
+
+    int numberOfNeighbors = pointer->neighbors.size();
+
+    if (numberOfNeighbors == 1 && !pointer->is_given) {
+
+      const auto &coord = pointer->coord;
+
+      std::cout << "Set inner node to boundary node" << std::endl;
+
+      pointer->typeOfVGNode = TypeOfNode::NeumannNode;
+    }
+
+    pointer = pointer->global_successor;
+  }
+}
+
+void util::unet::Network::reset_edge_flags() {
+  auto pointer = VGM.getHead();
+
+  while (pointer) {
+
+    int numberOfEdges = pointer->neighbors.size();
+
+    for (int i = 0; i < numberOfEdges; i++) {
+      pointer->edge_touched[i] = false;
+      pointer->sprouting_edge[i] = false;
+    }
+
+    pointer = pointer->global_successor;
+  }
 }
 
 void util::unet::Network::delete_old_sprouters() {
