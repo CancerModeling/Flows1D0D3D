@@ -95,58 +95,9 @@ void util::unet::Network::updateNetwork(BaseAssembly &taf_sys,
       // delete all the unconnected nodes
       delete_unconnected_nodes();
 
-      auto pointer = VGM.getHead();
-
-      while (pointer) {
-
-        int numberOfNeighbors = pointer->neighbors.size();
-
-        for (int i = 0; i < numberOfNeighbors; i++) {
-
-          double length = util::dist_between_points(
-            pointer->coord, pointer->neighbors[i]->coord);
-
-          if (length < 1.0e-16) {
-            std::cout << "\n"
-                      << "neighbor removed length=0!!!" << std::endl;
-
-            std::cout << "Node before removal " << std::endl;
-            pointer->printInformationOfNode();
-
-            pointer->removeComponent(i);
-
-            std::cout << " " << std::endl;
-            std::cout << "Node after removal " << std::endl;
-            pointer->printInformationOfNode();
-          }
-        }
-
-        pointer = pointer->global_successor;
-      }
-
-      std::cout << " " << std::endl;
-      std::cout << "Remove single nodes" << std::endl;
-      pointer = VGM.getHead();
-
-      while (pointer) {
-
-        int numberOfEdges = pointer->neighbors.size();
-
-        // we back up the successor for traversing the list after deleting a vessel
-        auto successor = pointer->global_successor;
-
-        // if it has no edges we can remove it
-        if (numberOfEdges == 0) {
-          std::cout << "Remove node: " << pointer->index << std::endl;
-          VGM.remove(pointer);
-        }
-
-        pointer = successor;
-      }
-
       std::cout << " " << std::endl;
       std::cout << "Reset nodes" << std::endl;
-      pointer = VGM.getHead();
+      auto pointer = VGM.getHead();
 
       while (pointer) {
 
