@@ -46,6 +46,10 @@ target_link_libraries(${ProjectName}Abstract33VesselsGeometry argparse)
 add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
 target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})
 
+add_executable(${ProjectName}Calibration calibration.cpp)
+target_link_libraries(${ProjectName}Calibration ${ProjectLib})
+target_link_libraries(${ProjectName}Calibration argparse)
+
 add_executable(${ProjectName}Transport transport_test.cpp)
 target_link_libraries(${ProjectName}Transport ${ProjectLib})
 

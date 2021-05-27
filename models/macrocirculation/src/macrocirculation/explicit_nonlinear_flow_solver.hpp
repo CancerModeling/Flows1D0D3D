@@ -25,6 +25,7 @@ class GraphStorage;
 class DofMap;
 class RightHandSideEvaluator;
 class TimeIntegrator;
+class Vertex;
 
 /*! @brief Interpolates a constant value. WARNING: Assumes legendre basis! */
 void interpolate_constant(MPI_Comm comm,
@@ -62,6 +63,10 @@ public:
   DofMap &get_dof_map();
 
   std::vector<double> &get_solution();
+
+  // TODO: Move this somewhere else
+  /*! @brief Calculates the flow Q pointing towards the vertex v. */
+  [[nodiscard]] double get_flow_at_vessel_tip(const Vertex& v) const;
 
 private:
   /*! @brief The mpi communicator. */
