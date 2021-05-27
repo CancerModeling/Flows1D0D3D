@@ -98,7 +98,7 @@ RightHandSideEvaluator::RightHandSideEvaluator(MPI_Comm comm,
       d_dof_map(std::move(dof_map)),
       d_flow_upwind_evaluator(comm, d_graph, d_dof_map),
       d_S_evaluator(default_S{
-        4.0e-5, // 4.5 m Pa/s
+        4.24e-2, // 4.5 mPa / s
         9,      // Poiseuille flow
         0       // 0 cm^2/s, no wall permeability
       }),
