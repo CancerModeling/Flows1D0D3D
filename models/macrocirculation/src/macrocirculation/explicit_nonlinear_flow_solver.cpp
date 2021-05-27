@@ -11,6 +11,7 @@
 
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
+#include "fe_type.hpp"
 #include "graph_storage.hpp"
 #include "right_hand_side_evaluator.hpp"
 #include "time_integrators.hpp"
@@ -171,6 +172,40 @@ void ExplicitNonlinearFlowSolver<degree>::get_static_pressure_on_vertices(std::v
   calculate_total_pressure(*d_graph, *d_vessel_data, *d_dof_map, fe, d_u_now, p_values);
 }
 */
+
+template <size_t degree>
+double ExplicitNonlinearFlowSolver<degree>::get_flow_at_vessel_tip(const Vertex& v) const {
+  if (!v.is_leaf())
+    throw std::runtime_error( "flow can only be calculated at leafs" );
+
+  const auto e_id = v.get_edge_neighbors()[0];
+
+  const auto& edge = *d_graph->get_edge(e_id);
+
+  const auto ldofmap = d_dof_map->get_local_dof_map(edge);
+
+  QuadratureFormula qf = create_gauss4();
+  FETypeNetwork fe(qf, ldofmap.num_basis_functions() - 1);
+
+  std::vector< size_t > dof_indices(ldofmap.num_basis_functions(), 0);
+
+  if ( edge.is_pointing_to(v.get_id()) ) {
+    ldofmap.dof_indices(edge.num_micro_edges()-1, 0, dof_indices );
+  } else {
+    ldofmap.dof_indices(0, 0, dof_indices );
+  }
+
+  std::vector< double > dof_values(ldofmap.num_basis_functions(), 0);
+  extract_dof(dof_indices, d_u_now, dof_values);
+  auto boundary_values = fe.evaluate_dof_at_boundary_points(dof_values);
+
+  if ( edge.is_pointing_to(v.get_id()) ) {
+    return boundary_values.right;
+  } else {
+    return - boundary_values.left;
+  }
+}
+
 
 // template instantiations:
 template class ExplicitNonlinearFlowSolver<0>;
