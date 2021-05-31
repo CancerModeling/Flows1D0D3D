@@ -9,6 +9,7 @@
 #include <chrono>
 #include <macrocirculation/communication/mpi.hpp>
 #include <memory>
+#include <utility>
 
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
@@ -20,6 +21,7 @@
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
+#include "macrocirculation/windkessel_calibrator.hpp"
 
 namespace mc = macrocirculation;
 
@@ -61,8 +63,7 @@ int main(int argc, char *argv[]) {
   graph->get_vertex(0)->set_to_inflow(mc::heart_beat_inflow(program.get<double>("--heart-amplitude")));
 
   // set all vertices to free-outflow
-  for (auto v_id : graph->get_vertex_ids())
-  {
+  for (auto v_id : graph->get_vertex_ids()) {
     auto v = graph->get_vertex(v_id);
     if (v->is_windkessel_outflow())
       v->set_to_free_outflow();
@@ -99,25 +100,7 @@ int main(int argc, char *argv[]) {
 
   mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map_flow, dof_map_transport);
 
-  double total_C_e = 0;
-  for (auto e_id : graph->get_active_edge_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
-    auto e = graph->get_edge(e_id);
-    auto& data = e->get_physical_data();
-
-    double c0 = mc::calculate_c0(data.G0, data.rho, data.A0); // [cm/s]
-
-    // in meter
-    double C_e = (1e-2*data.length) * (1e-4*data.A0) / (1060 * std::pow(1e-2*c0, 2));
-
-    total_C_e += C_e;
-  }
-
-  // set the total flows of the leaf nodes to zero
-  std::map<size_t, double> total_flows;
-  for (auto v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
-    if (graph->get_vertex(v_id)->is_leaf())
-      total_flows[v_id] = 0.;
-  }
+  mc::WindkesselCalibrator calibrator( graph, true );
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
@@ -125,11 +108,7 @@ int main(int argc, char *argv[]) {
     flow_solver.solve();
 
     // add total flows
-    for (auto v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
-      auto v = graph->get_vertex(v_id);
-      if (v->is_leaf())
-        total_flows[v_id] += flow_solver.get_flow_at_vessel_tip(*v) * tau;
-    }
+    calibrator.update_flow(flow_solver, tau);
 
     if (it % output_interval == 0) {
       if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
@@ -138,43 +117,7 @@ int main(int argc, char *argv[]) {
       csv_writer.write(it * tau, flow_solver.get_solution(), transport_solver.get_solution());
 
       // double estimate parameters
-      {
-        // print the total flows
-        double sum_of_flows = 0;
-        double sum_of_out_flows = 0;
-        double total_R = 1.34e8; // [Pa s / m^-3]
-        double total_C = 9.45e-9; // [m^3 / Pa]
-        for (auto v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
-          auto v = graph->get_vertex(v_id);
-          if (v->is_leaf())
-          {
-            std::cout << "flow at " << v_id << " = " << total_flows[v_id] << std::endl;
-            sum_of_flows += total_flows[v_id];
-            if (v->is_free_outflow())
-            {
-              sum_of_out_flows += total_flows[v_id];
-            }
-          }
-        }
-        MPI_Allreduce(&sum_of_flows, &sum_of_flows, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-        MPI_Allreduce(&sum_of_out_flows, &sum_of_out_flows, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-        std::cout << "sum = " << sum_of_flows << std::endl;
-
-        // divide resistances
-        for (auto v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
-          auto v = graph->get_vertex(v_id);
-          if (v->is_free_outflow()) {
-            auto z = total_flows[v_id] / sum_of_out_flows;
-            double local_R = total_R / z;
-            double R_1 = 4. / 5. * local_R;
-            double R_2 = 1. / 5. * local_R;
-            double C = z * (total_C - total_C_e);
-
-            std::cout << "vertex=" << v_id << " R=" << local_R << " R_1=" << R_1 << " R_2=" << R_2 << " C=" << C << std::endl;
-          }
-        }
-      }
+      calibrator.estimate_parameters();
     }
 
     // break

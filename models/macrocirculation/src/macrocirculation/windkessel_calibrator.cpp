@@ -1,0 +1,108 @@
+////////////////////////////////////////////////////////////////////////////////
+//  Copyright (c) 2021 Andreas Wagner.
+//
+//  Distributed under the Boost Software License, Version 1.0. (See accompanying
+//  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+////////////////////////////////////////////////////////////////////////////////
+
+#include <cmath>
+#include <iostream>
+
+#include "communication/mpi.hpp"
+#include "graph_storage.hpp"
+#include "vessel_formulas.hpp"
+#include "windkessel_calibrator.hpp"
+
+namespace macrocirculation {
+
+WindkesselCalibrator::WindkesselCalibrator(std::shared_ptr<GraphStorage> graph, bool verbose)
+    : d_graph(std::move(graph)),
+      d_verbose(verbose),
+      d_total_C_edge(0),
+      d_total_R(1.34e8), // [Pa s / m^-3]
+      d_total_C(9.45e-9) // [m^3 / Pa]
+{
+  reset();
+}
+
+void WindkesselCalibrator::reset() {
+  reset_total_flows();
+  calculate_total_edge_capacitance();
+}
+
+void WindkesselCalibrator::reset_total_flows() {
+  d_total_flows.clear();
+
+  for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
+    if (d_graph->get_vertex(v_id)->is_leaf())
+      d_total_flows[v_id] = 0.;
+  }
+}
+
+void WindkesselCalibrator::calculate_total_edge_capacitance() {
+  d_total_C_edge = 0;
+  for (auto e_id : d_graph->get_active_edge_ids(mpi::rank(MPI_COMM_WORLD))) {
+    auto e = d_graph->get_edge(e_id);
+    auto &data = e->get_physical_data();
+
+    double c0 = calculate_c0(data.G0, data.rho, data.A0); // [cm/s]
+
+    // in meter
+    double C_e = (1e-2 * data.length) * (1e-4 * data.A0) / (1060 * std::pow(1e-2 * c0, 2));
+
+    d_total_C_edge += C_e;
+  }
+
+  MPI_Allreduce(&d_total_C_edge, &d_total_C_edge, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+}
+
+std::map<size_t, RCRData> WindkesselCalibrator::estimate_parameters() {
+
+  // print the total flows
+  double sum_of_flows = 0;
+  double sum_of_out_flows = 0;
+  for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
+    auto v = d_graph->get_vertex(v_id);
+    if (v->is_leaf()) {
+      if (d_verbose)
+        std::cout << "flow at " << v_id << " = " << d_total_flows[v_id] << std::endl;
+      sum_of_flows += d_total_flows[v_id];
+      if (v->is_free_outflow()) {
+        sum_of_out_flows += d_total_flows[v_id];
+      }
+    }
+  }
+  MPI_Allreduce(&sum_of_flows, &sum_of_flows, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&sum_of_out_flows, &sum_of_out_flows, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+  if (d_verbose)
+    std::cout << "flow-sum = " << sum_of_flows << std::endl;
+
+  std::map<size_t, RCRData> resistances;
+
+  // divide resistances
+  for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
+    auto v = d_graph->get_vertex(v_id);
+    if (v->is_free_outflow()) {
+      auto z = d_total_flows[v_id] / sum_of_out_flows;
+      double local_R = d_total_R / z;
+      double R_1 = 4. / 5. * local_R;
+      double R_2 = 1. / 5. * local_R;
+      double C = z * (d_total_C - d_total_C_edge);
+
+      if (d_verbose)
+        std::cout << "vertex=" << v_id << " R=" << local_R << " R_1=" << R_1 << " R_2=" << R_2 << " C=" << C << std::endl;
+
+      resistances[v_id] = {R_1, R_2, C};
+    }
+  }
+
+  return resistances;
+};
+
+void WindkesselCalibrator::set_total_C(double C) { d_total_C = C; }
+
+void WindkesselCalibrator::set_total_R(double R) { d_total_R = R; }
+
+
+} // namespace macrocirculation
