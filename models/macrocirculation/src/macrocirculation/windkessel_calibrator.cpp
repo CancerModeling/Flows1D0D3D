@@ -6,7 +6,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cmath>
+#include <iomanip>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 #include "communication/mpi.hpp"
 #include "graph_storage.hpp"
@@ -19,8 +21,8 @@ WindkesselCalibrator::WindkesselCalibrator(std::shared_ptr<GraphStorage> graph, 
     : d_graph(std::move(graph)),
       d_verbose(verbose),
       d_total_C_edge(0),
-      d_total_R(1.34e8), // [Pa s / m^-3]
-      d_total_C(9.45e-9) // [m^3 / Pa]
+      d_total_R(1.34),   // 1.34e8 Pa s / m^3   ([Pa s / m^-3] = 10^{-8} [kg/s cm])
+      d_total_C(9.45e-1) // 9.e5e-9 m^3/Pa ([m^3 / Pa] = 10^8 [cm s^2 / kg])
 {
   reset();
 }
@@ -91,9 +93,9 @@ std::map<size_t, RCRData> WindkesselCalibrator::estimate_parameters() {
       double C = z * (d_total_C - d_total_C_edge);
 
       if (d_verbose)
-        std::cout << "vertex=" << v_id << " R=" << local_R << " R_1=" << R_1 << " R_2=" << R_2 << " C=" << C << std::endl;
+        std::cout << "vertex=" << v->get_name() << " R=" << local_R * 1e-1 << "10^9 Pa s m^{-3}, C=" << C * 1e2 << " 10^{-10} m^3 Pa^{-1}" << std::endl;
 
-      resistances[v_id] = {R_1, R_2, C};
+      resistances[v_id] = {local_R, C};
     }
   }
 
@@ -103,6 +105,35 @@ std::map<size_t, RCRData> WindkesselCalibrator::estimate_parameters() {
 void WindkesselCalibrator::set_total_C(double C) { d_total_C = C; }
 
 void WindkesselCalibrator::set_total_R(double R) { d_total_R = R; }
+
+void parameters_to_json(const std::string &filepath, const std::map<size_t, RCRData> &parameters, const std::shared_ptr<GraphStorage> &storage) {
+  if (mpi::size(MPI_COMM_WORLD) > 1)
+    throw std::runtime_error("does not work in parallel yet!");
+
+  using json = nlohmann::json;
+
+  json j;
+
+  j["vertices"] = json::array();
+
+  for (auto it : parameters) {
+    const auto v_id = it.first;
+    const auto data = it.second;
+    const auto &v = *storage->get_vertex(v_id);
+
+    if (v.get_name().empty())
+      throw std::runtime_error("cannot serialize unnamed vertex");
+
+    j["vertices"].push_back({{"name", v.get_name()},
+                             {"peripheral_resistance", data.resistance},
+                             {"peripheral_compliance", data.capacitance}});
+  }
+
+  // write back
+  std::ofstream o(filepath);
+  o << std::setw(4);
+  o << j;
+}
 
 
 } // namespace macrocirculation

@@ -125,6 +125,8 @@ int main(int argc, char *argv[]) {
       break;
   }
 
+  mc::parameters_to_json("data/boundary-data-33-vessels.json", calibrator.estimate_parameters(), graph);
+
   const auto end_t = std::chrono::steady_clock::now();
   const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
   std::cout << "time = " << elapsed_ms * 1e-6 << " s" << std::endl;
