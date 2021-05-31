@@ -391,4 +391,22 @@ std::vector<std::shared_ptr<Vertex>> GraphStorage::find_embedded_vertices(const 
   return found_vertices;
 }
 
+std::shared_ptr<Edge> GraphStorage::find_edge_by_name(const std::string &name) {
+  auto pos = std::find_if(p_edges.begin(), p_edges.end(), [&](auto e) { return e.second->get_name() == name; });
+
+  if (pos == p_edges.end())
+    throw std::runtime_error("edge " + name + " not found in graph storage.");
+
+  return pos->second;
+}
+
+std::shared_ptr<Vertex> GraphStorage::find_vertex_by_name(const std::string &name) {
+  auto pos = std::find_if(p_vertices.begin(), p_vertices.end(), [&](auto v) { return v.second->get_name() == name; });
+
+  if (pos == p_vertices.end())
+    throw std::runtime_error("vertex " + name + " not found in graph storage.");
+
+  return pos->second;
+}
+
 } // namespace macrocirculation
