@@ -26,10 +26,6 @@ target_link_libraries(${ProjectName}NonlinearFlowLine ${ProjectLib})
 add_executable(${ProjectName}NonlinearFlowBifurcation nonlinear_flow_bifurcation.cpp)
 target_link_libraries(${ProjectName}NonlinearFlowBifurcation ${ProjectLib})
 
-# test bifurcation flow:
-add_executable(${ProjectName}BifurcationFlow test_bifurcation_flow.cpp)
-target_link_libraries(${ProjectName}BifurcationFlow ${ProjectLib})
-
 # test the convergence:
 add_executable(${ProjectName}ConvergenceStudy convergence_study.cpp)
 target_link_libraries(${ProjectName}ConvergenceStudy ${ProjectLib})
