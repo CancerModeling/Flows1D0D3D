@@ -19,9 +19,8 @@ template<size_t degree>
 class ExplicitNonlinearFlowSolver;
 
 struct RCRData {
-  double R_1;
-  double R_2;
-  double C;
+  double resistance;
+  double capacitance;
 };
 
 class WindkesselCalibrator {
@@ -67,6 +66,8 @@ protected:
   /*! @brief The total capacitance of the whole human body. Per default in SI-Units */
   double d_total_C;
 };
+
+void parameters_to_json(const std::string &filepath, const std::map<size_t, RCRData> &parameters, const std::shared_ptr<GraphStorage> &storage);
 
 } // namespace macrocirculation
 
