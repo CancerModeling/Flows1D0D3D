@@ -121,8 +121,13 @@ public:
 
   std::size_t get_id() const;
 
+  const std::string& get_name() const;
+  void set_name(const std::string& name);
+
 protected:
   std::size_t p_id;
+
+  std::string p_name;
 };
 
 // TODO: add securicty assertion to Vertex for a flow type

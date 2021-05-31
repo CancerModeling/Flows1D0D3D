@@ -33,8 +33,8 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
 
   // create the edges between the vertices
   for (auto vessel : j["vessels"]) {
-    size_t left_vertex_id = vertex_offset + vessel["left_vertex_id"].get< size_t >();
-    size_t right_vertex_id = vertex_offset + vessel["right_vertex_id"].get< size_t >();
+    size_t left_vertex_id = vertex_offset + vessel["left_vertex_id"].get<size_t>();
+    size_t right_vertex_id = vertex_offset + vessel["right_vertex_id"].get<size_t>();
 
     assert(left_vertex_id < num_vertices + vertex_offset);
     assert(right_vertex_id < num_vertices + vertex_offset);
@@ -76,20 +76,34 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
     const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * E * wall_thickness / std::sqrt(A0);
     const double length = vessel["vessel_length"];
 
+    if (vessel.contains("name"))
+      edge->set_name(vessel["name"]);
+
     edge->add_physical_data({G0, A0, d_rho, length});
   }
 
   for (auto vertex : j["vertices"]) {
     size_t id = vertex["id"];
 
-    auto &v = *graph.get_vertex(id+vertex_offset);
+    auto &v = *graph.get_vertex(id + vertex_offset);
 
     if (!v.is_leaf() && (vertex.contains("peripheral_resistance") || vertex.contains("peripheral_compliance")))
       throw std::runtime_error("malformed network");
 
+    // if the vertex has a name we add it, otherwise we generate it.
+    if (vertex.contains("name")) {
+      v.set_name(vertex["name"]);
+    } else {
+      std::stringstream name;
+      name << "bifurcation";
+      for (auto e_id : v.get_edge_neighbors())
+        name << "_" << e_id;
+      v.set_name(name.str());
+    }
+
     if (v.is_leaf()) {
       if (vertex.contains("peripheral_resistance") || vertex.contains("peripheral_compliance")) {
-      // if (false) {
+        // if (false) {
         const double r = vertex["peripheral_resistance"];
         const double c = vertex["peripheral_compliance"];
         v.set_to_windkessel_outflow(r, c);
