@@ -23,6 +23,9 @@ public:
   /*! @brief Appends the data from the input file to the given graph storage. */
   void append(const std::string &filepath, GraphStorage & graph) const;
 
+  /*! @brief Overwrites the boundary data for the vertices in the given file. */
+  void set_boundary_data(const std::string &filepath, GraphStorage & graph) const;
+
 private:
   double d_rho;
 };
