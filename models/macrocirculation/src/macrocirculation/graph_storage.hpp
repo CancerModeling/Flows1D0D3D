@@ -121,8 +121,8 @@ public:
 
   std::size_t get_id() const;
 
-  const std::string& get_name() const;
-  void set_name(const std::string& name);
+  const std::string &get_name() const;
+  void set_name(const std::string &name);
 
 protected:
   std::size_t p_id;
@@ -132,7 +132,10 @@ protected:
 
 // TODO: add securicty assertion to Vertex for a flow type
 enum class FlowType {
-  Undefined, Inflow, FreeOutflow, Windkessel
+  Undefined,
+  Inflow,
+  FreeOutflow,
+  Windkessel
 };
 
 class Vertex : public Primitive {
@@ -160,7 +163,7 @@ public:
   /*! @brief Returns the inflow value at the given vertex. */
   double get_inflow_value(double time) const;
 
-  const PeripheralVesselData& get_peripheral_vessel_data() const;
+  const PeripheralVesselData &get_peripheral_vessel_data() const;
 
   bool is_free_outflow() const;
 
@@ -291,6 +294,12 @@ public:
   void assign_edge_to_rank(Edge &edge, int rank);
 
   std::vector<std::shared_ptr<Vertex>> find_embedded_vertices(const Point &p) const;
+
+  /*! @brief Searches the given named edge. */
+  std::shared_ptr<Edge> find_edge_by_name(const std::string &name);
+
+  /*! @brief Searches the given named vertex. */
+  std::shared_ptr<Vertex> find_vertex_by_name(const std::string &name);
 
 private:
   std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_id, std::size_t num_micro_edges);
