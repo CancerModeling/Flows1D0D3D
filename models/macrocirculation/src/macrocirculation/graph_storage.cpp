@@ -36,6 +36,14 @@ std::size_t Primitive::get_id() const {
   return p_id;
 }
 
+const std::string &Primitive::get_name() const {
+  return p_name;
+}
+
+void Primitive::set_name(const std::string &name) {
+  p_name = name;
+}
+
 double default_inflow_function(double) {
   throw std::runtime_error("inflow value at inflow boundary not set");
 }
@@ -43,8 +51,7 @@ double default_inflow_function(double) {
 Vertex::Vertex(std::size_t id)
     : Primitive(id),
       p_flow_type(FlowType::Undefined),
-      p_inflow_value(default_inflow_function)
-{}
+      p_inflow_value(default_inflow_function) {}
 
 const std::vector<std::size_t> &Vertex::get_edge_neighbors() const {
   return p_neighbors;
@@ -80,7 +87,7 @@ void Vertex::set_to_windkessel_outflow(double r, double c) {
   p_peripheral_vessel_data.compliance = c;
 }
 
-const PeripheralVesselData& Vertex::get_peripheral_vessel_data() const { return p_peripheral_vessel_data; }
+const PeripheralVesselData &Vertex::get_peripheral_vessel_data() const { return p_peripheral_vessel_data; }
 
 bool Vertex::is_free_outflow() const { return p_flow_type == FlowType::FreeOutflow; }
 
