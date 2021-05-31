@@ -114,4 +114,30 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
   }
 }
 
+void EmbeddedGraphReader::set_boundary_data(const std::string &filepath, GraphStorage &graph) const {
+  using json = nlohmann::json;
+
+  std::fstream file(filepath, std::ios::in);
+  json j;
+  file >> j;
+
+  for (const auto &vertex : j["vertices"]) {
+    if (!vertex.contains("name"))
+      throw std::runtime_error("boundary data can only be set for named vertices");
+
+    auto &v = *graph.find_vertex_by_name(vertex["name"]);
+
+    if (v.is_leaf()) {
+      if (vertex.contains("peripheral_resistance") || vertex.contains("peripheral_compliance")) {
+        // if (false) {
+        const double r = vertex["peripheral_resistance"];
+        const double c = vertex["peripheral_compliance"];
+        v.set_to_windkessel_outflow(r, c);
+      } else {
+        v.set_to_free_outflow();
+      }
+    }
+  }
+}
+
 } // namespace macrocirculation
