@@ -55,6 +55,16 @@ if(NOT cxxopts_POPULATED)
     add_subdirectory(${cxxopts_SOURCE_DIR} ${cxxopts_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
+# fmt
+FetchContent_Declare(fmt
+        GIT_REPOSITORY https://github.com/fmtlib/fmt
+        GIT_TAG 7.1.3)
+FetchContent_GetProperties(fmt)
+if(NOT fmt_POPULATED)
+    FetchContent_Populate(fmt)
+    add_subdirectory(${fmt_SOURCE_DIR} ${fmt_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
 # debug output flags
 message("LIBMESH_DEFINITIONS = ${PC_LIBMESH_CFLAGS_DEFS}")
 message("LIBMESH_FLAGS = ${PC_LIBMESH_CFLAGS_FLAGS}")
