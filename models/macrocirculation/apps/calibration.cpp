@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
         std::cout << "iter = " << it << ", t = " << flow_solver.get_time() << std::endl;
 
       // double estimate parameters
-      calibrator.estimate_parameters();
+      calibrator.estimate_parameters_local();
     }
 
     // break

@@ -58,7 +58,7 @@ void WindkesselCalibrator::calculate_total_edge_capacitance() {
   MPI_Allreduce(&d_total_C_edge, &d_total_C_edge, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 }
 
-std::map<size_t, RCRData> WindkesselCalibrator::estimate_parameters() {
+std::map<size_t, RCRData> WindkesselCalibrator::estimate_parameters_local() {
 
   // print the total flows
   double sum_of_flows = 0;
@@ -88,8 +88,6 @@ std::map<size_t, RCRData> WindkesselCalibrator::estimate_parameters() {
     if (v->is_free_outflow()) {
       auto z = d_total_flows[v_id] / sum_of_out_flows;
       double local_R = d_total_R / z;
-      double R_1 = 4. / 5. * local_R;
-      double R_2 = 1. / 5. * local_R;
       double C = z * (d_total_C - d_total_C_edge);
 
       if (d_verbose)
@@ -102,13 +100,36 @@ std::map<size_t, RCRData> WindkesselCalibrator::estimate_parameters() {
   return resistances;
 };
 
+std::map<size_t, RCRData> WindkesselCalibrator::estimate_parameters() {
+  auto local_parameters = estimate_parameters_local();
+  std::map<size_t, RCRData> global_parameters;
+
+  std::array<double, 2> data{0., 0.};
+
+  for (auto v_id : d_graph->get_vertex_ids()) {
+    auto v = d_graph->get_vertex(v_id);
+    if (v->is_free_outflow()) {
+      auto &e = *d_graph->get_edge(v->get_edge_neighbors()[0]);
+      if (e.rank() == mpi::rank(MPI_COMM_WORLD)) {
+        data[0] = local_parameters[v_id].resistance;
+        data[1] = local_parameters[v_id].capacitance;
+      }
+      MPI_Bcast(&data[0], 2, MPI_DOUBLE, e.rank(), MPI_COMM_WORLD);
+      global_parameters[v_id] = {data[0], data[1]};
+    }
+  }
+
+  return global_parameters;
+}
+
 void WindkesselCalibrator::set_total_C(double C) { d_total_C = C; }
 
 void WindkesselCalibrator::set_total_R(double R) { d_total_R = R; }
 
 void parameters_to_json(const std::string &filepath, const std::map<size_t, RCRData> &parameters, const std::shared_ptr<GraphStorage> &storage) {
-  if (mpi::size(MPI_COMM_WORLD) > 1)
-    throw std::runtime_error("does not work in parallel yet!");
+  // only root writes the file
+  if (mpi::rank(MPI_COMM_WORLD) != 0)
+    return;
 
   using json = nlohmann::json;
 

@@ -43,6 +43,8 @@ public:
     }
   }
 
+  std::map<size_t, RCRData> estimate_parameters_local();
+
   std::map<size_t, RCRData> estimate_parameters();
 
   void set_total_C(double C);
