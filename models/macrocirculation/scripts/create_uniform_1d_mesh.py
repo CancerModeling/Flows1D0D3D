@@ -45,7 +45,7 @@ def create_uniform_mesh(data, h):
     num_vertices = len(data['Network']['Nodes'][0][0][0])
     json_data['vertices'] = []
     for id in range (num_vertices):
-        json_data['vertices'].append({'id': id})
+        json_data['vertices'].append({'id': id, 'name': 'bg_{}'.format(id)})
 
     json_data['vessels'] = []
     num_segments = len(data["Network"]["Links"][0][0][0])
@@ -84,15 +84,13 @@ def create_uniform_mesh(data, h):
             'id': int(seg_id),
             'left_vertex_id': int(segment[0][0][0]-1),
             'right_vertex_id': int(segment[1][0][0]-1),
+            'name': 'bg_{}'.format(seg_id),
             'embedded_coordinates': points,
-            'abstract_coordinates': abstract_coordinates,
+            'number_edges': len(points)-1,
             'vessel_length': vessel_length,
-            'micro_edge_length': vessel_length/(num_points-1),
-            'wall_thickness': 0.1,      # completely artificial
-            #'elastic_modulus': 6.4e5,    # completely artificial
+            'wall_thickness': 0.005,      # completely artificial
             'elastic_modulus': 1.3e6,    # completely artificial
             'radii': radii,
-            # 'pv0': pv0
         }
         json_data['vessels'].append(vessel)
 
