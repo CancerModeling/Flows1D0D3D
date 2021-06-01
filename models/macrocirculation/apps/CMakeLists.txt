@@ -52,7 +52,7 @@ target_link_libraries(${ProjectName}Transport ${ProjectLib})
 # Darcy's flow in 3D tissue domain
 add_executable(${ProjectName}Darcy3D tissue_domain_darcy.cpp)
 target_link_libraries(${ProjectName}Darcy3D ${ProjectLib})
-target_link_libraries(${ProjectName}Darcy3D cxxopts)
+target_link_libraries(${ProjectName}Darcy3D cxxopts fmt)
 
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
