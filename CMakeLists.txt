@@ -44,15 +44,15 @@ else ()
     endif()
 endif()
 
-# argparse
+# cxxopts
 include(FetchContent)
-FetchContent_Declare(argparse
-        GIT_REPOSITORY https://github.com/p-ranav/argparse.git
-        GIT_TAG v2.1)
-FetchContent_GetProperties(argparse)
-if(NOT argparse_POPULATED)
-    FetchContent_Populate(argparse)
-    add_subdirectory(${argparse_SOURCE_DIR} ${argparse_BINARY_DIR} EXCLUDE_FROM_ALL)
+FetchContent_Declare(cxxopts
+        GIT_REPOSITORY https://github.com/jarro2783/cxxopts
+        GIT_TAG a20bda6179b41c0cf49d557b0b21c3fb4f6c09b7)
+FetchContent_GetProperties(cxxopts)
+if(NOT cxxopts_POPULATED)
+    FetchContent_Populate(cxxopts)
+    add_subdirectory(${cxxopts_SOURCE_DIR} ${cxxopts_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
 # debug output flags
