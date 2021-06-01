@@ -70,8 +70,6 @@ int main(int argc, char *argv[]) {
 
   auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map_flow->create(MPI_COMM_WORLD, *graph, 2, degree, false);
-  auto dof_map_transport = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
-  dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, false);
 
   const double t_end = 1.;
   const std::size_t max_iter = 160000000;
@@ -87,21 +85,16 @@ int main(int argc, char *argv[]) {
   flow_solver.set_tau(tau);
   flow_solver.use_ssp_method();
 
-  mc::Transport transport_solver(MPI_COMM_WORLD, graph, dof_map_flow, dof_map_transport);
-
   std::vector<mc::Point> points;
   std::vector<double> Q_vertex_values;
   std::vector<double> A_vertex_values;
   std::vector<double> p_total_vertex_values;
   std::vector<double> p_static_vertex_values;
 
-  mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map_flow, dof_map_transport);
-
   mc::WindkesselCalibrator calibrator(graph, true);
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    transport_solver.solve(it * tau, tau, flow_solver.get_solution());
     flow_solver.solve();
 
     // add total flows
@@ -110,8 +103,6 @@ int main(int argc, char *argv[]) {
     if (it % output_interval == 0) {
       if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
         std::cout << "iter = " << it << ", t = " << flow_solver.get_time() << std::endl;
-
-      csv_writer.write(it * tau, flow_solver.get_solution(), transport_solver.get_solution());
 
       // double estimate parameters
       calibrator.estimate_parameters();
