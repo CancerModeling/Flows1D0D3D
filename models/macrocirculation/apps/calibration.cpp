@@ -14,12 +14,10 @@
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
-#include "macrocirculation/graph_flow_and_concentration_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
-#include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 #include "macrocirculation/windkessel_calibrator.hpp"
 
@@ -31,24 +29,23 @@ int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
   cxxopts::Options options(argv[0], "Abstract 33 vessel geometry");
-  options.add_options()                                                                                                      //
-    ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/network-33-vessels.json")) //
-    ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                    //
-    ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                         //
-    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-3"))                            //
+  options.add_options()                                                                                                              //
+    ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/network-33-vessels.json"))         //
+    ("output-file", "path to the output file", cxxopts::value<std::string>()->default_value("./data/boundary-data-33-vessels.json")) //
+    ("inflow-vertex-name", "the name of the inflow vertex", cxxopts::value<std::string>()->default_value("cw_in"))                   //
+    ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                            //
+    ("heart-period", "the period of one heartbeat", cxxopts::value<double>()->default_value("1."))                                   //
+    ("heart-systole-period", "the period of one heartbeat", cxxopts::value<double>()->default_value("0.3"))                          //
+    ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                                 //
+    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                                    //
+    ("t-end", "Time when our simulation ends", cxxopts::value<double>()->default_value("1."))                                        //
+    ("verbose", "verbose output", cxxopts::value<bool>()->default_value("false"))                                                    //
     ("h,help", "print usage");
-  options.allow_unrecognised_options(); // for petsc
+  // options.allow_unrecognised_options(); // for petsc, but we do not use petsc here :P
   auto args = options.parse(argc, argv);
   if (args.count("help")) {
     std::cout << options.help() << std::endl;
     exit(0);
-  }
-  if (!args.unmatched().empty())
-  {
-    std::cout << "The following arguments were unmatched: " << std::endl;
-    for (auto &it : args.unmatched())
-      std::cout << " " << it;
-    std::cout << "\nAre they part of petsc or a different auxillary library?" << std::endl;
   }
 
   // create_for_node the ascending aorta
@@ -57,7 +54,13 @@ int main(int argc, char *argv[]) {
   mc::EmbeddedGraphReader graph_reader;
   graph_reader.append(args["input-file"].as<std::string>(), *graph);
 
-  graph->get_vertex(0)->set_to_inflow(mc::heart_beat_inflow(args["heart-amplitude"].as<double>()));
+  auto heart_amplitude = args["heart-amplitude"].as<double>();
+  auto heart_period = args["heart-period"].as<double>();
+  auto heart_systole_period = args["heart-systole-period"].as<double>();
+  if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
+    std::cout << "heart amplitude = " << heart_amplitude << " period = " << heart_period << " systole-period = " << heart_systole_period << std::endl;
+  auto heart = mc::heart_beat_inflow(heart_amplitude, heart_period, heart_systole_period);
+  graph->find_vertex_by_name(args["inflow-vertex-name"].as<std::string>())->set_to_inflow(heart);
 
   // set all vertices to free-outflow
   for (auto v_id : graph->get_vertex_ids()) {
@@ -71,7 +74,7 @@ int main(int argc, char *argv[]) {
   auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map_flow->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
-  const double t_end = 1.;
+  const double t_end = args["t-end"].as<double>();
   const std::size_t max_iter = 160000000;
 
   const auto tau = args["tau"].as<double>();
@@ -91,7 +94,7 @@ int main(int argc, char *argv[]) {
   std::vector<double> p_total_vertex_values;
   std::vector<double> p_static_vertex_values;
 
-  mc::WindkesselCalibrator calibrator(graph, true);
+  mc::WindkesselCalibrator calibrator(graph, args["verbose"].as<bool>());
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
@@ -113,7 +116,7 @@ int main(int argc, char *argv[]) {
       break;
   }
 
-  mc::parameters_to_json("data/boundary-data-33-vessels.json", calibrator.estimate_parameters(), graph);
+  mc::parameters_to_json(args["output-file"].as<std::string>(), calibrator.estimate_parameters(), graph);
 
   const auto end_t = std::chrono::steady_clock::now();
   const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
