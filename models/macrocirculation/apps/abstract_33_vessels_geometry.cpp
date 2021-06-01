@@ -5,8 +5,8 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <argparse.hpp>
 #include <chrono>
+#include <cxxopts.hpp>
 #include <memory>
 
 #include "macrocirculation/dof_map.hpp"
@@ -27,37 +27,43 @@ constexpr std::size_t degree = 2;
 int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
-  argparse::ArgumentParser program("Abstract 33 vessel geometry");
-  program.add_argument("--input-file")
-    .help("path to the input file")
-    .default_value(std::string("./data/network-33-vessels.json"));
-  program.add_argument("--heart-amplitude")
-    .help("the amplitude of a heartbeat")
-    .default_value(485.0)
-    .action([](const std::string &value) { return std::stod(value); });
-  program.add_argument("--tau")
-    .help("time step size")
-    .default_value(2.5e-4 / 16.)
-    .action([](const std::string &value) { return std::stod(value); });
-  program.add_argument("--tau-out")
-    .help("time step size for the output")
-    .default_value(1e-3)
-    .action([](const std::string &value) { return std::stod(value); });
-  try {
-    program.parse_args(argc, argv);
-  } catch (const std::runtime_error &err) {
-    std::cout << err.what() << std::endl;
-    std::cout << program;
+  cxxopts::Options options(argv[0], "Abstract 33 vessel geometry");
+  options.add_options()                                                                                                      //
+    ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/network-33-vessels.json")) //
+    ("boundary-file", "path to the file for the boundary conditions", cxxopts::value<std::string>()->default_value("")) //
+    ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                    //
+    ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                         //
+    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-3"))                            //
+    ("h,help", "print usage")
+    ;
+  options.allow_unrecognised_options(); // for petsc
+  auto args = options.parse(argc, argv);
+  if (args.count("help")) {
+    std::cout << options.help() << std::endl;
     exit(0);
+  }
+  if (!args.unmatched().empty()) {
+    std::cout << "The following arguments were unmatched: " << std::endl;
+    for (auto &it : args.unmatched())
+      std::cout << " " << it;
+    std::cout << "\nAre they part of petsc or a different auxillary library?" << std::endl;
   }
 
   // create_for_node the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
 
   mc::EmbeddedGraphReader graph_reader;
-  graph_reader.append(program.get<std::string>("--input-file"), *graph);
+  graph_reader.append(args["input-file"].as<std::string>(), *graph);
 
-  graph->get_vertex(0)->set_to_inflow(mc::heart_beat_inflow(program.get<double>("--heart-amplitude")));
+  // read in other data
+  auto boundary_file_path =  args["boundary-file"].as< std::string >();
+  if (!boundary_file_path.empty())
+  {
+    std::cout << "Using separate file at " << boundary_file_path << " for boundary conditions." << std::endl;
+    graph_reader.set_boundary_data(boundary_file_path, *graph);
+  }
+
+  graph->get_vertex(0)->set_to_inflow(mc::heart_beat_inflow(args["heart-amplitude"].as<double>()));
 
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
@@ -69,8 +75,8 @@ int main(int argc, char *argv[]) {
   const double t_end = 10;
   const std::size_t max_iter = 160000000;
 
-  const auto tau = program.get<double>("--tau");
-  const auto tau_out = program.get<double>("--tau-out");
+  const auto tau = args["tau"].as<double>();
+  const auto tau_out = args["tau-out"].as<double>();
   // const double tau_out = tau;
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
   std::cout << "tau = " << tau << ", tau_out = " << tau_out << ", output_interval = " << output_interval << std::endl;
