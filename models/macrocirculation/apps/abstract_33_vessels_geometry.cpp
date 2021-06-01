@@ -30,12 +30,12 @@ int main(int argc, char *argv[]) {
   cxxopts::Options options(argv[0], "Abstract 33 vessel geometry");
   options.add_options()                                                                                                      //
     ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/network-33-vessels.json")) //
-    ("boundary-file", "path to the file for the boundary conditions", cxxopts::value<std::string>()->default_value("")) //
+    ("boundary-file", "path to the file for the boundary conditions", cxxopts::value<std::string>()->default_value(""))      //
+    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))              //
     ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                    //
     ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                         //
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-3"))                            //
-    ("h,help", "print usage")
-    ;
+    ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
   if (args.count("help")) {
@@ -56,9 +56,8 @@ int main(int argc, char *argv[]) {
   graph_reader.append(args["input-file"].as<std::string>(), *graph);
 
   // read in other data
-  auto boundary_file_path =  args["boundary-file"].as< std::string >();
-  if (!boundary_file_path.empty())
-  {
+  auto boundary_file_path = args["boundary-file"].as<std::string>();
+  if (!boundary_file_path.empty()) {
     std::cout << "Using separate file at " << boundary_file_path << " for boundary conditions." << std::endl;
     graph_reader.set_boundary_data(boundary_file_path, *graph);
   }
@@ -94,7 +93,7 @@ int main(int argc, char *argv[]) {
   std::vector<double> p_total_vertex_values;
   std::vector<double> p_static_vertex_values;
 
-  mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map_flow, dof_map_transport);
+  mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "data", graph, dof_map_flow, dof_map_transport);
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {

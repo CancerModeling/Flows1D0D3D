@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from matplotlib import pyplot as plt
 import argparse
@@ -7,6 +8,7 @@ parser = argparse.ArgumentParser(description='Plots the vessel data.')
 parser.add_argument('--vessels', type=int, nargs='+', help='A list of ids of the vessels to plot.', default=[15])
 parser.add_argument('--t-start', type=float, default=0)
 parser.add_argument('--t-end', type=float, default=10000)
+parser.add_argument('--output-directory', type=str, default='output')
 parser.add_argument('--no-a', help='do not output A', action='store_true')
 parser.add_argument('--no-q', help='do not output Q', action='store_true')
 parser.add_argument('--no-p', help='do not output p', action='store_true')
@@ -65,23 +67,33 @@ for idx, vessel_id in enumerate(args.vessels):
     else:
         print('not implemented')
 
-    a = np.loadtxt('output/data_A_vessel{:05d}.csv'.format(vessel_id), delimiter=',')
+    path = os.path.join(args.output_directory, 'data_A_vessel{:05d}.csv'.format(vessel_id))
+    print('loading {}'.format(path))
+    a = np.loadtxt(path, delimiter=',')
     a = a[1:]
     a = a[:, int(a.shape[1]/2)]
 
-    q = np.loadtxt('output/data_Q_vessel{:05d}.csv'.format(vessel_id), delimiter=',')
+    path = os.path.join(args.output_directory, 'data_Q_vessel{:05d}.csv'.format(vessel_id))
+    print('loading {}'.format(path))
+    q = np.loadtxt(path, delimiter=',')
     q = q[1:]
     q = q[:, int(q.shape[1]/2)]
 
-    p = np.loadtxt('output/data_p_vessel{:05d}.csv'.format(vessel_id), delimiter=',')
+    path = os.path.join(args.output_directory, 'data_p_vessel{:05d}.csv'.format(vessel_id))
+    print('loading {}'.format(path))
+    p = np.loadtxt(path, delimiter=',')
     p = p[1:]
     p = p[:, int(p.shape[1]/2)]
 
-    c = np.loadtxt('output/data_c_vessel{:05d}.csv'.format(vessel_id), delimiter=',')
+    path = os.path.join(args.output_directory, 'data_c_vessel{:05d}.csv'.format(vessel_id))
+    print('loading {}'.format(path))
+    c = np.loadtxt(path, delimiter=',')
     c = c[1:]
     c = c[:, int(c.shape[1]/2)]
 
-    t = np.loadtxt('output/data_times.csv', delimiter=',')
+    path = os.path.join(args.output_directory, 'data_times.csv')
+    print('loading {}'.format(path))
+    t = np.loadtxt(path, delimiter=',')
 
     start_index = np.sum(t < args.t_start)
     end_index = np.sum(t < args.t_end)
