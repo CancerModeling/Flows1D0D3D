@@ -54,6 +54,11 @@ add_executable(${ProjectName}Darcy3D tissue_domain_darcy.cpp)
 target_link_libraries(${ProjectName}Darcy3D ${ProjectLib})
 target_link_libraries(${ProjectName}Darcy3D cxxopts fmt)
 
+# Test nifti reader
+add_executable(${ProjectName}NiftiRW test_nifti_reader.cpp)
+target_link_libraries(${ProjectName}NiftiRW ${ProjectLib})
+target_link_libraries(${ProjectName}NiftiRW cxxopts)
+
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
                    ${ProjectName}ConvergenceStudy
@@ -62,7 +67,8 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}Abstract33VesselsGeometry
                    ${ProjectName}CombinedGeometry
                    ${ProjectName}Transport
-                   ${ProjectName}Darcy3D)
+                   ${ProjectName}Darcy3D
+                   ${ProjectName}NiftiRW)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
