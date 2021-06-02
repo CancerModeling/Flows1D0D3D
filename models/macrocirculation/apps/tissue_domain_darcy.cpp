@@ -206,30 +206,44 @@ int main(int argc, char *argv[]) {
   // create spatial field of hydraulic conductivity
   auto &hyd_cond = eq_sys.add_system<lm::ExplicitSystem>("K");
   hyd_cond.add_variable("k", lm::CONSTANT, lm::MONOMIAL);
-  // create heterogeneous property field
-  auto bbox = lm::MeshTools::create_bounding_box(mesh);
-  auto xc = 0.5 * bbox.min() + 0.5 * bbox.max();
-  auto l = (bbox.min() - bbox.max()).norm();
-  eq_sys.parameters.set<lm::Point>("center") = xc;
-  eq_sys.parameters.set<double>("length") = l;
-
-  std::vector<unsigned int> dof_indices;
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-    hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
-    auto x = elem->centroid();
-    if ((x - xc).norm() < 0.25 * l)
-      hyd_cond.solution->set(dof_indices[0], 0.1 * input.d_K);
-    else
-      hyd_cond.solution->set(dof_indices[0], input.d_K);
-  }
-  hyd_cond.solution->close();
-  hyd_cond.update();
 
   // create model that holds all essential variables
   log("creating model\n");
   auto model = darcy3d::Model(comm, input, mesh, eq_sys, pres, hyd_cond, log);
+  model.d_dt = input.d_dt;
 
   eq_sys.init();
+
+    // create heterogeneous property field
+    log("setting up K field\n");
+    auto bbox = lm::MeshTools::create_bounding_box(mesh);
+    auto xc = 0.5 * bbox.min() + 0.5 * bbox.max();
+    auto l = (bbox.min() - bbox.max()).norm();
+    eq_sys.parameters.set<lm::Point>("center") = xc;
+    eq_sys.parameters.set<double>("length") = l;
+
+    std::vector<unsigned int> dof_indices;
+    for (const auto &elem : mesh.active_local_element_ptr_range()) {
+        hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
+        auto x = elem->centroid();
+        if ((x - xc).norm() < 0.25 * l)
+            hyd_cond.solution->set(dof_indices[0], 0.1 * input.d_K);
+        else
+            hyd_cond.solution->set(dof_indices[0], input.d_K);
+    }
+    hyd_cond.solution->close();
+    hyd_cond.update();
+
+  // time stepping
+    do {
+        // Prepare time step
+        model.d_step++;
+        model.d_time += model.d_dt;
+
+        auto solve_clock = std::chrono::steady_clock::now();
+        model.d_pres.solve();
+        log("solve time = " + std::to_string(mc::time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+    } while (model.d_time < input.d_T);
 
   // write
   log("writing to file\n");
