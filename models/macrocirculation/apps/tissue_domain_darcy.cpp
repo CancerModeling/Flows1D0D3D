@@ -12,9 +12,9 @@
 
 #include "libmesh/getpot.h"
 #include "libmesh/libmesh.h"
-#include "macrocirculation/vtk_io.hpp"
 #include "macrocirculation/assembly_system.hpp"
 #include "macrocirculation/base_model.hpp"
+#include "macrocirculation/vtk_io.hpp"
 
 namespace mc = macrocirculation;
 
@@ -93,9 +93,9 @@ public:
                          {sys.variable_number("p")}),
         d_model_p(model) {
     sys.attach_assemble_object(
-      *this);                         // attach this element assembly object
-    sys.attach_init_function(ic);     // add ic
-    bc_p(sys.get_equation_systems()); // add bc
+      *this);                     // attach this element assembly object
+    sys.attach_init_function(ic); // add ic
+    //bc_p(sys.get_equation_systems()); // add bc
   }
 
   void assemble() override;
@@ -115,7 +115,7 @@ public:
       : mc::BaseModel(comm, mesh, eq_sys, log, "Darcy_3D"),
         d_input(input),
         d_pres(this, d_mesh, pres),
-        d_hyd_cond(hyd_cond){
+        d_hyd_cond(hyd_cond) {
     d_log("model created\n");
   };
 
@@ -144,14 +144,14 @@ int main(int argc, char *argv[]) {
 
   cxxopts::Options options(argv[0], "Darcy's flow in 3D tissue domain");
   options.add_options()("input-file", "path to the input file",
-                        cxxopts::value<std::string>()->default_value("")) //
-    ("final-time", "final simulation time", cxxopts::value<double>()->default_value("1.")) //
-    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01")) //
-    ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.1")) //
-    ("hyd-cond", "hydraulic conductivity", cxxopts::value<double>()->default_value("1.")) //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("")) //
+                        cxxopts::value<std::string>()->default_value(""))                                       //
+    ("final-time", "final simulation time", cxxopts::value<double>()->default_value("1."))                      //
+    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                            //
+    ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.1"))                                  //
+    ("hyd-cond", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                       //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value(""))                            //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/")) //
-    ("h,help","print usage");
+    ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
   if (args.count("help")) {
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
     mesh.read(input.d_mesh_file);
   else
     lm::MeshTools::Generation::build_cube(mesh, N, N, N, 0., 1., 0.,
-                                        1., 0., 1., lm::HEX8);
+                                          1., 0., 1., lm::HEX8);
 
   // create equation system
   log("creating equation system\n");
@@ -214,40 +214,45 @@ int main(int argc, char *argv[]) {
 
   eq_sys.init();
 
-    // create heterogeneous property field
-    log("setting up K field\n");
-    auto bbox = lm::MeshTools::create_bounding_box(mesh);
-    auto xc = 0.5 * bbox.min() + 0.5 * bbox.max();
-    auto l = (bbox.min() - bbox.max()).norm();
-    eq_sys.parameters.set<lm::Point>("center") = xc;
-    eq_sys.parameters.set<double>("length") = l;
+  // create heterogeneous property field
+  log("setting up K field\n");
+  auto bbox = lm::MeshTools::create_bounding_box(mesh);
+  auto xc = 0.5 * bbox.min() + 0.5 * bbox.max();
+  auto l = (bbox.min() - bbox.max()).norm();
+  eq_sys.parameters.set<lm::Point>("center") = xc;
+  eq_sys.parameters.set<double>("length") = l;
 
-    std::vector<unsigned int> dof_indices;
-    for (const auto &elem : mesh.active_local_element_ptr_range()) {
-        hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
-        auto x = elem->centroid();
-        if ((x - xc).norm() < 0.25 * l)
-            hyd_cond.solution->set(dof_indices[0], 0.1 * input.d_K);
-        else
-            hyd_cond.solution->set(dof_indices[0], input.d_K);
-    }
-    hyd_cond.solution->close();
-    hyd_cond.update();
+  std::vector<unsigned int> dof_indices;
+  for (const auto &elem : mesh.active_local_element_ptr_range()) {
+    hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
+    auto x = elem->centroid();
+    if ((x - xc).norm() < 0.1 * l)
+      hyd_cond.solution->set(dof_indices[0], 0.1 * input.d_K);
+    else
+      hyd_cond.solution->set(dof_indices[0], input.d_K);
+  }
+  hyd_cond.solution->close();
+  hyd_cond.update();
 
   // time stepping
-    do {
-        // Prepare time step
-        model.d_step++;
-        model.d_time += model.d_dt;
+  do {
+    // Prepare time step
+    model.d_step++;
+    model.d_time += model.d_dt;
 
-        auto solve_clock = std::chrono::steady_clock::now();
-        model.d_pres.solve();
-        log("solve time = " + std::to_string(mc::time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
-    } while (model.d_time < input.d_T);
+    auto solve_clock = std::chrono::steady_clock::now();
+    model.d_pres.solve();
+    log("solve time = " + std::to_string(mc::time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+
+    if (model.d_step % 20 == 0) {
+      log("writing to file\n");
+      mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step/20) + ".pvtu", eq_sys);
+    }
+  } while (model.d_time < input.d_T);
 
   // write
   log("writing to file\n");
-  mc::VTKIO(mesh).write_equation_systems(out_dir + "output_0.pvtu", eq_sys);
+  mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step/20) + ".pvtu", eq_sys);
 
   return 0;
 }
@@ -263,7 +268,7 @@ void darcy3d::Pres::assemble() {
   auto &hyd_cond = d_model_p->d_hyd_cond;
   std::vector<unsigned int> dof_indices;
 
-  lm::Point source_xc = xc + lm::Point(0.1*l, 0., 0.2*l);
+  lm::Point source_xc = xc + lm::Point(0.1 * l, 0., 0.2 * l);
 
   // assemble
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
@@ -280,8 +285,8 @@ void darcy3d::Pres::assemble() {
 
     double rhs = 0.;
     auto x = elem->centroid();
-    if ((x - source_xc).norm() < 0.15*l)
-      rhs = std::sin(t/0.1) * std::exp(-t/10.);
+    if ((x - source_xc).norm() < 0.15 * l)
+      rhs = std::sin(t / 0.1) * std::exp(-t / 10.);
 
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
       double lhs = d_JxW[qp] * elem_K;
@@ -294,6 +299,26 @@ void darcy3d::Pres::assemble() {
           d_Ke(i, j) += lhs * d_dphi[j][qp] * d_dphi[i][qp];
       }
     } // loop over quad points
+
+    // dirichlet bc
+    {
+      // The penalty value.
+      const double penalty = 1.e10;
+
+      for (auto s : elem->side_index_range())
+        if (elem->neighbor_ptr(s) == nullptr) {
+          init_face_fe(elem, s);
+
+          for (unsigned int qp = 0; qp < d_qrule_face.n_points(); qp++) {
+            // Matrix contribution
+            for (unsigned int i = 0; i < d_phi_face.size(); i++) {
+              d_Fe(i) += penalty * d_JxW_face[qp] * d_phi_face[i][qp];
+              for (unsigned int j = 0; j < d_phi_face.size(); j++)
+                d_Ke(i, j) += penalty * d_JxW_face[qp] * d_phi_face[i][qp] * d_phi_face[j][qp];
+            }
+          }
+        }
+    }
 
     d_dof_map_sys.heterogenously_constrain_element_matrix_and_vector(d_Ke, d_Fe,
                                                                      d_dof_indices_sys);
