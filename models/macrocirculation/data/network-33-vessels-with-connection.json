@@ -1,6 +1,6 @@
 {
   "vertices": [
-    { "id": 0 },
+    { "id": 0, "name": "cw_in", "inflow": true },
     { "id": 1 },
     { "id": 2 },
     { "id": 3 },
@@ -8,34 +8,35 @@
     { "id": 5 },
     { "id": 6 },
     { "id": 7 },
-    { "id": 8, "peripheral_resistance": 1.8, "peripheral_compliance": 0.387 },
+    { "id": 8, "name": "cw_out_8", "peripheral_resistance": 1.8, "peripheral_compliance": 0.387 },
     { "id": 9 },
-    { "id": 10, "peripheral_resistance": 54.3, "peripheral_compliance": 0.0127 },
+    { "id": 10, "name": "cw_out_10",  "peripheral_resistance": 54.3, "peripheral_compliance": 0.0127 },
     { "id": 11 },
     { "id": 12 },
-    { "id": 13, "peripheral_resistance": 54.3, "peripheral_compliance": 0.0127 },
+    { "id": 13, "name": "cw_out_13", "peripheral_resistance": 54.3, "peripheral_compliance": 0.0127 },
     { "id": 14 },
-    { "id": 15, "peripheral_resistance": 26.8, "peripheral_compliance": 0.0258 },
-    { "id": 16, "peripheral_resistance": 26.8, "peripheral_compliance": 0.0258 },
+    { "id": 15, "name": "cw_out_15", "peripheral_resistance": 26.8, "peripheral_compliance": 0.0258 },
+    { "id": 16, "name": "cw_out_16", "peripheral_resistance": 26.8, "peripheral_compliance": 0.0258 },
     { "id": 17 },
     { "id": 18 },
     { "id": 19 },
     { "id": 20 },
     { "id": 21 },
-    { "id": 22, "peripheral_resistance": 59.7, "peripheral_compliance": 0.0116 },
-    { "id": 23, "peripheral_resistance": 59.7, "peripheral_compliance": 0.0116 },
+    { "id": 22, "name": "cw_out_23", "peripheral_resistance": 59.7, "peripheral_compliance": 0.0116 },
+    { "id": 23, "name": "cw_out_24", "peripheral_resistance": 59.7, "peripheral_compliance": 0.0116 },
     { "id": 24 },
     { "id": 25 },
-    { "id": 26, "peripheral_resistance": 84.8, "peripheral_compliance": 0.0082 },
-    { "id": 27, "peripheral_resistance": 84.8, "peripheral_compliance": 0.0082 },
-    { "id": 28, "peripheral_resistance": 110.8, "peripheral_compliance": 0.0062 },
-    { "id": 29, "peripheral_resistance": 110.8, "peripheral_compliance": 0.0062 },
-    { "id": 30 },
-    { "id": 31 }
+    { "id": 26, "name": "cw_out_29", "peripheral_resistance": 84.8, "peripheral_compliance": 0.0082 },
+    { "id": 27, "name": "cw_out_30", "peripheral_resistance": 84.8, "peripheral_compliance": 0.0082 },
+    { "id": 28, "name": "cw_out_32", "peripheral_resistance": 110.8, "peripheral_compliance": 0.0062 },
+    { "id": 29, "name": "cw_out_33", "peripheral_resistance": 110.8, "peripheral_compliance": 0.0062 },
+    { "id": 30, "name": "cw_con_1" },
+    { "id": 31, "name": "cw_con_2" }
   ],
   "vessels": [
     {
       "id": 0,
+      "name": "cw_01",
       "vessel_length": 4.0,
       "radius": 1.2,
       "wall_thickness": 0.163,
@@ -46,6 +47,7 @@
     },
     {
       "id": 1,
+      "name": "cw_02",
       "vessel_length": 2.0,
       "radius": 1.12,
       "wall_thickness": 0.126,
@@ -56,6 +58,7 @@
     },
     {
       "id": 2,
+      "name": "cw_03",
       "vessel_length": 3.4,
       "radius": 0.62,
       "wall_thickness": 0.08,
@@ -66,6 +69,7 @@
     },
     {
       "id": 3,
+      "name": "cw_04",
       "vessel_length": 3.9,
       "radius": 1.07,
       "wall_thickness": 0.115,
@@ -76,6 +80,7 @@
     },
     {
       "id": 4,
+      "name": "cw_05",
       "vessel_length": 20.8,
       "radius": 0.25,
       "wall_thickness": 0.063,
@@ -86,6 +91,7 @@
     },
     {
       "id": 5,
+      "name": "cw_06",
       "vessel_length": 17.7,
       "radius": 0.25,
       "wall_thickness": 0.063,
@@ -96,6 +102,7 @@
     },
     {
       "id": 6,
+      "name": "cw_07",
       "vessel_length": 1.7,
       "radius": 0.423,
       "wall_thickness": 0.067,
@@ -106,6 +113,7 @@
     },
     {
       "id": 7,
+      "name": "cw_08",
       "vessel_length": 15.6,
       "radius": 0.999,
       "wall_thickness": 0.11,
@@ -116,6 +124,7 @@
     },
     {
       "id": 8,
+      "name": "cw_09",
       "vessel_length": 3.4,
       "radius": 0.423,
       "wall_thickness": 0.067,
@@ -126,6 +135,7 @@
     },
     {
       "id": 9,
+      "name": "cw_10",
       "vessel_length": 17.7,
       "radius": 0.15,
       "wall_thickness": 0.038,
@@ -136,6 +146,7 @@
     },
     {
       "id": 10,
+      "name": "cw_11",
       "vessel_length": 17.7,
       "radius": 0.2,
       "wall_thickness": 0.05,
@@ -146,6 +157,7 @@
     },
     {
       "id": 11,
+      "name": "cw_12",
       "vessel_length": 17.7,
       "radius": 0.2,
       "wall_thickness": 0.05,
@@ -156,6 +168,7 @@
     },
     {
       "id": 12,
+      "name": "cw_13",
       "vessel_length": 17.7,
       "radius": 0.15,
       "wall_thickness": 0.038,
@@ -166,6 +179,7 @@
     },
     {
       "id": 13,
+      "name": "cw_14",
       "vessel_length": 14.8,
       "radius": 0.136,
       "wall_thickness": 0.034,
@@ -176,6 +190,7 @@
     },
     {
       "id": 14,
+      "name": "cw_15",
       "vessel_length": 40.5,
       "radius": 0.403,
       "wall_thickness": 0.067,
@@ -186,6 +201,7 @@
     },
     {
       "id": 15,
+      "name": "cw_16",
       "vessel_length": 42.2,
       "radius": 0.403,
       "wall_thickness": 0.067,
@@ -196,6 +212,7 @@
     },
     {
       "id": 16,
+      "name": "cw_17",
       "vessel_length": 14.8,
       "radius": 0.136,
       "wall_thickness": 0.034,
@@ -206,6 +223,7 @@
     },
     {
       "id": 17,
+      "name": "cw_18",
       "vessel_length": 0.5,
       "radius": 0.2,
       "wall_thickness": 0.05,
@@ -216,6 +234,7 @@
     },
     {
       "id": 18,
+      "name": "cw_19",
       "vessel_length": 1.5,
       "radius": 0.073,
       "wall_thickness": 0.018,
@@ -226,6 +245,7 @@
     },
     {
       "id": 19,
+      "name": "cw_20",
       "vessel_length": 1.5,
       "radius": 0.073,
       "wall_thickness": 0.018,
@@ -236,6 +256,7 @@
     },
     {
       "id": 20,
+      "name": "cw_21",
       "vessel_length": 0.5,
       "radius": 0.2,
       "wall_thickness": 0.05,
@@ -246,6 +267,7 @@
     },
     {
       "id": 21,
+      "name": "cw_22",
       "vessel_length": 2.9,
       "radius": 0.162,
       "wall_thickness": 0.04,
@@ -256,6 +278,7 @@
     },
     {
       "id": 22,
+      "name": "cw_23",
       "vessel_length": 11.9,
       "radius": 0.143,
       "wall_thickness": 0.036,
@@ -266,6 +289,7 @@
     },
     {
       "id": 23,
+      "name": "cw_24",
       "vessel_length": 11.9,
       "radius": 0.143,
       "wall_thickness": 0.036,
@@ -276,6 +300,7 @@
     },
     {
       "id": 24,
+      "name": "cw_25",
       "vessel_length": 1.2,
       "radius": 0.117,
       "wall_thickness": 0.029,
@@ -286,6 +311,7 @@
     },
     {
       "id": 25,
+      "name": "cw_26",
       "vessel_length": 1.2,
       "radius": 0.117,
       "wall_thickness": 0.029,
@@ -296,6 +322,7 @@
     },
     {
       "id": 26,
+      "name": "cw_27",
       "vessel_length": 0.5,
       "radius": 0.107,
       "wall_thickness": 0.027,
@@ -306,6 +333,7 @@
     },
     {
       "id": 27,
+      "name": "cw_28",
       "vessel_length": 0.5,
       "radius": 0.107,
       "wall_thickness": 0.027,
@@ -316,6 +344,7 @@
     },
     {
       "id": 28,
+      "name": "cw_29",
       "vessel_length": 10.3,
       "radius": 0.12,
       "wall_thickness": 0.03,
@@ -326,6 +355,7 @@
     },
     {
       "id": 29,
+      "name": "cw_30",
       "vessel_length": 10.3,
       "radius": 0.12,
       "wall_thickness": 0.03,
@@ -336,6 +366,7 @@
     },
     {
       "id": 30,
+      "name": "cw_31",
       "vessel_length": 0.5,
       "radius": 0.074,
       "wall_thickness": 0.019,
@@ -346,6 +377,7 @@
     },
     {
       "id": 31,
+      "name": "cw_32",
       "vessel_length": 8.6,
       "radius": 0.105,
       "wall_thickness": 0.026,
@@ -356,6 +388,7 @@
     },
     {
       "id": 32,
+      "name": "cw_33",
       "vessel_length": 8.6,
       "radius": 0.105,
       "wall_thickness": 0.026,
@@ -366,6 +399,7 @@
     },
     {
       "id": 33,
+      "name": "cw_inserted_1",
       "vessel_length": 1.7,
       "radius": 0.423,
       "wall_thickness": 0.067,
@@ -376,6 +410,7 @@
     },
     {
       "id": 34,
+      "name": "cw_inserted_2",
       "vessel_length": 1.7,
       "radius": 0.403,
       "wall_thickness": 0.067,
