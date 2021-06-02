@@ -49,6 +49,11 @@ target_link_libraries(${ProjectName}Calibration cxxopts)
 add_executable(${ProjectName}Transport transport_test.cpp)
 target_link_libraries(${ProjectName}Transport ${ProjectLib})
 
+# Darcy's flow in 3D tissue domain
+add_executable(${ProjectName}Darcy3D tissue_domain_darcy.cpp)
+target_link_libraries(${ProjectName}Darcy3D ${ProjectLib})
+target_link_libraries(${ProjectName}Darcy3D cxxopts)
+
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
                    ${ProjectName}ConvergenceStudy
@@ -56,7 +61,8 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}BreastGeometry
                    ${ProjectName}Abstract33VesselsGeometry
                    ${ProjectName}CombinedGeometry
-                   ${ProjectName}Transport)
+                   ${ProjectName}Transport
+                   ${ProjectName}Darcy3D)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
