@@ -66,7 +66,7 @@ void bc_p(lm::EquationSystems &es) {
   auto &sys = es.get_system<lm::TransientLinearImplicitSystem>("P");
   std::vector<unsigned int> vars(1, sys.variable_number("p"));
 
-  lm::ConstFunction<lm::Number> cf(100.);
+  lm::ConstFunction<lm::Number> cf(1.);
   lm::DirichletBoundary bc(ids, vars, &cf);
   sys.get_dof_map().add_dirichlet_boundary(bc);
 }
@@ -95,7 +95,7 @@ public:
     sys.attach_assemble_object(
       *this);                         // attach this element assembly object
     sys.attach_init_function(ic);     // add ic
-    //bc_p(sys.get_equation_systems()); // add bc
+    bc_p(sys.get_equation_systems()); // add bc
   }
 
   void assemble() override;
