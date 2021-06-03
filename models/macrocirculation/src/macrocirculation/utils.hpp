@@ -41,6 +41,31 @@ inline long locate_in_set(const T &key, const std::vector<T> &set) {
   return -1;
 }
 
+/*! @brief Given 1d vector element id, compute 3d element id for image data */
+inline std::vector<int> index_1d_3d(int I, std::vector<int> dim) {
+
+  int k = I % dim[2];
+  int a = std::floor(I / dim[2]);
+  int j = a % dim[1];
+  int i = std::floor(a / dim[1]);
+  return {i, j, k};
+}
+
+/*! @brief Given 1d vector element id, compute 3d element id for image data */
+inline void index_1d_3d(int I, std::vector<int> dim, std::vector<int> &I_3d) {
+  I_3d.resize(3);
+  I_3d[2] = I % dim[2];
+  int a = std::floor(I / dim[2]);
+  I_3d[1] = a % dim[1];
+  I_3d[0] = std::floor(a / dim[1]);
+}
+
+/*! @brief Given 3d vector element id, compute 1d element id for image data */
+inline int index_3d_1d(std::vector<int> I, std::vector<int> dim) {
+
+  return I[2] + I[1] * dim[2] + I[0] * dim[2] * dim[1];
+}
+
 } // namespace macrocirculation
 
 #endif // UTILS_H

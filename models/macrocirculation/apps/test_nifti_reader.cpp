@@ -10,6 +10,7 @@
 #include <cxxopts.hpp>
 #include <memory>
 
+#include "macrocirculation/utils.hpp"
 #include "macrocirculation/nifti_reader.hpp"
 
 namespace mc = macrocirculation;
@@ -35,23 +36,36 @@ int main(int argc, char *argv[]) {
   // read
   std::cout << "Reading nifti file = " << filename << "\n";
   auto read_img = mc::NiftiReader(filename);
-  std::cout << "Print nifti header file\n";
-  read_img.d_reader_p->GetNIFTIHeader()->Print(std::cout);
-  std::cout << "Print nifti data\n";
-  read_img.d_reader_p->GetOutput()->Print(std::cout);
+  std::cout << "Print nifti file info\n";
+  std::cout << read_img.print_str() << "\n";
 
-  auto pt_data = read_img.d_img_p->GetPointData();
-  auto arr = pt_data->GetArray("NIFTI");
-  std::cout << "Print NIFTI data in nifti file\n";
-  arr->Print(std::cout);
   // read and print data
-  auto data_a = vtkSmartPointer<vtkDoubleArray>::New();
-  data_a->SetNumberOfComponents(1);
-  data_a->Allocate(1, 1);  // allocate memory
-  for (size_t i=0; i<arr->GetNumberOfTuples(); i++) {
-    arr->GetTuples(i, i, data_a);
-    std::cout << i << ", " << data_a->GetValue(0) << "\n";
+  std::vector<double> pt_data;
+  auto field_names = read_img.get_point_fields();
+  read_img.read_point_data(field_names[0], &pt_data);
+  for (size_t i=0; i<pt_data.size(); i++) {
+    std::cout << i << ", " << pt_data[i] << "\n";
   }
+
+  // get image dimension
+  auto dim = read_img.get_data_dimension();
+  std::cout << "Dimension of the data = (" << dim[0] << ", " << dim[1] << ", " << dim[2] << ")\n";
+
+  // check if grid wise data matches with 1d vector data
+  std::vector<std::vector<std::vector<double>>> pt_data_grid;
+  read_img.read_point_data(field_names[0], &pt_data_grid);
+  size_t count = 0;
+  for (int I=0; I<pt_data.size(); I++) {
+    auto x = pt_data[I];
+    auto I_3d = mc::index_1d_3d(I, dim);
+    auto y = pt_data_grid[I_3d[0]][I_3d[1]][I_3d[2]];
+    std::cout << "1d index = " << I
+              << ", 3d index = (" << I_3d[0] << ", " << I_3d[1] << ", " << I_3d[2]
+              << "), 1d value = " << x << ", 3d value = " << y << "\n";
+    if (x != y)
+      count++;
+  }
+  std::cout << "number of data not matching = " << count << "\n";
 
   return 0;
 }
