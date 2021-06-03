@@ -134,6 +134,26 @@ public:
   lm::ExplicitSystem &d_hyd_cond;
 };
 
+//
+void create_heterogeneous_conductivity(lm::MeshBase &mesh, lm::ExplicitSystem &hyd_cond, lm::EquationSystems &eq_sys) {
+
+  const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
+  const auto &xc = eq_sys.parameters.get<lm::Point>("center");
+  const auto &l = eq_sys.parameters.get<double>("length");
+
+  std::vector<unsigned int> dof_indices;
+  for (const auto &elem : mesh.active_local_element_ptr_range()) {
+    hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
+    auto x = elem->centroid();
+    if ((x - xc).norm() < 0.1 * l)
+      hyd_cond.solution->set(dof_indices[0], 0.1 * input->d_K);
+    else
+      hyd_cond.solution->set(dof_indices[0], input->d_K);
+  }
+  hyd_cond.solution->close();
+  hyd_cond.update();
+}
+
 } // namespace darcy3d
 
 int main(int argc, char *argv[]) {
@@ -150,7 +170,7 @@ int main(int argc, char *argv[]) {
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.1"))                                  //
     ("hyd-cond", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                       //
     ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value(""))                            //
-    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/")) //
+    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_darcy3d/")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
@@ -221,18 +241,7 @@ int main(int argc, char *argv[]) {
   auto l = (bbox.min() - bbox.max()).norm();
   eq_sys.parameters.set<lm::Point>("center") = xc;
   eq_sys.parameters.set<double>("length") = l;
-
-  std::vector<unsigned int> dof_indices;
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-    hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
-    auto x = elem->centroid();
-    if ((x - xc).norm() < 0.1 * l)
-      hyd_cond.solution->set(dof_indices[0], 0.1 * input.d_K);
-    else
-      hyd_cond.solution->set(dof_indices[0], input.d_K);
-  }
-  hyd_cond.solution->close();
-  hyd_cond.update();
+  darcy3d::create_heterogeneous_conductivity(mesh, hyd_cond, eq_sys);
 
   // time stepping
   do {
@@ -260,7 +269,7 @@ int main(int argc, char *argv[]) {
 // define assembly functions
 void darcy3d::Pres::assemble() {
   auto &eq_sys = d_model_p->get_system();
-  const auto &deck = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
+  const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
   const auto &xc = eq_sys.parameters.get<lm::Point>("center");
   const auto &l = eq_sys.parameters.get<double>("length");
   const double dt = d_model_p->d_dt;

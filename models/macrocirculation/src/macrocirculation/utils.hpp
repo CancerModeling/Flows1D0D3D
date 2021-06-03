@@ -66,6 +66,18 @@ inline int index_3d_1d(std::vector<int> I, std::vector<int> dim) {
   return I[2] + I[1] * dim[2] + I[0] * dim[2] * dim[1];
 }
 
+/*! @brief Locates voxel (1d representation) for a given point */
+inline int locate_voxel_1d(std::vector<double> x, std::vector<int> dim) {
+
+  return std::floor(x[2]) + std::floor(x[1]) * dim[2] + std::floor(x[0]) * dim[2] * dim[1];
+}
+
+/*! @brief Locates voxel (3d representation) for a given point */
+inline std::vector<int> locate_voxel_3d(std::vector<double> x, std::vector<int> dim) {
+
+  return {int(x[0]), int(x[1]), int(x[2])};
+}
+
 } // namespace macrocirculation
 
 #endif // UTILS_H
