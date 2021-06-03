@@ -189,12 +189,20 @@ void create_heterogeneous_conductivity(std::string vasc_filename, double voxel_s
     //              << ", i_3d = (" << i_3d[0] << ", " << i_3d[1] << ", " << i_3d[2]
     //              << "), i_check = " << mc::index_3d_1d(i_3d, img_dim)
     //              << ", data = " << a << "\n";
+
     auto xv = lm::Point(i_3d[0], i_3d[1], i_3d[2]) * voxel_size;
     if (a > 0.5) {
       //std::cout << "vascular domain: xv = " << xv << ", elem center = " << elem->centroid() << "\n";
       points->InsertNextPoint(xv(0), xv(1), xv(2));
     } else {
       points2->InsertNextPoint(xv(0), xv(1), xv(2));
+    }
+
+    // set parameter
+    if (a > 0.5) {
+      auto xv = lm::Point(i_3d[0], i_3d[1], i_3d[2]) * voxel_size;
+      //std::cout << "vascular domain: xv = " << xv << ", elem center = " << elem->centroid() << "\n";
+      points->InsertNextPoint(xv(0), xv(1), xv(2));
     }
 
     // set parameter
