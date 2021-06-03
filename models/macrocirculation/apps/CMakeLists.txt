@@ -59,6 +59,11 @@ add_executable(${ProjectName}NiftiRW test_nifti_reader.cpp)
 target_link_libraries(${ProjectName}NiftiRW ${ProjectLib})
 target_link_libraries(${ProjectName}NiftiRW cxxopts)
 
+# Model Darcy's flow with heterogeneous parameter field
+add_executable(${ProjectName}DarcyHetero darcy_test_heterogeneous.cpp)
+target_link_libraries(${ProjectName}DarcyHetero ${ProjectLib})
+target_link_libraries(${ProjectName}DarcyHetero cxxopts fmt)
+
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
                    ${ProjectName}ConvergenceStudy
@@ -68,10 +73,19 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}CombinedGeometry
                    ${ProjectName}Transport
                    ${ProjectName}Darcy3D
-                   ${ProjectName}NiftiRW)
+                   ${ProjectName}NiftiRW
+                   ${ProjectName}DarcyHetero)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:${TargetName}>/output_darcy3d)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:${TargetName}>/output_darcy_hetero)
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
