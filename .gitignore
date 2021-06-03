@@ -77,3 +77,6 @@ src/Config.h
 tests_sim/
 
 cmake-*/
+
+# ignore specific test directory
+test_ignored_dir
