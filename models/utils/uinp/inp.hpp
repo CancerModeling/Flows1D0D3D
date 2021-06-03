@@ -530,6 +530,10 @@ struct NetworkDeck {
   double d_k_s;
   double d_offset_tau;
 
+  bool d_pressure_initial_guess_95_percent;
+
+  bool d_remove_old_sprouters;
+
   // parameters below are not used currently
   int d_no_branch_dist;
   double d_new_vessel_max_angle;
@@ -559,6 +563,8 @@ struct NetworkDeck {
         d_identify_vein_pres(0.), d_compute_elem_weights(false),
         d_network_bifurcate_prob(0.9), d_min_radius(8.5e-3), d_sprouting_prob(0.9),
         d_extrapolate_nutrients_at_tips(false),
+        d_pressure_initial_guess_95_percent(true),
+        d_remove_old_sprouters(false),
         d_network_update_absolute_upper_threshold_1d(std::numeric_limits<double>::max()),
         d_network_update_absolute_upper_threshold_3d(std::numeric_limits<double>::max()),
         d_network_update_relative_upper_threshold_1d(std::numeric_limits<double>::max()),
