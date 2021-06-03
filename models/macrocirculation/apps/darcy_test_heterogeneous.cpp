@@ -154,30 +154,33 @@ void create_heterogeneous_conductivity(std::string vasc_filename, double voxel_s
   std::cout << "nifit data \n\n";
   std::cout << vasc_nifti.print_str() << "\n\n";
   size_t count = 0;
-  for (auto a : img_data) {
-    if (a > 0.5) {
-      //std::cout << a << "; ";
+  for (auto a : img_data)
+    if (a > 0.5)
       count++;
-    }
-  }
   std::cout << "\nvascular voxel count = " << count << "\n\n";
-
-  std::ofstream oss;
-  oss.open("vascular_domain.csv");
 
   auto vtu_writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
   vtu_writer->SetFileName("vascular_domain.vtu");
   auto points = vtkSmartPointer<vtkPoints>::New();
 
+  auto vtu_writer2 = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+  vtu_writer2->SetFileName("extravascular_domain.vtu");
+  auto points2 = vtkSmartPointer<vtkPoints>::New();
+
   std::vector<unsigned int> dof_indices;
   for (const auto &elem : mesh.active_local_element_ptr_range()) {
     hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
-    auto x = elem->centroid() / voxel_size;
+    auto x = elem->centroid() / voxel_size; // + lm::Point(0.5, 0.5, 0.5);
 
     // find voxel element (1d vector representation of the image data)
     int i = mc::locate_voxel_1d({x(0), x(1), x(2)}, img_dim);
     auto i_3d = mc::locate_voxel_3d({x(0), x(1), x(2)}, img_dim);
+
+    // get image data
     auto a = img_data_grid[i_3d[0]][i_3d[1]][i_3d[2]];
+
+    // debug
+    // auto a = img_data[i + 352];
     //    std::cout << "center = " << elem->centroid()
     //              << ", elem id = " << elem->id()
     //              << ", dof = " << dof_indices[0]
@@ -186,15 +189,16 @@ void create_heterogeneous_conductivity(std::string vasc_filename, double voxel_s
     //              << ", i_3d = (" << i_3d[0] << ", " << i_3d[1] << ", " << i_3d[2]
     //              << "), i_check = " << mc::index_3d_1d(i_3d, img_dim)
     //              << ", data = " << a << "\n";
-    if (a > 0.9) {
-      auto xv = lm::Point(i_3d[0], i_3d[1], i_3d[2]) * voxel_size;
+    auto xv = lm::Point(i_3d[0], i_3d[1], i_3d[2]) * voxel_size;
+    if (a > 0.5) {
       //std::cout << "vascular domain: xv = " << xv << ", elem center = " << elem->centroid() << "\n";
-      oss << xv(0) << ", " << xv(1) << ", " << xv(2) << "\n";
       points->InsertNextPoint(xv(0), xv(1), xv(2));
+    } else {
+      points2->InsertNextPoint(xv(0), xv(1), xv(2));
     }
 
     // set parameter
-    if (a > 0.9)
+    if (a > 0.5)
       hyd_cond.solution->set(dof_indices[0], input->d_K_vasc);
     else
       hyd_cond.solution->set(dof_indices[0], input->d_K_tiss);
@@ -202,14 +206,19 @@ void create_heterogeneous_conductivity(std::string vasc_filename, double voxel_s
   hyd_cond.solution->close();
   hyd_cond.update();
 
-  oss.close();
-
   auto grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
   grid->SetPoints(points);
   vtu_writer->SetInputData(grid);
   vtu_writer->SetDataModeToAppended();
   vtu_writer->EncodeAppendedDataOn();
   vtu_writer->Write();
+
+  auto grid2 = vtkSmartPointer<vtkUnstructuredGrid>::New();
+  grid2->SetPoints(points2);
+  vtu_writer2->SetInputData(grid2);
+  vtu_writer2->SetDataModeToAppended();
+  vtu_writer2->EncodeAppendedDataOn();
+  vtu_writer2->Write();
 }
 
 } // namespace darcy3d
@@ -231,7 +240,7 @@ int main(int argc, char *argv[]) {
     ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/darcy_test_tissue_mesh.e"))                            //
     ("vasc-nifti-file", "nifti file to inform vascular subdomain", cxxopts::value<std::string>()->default_value("data/darcy_test_vascular_domain.nii.gz"))                            //
     ("voxel-size", "voxel size used in creating the tissue mesh", cxxopts::value<double>()->default_value("1."))                            //
-    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_darcy_hetero/")) //
+    ("output-dir", "directory for the output", cxxopts::value<std::string>()->default_value("./output_darcy_hetero/")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
@@ -249,7 +258,7 @@ int main(int argc, char *argv[]) {
   }
 
   auto filename = args["input-file"].as<std::string>();
-  auto out_dir = args["output-directory"].as<std::string>();
+  auto out_dir = args["output-dir"].as<std::string>();
   auto vasc_nifti_filename = args["vasc-nifti-file"].as<std::string>();
   auto voxel_size = args["voxel-size"].as<double>();
 
@@ -273,11 +282,15 @@ int main(int argc, char *argv[]) {
   log("creating mesh\n");
   lm::ReplicatedMesh mesh(*comm);
   long N = long(1. / input.d_h);
-  if (input.d_mesh_file != "")
+  if (input.d_mesh_file != "") {
+    log("reading mesh from file\n");
     mesh.read(input.d_mesh_file);
-  else
+  }
+  else {
+    log("unit cube mesh\n");
     lm::MeshTools::Generation::build_cube(mesh, N, N, N, 0., 1., 0.,
                                           1., 0., 1., lm::HEX8);
+  }
 
   // create equation system
   log("creating equation system\n");
