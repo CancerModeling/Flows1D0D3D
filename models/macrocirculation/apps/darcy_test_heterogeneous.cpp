@@ -17,6 +17,18 @@
 #include "macrocirculation/vtk_io.hpp"
 #include "macrocirculation/nifti_reader.hpp"
 
+#include <vtkSmartPointer.h>
+#include <vtkUnstructuredGrid.h>
+#include <vtkXMLUnstructuredGridWriter.h>
+#include <vtkCellArray.h>
+#include <vtkCellData.h>
+#include <vtkDoubleArray.h>
+#include <vtkIdList.h>
+#include <vtkIntArray.h>
+#include <vtkPointData.h>
+#include <vtkPoints.h>
+#include <vtkUnsignedIntArray.h>
+
 namespace mc = macrocirculation;
 
 // define input, systems, model
@@ -137,16 +149,25 @@ void create_heterogeneous_conductivity(std::string vasc_filename, double voxel_s
   auto img_fields = vasc_nifti.get_point_fields();
   std::vector<double> img_data;
   vasc_nifti.read_point_data(img_fields[0], &img_data);
+  std::vector<std::vector<std::vector<double>>> img_data_grid;
+  vasc_nifti.read_point_data(img_fields[0], &img_data_grid);
   std::cout << "nifit data \n\n";
   std::cout << vasc_nifti.print_str() << "\n\n";
   size_t count = 0;
   for (auto a : img_data) {
-    if (a > 0.1) {
+    if (a > 0.5) {
       //std::cout << a << "; ";
       count++;
     }
   }
   std::cout << "\nvascular voxel count = " << count << "\n\n";
+
+  std::ofstream oss;
+  oss.open("vascular_domain.csv");
+
+  auto vtu_writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+  vtu_writer->SetFileName("vascular_domain.vtu");
+  auto points = vtkSmartPointer<vtkPoints>::New();
 
   std::vector<unsigned int> dof_indices;
   for (const auto &elem : mesh.active_local_element_ptr_range()) {
@@ -156,23 +177,39 @@ void create_heterogeneous_conductivity(std::string vasc_filename, double voxel_s
     // find voxel element (1d vector representation of the image data)
     int i = mc::locate_voxel_1d({x(0), x(1), x(2)}, img_dim);
     auto i_3d = mc::locate_voxel_3d({x(0), x(1), x(2)}, img_dim);
-    std::cout << "center = " << elem->centroid()
-              << ", elem id = " << elem->id()
-              << ", dof = " << dof_indices[0]
-              << ", x = " << x
-              << ", i = " << i
-              << ", i_3d = (" << i_3d[0] << ", " << i_3d[1] << ", " << i_3d[2]
-              << "), i_check = " << mc::index_3d_1d(i_3d, img_dim)
-              << ", data = " << img_data[i] << "\n";
+    auto a = img_data_grid[i_3d[0]][i_3d[1]][i_3d[2]];
+    //    std::cout << "center = " << elem->centroid()
+    //              << ", elem id = " << elem->id()
+    //              << ", dof = " << dof_indices[0]
+    //              << ", x = " << x
+    //              << ", i = " << i
+    //              << ", i_3d = (" << i_3d[0] << ", " << i_3d[1] << ", " << i_3d[2]
+    //              << "), i_check = " << mc::index_3d_1d(i_3d, img_dim)
+    //              << ", data = " << a << "\n";
+    if (a > 0.9) {
+      auto xv = lm::Point(i_3d[0], i_3d[1], i_3d[2]) * voxel_size;
+      //std::cout << "vascular domain: xv = " << xv << ", elem center = " << elem->centroid() << "\n";
+      oss << xv(0) << ", " << xv(1) << ", " << xv(2) << "\n";
+      points->InsertNextPoint(xv(0), xv(1), xv(2));
+    }
 
     // set parameter
-    if (img_data[i] > 0.5)
+    if (a > 0.9)
       hyd_cond.solution->set(dof_indices[0], input->d_K_vasc);
     else
       hyd_cond.solution->set(dof_indices[0], input->d_K_tiss);
   }
   hyd_cond.solution->close();
   hyd_cond.update();
+
+  oss.close();
+
+  auto grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+  grid->SetPoints(points);
+  vtu_writer->SetInputData(grid);
+  vtu_writer->SetDataModeToAppended();
+  vtu_writer->EncodeAppendedDataOn();
+  vtu_writer->Write();
 }
 
 } // namespace darcy3d
@@ -189,11 +226,11 @@ int main(int argc, char *argv[]) {
     ("final-time", "final simulation time", cxxopts::value<double>()->default_value("1."))                      //
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                            //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.1"))                                  //
-    ("hyd-cond-tiss", "hydraulic conductivity in tissue domain", cxxopts::value<double>()->default_value("0.2"))                       //
+    ("hyd-cond-tiss", "hydraulic conductivity in tissue domain", cxxopts::value<double>()->default_value("0.1"))                       //
     ("hyd-cond-vasc", "hydraulic conductivity in vascular domain", cxxopts::value<double>()->default_value("1."))                       //
     ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/darcy_test_tissue_mesh.e"))                            //
     ("vasc-nifti-file", "nifti file to inform vascular subdomain", cxxopts::value<std::string>()->default_value("data/darcy_test_vascular_domain.nii.gz"))                            //
-    ("voxel-size", "voxel size used in creating the tissue mesh", cxxopts::value<double>()->default_value("0.0267"))                            //
+    ("voxel-size", "voxel size used in creating the tissue mesh", cxxopts::value<double>()->default_value("1."))                            //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_darcy_hetero/")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
