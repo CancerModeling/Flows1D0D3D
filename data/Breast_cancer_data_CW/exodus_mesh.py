@@ -20,7 +20,7 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   mat_file = args.in_file
-  out_file = mat_file.replace('.mat', '') + '_voxel_size_%Lf' % (args.voxel_size) + '.xdmf' 
+  out_file = mat_file.replace('.mat', '') + '_voxel_size_%Lf' % (args.voxel_size)
   
   # read data
   data = loadmat(mat_file)
@@ -36,18 +36,22 @@ if __name__ == "__main__":
   print(mesh)
 
   # save as exodus format
-  mesh.write(out_file)
+  # first create .xdmf file
+  mesh.write(out_file + '.xdmf')
 
   vtkFemReader = vtk.vtkXdmfReader() 
   vtkFemReader.SetFileName(out_file)
   vtkFemReader.Update() 
 
-  out_file = mat_file.replace('.mat', '') + '_voxel_size_%Lf' % (args.voxel_size) + '.e' 
   vtkFEMImageWriter = vtk.vtkExodusIIWriter() 
   # vtkFEMImageWriter.SetFileTypeToBinary() 
   vtkFEMImageWriter.SetInputData( vtkFemReader.GetOutput() )
-  vtkFEMImageWriter.SetFileName( out_file)
+  vtkFEMImageWriter.SetFileName( out_file + '.e')
   vtkFEMImageWriter.Update() 
+
+  # clear .xdmf file
+  os.remove(out_file + '.xdmf' )
+  os.remove(out_file + '.h5' )
 
 
 
