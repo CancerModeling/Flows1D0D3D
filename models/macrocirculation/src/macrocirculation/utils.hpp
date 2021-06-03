@@ -69,7 +69,7 @@ inline int index_3d_1d(std::vector<int> I, std::vector<int> dim) {
 /*! @brief Locates voxel (1d representation) for a given point */
 inline int locate_voxel_1d(std::vector<double> x, std::vector<int> dim) {
 
-  return std::floor(x[2]) + std::floor(x[1]) * dim[2] + std::floor(x[0]) * dim[2] * dim[1];
+  return int(x[2]) + int(x[1]) * dim[2] + int(x[0]) * dim[2] * dim[1];
 }
 
 /*! @brief Locates voxel (3d representation) for a given point */
