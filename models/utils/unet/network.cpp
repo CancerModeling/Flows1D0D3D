@@ -97,6 +97,8 @@ int util::unet::Network::get_number_of_bifurcations() {
 
     pointer = pointer->global_successor;
   } // loop over vertices
+
+  return num_bifurcations;
 }
 
 
@@ -126,34 +128,13 @@ void util::unet::Network::delete_unmarked_nodes() {
 
     while (pointer) {
 
-      auto predecessor = pointer->global_predecessor;
+      // we back up the successor, since the VGM.remove method will set it to a nullpointer
       auto successor = pointer->global_successor;
 
-      if (!pointer->node_marked) {
-        // case: we were the last node in the graph
-        if (predecessor == nullptr && successor == nullptr) {
-          VGM.setHead(nullptr);
-          VGM.setTail(nullptr);
-        }
+      if (!pointer->node_marked)
+        VGM.remove(pointer);
 
-        if (predecessor != nullptr) {
-          predecessor->global_successor = successor;
-        }
-        // case: we were the first node
-        else {
-          VGM.setHead(successor);
-        }
-
-        if (successor != nullptr) {
-          successor->global_predecessor = predecessor;
-        }
-        // case: we were the last node
-        else {
-          VGM.setTail(predecessor);
-        }
-      }
-
-      pointer = pointer->global_successor;
+      pointer = successor;
     } // loop over vertices
   }
 }
@@ -174,6 +155,147 @@ void util::unet::Network::delete_unconnected_nodes() {
   mark_nodes_connected_with_initial_nodes();
   add_lengths_and_volumes_of_unmarked_network(total_removed_length, total_removed_volume);
   delete_unmarked_nodes();
+  reenumerate_dofs();
+}
+
+void util::unet::Network::resize_matrices_direct_solver() {
+  // if we use the coupled solver, we do not need to update the matrices of the direct solver
+  if (d_coupled_solver)
+    return;
+
+  const auto numberOfNodes = VGM.getNumberOfNodes();
+  const auto numberOfNodesOld = b.size();
+
+  // we rescale if the number of dof has changed:
+  d_model_p->d_log("Rescale the 1D matrices and vectors \n", "net update");
+  if (numberOfNodesOld != numberOfNodes) {
+    A_VGM = gmm::row_matrix<gmm::wsvector<double>>(numberOfNodes,
+                                                   numberOfNodes);
+    b.resize(numberOfNodes);
+    P_v.resize(numberOfNodes);
+
+    C_v.resize(numberOfNodes);
+    C_v_old.resize(numberOfNodes);
+
+    b_c.resize(numberOfNodes);
+  } // update matrix and vector
+}
+
+void util::unet::Network::copy_network_to_vectors() {
+  auto pointer = VGM.getHead();
+  while (pointer) {
+
+    int indexOfNode = pointer->index;
+
+    if (d_coupled_solver) {
+      phi_sigma[N_tot_3D + indexOfNode] = pointer->c_v;
+      phi_sigma_old[N_tot_3D + indexOfNode] = pointer->c_v;
+      P_3D1D[N_tot_3D + indexOfNode] = pointer->p_v;
+    } else {
+      C_v[indexOfNode] = pointer->c_v;
+      C_v_old[indexOfNode] = pointer->c_v;
+      P_v[indexOfNode] = pointer->p_v;
+    }
+
+    pointer = pointer->global_successor;
+  } // loop for update solution in network
+}
+
+void util::unet::Network::resize_matrices_coupled_solver() {
+  if (d_coupled_solver) {
+    auto numberOfNodes = VGM.getNumberOfNodes();
+
+    A_flow_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
+      N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
+    b_flow_3D1D.resize(N_tot_3D + numberOfNodes);
+
+    A_nut_3D1D = gmm::row_matrix<gmm::wsvector<double>>(
+      N_tot_3D + numberOfNodes, N_tot_3D + numberOfNodes);
+    b_nut_3D1D.resize(N_tot_3D + numberOfNodes);
+
+    // resize function does not change the value of existing elements
+    phi_sigma.resize(N_tot_3D + numberOfNodes);
+    phi_sigma_old.resize(N_tot_3D + numberOfNodes);
+    P_3D1D.resize(N_tot_3D + numberOfNodes);
+
+    for (int i = 0; i < N_tot_3D; i++) {
+      phi_sigma[i] = phi_sigma_3D[i];
+      phi_sigma_old[i] = phi_sigma_3D[i];
+      P_3D1D[i] = P_3D[i];
+    }
+  } // update matrix and vector
+}
+
+void util::unet::Network::set_bc_of_added_vessels_to_neumann() {
+  auto pointer = VGM.getHead();
+
+  while (pointer) {
+
+    int numberOfNeighbors = pointer->neighbors.size();
+
+    if (numberOfNeighbors == 1 && !pointer->is_given) {
+
+      const auto &coord = pointer->coord;
+
+      std::cout << "Set inner node to boundary node" << std::endl;
+
+      pointer->typeOfVGNode = TypeOfNode::NeumannNode;
+    }
+
+    pointer = pointer->global_successor;
+  }
+}
+
+void util::unet::Network::reset_edge_flags() {
+  auto pointer = VGM.getHead();
+
+  while (pointer) {
+
+    int numberOfEdges = pointer->neighbors.size();
+
+    for (int i = 0; i < numberOfEdges; i++) {
+      pointer->edge_touched[i] = false;
+      pointer->sprouting_edge[i] = false;
+    }
+
+    pointer = pointer->global_successor;
+  }
+}
+
+void util::unet::Network::delete_old_sprouters() {
+  // all none initial nodes between two initial nodes are removed
+  std::shared_ptr<VGNode> pointer = VGM.getHead();
+  while (pointer) {
+    auto successor = pointer->global_successor;
+    if (pointer->neighbors.size() == 2 && pointer->is_sprouting_node) {
+      std::cout << "is sprouting " << pointer->index << std::endl;
+      // remove node from its neighbors
+      for (auto n : pointer->neighbors)
+        n->remove([=](auto &p) { return &p == pointer.get(); });
+      VGM.remove(pointer);
+      // connect neighbors to each other
+      {
+        pointer->neighbors[0]->neighbors.push_back(pointer->neighbors[1]);
+        pointer->neighbors[0]->radii.push_back(0.5 * (pointer->radii[0] + pointer->radii[1]));
+        pointer->neighbors[0]->L_p.push_back(0.5 * (pointer->L_p[0] + pointer->L_p[1]));
+        pointer->neighbors[0]->L_s.push_back(0.5 * (pointer->L_s[0] + pointer->L_s[1]));
+        pointer->neighbors[0]->radii_initial.push_back(0.5 * (pointer->radii_initial[0] + pointer->radii_initial[1]));
+        pointer->neighbors[0]->tau_w_initial.push_back(0.5 * (pointer->tau_w_initial[0] + pointer->tau_w_initial[1]));
+        pointer->neighbors[0]->edge_touched.push_back(pointer->edge_touched[1] || pointer->edge_touched[0]);
+        pointer->neighbors[0]->sprouting_edge.push_back(pointer->sprouting_edge[1] || pointer->sprouting_edge[0]);
+
+        pointer->neighbors[1]->neighbors.push_back(pointer->neighbors[0]);
+        pointer->neighbors[1]->radii.push_back(0.5 * (pointer->radii[0] + pointer->radii[1]));
+        pointer->neighbors[1]->L_p.push_back(0.5 * (pointer->L_p[0] + pointer->L_p[1]));
+        pointer->neighbors[1]->L_s.push_back(0.5 * (pointer->L_s[0] + pointer->L_s[1]));
+        pointer->neighbors[1]->radii_initial.push_back(0.5 * (pointer->radii_initial[0] + pointer->radii_initial[1]));
+        pointer->neighbors[1]->tau_w_initial.push_back(0.5 * (pointer->tau_w_initial[0] + pointer->tau_w_initial[1]));
+        pointer->neighbors[1]->edge_touched.push_back(pointer->edge_touched[1] || pointer->edge_touched[0]);
+        pointer->neighbors[1]->sprouting_edge.push_back(pointer->sprouting_edge[1] || pointer->sprouting_edge[0]);
+      }
+    }
+    pointer = successor;
+  } // loop over vertices
   reenumerate_dofs();
 }
 
