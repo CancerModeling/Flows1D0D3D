@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
   options.add_options()("input-file", "path to the input file",
                         cxxopts::value<std::string>()->default_value(""))                                       //
     ("final-time", "final simulation time", cxxopts::value<double>()->default_value("1."))                      //
-    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                            //
+    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.5"))                            //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.1"))                                  //
     ("hyd-cond", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                       //
     ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value(""))                            //
@@ -291,6 +291,9 @@ void darcy3d::Pres::assemble() {
 
     // get K at this element
     double elem_K = hyd_cond.current_solution(dof_indices[0]);
+
+    if (std::abs(elem_K - 0.1) > 1.e-10 and std::abs(elem_K - 1.) > 1.e-10)
+      std::cout << "elem_K = " << elem_K << "\n";
 
     double rhs = 0.;
     auto x = elem->centroid();

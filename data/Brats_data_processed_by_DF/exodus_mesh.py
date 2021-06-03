@@ -50,8 +50,8 @@ if __name__ == "__main__":
   vtkFEMImageWriter.Update() 
 
   # clear .xdmf file
-  os.remove(out_file + '.xdmf' )
-  os.remove(out_file + '.h5' )
+  # os.remove(out_file + '.xdmf' )
+  # os.remove(out_file + '.h5' )
 
 
 
