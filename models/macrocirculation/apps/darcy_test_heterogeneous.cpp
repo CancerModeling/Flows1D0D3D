@@ -334,7 +334,7 @@ int main(int argc, char *argv[]) {
   // write
   log("writing to file\n");
   mc::VTKIO(mesh).write_equation_systems(out_dir + "output_0.pvtu", eq_sys);
-  return 0;
+  //return 0;
 
   // time stepping
   do {
@@ -346,15 +346,11 @@ int main(int argc, char *argv[]) {
     model.d_pres.solve();
     log("solve time = " + std::to_string(mc::time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 
-    if (model.d_step % 20 == 0) {
+    if (model.d_step % 10 == 0) {
       log("writing to file\n");
-      mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step/20) + ".pvtu", eq_sys);
+      mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step/10) + ".pvtu", eq_sys);
     }
   } while (model.d_time < input.d_T);
-
-  // write
-  log("writing to file\n");
-  mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step/20) + ".pvtu", eq_sys);
 
   return 0;
 }
@@ -388,7 +384,7 @@ void darcy3d::Pres::assemble() {
     double rhs = 0.;
     auto x = elem->centroid();
     if ((x - source_xc).norm() < 0.15 * l)
-      rhs = std::sin(t / 0.1) * std::exp(-t / 10.);
+      rhs = t*5.;
 
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
       double lhs = d_JxW[qp] * elem_K;
