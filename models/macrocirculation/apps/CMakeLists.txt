@@ -62,7 +62,11 @@ target_link_libraries(${ProjectName}NiftiRW cxxopts)
 # Model Darcy's flow with heterogeneous parameter field
 add_executable(${ProjectName}DarcyHetero darcy_test_heterogeneous.cpp)
 target_link_libraries(${ProjectName}DarcyHetero ${ProjectLib})
-target_link_libraries(${ProjectName}DarcyHetero cxxopts fmt)
+target_link_libraries(${ProjectName}DarcyHetero cxxopts)
+
+add_executable(${ProjectName}LegacyVTK legacy_vtk_reader.cpp)
+target_link_libraries(${ProjectName}LegacyVTK ${ProjectLib})
+target_link_libraries(${ProjectName}LegacyVTK cxxopts)
 
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
@@ -74,7 +78,8 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}Transport
                    ${ProjectName}Darcy3D
                    ${ProjectName}NiftiRW
-                   ${ProjectName}DarcyHetero)
+                   ${ProjectName}DarcyHetero
+                   ${ProjectName}LegacyVTK)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)

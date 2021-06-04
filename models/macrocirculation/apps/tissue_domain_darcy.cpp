@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
   options.add_options()("input-file", "path to the input file",
                         cxxopts::value<std::string>()->default_value(""))                                       //
     ("final-time", "final simulation time", cxxopts::value<double>()->default_value("1."))                      //
-    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.5"))                            //
+    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                            //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.1"))                                  //
     ("hyd-cond", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                       //
     ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value(""))                            //

@@ -34,6 +34,9 @@ std::string macrocirculation::NiftiReader::print_str() {
   for (size_t i=0; i<pt_data->GetNumberOfArrays(); i++)
     oss << i << " field name = " << pt_data->GetArrayName(i) << "\n";
 
+  auto dim = get_data_dimension();
+  oss << "dimension = (" << dim[0] << ", " << dim[1] << ", " << dim[2] << "\n";
+
   return oss.str();
 }
 
@@ -91,8 +94,8 @@ void macrocirculation::NiftiReader::read_point_data(std::string field_name, std:
     for (int j=0; j<dim[1]; j++) {
       (*data)[i][j].resize(dim[2]);
       for (int k=0; k<dim[2]; k++) {
-        int ijk = k + j * dim[2] + i * dim[2] * dim[1];
-        arr->GetTuples(ijk, ijk, data_a);
+        int ii = i + j * dim[0] + k * dim[0] * dim[1];
+        arr->GetTuples(ii, ii, data_a);
 
         (*data)[i][j][k] = data_a->GetValue(0);
       }

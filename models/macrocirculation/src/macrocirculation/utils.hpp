@@ -44,38 +44,44 @@ inline long locate_in_set(const T &key, const std::vector<T> &set) {
 /*! @brief Given 1d vector element id, compute 3d element id for image data */
 inline std::vector<int> index_1d_3d(int I, std::vector<int> dim) {
 
-  int k = I % dim[2];
-  int a = std::floor(I / dim[2]);
+  int i = I % dim[0];
+  int a = std::floor(I / dim[0]);
   int j = a % dim[1];
-  int i = std::floor(a / dim[1]);
+  int k = std::floor(a / dim[1]);
   return {i, j, k};
 }
 
 /*! @brief Given 1d vector element id, compute 3d element id for image data */
 inline void index_1d_3d(int I, std::vector<int> dim, std::vector<int> &I_3d) {
   I_3d.resize(3);
-  I_3d[2] = I % dim[2];
-  int a = std::floor(I / dim[2]);
+  I_3d[0] = I % dim[0];
+  int a = std::floor(I / dim[0]);
   I_3d[1] = a % dim[1];
-  I_3d[0] = std::floor(a / dim[1]);
+  I_3d[2] = std::floor(a / dim[1]);
 }
 
 /*! @brief Given 3d vector element id, compute 1d element id for image data */
 inline int index_3d_1d(std::vector<int> I, std::vector<int> dim) {
 
-  return I[2] + I[1] * dim[2] + I[0] * dim[2] * dim[1];
+  return I[0] + I[1] * dim[0] + I[2] * dim[0] * dim[1];
+}
+
+/*! @brief Given 3d vector element id, compute 1d element id for image data */
+inline int index_3d_1d(int *I, int *dim) {
+
+  return I[0] + I[1] * dim[0] + I[2] * dim[0] * dim[1];
 }
 
 /*! @brief Locates voxel (1d representation) for a given point */
-inline int locate_voxel_1d(std::vector<double> x, std::vector<int> dim) {
+inline int locate_voxel_1d(std::vector<double> x, std::vector<int> dim, double grid_size = 1.) {
 
-  return int(x[2]) + int(x[1]) * dim[2] + int(x[0]) * dim[2] * dim[1];
+  return int(x[0]/grid_size) + int(x[1]/grid_size) * dim[0] + int(x[2]/grid_size) * dim[0] * dim[1];
 }
 
 /*! @brief Locates voxel (3d representation) for a given point */
-inline std::vector<int> locate_voxel_3d(std::vector<double> x, std::vector<int> dim) {
+inline std::vector<int> locate_voxel_3d(std::vector<double> x, std::vector<int> dim, double grid_size = 1.) {
 
-  return {int(x[0]), int(x[1]), int(x[2])};
+  return {int(x[0]/grid_size), int(x[1]/grid_size), int(x[2]/grid_size)};
 }
 
 } // namespace macrocirculation

@@ -139,7 +139,7 @@ public:
 
 // read vascular domain from nifti file and create hydraulic parameter with one value in
 // vascular domain and other outside the vascular domain
-void create_heterogeneous_conductivity(std::string vasc_filename, double voxel_size, lm::MeshBase &mesh, lm::ExplicitSystem &hyd_cond, lm::EquationSystems &eq_sys) {
+void create_heterogeneous_conductivity(std::string out_dir, std::string vasc_filename, double voxel_size, lm::MeshBase &mesh, lm::ExplicitSystem &hyd_cond, lm::EquationSystems &eq_sys) {
 
   const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
 
@@ -151,21 +151,43 @@ void create_heterogeneous_conductivity(std::string vasc_filename, double voxel_s
   vasc_nifti.read_point_data(img_fields[0], &img_data);
   std::vector<std::vector<std::vector<double>>> img_data_grid;
   vasc_nifti.read_point_data(img_fields[0], &img_data_grid);
-  std::cout << "nifit data \n\n";
-  std::cout << vasc_nifti.print_str() << "\n\n";
-  size_t count = 0;
-  for (auto a : img_data)
-    if (a > 0.5)
-      count++;
-  std::cout << "\nvascular voxel count = " << count << "\n\n";
 
+  // for debugging
+  {
+    std::cout << "nifit data \n\n";
+    std::cout << vasc_nifti.print_str() << "\n\n";
+    size_t count = 0;
+    for (auto a : img_data)
+      if (a > 0.5)
+        count++;
+    std::cout << "\nvascular voxel count = " << count << "\n\n";
+
+    std::vector<int> ii = {121, 121, 78};
+    auto i = mc::index_3d_1d(ii, img_dim);
+    std::cout << "val 1 = " << img_data[i] << "\n"; //img_data_grid[ii[0]][ii[1]][ii[2]] << "\n";
+    ii[0] = 122;
+    i = mc::index_3d_1d(ii, img_dim);
+    std::cout << "val 2 = " << img_data[i] << "\n";
+    ii[0] = 123;
+    i = mc::index_3d_1d(ii, img_dim);
+    std::cout << "val 3 = " << img_data[i] << "\n";
+    ii[0] = 124;
+    i = mc::index_3d_1d(ii, img_dim);
+    std::cout << "val 4 = " << img_data[i] << "\n";
+    ii[0] = 121;
+    ii[1] = 122;
+    i = mc::index_3d_1d(ii, img_dim);
+    std::cout << "val 5 = " << img_data[i] << "\n";
+    ii[1] = 125;
+    i = mc::index_3d_1d(ii, img_dim);
+    std::cout << "val 6 = " << img_data[i] << "\n";
+  }
+
+  // output vascular domain elements
   auto vtu_writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
-  vtu_writer->SetFileName("vascular_domain.vtu");
+  auto fname = out_dir + "vascular_domain.vtu";
+  vtu_writer->SetFileName(fname.c_str());
   auto points = vtkSmartPointer<vtkPoints>::New();
-
-  auto vtu_writer2 = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
-  vtu_writer2->SetFileName("extravascular_domain.vtu");
-  auto points2 = vtkSmartPointer<vtkPoints>::New();
 
   std::vector<unsigned int> dof_indices;
   for (const auto &elem : mesh.active_local_element_ptr_range()) {
@@ -174,33 +196,20 @@ void create_heterogeneous_conductivity(std::string vasc_filename, double voxel_s
 
     // find voxel element (1d vector representation of the image data)
     int i = mc::locate_voxel_1d({x(0), x(1), x(2)}, img_dim);
-    auto i_3d = mc::locate_voxel_3d({x(0), x(1), x(2)}, img_dim);
-
-    // get image data
-    auto a = img_data_grid[i_3d[0]][i_3d[1]][i_3d[2]];
+    auto a = img_data[i];
 
     // debug
-    // auto a = img_data[i + 352];
+    // auto a = img_data[i];
     //    std::cout << "center = " << elem->centroid()
     //              << ", elem id = " << elem->id()
     //              << ", dof = " << dof_indices[0]
     //              << ", x = " << x
     //              << ", i = " << i
-    //              << ", i_3d = (" << i_3d[0] << ", " << i_3d[1] << ", " << i_3d[2]
-    //              << "), i_check = " << mc::index_3d_1d(i_3d, img_dim)
     //              << ", data = " << a << "\n";
 
-    auto xv = lm::Point(i_3d[0], i_3d[1], i_3d[2]) * voxel_size;
+    auto ii = mc::locate_voxel_3d({x(0), x(1), x(2)}, img_dim);
+    auto xv = lm::Point(ii[0], ii[1], ii[2]) * voxel_size;
     if (a > 0.5) {
-      //std::cout << "vascular domain: xv = " << xv << ", elem center = " << elem->centroid() << "\n";
-      points->InsertNextPoint(xv(0), xv(1), xv(2));
-    } else {
-      points2->InsertNextPoint(xv(0), xv(1), xv(2));
-    }
-
-    // set parameter
-    if (a > 0.5) {
-      auto xv = lm::Point(i_3d[0], i_3d[1], i_3d[2]) * voxel_size;
       //std::cout << "vascular domain: xv = " << xv << ", elem center = " << elem->centroid() << "\n";
       points->InsertNextPoint(xv(0), xv(1), xv(2));
     }
@@ -220,13 +229,6 @@ void create_heterogeneous_conductivity(std::string vasc_filename, double voxel_s
   vtu_writer->SetDataModeToAppended();
   vtu_writer->EncodeAppendedDataOn();
   vtu_writer->Write();
-
-  auto grid2 = vtkSmartPointer<vtkUnstructuredGrid>::New();
-  grid2->SetPoints(points2);
-  vtu_writer2->SetInputData(grid2);
-  vtu_writer2->SetDataModeToAppended();
-  vtu_writer2->EncodeAppendedDataOn();
-  vtu_writer2->Write();
 }
 
 } // namespace darcy3d
@@ -327,7 +329,7 @@ int main(int argc, char *argv[]) {
   eq_sys.parameters.set<lm::Point>("center") = xc;
   eq_sys.parameters.set<double>("length") = l;
 
-  darcy3d::create_heterogeneous_conductivity(vasc_nifti_filename, voxel_size, mesh, hyd_cond, eq_sys);
+  darcy3d::create_heterogeneous_conductivity(out_dir, vasc_nifti_filename, voxel_size, mesh, hyd_cond, eq_sys);
 
   // write
   log("writing to file\n");
