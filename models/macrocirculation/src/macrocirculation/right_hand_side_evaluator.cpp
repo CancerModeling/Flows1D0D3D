@@ -251,14 +251,15 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
       assert(edge.has_physical_data());
       const auto &param = edge.get_physical_data();
 
-      // only one direction at the beginning.
-      assert(edge.is_pointing_to(vertex->get_id()));
+      const bool is_pointing_to = edge.is_pointing_to(vertex->get_id());
 
       const auto &vertex_dof_map = d_dof_map->get_local_dof_map(*vertex);
       const auto &vertex_dofs = vertex_dof_map.dof_indices();
 
       d_flow_upwind_evaluator.get_fluxes_on_nfurcation(t, *vertex, Q_up_macro_edge, A_up_macro_edge);
       auto Q_out = Q_up_macro_edge.front();
+
+      const double sgn = is_pointing_to ? + 1 : -1;
 
       const auto p_c = u_prev[vertex_dofs[0]];
 
@@ -269,7 +270,7 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
       // pressure in the veins:
       const double p_v = 5.0 * 1.333322;
 
-      rhs[vertex_dofs[0]] = 1. / vertex->get_peripheral_vessel_data().compliance * (Q_out - (p_c - p_v) / R2);
+      rhs[vertex_dofs[0]] = 1. / vertex->get_peripheral_vessel_data().compliance * (sgn*Q_out - (p_c - p_v) / R2);
     }
   }
 }
