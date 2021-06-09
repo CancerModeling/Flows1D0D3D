@@ -56,6 +56,9 @@ struct PhysicalData {
 
   /*! @brief Initial length in cm. */
   double length;
+
+  double get_c0() const;
+
 };
 
 struct DiscretizationData {
