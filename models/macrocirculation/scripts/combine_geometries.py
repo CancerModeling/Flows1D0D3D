@@ -6,12 +6,13 @@ import numpy as np
 
 
 class ConnectionPair:
-    def __init__(self, name0, name1, length, number_macro_edges, number_micro_edges):
+    def __init__(self, name0, name1, length, number_macro_edges, number_micro_edges, start_radius):
         self.name0 = name0
         self.name1 = name1
         self.length = length
         self.number_macro_edges = number_macro_edges
         self.number_micro_edges = number_micro_edges
+        self.start_radius = start_radius
 
 
 def find_vertex_by_name(geo, name):
@@ -32,8 +33,8 @@ geometry2_path = '../data/coarse-network-geometry.json'
 output_path = '../data/combined-network-geometry.json'
 
 to_connect = [
-    ConnectionPair('cw_con_1', 'bg_132', 10., 6, 60),
-    ConnectionPair('cw_con_2', 'bg_135', 10., 6, 60)
+    ConnectionPair('cw_con_1', 'bg_132', 10., 6, 60, start_radius=0.24),
+    ConnectionPair('cw_con_2', 'bg_135', 10., 6, 60, start_radius=0.24)
 ]
 
 with open(geometry1_path) as f:
@@ -68,7 +69,7 @@ for cpair in to_connect:
 
     elastic_modulus_v0 = np.mean([e['elastic_modulus'] for e in neighbors_v0])
     wall_thickness_v0 = np.mean([e['wall_thickness'] for e in neighbors_v0])
-    radius_v0 = np.mean([e.get('radius') or np.mean(e['radii']) for e in neighbors_v0])
+    radius_v0 = cpair.start_radius
     elastic_modulus_v1 = np.mean([e['elastic_modulus'] for e in neighbors_v1])
     wall_thickness_v1 = np.mean([e['wall_thickness'] for e in neighbors_v1])
     radius_v1 = np.mean([e.get('radius') or np.mean(e['radii']) for e in neighbors_v1])
@@ -95,6 +96,7 @@ for cpair in to_connect:
         right_vertex = all_microvertices[i+1]
         d = {
             'id': max_vessel_id + i + 1,
+            'name': 'con_vertex({})_vertex({})_({})'.format(cpair.name0, cpair.name1, i),
             'vessel_length': vessel_length,
             'radius': radius_interp[i],
             'wall_thickness': wall_thickness_interp[i],
