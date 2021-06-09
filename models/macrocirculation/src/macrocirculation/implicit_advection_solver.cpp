@@ -30,6 +30,14 @@ ImplicitAdvectionSolver::ImplicitAdvectionSolver(std::shared_ptr<GraphStorage> g
       d_inflow_value_fct(std::move(inflow_value_fct)),
       d_graph(std::move(graph)) {}
 
+void extract_dof(const std::vector<std::size_t> &dof_indices,
+                 const PetscVec &global,
+                 std::vector<double> &local) {
+  assert(dof_indices.size() == local.size());
+
+  for (std::size_t i = 0; i < dof_indices.size(); i += 1)
+    local[i] = global.get(dof_indices[i]);
+}
 
 
 void ImplicitAdvectionSolver::solve() const {
@@ -44,21 +52,11 @@ void ImplicitAdvectionSolver::solve() const {
   dof_map->create(MPI_COMM_WORLD, *d_graph, num_components, d_degree, true);
 
   // setup matrix
-  PetscMat A("advection", *dof_map);
   PetscVec u_now("u_now", *dof_map);
   PetscVec u_prev("u_prev", *dof_map);
+  PetscVec f("f", *dof_map);
 
-  // we save the assembly in this intermediate structure
-  std::vector<PetscInt> petscRows;
-  std::vector<PetscInt> petscCols;
-  std::vector<double> values;
-
-
-  /*
-  //gmm::row_matrix<gmm::wsvector<double>> A(num_dofs, num_dofs);
-  //std::vector<double> f(num_dofs);
-  //std::vector<double> u_now(num_dofs, 0);
-  //std::vector<double> u_prev(num_dofs, 0);
+  PetscMat A("advection", *dof_map);
 
   std::size_t it = 0;
 
@@ -70,18 +68,10 @@ void ImplicitAdvectionSolver::solve() const {
     t_now += d_tau;
     it += 1;
 
-    PetscMat A("advection", *dof_map);
-
     // reset matrix and rhs
-    for (int i = 0; i < A.nrows(); i++)
-      A[i].clear();
-
-    for (int i = 0; i < f.size(); i++)
-      f[i] = 0;
-
-    // next time step
-    for (int i = 0; i < u_now.size(); i++)
-      u_prev[i] = u_now[i];
+    A.zero();
+    f.zero();
+    u_prev.swap(u_now);
 
     {
       gmm::row_matrix<gmm::wsvector<double>> A_loc(num_components * num_basis_functions, num_components * num_basis_functions);
@@ -136,12 +126,8 @@ void ImplicitAdvectionSolver::solve() const {
           }
 
           // copy into global matrix
-          for (std::size_t i = 0; i < dof_indices.size(); i += 1) {
-            f[dof_indices[i]] += f_loc[i];
-            for (std::size_t j = 0; j < dof_indices.size(); j += 1) {
-              A(dof_indices[i], dof_indices[j]) += A_loc(i, j);
-            }
-          }
+          A.add(dof_indices, dof_indices, A_loc);
+          f.add(dof_indices, f_loc);
         }
       }
     }
@@ -219,14 +205,10 @@ void ImplicitAdvectionSolver::solve() const {
           }
 
           // copy into global matrix
-          for (std::size_t i = 0; i < dof_indices_r.size(); i += 1) {
-            for (std::size_t j = 0; j < dof_indices_r.size(); j += 1) {
-              A(dof_indices_r[i], dof_indices_r[j]) += A_rr_loc(i, j);
-              A(dof_indices_l[i], dof_indices_l[j]) += A_ll_loc(i, j);
-              A(dof_indices_r[i], dof_indices_l[j]) += A_rl_loc(i, j);
-              A(dof_indices_l[i], dof_indices_r[j]) += A_lr_loc(i, j);
-            }
-          }
+          A.add(dof_indices_r, dof_indices_r, A_rr_loc);
+          A.add(dof_indices_l, dof_indices_l, A_ll_loc);
+          A.add(dof_indices_r, dof_indices_l, A_rl_loc);
+          A.add(dof_indices_l, dof_indices_r, A_lr_loc);
         }
       }
     }
@@ -238,7 +220,6 @@ void ImplicitAdvectionSolver::solve() const {
 
       const auto &phi_l = fe.get_phi_boundary()[0];
       const auto &phi_r = fe.get_phi_boundary()[1];
-
 
       // block matrices for exterior boundaries
       gmm::row_matrix<gmm::wsvector<double>> A_ext_loc(num_components * num_basis_functions, num_components * num_basis_functions);
@@ -289,33 +270,32 @@ void ImplicitAdvectionSolver::solve() const {
           }
 
           // copy into global matrix
-          for (std::size_t i = 0; i < num_basis_functions; i += 1) {
-            f[dof_indices[i]] += f_ext_loc[i];
-            for (std::size_t j = 0; j < num_basis_functions; j += 1) {
-              A(dof_indices[i], dof_indices[j]) += A_ext_loc(i, j);
-            }
-          }
+          f.add(dof_indices, f_ext_loc);
+          A.add(dof_indices, dof_indices, A_ext_loc);
         }
       }
     }
 
-    gmm::iteration iter(1.0E-10);
-    gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A);
-    gmm::gmres(A, u_now, f, PR, 500, iter);
+    A.assemble();
+    f.assemble();
+
+    // gmm::iteration iter(1.0E-10);
+    // gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A);
+    // gmm::gmres(A, u_now, f, PR, 500, iter);
 
     if (it % d_output_interval == 0) {
       std::cout << "it = " << it << std::endl;
 
       std::vector<Point> points;
       std::vector<double> u_vertex_values;
-      interpolate_to_vertices(MPI_COMM_WORLD, *d_graph, *dof_map, 0, u_now, points, u_vertex_values);
+      // TODO:
+      // interpolate_to_vertices(MPI_COMM_WORLD, *d_graph, *dof_map, 0, u_now, points, u_vertex_values);
 
       writer.set_points(points);
       writer.add_vertex_data("concentration", u_vertex_values);
       writer.write(t_now);
     }
   }
-  */
 }
 
 } // namespace macrocirculation
