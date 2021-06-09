@@ -4,8 +4,8 @@
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
-#include <cmath> // (add before graph_storage.hpp) easy fix for compile error about std::abs
 #include "graph_storage.hpp"
+#include <cmath> // (add before graph_storage.hpp) easy fix for compile error about std::abs
 
 #include <algorithm>
 #include <cassert>
@@ -36,9 +36,7 @@ std::size_t Primitive::get_id() const {
   return p_id;
 }
 
-
-PhysicalData PhysicalData::set_from_data(double elastic_modulus, double wall_thickness, double density, double radius, double length)
-{
+PhysicalData PhysicalData::set_from_data(double elastic_modulus, double wall_thickness, double density, double radius, double length) {
   // [E] = Pa = N m^{-2} = kg s^{-2} m^{-1} = kg s^{-2} cm^{-1} 100^{-1}
   const double E = elastic_modulus / 100;
 
@@ -47,7 +45,12 @@ PhysicalData PhysicalData::set_from_data(double elastic_modulus, double wall_thi
   // const double G0 = calculate_G0(d_wall_width, d_elastic_modulus, d_poisson_ratio, A0);
   const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * E * wall_thickness / std::sqrt(A0);
 
+
   return {G0, A0, density, length};
+}
+
+double PhysicalData::get_c0() const {
+  return std::pow(G0 / (2.0 * rho), 0.5);
 }
 
 const std::string &Primitive::get_name() const {
