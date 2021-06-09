@@ -1,38 +1,43 @@
 import json
 import numpy as np
 import argparse
+import os
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 plt.style.use('seaborn-pastel')
 
 
-def load_data(vessel_id):
-    filename_data = 'output/data_{}_vessel{:05d}.csv'
-    filename_times = 'output/data_times.csv'
+def load_data(directory, vessel_id, t_start):
+    filename_data = os.path.join(directory, 'data_{}_vessel{:05d}.csv')
+    filename_times = os.path.join(directory, 'data_times.csv')
+    print(filename_times, directory)
 
     data = {}
     with open(filename_times, 'r') as file:
         numeric_data = np.loadtxt(file)
         data['t'] = numeric_data
+    start_index = int(sum(data['t'] < t_start)) or 0
+    data['t'] = data['t'][start_index:]
     for component in ['Q', 'A', 'p', 'c']:
         with open(filename_data.format(component, vessel_id), 'r') as file:
             numeric_data = np.loadtxt(file, delimiter=',')
             data['grid'] = numeric_data[0,:]
-            data[component] = numeric_data[1:,:]
+            data[component] = numeric_data[1+start_index:,:]
     data['c'] = data['c'] / data['A']
     return data
 
 
 parser = argparse.ArgumentParser(description='Animator for the vessel data.')
 parser.add_argument('--vessels', type=int, nargs='+', help='A list of ids of the vessels to plot.', default=[0])
-parser.add_argument('--t-end', type=float, default=10000)
+parser.add_argument('--output-directory', type=str, default='output')
+parser.add_argument('--t-start', type=float, default=0)
 parser.add_argument('--no-a', help='do not output A', action='store_true')
 parser.add_argument('--no-q', help='do not output Q', action='store_true')
 parser.add_argument('--no-c', help='do not output c', action='store_true')
 
 args = parser.parse_args()
 
-data_sets = [load_data(index) for index in list(args.vessels) ]
+data_sets = [load_data(args.output_directory, index, args.t_start) for index in list(args.vessels) ]
 
 fig = plt.figure()
 fig.tight_layout()
