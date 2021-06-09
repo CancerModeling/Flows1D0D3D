@@ -15,6 +15,8 @@
 #include "graph_pvd_writer.hpp"
 #include "interpolate_to_vertices.hpp"
 #include "petsc.h"
+#include "petsc/petsc_mat.hpp"
+#include "petsc/petsc_vec.hpp"
 
 namespace macrocirculation {
 
@@ -28,79 +30,7 @@ ImplicitAdvectionSolver::ImplicitAdvectionSolver(std::shared_ptr<GraphStorage> g
       d_inflow_value_fct(std::move(inflow_value_fct)),
       d_graph(std::move(graph)) {}
 
-class PetscMat {
-public:
-  // TODO: Rule of 5.
 
-  PetscMat(const std::string &name, const DofMap &dof_map) {
-    CHKERRABORT(PETSC_COMM_WORLD, MatCreate(PETSC_COMM_WORLD, &d_mat));
-    CHKERRABORT(PETSC_COMM_WORLD, MatSetType(d_mat, MATMPIAIJ));
-    CHKERRABORT(PETSC_COMM_WORLD, MatSetType(d_mat, MATMPIAIJ));
-    CHKERRABORT(PETSC_COMM_WORLD, MatSetSizes(d_mat, (PetscInt) dof_map.num_owned_dofs(), dof_map.num_owned_dofs(), dof_map.num_dof(), dof_map.num_dof()));
-    // we overestimate the number non-zero entries, otherwise matrix assembly is incredibly slow :
-    CHKERRABORT(PETSC_COMM_WORLD, MatMPIAIJSetPreallocation(d_mat, 500, nullptr, 500, nullptr));
-    // TODO: more generic name
-    CHKERRABORT(PETSC_COMM_WORLD, PetscObjectSetName((PetscObject) d_mat, name.c_str()));
-  }
-
-  void assemble(std::vector<PetscInt> rows, std::vector<PetscInt> cols, std::vector<double> values) {
-    CHKERRABORT(PETSC_COMM_WORLD,
-                MatSetValues(d_mat,
-                             static_cast<PetscInt>(rows.size()),
-                             rows.data(),
-                             static_cast<PetscInt>(cols.size()),
-                             cols.data(),
-                             values.data(),
-                             ADD_VALUES));
-
-    CHKERRABORT(PETSC_COMM_WORLD, MatAssemblyBegin(d_mat, MAT_FINAL_ASSEMBLY));
-    CHKERRABORT(PETSC_COMM_WORLD, MatAssemblyEnd(d_mat, MAT_FINAL_ASSEMBLY));
-  }
-
-  ~PetscMat() {
-    CHKERRABORT(PETSC_COMM_WORLD, MatDestroy(&d_mat));
-  }
-
-  Mat &get_mat() { return d_mat; }
-
-private:
-  Mat d_mat;
-};
-
-class PetscVec {
-public:
-  // TODO: Rule of 5.
-
-  PetscVec(const std::string &name, const DofMap &dof_map) {
-    CHKERRABORT(PETSC_COMM_WORLD, VecCreate(PETSC_COMM_WORLD, &d_vec));
-    CHKERRABORT(PETSC_COMM_WORLD, VecSetType(d_vec, VECSTANDARD));
-    CHKERRABORT(PETSC_COMM_WORLD, VecSetSizes(d_vec, (PetscInt) dof_map.num_owned_dofs(), PETSC_DECIDE));
-    CHKERRABORT(PETSC_COMM_WORLD, VecSetUp(d_vec));
-    CHKERRABORT(PETSC_COMM_WORLD, PetscObjectSetName((PetscObject) d_vec, name.c_str()));
-  }
-
-  ~PetscVec() {
-    CHKERRABORT(PETSC_COMM_WORLD, VecDestroy(&d_vec));
-  }
-
-  void set(PetscInt idx, double value) {
-    CHKERRABORT(PETSC_COMM_WORLD, VecSetValue(d_vec, idx, value, INSERT_VALUES));
-  }
-
-  double get(PetscInt idx) {
-    PetscReal value;
-    CHKERRABORT(PETSC_COMM_WORLD, VecGetValues(d_vec, 1, &idx, &value));
-    return value;
-  }
-
-  void assemble() {
-    CHKERRABORT(PETSC_COMM_WORLD, VecAssemblyBegin(d_vec));
-    CHKERRABORT(PETSC_COMM_WORLD, VecAssemblyEnd(d_vec));
-  }
-
-private:
-  Vec d_vec;
-};
 
 void ImplicitAdvectionSolver::solve() const {
   // we only support one macro edge for now
@@ -115,8 +45,8 @@ void ImplicitAdvectionSolver::solve() const {
 
   // setup matrix
   PetscMat A("advection", *dof_map);
-  PetscMat u_now("u_now", *dof_map);
-  PetscMat u_prev("u_prev", *dof_map);
+  PetscVec u_now("u_now", *dof_map);
+  PetscVec u_prev("u_prev", *dof_map);
 
   // we save the assembly in this intermediate structure
   std::vector<PetscInt> petscRows;
