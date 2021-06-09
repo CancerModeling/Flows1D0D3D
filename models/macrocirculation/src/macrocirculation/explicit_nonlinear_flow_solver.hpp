@@ -27,6 +27,11 @@ class RightHandSideEvaluator;
 class TimeIntegrator;
 class Vertex;
 
+struct Values0DModel {
+  double p_c;
+  double q;
+};
+
 /*! @brief Interpolates a constant value. WARNING: Assumes legendre basis! */
 void interpolate_constant(MPI_Comm comm,
                           const GraphStorage &graph,
@@ -68,6 +73,7 @@ public:
   /*! @brief Calculates the flow Q pointing towards the vertex v. */
   [[nodiscard]] double get_flow_at_vessel_tip(const Vertex& v) const;
 
+  [[nodiscard]] Values0DModel get_0D_values(const Vertex& v) const;
 private:
   /*! @brief The mpi communicator. */
   MPI_Comm d_comm;
