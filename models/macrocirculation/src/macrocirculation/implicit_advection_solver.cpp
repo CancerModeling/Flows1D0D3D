@@ -14,6 +14,7 @@
 #include "gmm.h"
 #include "graph_pvd_writer.hpp"
 #include "interpolate_to_vertices.hpp"
+#include "petsc.h"
 
 namespace macrocirculation {
 
@@ -27,6 +28,80 @@ ImplicitAdvectionSolver::ImplicitAdvectionSolver(std::shared_ptr<GraphStorage> g
       d_inflow_value_fct(std::move(inflow_value_fct)),
       d_graph(std::move(graph)) {}
 
+class PetscMat {
+public:
+  // TODO: Rule of 5.
+
+  PetscMat(const std::string &name, const DofMap &dof_map) {
+    CHKERRABORT(PETSC_COMM_WORLD, MatCreate(PETSC_COMM_WORLD, &d_mat));
+    CHKERRABORT(PETSC_COMM_WORLD, MatSetType(d_mat, MATMPIAIJ));
+    CHKERRABORT(PETSC_COMM_WORLD, MatSetType(d_mat, MATMPIAIJ));
+    CHKERRABORT(PETSC_COMM_WORLD, MatSetSizes(d_mat, (PetscInt) dof_map.num_owned_dofs(), dof_map.num_owned_dofs(), dof_map.num_dof(), dof_map.num_dof()));
+    // we overestimate the number non-zero entries, otherwise matrix assembly is incredibly slow :
+    CHKERRABORT(PETSC_COMM_WORLD, MatMPIAIJSetPreallocation(d_mat, 500, nullptr, 500, nullptr));
+    // TODO: more generic name
+    CHKERRABORT(PETSC_COMM_WORLD, PetscObjectSetName((PetscObject) d_mat, name.c_str()));
+  }
+
+  void assemble(std::vector<PetscInt> rows, std::vector<PetscInt> cols, std::vector<double> values) {
+    CHKERRABORT(PETSC_COMM_WORLD,
+                MatSetValues(d_mat,
+                             static_cast<PetscInt>(rows.size()),
+                             rows.data(),
+                             static_cast<PetscInt>(cols.size()),
+                             cols.data(),
+                             values.data(),
+                             ADD_VALUES));
+
+    CHKERRABORT(PETSC_COMM_WORLD, MatAssemblyBegin(d_mat, MAT_FINAL_ASSEMBLY));
+    CHKERRABORT(PETSC_COMM_WORLD, MatAssemblyEnd(d_mat, MAT_FINAL_ASSEMBLY));
+  }
+
+  ~PetscMat() {
+    CHKERRABORT(PETSC_COMM_WORLD, MatDestroy(&d_mat));
+  }
+
+  Mat &get_mat() { return d_mat; }
+
+private:
+  Mat d_mat;
+};
+
+class PetscVec {
+public:
+  // TODO: Rule of 5.
+
+  PetscVec(const std::string &name, const DofMap &dof_map) {
+    CHKERRABORT(PETSC_COMM_WORLD, VecCreate(PETSC_COMM_WORLD, &d_vec));
+    CHKERRABORT(PETSC_COMM_WORLD, VecSetType(d_vec, VECSTANDARD));
+    CHKERRABORT(PETSC_COMM_WORLD, VecSetSizes(d_vec, (PetscInt) dof_map.num_owned_dofs(), PETSC_DECIDE));
+    CHKERRABORT(PETSC_COMM_WORLD, VecSetUp(d_vec));
+    CHKERRABORT(PETSC_COMM_WORLD, PetscObjectSetName((PetscObject) d_vec, name.c_str()));
+  }
+
+  ~PetscVec() {
+    CHKERRABORT(PETSC_COMM_WORLD, VecDestroy(&d_vec));
+  }
+
+  void set(PetscInt idx, double value) {
+    CHKERRABORT(PETSC_COMM_WORLD, VecSetValue(d_vec, idx, value, INSERT_VALUES));
+  }
+
+  double get(PetscInt idx) {
+    PetscReal value;
+    CHKERRABORT(PETSC_COMM_WORLD, VecGetValues(d_vec, 1, &idx, &value));
+    return value;
+  }
+
+  void assemble() {
+    CHKERRABORT(PETSC_COMM_WORLD, VecAssemblyBegin(d_vec));
+    CHKERRABORT(PETSC_COMM_WORLD, VecAssemblyEnd(d_vec));
+  }
+
+private:
+  Vec d_vec;
+};
+
 void ImplicitAdvectionSolver::solve() const {
   // we only support one macro edge for now
   assert(d_graph->num_edges() < 2);
@@ -38,12 +113,22 @@ void ImplicitAdvectionSolver::solve() const {
   const auto dof_map = std::make_shared<DofMap>(d_graph->num_vertices(), d_graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *d_graph, num_components, d_degree, true);
 
-  const std::size_t num_dofs = dof_map->num_dof();
+  // setup matrix
+  PetscMat A("advection", *dof_map);
+  PetscMat u_now("u_now", *dof_map);
+  PetscMat u_prev("u_prev", *dof_map);
 
-  gmm::row_matrix<gmm::wsvector<double>> A(num_dofs, num_dofs);
-  std::vector<double> f(num_dofs);
-  std::vector<double> u_now(num_dofs, 0);
-  std::vector<double> u_prev(num_dofs, 0);
+  // we save the assembly in this intermediate structure
+  std::vector<PetscInt> petscRows;
+  std::vector<PetscInt> petscCols;
+  std::vector<double> values;
+
+
+  /*
+  //gmm::row_matrix<gmm::wsvector<double>> A(num_dofs, num_dofs);
+  //std::vector<double> f(num_dofs);
+  //std::vector<double> u_now(num_dofs, 0);
+  //std::vector<double> u_prev(num_dofs, 0);
 
   std::size_t it = 0;
 
@@ -54,6 +139,8 @@ void ImplicitAdvectionSolver::solve() const {
   while (t_now < d_t_end) {
     t_now += d_tau;
     it += 1;
+
+    PetscMat A("advection", *dof_map);
 
     // reset matrix and rhs
     for (int i = 0; i < A.nrows(); i++)
@@ -229,7 +316,7 @@ void ImplicitAdvectionSolver::solve() const {
       // right hand side for inner boundaries
       std::vector<double> f_ext_loc(num_components * num_basis_functions);
 
-      std::vector<std::size_t > dof_indices(num_components * num_basis_functions);
+      std::vector<std::size_t> dof_indices(num_components * num_basis_functions);
 
       for (const auto &e_id : d_graph->get_edge_ids()) {
         const auto macro_edge = d_graph->get_edge(e_id);
@@ -240,13 +327,12 @@ void ImplicitAdvectionSolver::solve() const {
 
         fe.reinit(h);
 
-        std::array< MicroVertex, 2 > micro_vertices = {macro_edge->left_micro_vertex(), macro_edge->right_micro_vertex()};
-        std::array< MicroEdge, 2 > neighbor_edges = {*micro_vertices[0].get_right_edge(), *micro_vertices[1].get_left_edge()};
-        std::array< double, 2 > normal = {-1, +1};
-        std::array< std::reference_wrapper<const std::vector< double >>, 2 > phi = {phi_l, phi_r};
+        std::array<MicroVertex, 2> micro_vertices = {macro_edge->left_micro_vertex(), macro_edge->right_micro_vertex()};
+        std::array<MicroEdge, 2> neighbor_edges = {*micro_vertices[0].get_right_edge(), *micro_vertices[1].get_left_edge()};
+        std::array<double, 2> normal = {-1, +1};
+        std::array<std::reference_wrapper<const std::vector<double>>, 2> phi = {phi_l, phi_r};
 
-        for (std::size_t v_idx=0; v_idx < 2; v_idx += 1)
-        {
+        for (std::size_t v_idx = 0; v_idx < 2; v_idx += 1) {
           local_dof_map.dof_indices(neighbor_edges[v_idx], 0, dof_indices);
 
           // zero local system
@@ -263,7 +349,7 @@ void ImplicitAdvectionSolver::solve() const {
               f_ext_loc[i] += (-d_tau) * inflow_value * d_velocity * normal[v_idx] * phi[v_idx].get()[i];
             }
           }
-            // outflow boundary
+          // outflow boundary
           else {
             for (unsigned int i = 0; i < num_basis_functions; i += 1) {
               for (unsigned int j = 0; j < num_basis_functions; j += 1) {
@@ -299,6 +385,7 @@ void ImplicitAdvectionSolver::solve() const {
       writer.write(t_now);
     }
   }
+  */
 }
 
 } // namespace macrocirculation

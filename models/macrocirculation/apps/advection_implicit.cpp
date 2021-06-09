@@ -5,12 +5,13 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <memory>
 #include "libmesh/libmesh.h"
 #include <cmath>
+#include <memory>
+#include <petsc.h>
 
-#include "macrocirculation/implicit_advection_solver.hpp"
 #include "macrocirculation/graph_storage.hpp"
+#include "macrocirculation/implicit_advection_solver.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
@@ -18,6 +19,9 @@ namespace mc = macrocirculation;
 int main(int argc, char *argv[]) {
   const std::size_t degree = 2;
   const std::size_t num_micro_edges = 100;
+
+  // initialize petsc
+  CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves advection problem"));
 
   const double velocity = 1;
   const double tau = 0.001;
@@ -30,15 +34,15 @@ int main(int argc, char *argv[]) {
   lm::LibMeshInit init(argc, argv);
 
   // create the ascending aorta
-  auto graph = std::make_shared< mc::GraphStorage >();
+  auto graph = std::make_shared<mc::GraphStorage>();
 
   std::size_t ascending_aorta_id = 1;
 
   auto v0 = graph->create_vertex();
   auto v1 = graph->create_vertex();
   auto edge = graph->connect(*v0, *v1, num_micro_edges);
-  edge->add_embedding_data({{ mc::Point(0, 0, 0), mc::Point(1, 0, 0) }});
-  edge->add_physical_data({ 0, 0, 0, 1. });
+  edge->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1, 0, 0)}});
+  edge->add_physical_data({0, 0, 0, 1.});
 
   // const std::size_t N = 32;
   // auto v_prev = graph.create_vertex(lm::Point(0, 0, 0));
