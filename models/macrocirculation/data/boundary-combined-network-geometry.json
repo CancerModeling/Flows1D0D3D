@@ -1,0 +1,229 @@
+{
+    "vertices": [
+        {
+            "name": "cw_out_8",
+            "peripheral_compliance": 0.7706633239106058,
+            "peripheral_resistance": 1.6431299571007694
+        },
+        {
+            "name": "cw_out_10",
+            "peripheral_compliance": 0.004428165879463184,
+            "peripheral_resistance": 285.96489581141896
+        },
+        {
+            "name": "cw_out_13",
+            "peripheral_compliance": 0.004481604090376835,
+            "peripheral_resistance": 282.5550782309049
+        },
+        {
+            "name": "cw_out_15",
+            "peripheral_compliance": 0.07638396494172285,
+            "peripheral_resistance": 16.578086713912974
+        },
+        {
+            "name": "cw_out_16",
+            "peripheral_compliance": 0.07608588095464539,
+            "peripheral_resistance": 16.64303519218248
+        },
+        {
+            "name": "cw_out_23",
+            "peripheral_compliance": 0.0029917026536573927,
+            "peripheral_resistance": 423.2706725744628
+        },
+        {
+            "name": "cw_out_24",
+            "peripheral_compliance": 0.0030120837199607785,
+            "peripheral_resistance": 420.406639418661
+        },
+        {
+            "name": "cw_out_29",
+            "peripheral_compliance": 0.001928978194109787,
+            "peripheral_resistance": 656.461539183319
+        },
+        {
+            "name": "cw_out_30",
+            "peripheral_compliance": 0.0019365436469810015,
+            "peripheral_resistance": 653.8969551915258
+        },
+        {
+            "name": "cw_out_32",
+            "peripheral_compliance": 0.0015151401196150554,
+            "peripheral_resistance": 835.7642821035541
+        },
+        {
+            "name": "cw_out_33",
+            "peripheral_compliance": 0.001515831404053541,
+            "peripheral_resistance": 835.3831375772463
+        },
+        {
+            "name": "bg_124",
+            "peripheral_compliance": 6.699462616263104e-06,
+            "peripheral_resistance": 189015.15940732273
+        },
+        {
+            "name": "bg_128",
+            "peripheral_compliance": 4.980004504527874e-06,
+            "peripheral_resistance": 254276.87730102177
+        },
+        {
+            "name": "bg_41",
+            "peripheral_compliance": 4.2219384388838535e-06,
+            "peripheral_resistance": 299933.3156290975
+        },
+        {
+            "name": "bg_125",
+            "peripheral_compliance": 1.8200542751183786e-06,
+            "peripheral_resistance": 695748.479409499
+        },
+        {
+            "name": "bg_145",
+            "peripheral_compliance": 5.258288956305777e-07,
+            "peripheral_resistance": 2408197.808980836
+        },
+        {
+            "name": "bg_140",
+            "peripheral_compliance": 5.587338206598234e-07,
+            "peripheral_resistance": 2266374.3405777067
+        },
+        {
+            "name": "bg_143",
+            "peripheral_compliance": 4.2428608996355233e-07,
+            "peripheral_resistance": 2984542.798622386
+        },
+        {
+            "name": "bg_110",
+            "peripheral_compliance": 2.490718503731974e-07,
+            "peripheral_resistance": 5084075.107078565
+        },
+        {
+            "name": "bg_114",
+            "peripheral_compliance": 4.356155848855744e-07,
+            "peripheral_resistance": 2906920.776695802
+        },
+        {
+            "name": "bg_117",
+            "peripheral_compliance": 9.777926863755782e-08,
+            "peripheral_resistance": 12950597.933496648
+        },
+        {
+            "name": "bg_119",
+            "peripheral_compliance": 3.3759208910973804e-07,
+            "peripheral_resistance": 3750976.504501991
+        },
+        {
+            "name": "bg_122",
+            "peripheral_compliance": 2.3590560881003204e-07,
+            "peripheral_resistance": 5367824.871752349
+        },
+        {
+            "name": "bg_133",
+            "peripheral_compliance": 2.3823495563561352e-06,
+            "peripheral_resistance": 531534.0861620695
+        },
+        {
+            "name": "bg_136",
+            "peripheral_compliance": 1.7092287841870307e-06,
+            "peripheral_resistance": 740860.4430674076
+        },
+        {
+            "name": "bg_138",
+            "peripheral_compliance": 5.943845208600379e-07,
+            "peripheral_resistance": 2130439.050673984
+        },
+        {
+            "name": "bg_141",
+            "peripheral_compliance": 1.5641566441458966e-06,
+            "peripheral_resistance": 809573.6441076396
+        },
+        {
+            "name": "bg_144",
+            "peripheral_compliance": 1.991118719251759e-06,
+            "peripheral_resistance": 635974.1295748713
+        },
+        {
+            "name": "bg_116",
+            "peripheral_compliance": 2.3072232409964946e-07,
+            "peripheral_resistance": 5488415.5631574355
+        },
+        {
+            "name": "bg_23",
+            "peripheral_compliance": 6.974213065878284e-07,
+            "peripheral_resistance": 1815688.7126833154
+        },
+        {
+            "name": "bg_121",
+            "peripheral_compliance": 6.165165596376132e-07,
+            "peripheral_resistance": 2053959.4185445684
+        },
+        {
+            "name": "bg_127",
+            "peripheral_compliance": 2.7178401156835535e-06,
+            "peripheral_resistance": 465921.44513912575
+        },
+        {
+            "name": "bg_131",
+            "peripheral_compliance": 5.257306784982492e-06,
+            "peripheral_resistance": 240864.7709077124
+        },
+        {
+            "name": "bg_134",
+            "peripheral_compliance": 1.8079529889141025e-06,
+            "peripheral_resistance": 700405.3767553648
+        },
+        {
+            "name": "bg_137",
+            "peripheral_compliance": 5.588677220610213e-06,
+            "peripheral_resistance": 226583.13306884916
+        },
+        {
+            "name": "bg_139",
+            "peripheral_compliance": 3.3806805647515006e-07,
+            "peripheral_resistance": 3745695.489717025
+        },
+        {
+            "name": "bg_142",
+            "peripheral_compliance": 3.7870146690304217e-06,
+            "peripheral_resistance": 334379.4796233459
+        },
+        {
+            "name": "bg_123",
+            "peripheral_compliance": 3.366634637017335e-07,
+            "peripheral_resistance": 3761322.896262502
+        },
+        {
+            "name": "bg_126",
+            "peripheral_compliance": 2.97948759611973e-06,
+            "peripheral_resistance": 425005.9627720913
+        },
+        {
+            "name": "bg_129",
+            "peripheral_compliance": 1.4852839836004405e-06,
+            "peripheral_resistance": 852564.2290215526
+        },
+        {
+            "name": "bg_130",
+            "peripheral_compliance": 8.715920650628657e-07,
+            "peripheral_resistance": 1452858.5620671466
+        },
+        {
+            "name": "bg_2",
+            "peripheral_compliance": 8.509263268848654e-07,
+            "peripheral_resistance": 1488142.9265352918
+        },
+        {
+            "name": "bg_120",
+            "peripheral_compliance": 1.410092043580096e-07,
+            "peripheral_resistance": 8980264.79988745
+        },
+        {
+            "name": "bg_118",
+            "peripheral_compliance": 1.0328304396591587e-07,
+            "peripheral_resistance": 12260482.899538262
+        },
+        {
+            "name": "bg_115",
+            "peripheral_compliance": 1.3899616668234553e-07,
+            "peripheral_resistance": 9110323.144740423
+        }
+    ]
+}
