@@ -206,6 +206,37 @@ double ExplicitNonlinearFlowSolver<degree>::get_flow_at_vessel_tip(const Vertex&
   }
 }
 
+template <size_t degree>
+[[nodiscard]] Values0DModel ExplicitNonlinearFlowSolver<degree>::get_0D_values(const Vertex& v) const
+{
+  Values0DModel result { 0, 0 };
+
+  const auto& edge = *d_graph->get_edge(v.get_edge_neighbors()[0]);
+
+  if ( edge.rank() == mpi::rank(MPI_COMM_WORLD) )
+  {
+    const auto &vertex_dof_map = d_dof_map->get_local_dof_map(v);
+    const auto &vertex_dofs = vertex_dof_map.dof_indices();
+    const auto p_c = d_u_now[vertex_dofs[0]];
+
+    const auto &param = edge.get_physical_data();
+
+    // TODO: Move this calculation to the vertex.
+    const double R1 = param.rho * param.get_c0() / param.A0;
+    const double R2 = v.get_peripheral_vessel_data().resistance - R1;
+
+    const double q = (p_c - v.get_peripheral_vessel_data().p_out) / R2;
+
+    result.p_c = p_c;
+    result.q = q;
+  }
+
+  MPI_Bcast(&result.p_c, 1, MPI_DOUBLE, edge.rank(), MPI_COMM_WORLD);
+  MPI_Bcast(&result.q, 1, MPI_DOUBLE, edge.rank(), MPI_COMM_WORLD);
+
+  return result;
+}
+
 
 // template instantiations:
 template class ExplicitNonlinearFlowSolver<0>;

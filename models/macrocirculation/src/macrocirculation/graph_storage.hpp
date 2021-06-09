@@ -74,6 +74,9 @@ struct EmbeddingData {
 struct PeripheralVesselData {
   double resistance;
   double compliance;
+
+  /*! @brief The pressure at the output of the RCR model. */
+  double p_out;
 };
 
 class MicroEdge {

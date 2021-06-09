@@ -263,12 +263,12 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
 
       const auto p_c = u_prev[vertex_dofs[0]];
 
-      const double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
-      const double R1 = param.rho * c0 / param.A0;
+      // TODO: Move this calculation to the vertex.
+      const double R1 = param.rho * param.get_c0() / param.A0;
       const double R2 = vertex->get_peripheral_vessel_data().resistance - R1;
 
       // pressure in the veins:
-      const double p_v = 5.0 * 1.333322;
+      const double p_v =vertex->get_peripheral_vessel_data().p_out;
 
       rhs[vertex_dofs[0]] = 1. / vertex->get_peripheral_vessel_data().compliance * (sgn*Q_out - (p_c - p_v) / R2);
     }

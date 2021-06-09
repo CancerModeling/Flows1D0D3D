@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <cxxopts.hpp>
+#include <macrocirculation/communication/mpi.hpp>
 #include <macrocirculation/quantities_of_interest.hpp>
 #include <memory>
 
@@ -20,6 +21,7 @@
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
+#include "macrocirculation/write_0d_data_to_json.hpp"
 
 namespace mc = macrocirculation;
 
@@ -103,6 +105,14 @@ int main(int argc, char *argv[]) {
   mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "data", graph, dof_map_flow, dof_map_transport);
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "abstract_33_vessels");
 
+  // output for 0D-Model:
+  std::vector< double > list_t;
+  std::map<size_t, std::vector<mc::Values0DModel>> list_0d;
+  for (auto v_id : graph->get_vertex_ids()) {
+    if (graph->get_vertex(v_id)->is_windkessel_outflow())
+      list_0d[v_id] = std::vector<mc::Values0DModel>{};
+  }
+
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
     transport_solver.solve(it * tau, tau, flow_solver.get_solution());
@@ -127,6 +137,17 @@ int main(int argc, char *argv[]) {
       pvd_writer.add_vertex_data("c", c_vertex_values);
       pvd_writer.add_vertex_data("vessel_id", vessel_ids);
       pvd_writer.write(flow_solver.get_time());
+
+      // update and write 0D-Model
+      for (auto v_id : graph->get_vertex_ids()) {
+        auto v = graph->get_vertex(v_id);
+        if (v->is_windkessel_outflow()) {
+          auto res = flow_solver.get_0D_values(*v);
+          list_0d[v_id].push_back(res);
+        }
+      }
+      list_t.push_back(it * tau);
+      mc::write_0d_data_to_json(args["output-directory"].as<std::string>() + "/windkessel_values.json", graph, list_t, list_0d);
     }
 
     // break

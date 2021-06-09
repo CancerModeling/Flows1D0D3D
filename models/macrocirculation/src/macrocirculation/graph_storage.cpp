@@ -102,6 +102,8 @@ void Vertex::set_to_windkessel_outflow(double r, double c) {
   p_flow_type = FlowType::Windkessel;
   p_peripheral_vessel_data.resistance = r;
   p_peripheral_vessel_data.compliance = c;
+  // TODO: Make this settable from outside!
+  p_peripheral_vessel_data.p_out = 5.0 * 1.333322;
 }
 
 const PeripheralVesselData &Vertex::get_peripheral_vessel_data() const { return p_peripheral_vessel_data; }
