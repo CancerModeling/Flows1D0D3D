@@ -9,12 +9,13 @@
 
 #include "graph_storage.hpp"
 
+#include "communication/mpi.hpp"
 #include "dof_map.hpp"
 #include "fe_type.hpp"
 #include "gmm.h"
 #include "graph_pvd_writer.hpp"
 #include "interpolate_to_vertices.hpp"
-#include "petsc.h"
+#include "petsc/petsc_ksp.hpp"
 #include "petsc/petsc_mat.hpp"
 #include "petsc/petsc_vec.hpp"
 
@@ -37,6 +38,59 @@ void extract_dof(const std::vector<std::size_t> &dof_indices,
 
   for (std::size_t i = 0; i < dof_indices.size(); i += 1)
     local[i] = global.get(dof_indices[i]);
+}
+
+void interpolate_to_vertices(const MPI_Comm comm,
+                             const GraphStorage &graph,
+                             const DofMap &map,
+                             const std::size_t component,
+                             const PetscVec &dof_vector,
+                             std::vector<Point> &points,
+                             std::vector<double> &interpolated) {
+  points.clear();
+  interpolated.clear();
+
+  std::vector<std::size_t> dof_indices;
+  std::vector<double> dof_vector_local;
+  std::vector<double> evaluated_at_qps;
+
+  for (auto e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
+    auto edge = graph.get_edge(e_id);
+
+    // we only write out embedded vessel segments
+    if (!edge->has_embedding_data())
+      continue;
+    const auto &embedding = edge->get_embedding_data();
+
+    auto local_dof_map = map.get_local_dof_map(*edge);
+
+    if (embedding.points.size() == 2 && local_dof_map.num_micro_edges() > 1)
+      linear_interpolate_points(embedding.points[0], embedding.points[1], local_dof_map.num_micro_edges(), points);
+    else if (embedding.points.size() == local_dof_map.num_micro_edges() + 1)
+      add_discontinuous_points(embedding.points, points);
+    else
+      throw std::runtime_error("this type of embedding is not implemented");
+
+    FETypeNetwork fe(create_trapezoidal_rule(), local_dof_map.num_basis_functions() - 1);
+
+    dof_indices.resize(local_dof_map.num_basis_functions());
+    dof_vector_local.resize(local_dof_map.num_basis_functions());
+    evaluated_at_qps.resize(fe.num_quad_points());
+
+    const auto &param = edge->get_physical_data();
+    const double h = param.length / local_dof_map.num_micro_edges();
+
+    fe.reinit(h);
+
+    for (std::size_t micro_edge_id = 0; micro_edge_id < local_dof_map.num_micro_edges(); micro_edge_id += 1) {
+      local_dof_map.dof_indices(micro_edge_id, component, dof_indices);
+      extract_dof(dof_indices, dof_vector, dof_vector_local);
+      const auto boundary_values = fe.evaluate_dof_at_boundary_points(dof_vector_local);
+
+      interpolated.push_back(boundary_values.left);
+      interpolated.push_back(boundary_values.right);
+    }
+  }
 }
 
 
@@ -279,17 +333,15 @@ void ImplicitAdvectionSolver::solve() const {
     A.assemble();
     f.assemble();
 
-    // gmm::iteration iter(1.0E-10);
-    // gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A);
-    // gmm::gmres(A, u_now, f, PR, 500, iter);
+    PetscKsp ksp(A);
+    ksp.solve(f, u_now);
 
     if (it % d_output_interval == 0) {
       std::cout << "it = " << it << std::endl;
 
       std::vector<Point> points;
       std::vector<double> u_vertex_values;
-      // TODO:
-      // interpolate_to_vertices(MPI_COMM_WORLD, *d_graph, *dof_map, 0, u_now, points, u_vertex_values);
+      interpolate_to_vertices(MPI_COMM_WORLD, *d_graph, *dof_map, 0, u_now, points, u_vertex_values);
 
       writer.set_points(points);
       writer.add_vertex_data("concentration", u_vertex_values);

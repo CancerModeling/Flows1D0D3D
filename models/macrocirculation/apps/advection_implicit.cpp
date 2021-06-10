@@ -29,10 +29,6 @@ int main(int argc, char *argv[]) {
   const auto inflow_boundary_value = [](double t_now) -> double { return std::sin(M_PI * 3 * t_now); };
   // const auto inflow_boundary_value = [](double t_now) -> double { return 1; };
 
-  // Note: This one requires pointer to comm and therefore we have to init
-  // libmesh and then call the constructor of model
-  lm::LibMeshInit init(argc, argv);
-
   // create the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
 
@@ -56,4 +52,6 @@ int main(int argc, char *argv[]) {
   solver.set_output_interval(100);
 
   solver.solve();
+
+  CHKERRQ(PetscFinalize());
 }
