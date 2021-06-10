@@ -11,11 +11,25 @@
 #include <memory>
 #include <cstdlib>
 
+#include "macrocirculation/tree_search.hpp"
+#include "macrocirculation/random_dist.hpp"
+
 #include "libmesh/getpot.h"
 #include "libmesh/libmesh.h"
 #include "macrocirculation/assembly_system.hpp"
 #include "macrocirculation/base_model.hpp"
 #include "macrocirculation/vtk_io.hpp"
+
+#include <vtkSmartPointer.h>
+#include <vtkUnstructuredGrid.h>
+#include <vtkXMLUnstructuredGridWriter.h>
+#include <vtkCellArray.h>
+#include <vtkCellData.h>
+#include <vtkDoubleArray.h>
+#include <vtkIdList.h>
+#include <vtkIntArray.h>
+#include <vtkPointData.h>
+#include <vtkPoints.h>
 
 namespace mc = macrocirculation;
 
@@ -142,26 +156,6 @@ public:
   lm::ExplicitSystem &d_hyd_cond;
 };
 
-//
-void create_heterogeneous_conductivity(lm::MeshBase &mesh, lm::ExplicitSystem &hyd_cond, lm::EquationSystems &eq_sys) {
-
-  const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
-  const auto &xc = eq_sys.parameters.get<lm::Point>("center");
-  const auto &l = eq_sys.parameters.get<double>("length");
-
-  std::vector<unsigned int> dof_indices;
-  for (const auto &elem : mesh.active_local_element_ptr_range()) {
-    hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
-    auto x = elem->centroid();
-    if ((x - xc).norm() < 0.1 * l)
-      hyd_cond.solution->set(dof_indices[0], 0.1 * input->d_K);
-    else
-      hyd_cond.solution->set(dof_indices[0], input->d_K);
-  }
-  hyd_cond.solution->close();
-  hyd_cond.update();
-}
-
 struct NetPoint{
   lm::Point d_x;
   double d_R;
@@ -172,20 +166,31 @@ struct NetPoint{
 };
 
 //
-void set_perfusion_pts(std::vector<NetPoint> &pts,
+void set_perfusion_pts(std::string out_dir,
+                       std::vector<NetPoint> &pts,
                        lm::ExplicitSystem &hyd_cond,
                        lm::EquationSystems &eq_sys,
                        Model &model) {
+
   // initialize random number generator
-  srand(0);
+  int seed = 0;
+  srand(seed);
 
   const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
   const auto &mesh = eq_sys.get_mesh();
-  int nelems = mesh.n_elem();
+  const auto &l = eq_sys.parameters.get<double>("length");
 
+  // create list of element centers for tree search
+  int nelems = mesh.n_elem();
+  std::vector<lm::Point> elem_centers(nelems, lm::Point());
+  for (const auto &elem : mesh.element_ptr_range())
+    elem_centers[elem->id()] = elem->centroid();
+
+  // randomly selected desired number of element centers as outlet perfusion points
   int npts = input->d_nPerfPts;
   pts.resize(npts);
   std::vector<int> sel_elems;
+  double min_dist = l / npts;
   for (int i=0; i<10*npts; i++) {
     if (sel_elems.size() == npts)
       break;
@@ -196,8 +201,89 @@ void set_perfusion_pts(std::vector<NetPoint> &pts,
       continue;
 
     // e is not in existing list so check if it is a good candidate
+    bool not_suitable = false;
+    for (auto ee : sel_elems) {
+      auto dx = elem_centers[ee] - elem_centers[e];
+      if (dx.norm() < min_dist) {
+        not_suitable = true;
+        break;
+      }
+    }
 
+    if (not_suitable)
+      continue;
+
+    // add element to the list
+    sel_elems.push_back(e);
   }
+
+  // if at this point we do not have enough elements in sel_elems than exit
+  if (sel_elems.size() < npts) {
+    std::cerr << "Error: Increase threshold for creating random points for perfusion\n";
+    exit(EXIT_FAILURE);
+  }
+
+  // add cooardinates and radius (based on uniform distribution)
+  mc::DistributionSample<UniformDistribution> uni_dist(min_dist/10., min_dist/3., seed);
+  for (int i=0; i<npts; i++)
+    pts[i] = NetPoint(elem_centers[sel_elems[i]], uni_dist());
+
+  // output vascular domain elements
+  auto vtu_writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+  auto vtu_data = vtkSmartPointer<vtkUnstructuredGrid>::New();
+
+  // create vtu file
+  auto fname = out_dir + "perfusion_points.vtu";
+  vtu_writer->SetFileName(fname.c_str());
+
+  // create point and radius data
+  auto points = vtkSmartPointer<vtkPoints>::New();
+  auto radius = vtkSmartPointer<vtkDoubleArray>::New();
+  radius->SetNumberOfComponents(1);
+  radius->SetName("Radius");
+
+  // fill data
+  double p_tag[1] = {0};
+  for (int i=0; i<pts.size(); i++) {
+    auto x = pts[i].d_x;
+    p_tag[0] = pts[i].d_R;
+    points->InsertNextPoint(x(0), x(1), x(2));
+    radius->InsertNextTuple(p_tag);
+  }
+
+  vtu_data->SetPoints(points);
+  vtu_data->GetPointData()->AddArray(radius);
+  vtu_writer->SetInputData(vtu_data);
+  vtu_writer->SetDataModeToAppended();
+  vtu_writer->EncodeAppendedDataOn();
+  vtu_writer->Write();
+}
+
+//
+void create_perfusion_territory(std::string out_dir,
+                       const std::vector<NetPoint> &pts,
+                       lm::ExplicitSystem &hyd_cond,
+                       lm::EquationSystems &eq_sys,
+                       Model &model) {
+
+  // initialize random number generator
+  int seed = 0;
+  srand(seed);
+
+  const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
+  const auto &mesh = eq_sys.get_mesh();
+  const auto &l = eq_sys.parameters.get<double>("length");
+
+  // create list of element centers for tree search
+  int nelems = mesh.n_elem();
+  std::vector<lm::Point> elem_centers(nelems, lm::Point());
+  for (const auto &elem : mesh.element_ptr_range())
+    elem_centers[elem->id()] = elem->centroid();
+
+  // create tree for search
+  std::unique_ptr<mc::NFlannSearchKd> tree = std::make_unique<mc::NFlannSearchKd>(elem_centers);
+
+
 }
 
 } // namespace darcy3d
@@ -215,10 +301,10 @@ int main(int argc, char *argv[]) {
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                            //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.1"))                                  //
     ("hyd-cond", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                       //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value(""))                            //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/darcy_test_tissue_mesh.e"))                            //
     ("gamma", "value of coefficient for perfusion area estimation", cxxopts::value<double>()->default_value("3"))                            //
     ("num-points", "number of perfusion points", cxxopts::value<int>()->default_value("10"))                            //
-    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_darcy3d/")) //
+    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_part_perfusion_test/")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
@@ -284,115 +370,21 @@ int main(int argc, char *argv[]) {
 
   eq_sys.init();
 
-  // create heterogeneous property field
-  log("setting up K field\n");
+  // setting up perfusion points
+  log("creating random perfusion points\n");
   auto bbox = lm::MeshTools::create_bounding_box(mesh);
   auto xc = 0.5 * bbox.min() + 0.5 * bbox.max();
   auto l = (bbox.min() - bbox.max()).norm();
   eq_sys.parameters.set<lm::Point>("center") = xc;
   eq_sys.parameters.set<double>("length") = l;
-  darcy3d::create_heterogeneous_conductivity(mesh, hyd_cond, eq_sys);
 
-  // setting up perfusion points
   std::vector<darcy3d::NetPoint> pts;
-  set_perfusion_pts(pts, hyd_cond, eq_sys, model);
+  set_perfusion_pts(out_dir, pts, hyd_cond, eq_sys, model);
 
-  // time stepping
-  do {
-    // Prepare time step
-    model.d_step++;
-    model.d_time += model.d_dt;
-
-    auto solve_clock = std::chrono::steady_clock::now();
-    model.d_pres.solve();
-    log("solve time = " + std::to_string(mc::time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
-
-    if (model.d_step % 20 == 0) {
-      log("writing to file\n");
-      mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step/20) + ".pvtu", eq_sys);
-    }
-  } while (model.d_time < input.d_T);
-
-  // write
-  log("writing to file\n");
-  mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step/20) + ".pvtu", eq_sys);
+  // create territory
 
   return 0;
 }
 
 // define assembly functions
-void darcy3d::Pres::assemble() {
-  auto &eq_sys = d_model_p->get_system();
-  const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
-  const auto &xc = eq_sys.parameters.get<lm::Point>("center");
-  const auto &l = eq_sys.parameters.get<double>("length");
-  const double dt = d_model_p->d_dt;
-  const double t = d_model_p->d_time;
-  auto &hyd_cond = d_model_p->d_hyd_cond;
-  std::vector<unsigned int> dof_indices;
-
-  lm::Point source_xc = xc + lm::Point(0.1 * l, 0., 0.2 * l);
-
-  // assemble
-  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
-
-    // init dof map
-    init_dof(elem);
-    hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
-
-    // init fe
-    init_fe(elem);
-
-    // get K at this element
-    double elem_K = hyd_cond.current_solution(dof_indices[0]);
-
-    if (std::abs(elem_K - 0.1) > 1.e-10 and std::abs(elem_K - 1.) > 1.e-10)
-      std::cout << "elem_K = " << elem_K << "\n";
-
-    double rhs = 0.;
-    auto x = elem->centroid();
-    if ((x - source_xc).norm() < 0.15 * l)
-      rhs = std::sin(t / 0.1) * std::exp(-t / 10.);
-
-    for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
-      double lhs = d_JxW[qp] * elem_K;
-
-      // Assembling matrix
-      for (unsigned int i = 0; i < d_phi.size(); i++) {
-        d_Fe(i) += d_JxW[qp] * rhs * d_phi[i][qp];
-
-        for (unsigned int j = 0; j < d_phi.size(); j++)
-          d_Ke(i, j) += lhs * d_dphi[j][qp] * d_dphi[i][qp];
-      }
-    } // loop over quad points
-
-    // dirichlet bc
-    {
-      // The penalty value.
-      const double penalty = 1.e10;
-
-      for (auto s : elem->side_index_range())
-        if (elem->neighbor_ptr(s) == nullptr) {
-          init_face_fe(elem, s);
-
-          for (unsigned int qp = 0; qp < d_qrule_face.n_points(); qp++) {
-            // Matrix contribution
-            for (unsigned int i = 0; i < d_phi_face.size(); i++) {
-              d_Fe(i) += penalty * d_JxW_face[qp] * d_phi_face[i][qp];
-              for (unsigned int j = 0; j < d_phi_face.size(); j++)
-                d_Ke(i, j) += penalty * d_JxW_face[qp] * d_phi_face[i][qp] * d_phi_face[j][qp];
-            }
-          }
-        }
-    }
-
-    d_dof_map_sys.heterogenously_constrain_element_matrix_and_vector(d_Ke, d_Fe,
-                                                                     d_dof_indices_sys);
-    d_sys.matrix->add_matrix(d_Ke, d_dof_indices_sys);
-    d_sys.rhs->add_vector(d_Fe, d_dof_indices_sys);
-  } // elem loop
-
-  // finish
-  d_sys.matrix->close();
-  d_sys.rhs->close();
-}
+void darcy3d::Pres::assemble() {}

@@ -68,6 +68,11 @@ add_executable(${ProjectName}LegacyVTK legacy_vtk_reader.cpp)
 target_link_libraries(${ProjectName}LegacyVTK ${ProjectLib})
 target_link_libraries(${ProjectName}LegacyVTK cxxopts)
 
+# test perfusion partitioning
+add_executable(${ProjectName}PartPerfusionTest partioning_perfusion.cpp)
+target_link_libraries(${ProjectName}PartPerfusionTest ${ProjectLib})
+target_link_libraries(${ProjectName}PartPerfusionTest cxxopts nanoflann)
+
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
                    ${ProjectName}ConvergenceStudy
@@ -79,7 +84,8 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}Darcy3D
                    ${ProjectName}NiftiRW
                    ${ProjectName}DarcyHetero
-                   ${ProjectName}LegacyVTK)
+                   ${ProjectName}LegacyVTK
+                   ${ProjectName}PartPerfusionTest)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
@@ -91,6 +97,10 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory
             $<TARGET_FILE_DIR:${TargetName}>/output_darcy_hetero)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:${TargetName}>/output_part_perfusion_test)
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
