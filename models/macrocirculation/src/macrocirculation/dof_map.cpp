@@ -118,14 +118,14 @@ void DofMap::create(MPI_Comm comm,
     if (callingRank)
       d_first_owned_global_dof = d_num_dof;
 
-    for (const auto &e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
+    for (const auto &e_id : graph.get_active_edge_ids(rank)) {
       const auto edge = graph.get_edge(e_id);
       add_local_dof_map(*edge, num_components, degree + 1, edge->num_micro_edges());
       if (callingRank)
         d_num_owned_dofs += get_local_dof_map(*edge).num_local_dof();
     }
 
-    for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
+    for (const auto &v_id : graph.get_active_vertex_ids(rank)) {
       const auto vertex = graph.get_vertex(v_id);
       if (vertex->is_windkessel_outflow()) {
         add_local_dof_map(*vertex, 1);
