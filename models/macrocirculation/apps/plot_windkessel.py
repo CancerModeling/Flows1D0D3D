@@ -40,7 +40,7 @@ for i in range(len(vertex_data_to_show)):
 
     if not args.no_p_c:
         ax = axes[pidx, i]
-        ax.plot(data['time'][start_index:], vertex_data['p_c'][start_index:], label=r'$p_c^{(' + str(vertex_data['neighbor_edge_id']) + r')}$')
+        ax.plot(data['time'][start_index:], vertex_data['p_c'][start_index:] / 1.33332, label=r'$p_c^{(' + str(vertex_data['neighbor_edge_id']) + r')}$')
         ax.legend()
         ax.grid(True)
         pidx += 1
