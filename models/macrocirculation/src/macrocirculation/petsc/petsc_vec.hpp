@@ -61,6 +61,8 @@ public:
     VecZeroEntries(d_vec);
   }
 
+  Vec &get_vec() { return d_vec; }
+
   void swap(PetscVec &v) {
     Vec tmp = v.d_vec;
     v.d_vec = d_vec;
