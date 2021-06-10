@@ -47,14 +47,14 @@ struct PointCloudAdaptor {
    *
    * @return Vector Vector of points
    */
-  inline const PointCloud &point_cloud() const { return d_obj; }
+  inline const PointCloud &pointCloud() const { return d_obj; }
 
   /*!
    * @brief Get number of points in point cloud
    *
    * @return N Number of points
    */
-  inline size_t kdtree_get_point_count() const { return point_cloud().size(); }
+  inline size_t kdtree_get_point_count() const { return pointCloud().size(); }
 
 
   /*!
@@ -65,7 +65,7 @@ struct PointCloudAdaptor {
    * @return Coord Coordinate of a point
    */
   inline coord_t kdtree_get_pt(const size_t idx, const size_t dim) const {
-    return point_cloud()[idx](dim);
+    return pointCloud()[idx](dim);
   }
 
   /*!
@@ -114,7 +114,7 @@ public:
   * @param indices Reference to index vector
    * @param dists Reference to distance vector
   */
-  TreeSearchResult(DistanceType radius_,
+  inline TreeSearchResult(DistanceType radius_,
                           std::vector<IndexType> &indices,
                           std::vector<DistanceType> &dists)
     : d_r(radius_), d_indices(indices), d_dists(dists) {
