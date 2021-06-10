@@ -93,6 +93,16 @@ endif ()
 #    message(FATAL_ERROR "ERROR: Please specify petsc directory")
 #endif ()
 
+# nanoflann
+FetchContent_Declare(nanoflann
+        GIT_REPOSITORY https://github.com/jlblancoc/nanoflann
+        GIT_TAG v1.3.2)
+FetchContent_GetProperties(nanoflann)
+if(NOT nanoflann_POPULATED)
+    FetchContent_Populate(nanoflann)
+    add_subdirectory(${nanoflann_SOURCE_DIR} ${nanoflann_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
 # ****************************************************************************
 # Build, compiler, linker flags
 # ****************************************************************************
