@@ -31,10 +31,10 @@ public:
 
   virtual double set_input_cloud() = 0;
 
-  virtual size_t radius_search(
-    const TreePt &searchPoint, const double &search_r,
-    std::vector<int> &neighs,
-    std::vector<float> &sqr_dist) = 0;
+  virtual size_t nearest_search(
+    const TreePt &searchPoint, const size_t &num_elems,
+    std::vector<size_t> &neighs,
+    std::vector<double> &sqr_dist) = 0;
 
   virtual size_t radius_search(
     const TreePt &searchPoint, const double &search_r,
@@ -76,6 +76,21 @@ public:
     return 0;
   }
 
+  size_t nearest_search(
+    const TreePt &searchPoint, const size_t &num_elems,
+    std::vector<size_t> &neighs,
+    std::vector<double> &sqr_dist) override {
+
+    double query_pt[3] = {searchPoint(0), searchPoint(1), searchPoint(2)};
+
+    neighs.resize(num_elems);
+    sqr_dist.resize(num_elems);
+    auto num_elems_act = d_tree.knnSearch(&query_pt[0], num_elems, &neighs[0], &sqr_dist[0]);
+    neighs.resize(num_elems_act);
+    sqr_dist.resize(num_elems_act);
+    return num_elems_act;
+  }
+
   size_t radius_search(
     const TreePt &searchPoint, const double &search_r,
     std::vector<size_t> &neighs,
@@ -83,32 +98,10 @@ public:
 
     double query_pt[3] = {searchPoint(0), searchPoint(1), searchPoint(2)};
 
+    neighs.clear();
+    sqr_dist.clear();
     TreeSearchRes resultSet(search_r * search_r, neighs, sqr_dist);
     return d_tree.radiusSearchCustomCallback(&query_pt[0], resultSet, d_params);
-  }
-
-  size_t radius_search(
-    const TreePt &searchPoint, const double &search_r,
-    std::vector<int> &neighs,
-    std::vector<float> &sqr_dist) override {
-
-    // ugly but quick fix
-    // first, get results using int and float and then convert
-    std::vector<size_t> neighs_temp;
-    std::vector<double> sqr_dist_temp;
-    auto N =
-      this->radius_search(searchPoint, search_r, neighs_temp, sqr_dist_temp);
-
-    if (N > 0) {
-      neighs.resize(N);
-      sqr_dist.resize(N);
-      for (size_t i=0; i<N; i++) {
-        neighs.push_back(int(neighs_temp[i]));
-        sqr_dist.push_back(float(sqr_dist_temp[i]));
-      }
-    }
-
-    return N;
   }
 
 public:

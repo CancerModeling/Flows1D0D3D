@@ -71,7 +71,7 @@ target_link_libraries(${ProjectName}LegacyVTK cxxopts)
 # test perfusion partitioning
 add_executable(${ProjectName}PartPerfusionTest partioning_perfusion.cpp)
 target_link_libraries(${ProjectName}PartPerfusionTest ${ProjectLib})
-target_link_libraries(${ProjectName}PartPerfusionTest cxxopts nanoflann)
+target_link_libraries(${ProjectName}PartPerfusionTest cxxopts nanoflann fmt)
 
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation

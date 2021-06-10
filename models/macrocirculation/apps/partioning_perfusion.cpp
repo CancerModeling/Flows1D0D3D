@@ -10,6 +10,7 @@
 #include <cxxopts.hpp>
 #include <memory>
 #include <cstdlib>
+#include <fmt/format.h>
 
 #include "macrocirculation/tree_search.hpp"
 #include "macrocirculation/random_dist.hpp"
@@ -260,6 +261,19 @@ void set_perfusion_pts(std::string out_dir,
 }
 
 //
+void create_heterogeneous_conductivity(const lm::MeshBase &mesh, lm::ExplicitSystem &hyd_cond, lm::EquationSystems &eq_sys, const std::vector<int> &elem_taken) {
+
+  std::vector<unsigned int> dof_indices;
+  for (const auto &elem : mesh.active_local_element_ptr_range()) {
+    hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
+    int outlet_id = elem_taken[elem->id()];
+    hyd_cond.solution->set(dof_indices[0], double(outlet_id+1));
+  }
+  hyd_cond.solution->close();
+  hyd_cond.update();
+}
+
+//
 void create_perfusion_territory(std::string out_dir,
                        const std::vector<NetPoint> &pts,
                        lm::ExplicitSystem &hyd_cond,
@@ -271,19 +285,201 @@ void create_perfusion_territory(std::string out_dir,
   srand(seed);
 
   const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
-  const auto &mesh = eq_sys.get_mesh();
+  auto &mesh = eq_sys.get_mesh();
   const auto &l = eq_sys.parameters.get<double>("length");
 
   // create list of element centers for tree search
   int nelems = mesh.n_elem();
   std::vector<lm::Point> elem_centers(nelems, lm::Point());
-  for (const auto &elem : mesh.element_ptr_range())
+  double total_vol = 0.;
+  for (const auto &elem : mesh.element_ptr_range()) {
     elem_centers[elem->id()] = elem->centroid();
+    total_vol += elem->volume();
+  }
 
   // create tree for search
   std::unique_ptr<mc::NFlannSearchKd> tree = std::make_unique<mc::NFlannSearchKd>(elem_centers);
+  tree->set_input_cloud();
 
+  // step 1 - assign volume to each outlet point
+  model.d_log("  Assigning volumes to each outlet point\n");
+  std::vector<double> pts_vol;
+  std::vector<double> pts_vol_rad;
+  double flow_sum = 0.;
+  double min_vol = total_vol;
+  for (auto i : pts) flow_sum += i.d_Q;
+  for (int i=0; i<pts.size(); i++) {
+    double voli = (pts[i].d_Q / flow_sum) * total_vol;
+    double radi = 2. * std::pow(3.*voli/(4. * M_PI), 1./3.);
+    pts_vol.push_back(voli);
+    pts_vol_rad.push_back(radi);
 
+    if (voli < min_vol)
+      min_vol = voli;
+
+    model.d_log(fmt::format("    i = {}, voli = {}, radi = {}\n", i, voli, radi));
+  }
+
+  double vol_tol = 0.1 * min_vol;
+
+  // step 2 - brute force element assigning
+  model.d_log("  Assigning elements to outlet points using brute-force\n");
+  std::vector<std::vector<long>> pts_elem(pts.size(), std::vector<long>());
+  std::vector<double> pts_actual_vol(pts.size(), 0.);
+  std::vector<int> elem_taken(mesh.n_elem(), -1);
+  for (int i=0; i < pts.size(); i++) {
+    auto pti = pts[i];
+    auto voli = pts_vol[i];
+    auto radi = pts_vol_rad[i];
+
+    // find elements whose center is within radi distance of outlet point
+    std::vector<size_t> neighs;
+    std::vector<double> sqr_dist;
+    auto search_status =
+      tree->radius_search(pti.d_x, radi, neighs, sqr_dist);
+
+    model.d_log("    search_status = " + std::to_string(search_status) + "\n");
+
+    if (search_status == 0) {
+      std::cerr << "Error: Not enough elements in the neighborhood of outlet point\n";
+      exit(EXIT_FAILURE);
+    }
+
+    double sum_vol_i = 0.;
+    for (int j=0; j<neighs.size(); j++) {
+      auto j_id = neighs[j];
+
+      // check if this element is already taken
+      if (elem_taken[j_id] != -1)
+        continue;
+
+      auto elemj_vol = mesh.elem_ptr(j_id)->volume();
+      if (sum_vol_i + elemj_vol < voli + vol_tol) {
+
+        pts_elem[i].push_back(j_id);
+        sum_vol_i += elemj_vol;
+
+        // store the fact that j_id element now is owned by outlet point i
+        elem_taken[j_id] = i;
+      }
+    }
+    pts_actual_vol[i] = sum_vol_i;
+  }
+
+  // update conductivity parameter and write to file
+  create_heterogeneous_conductivity(mesh, hyd_cond, eq_sys, elem_taken);
+  model.d_log("  writing to file\n");
+  mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(0) + ".pvtu", eq_sys);
+
+  // step 3 - randomly readjust the element distribution
+  model.d_log("  Readjustment of element distribution\n");
+  std::vector<int> pts_id_vec;
+  for (int i=0; i<pts.size(); i++) pts_id_vec.push_back(i);
+
+  int num_random_loop = 10;
+  for (int rloop = 0; rloop < num_random_loop; rloop++) {
+    model.d_log("    random loop = " + std::to_string(rloop) + "\n");
+
+    // shuffle pts_id_vec
+    std::mt19937 gen( std::chrono::system_clock::now().time_since_epoch().count() );
+    std::vector<int> v(pts_id_vec.begin(), pts_id_vec.end());
+    std::shuffle(v.begin(), v.end(), gen);
+    pts_id_vec.assign(v.begin(), v.end());
+
+    std::ostringstream oss;
+    oss << "      shuffled list = (";
+    for (auto i : pts_id_vec) oss << i << " ";
+    oss << ") \n";
+
+    oss << "      num elements = (";
+    for (auto i : pts_elem) oss << i.size() << " ";
+    oss << ") \n";
+
+    oss << "      vol actual = (";
+    for (auto i : pts_actual_vol) oss << i << " ";
+    oss << ") \n";
+
+    oss << "      vol target = (";
+    for (auto i : pts_vol) oss << i << " ";
+    oss << ") \n";
+
+    oss << "      vol difference = (";
+    for (int i=0; i<pts.size(); i++) oss << pts_vol[i] - pts_actual_vol[i] << " ";
+    oss << ") \n";
+    model.d_log(oss.str());
+
+    // loop over outlet points
+    int num_pts_change = 0;
+    int num_elem_moved = 0;
+    for (int ii = 0; ii < pts_id_vec.size(); ii++) {
+      int i = pts_id_vec[ii];
+
+      auto pti = pts_id_vec[i];
+      auto voli = pts_vol[i];
+      auto radi = pts_vol_rad[i];
+      auto voli_act = pts_actual_vol[i];
+
+      std::vector<long> elem_i_old = pts_elem[i];
+
+      // check if we really need to process this outlet
+      if (voli_act < voli + vol_tol and voli_act > voli - vol_tol)
+        continue;
+
+      model.d_log(fmt::format("      processing outlet end = {}\n", i));
+
+      // loop over elements of this outlet and for each element find the neighboring element
+      int num_neigh_elem = 10;
+      double voli_sum_act = voli_act;
+      for (auto e : elem_i_old) {
+        auto xe = elem_centers[e];
+
+        std::vector<size_t> ei_neighs;
+        std::vector<double> ei_sqr_dist;
+        tree->nearest_search(xe, num_neigh_elem, ei_neighs, ei_sqr_dist);
+
+        // loop over neighboring elements
+        for (auto ee : ei_neighs) {
+          auto vol_ee = mesh.elem_ptr(ee)->volume();
+          auto ee_taken = elem_taken[ee];
+
+          // check if ee already exists in the list
+          if (ee_taken == i)
+            continue;
+
+          // check if adding this element perturbs the volume a lot
+          if (voli_sum_act + vol_ee > voli + vol_tol)
+            continue;
+
+          // move element ee from previous owner to outlet i
+          pts_elem[i].push_back(ee);
+          auto ee_outlet_id_old = elem_taken[ee];
+          elem_taken[ee] = i;
+          voli_sum_act += vol_ee;
+
+          // remove ee from old owner
+          if (ee_outlet_id_old != -1) {
+            auto &elem_j =pts_elem[ee_outlet_id_old];
+            elem_j.erase(std::find(elem_j.begin(), elem_j.end(), ee));
+            pts_actual_vol[ee_outlet_id_old] -= vol_ee;
+          }
+        }
+      }
+
+      pts_actual_vol[i] = voli_sum_act;
+
+      if (elem_i_old.size() < pts_elem[i].size()) {
+        num_pts_change++;
+        num_elem_moved += pts_elem[i].size() -elem_i_old.size();
+      }
+    }
+
+    model.d_log(fmt::format("      num_pts_change = {}, num_elem_moved = {}\n", num_pts_change, num_elem_moved));
+
+    // update conductivity parameter and write to file
+    create_heterogeneous_conductivity(mesh, hyd_cond, eq_sys, elem_taken);
+    model.d_log("      writing to file\n");
+    mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(rloop+1) + ".pvtu", eq_sys);
+  }
 }
 
 } // namespace darcy3d
@@ -382,6 +578,7 @@ int main(int argc, char *argv[]) {
   set_perfusion_pts(out_dir, pts, hyd_cond, eq_sys, model);
 
   // create territory
+  create_perfusion_territory(out_dir, pts, hyd_cond, eq_sys, model);
 
   return 0;
 }
