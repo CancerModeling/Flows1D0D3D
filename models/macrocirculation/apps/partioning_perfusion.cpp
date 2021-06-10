@@ -9,25 +9,13 @@
 #include <cmath>
 #include <cxxopts.hpp>
 #include <memory>
+#include <cstdlib>
 
 #include "libmesh/getpot.h"
 #include "libmesh/libmesh.h"
 #include "macrocirculation/assembly_system.hpp"
 #include "macrocirculation/base_model.hpp"
 #include "macrocirculation/vtk_io.hpp"
-#include "macrocirculation/nifti_reader.hpp"
-
-#include <vtkSmartPointer.h>
-#include <vtkUnstructuredGrid.h>
-#include <vtkXMLUnstructuredGridWriter.h>
-#include <vtkCellArray.h>
-#include <vtkCellData.h>
-#include <vtkDoubleArray.h>
-#include <vtkIdList.h>
-#include <vtkIntArray.h>
-#include <vtkPointData.h>
-#include <vtkPoints.h>
-#include <vtkUnsignedIntArray.h>
 
 namespace mc = macrocirculation;
 
@@ -35,45 +23,61 @@ namespace mc = macrocirculation;
 namespace darcy3d {
 // read and store input parameters
 struct InputDeck {
-  InputDeck(const std::string &filename = "") : d_K_vasc(1.), d_K_tiss(0.2), d_T(1.),
-                                                d_dt(0.01), d_h(0.1), d_mesh_file("") {
+  InputDeck(const std::string &filename = "") : d_K(1.), d_T(1.),
+                                                d_dt(0.01), d_h(0.1), d_mesh_file(""),
+                                                d_gamma(3), d_nPerfPts(10) {
     if (!filename.empty() and filename != "")
       read_parameters(filename);
   }
 
   void read_parameters(const std::string &filename) {
     GetPot input(filename);
-    d_K_vasc = input("K_vasc", 1.);
-    d_K_tiss = input("K_tiss", 0.2);
+    d_K = input("K", 1.);
     d_T = input("T", 1.);
     d_dt = input("dt", 0.01);
     d_h = input("h", 0.1);
     d_mesh_file = input("mesh_file", "mesh.e");
+    d_gamma = input("gamma", 3);
+    d_nPerfPts = input("num_points", 10);
   }
 
   std::string print_str() {
     std::ostringstream oss;
-    oss << "K_vasc = " << d_K_vasc << "\n";
-    oss << "K_tiss = " << d_K_tiss << "\n";
+    oss << "K = " << d_K << "\n";
     oss << "T = " << d_T << "\n";
     oss << "dt = " << d_dt << "\n";
     oss << "h = " << d_h << "\n";
     oss << "mesh_file = " << d_mesh_file << "\n";
+    oss << "gamma = " << d_gamma << "\n";
+    oss << "num_points = " << d_nPerfPts << "\n";
     return oss.str();
   }
 
-  double d_K_vasc;
-  double d_K_tiss;
+  double d_K;
   double d_T;
   double d_dt;
   double d_h;
   std::string d_mesh_file;
+  double d_gamma;
+  int d_nPerfPts;
 };
 
 // forward declare model class (specific definition requires first defining systems)
 class Model;
 
 // define pressure system
+
+// bc
+void bc_p(lm::EquationSystems &es) {
+  std::set<lm::boundary_id_type> ids;
+  ids.insert(2);
+  auto &sys = es.get_system<lm::TransientLinearImplicitSystem>("P");
+  std::vector<unsigned int> vars(1, sys.variable_number("p"));
+
+  lm::ConstFunction<lm::Number> cf(1.);
+  lm::DirichletBoundary bc(ids, vars, &cf);
+  sys.get_dof_map().add_dirichlet_boundary(bc);
+}
 
 // ic
 lm::Number ic_p(const lm::Point &p, const lm::Parameters &es,
@@ -99,6 +103,7 @@ public:
     sys.attach_assemble_object(
       *this);                     // attach this element assembly object
     sys.attach_init_function(ic); // add ic
+    //bc_p(sys.get_equation_systems()); // add bc
   }
 
   void assemble() override;
@@ -137,98 +142,62 @@ public:
   lm::ExplicitSystem &d_hyd_cond;
 };
 
-// read vascular domain from nifti file and create hydraulic parameter with one value in
-// vascular domain and other outside the vascular domain
-void create_heterogeneous_conductivity(std::string out_dir, std::string vasc_filename, double voxel_size, lm::MeshBase &mesh, lm::ExplicitSystem &hyd_cond, lm::EquationSystems &eq_sys) {
+//
+void create_heterogeneous_conductivity(lm::MeshBase &mesh, lm::ExplicitSystem &hyd_cond, lm::EquationSystems &eq_sys) {
 
   const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
-
-  // read file
-  auto vasc_nifti = mc::NiftiReader(vasc_filename);
-  auto img_dim = vasc_nifti.get_data_dimension();
-  auto img_fields = vasc_nifti.get_point_fields();
-  std::vector<double> img_data;
-  vasc_nifti.read_point_data(img_fields[0], &img_data);
-  std::vector<std::vector<std::vector<double>>> img_data_grid;
-  vasc_nifti.read_point_data(img_fields[0], &img_data_grid);
-
-  // for debugging
-  {
-    std::cout << "nifit data \n\n";
-    std::cout << vasc_nifti.print_str() << "\n\n";
-    size_t count = 0;
-    for (auto a : img_data)
-      if (a > 0.5)
-        count++;
-    std::cout << "\nvascular voxel count = " << count << "\n\n";
-
-    std::vector<int> ii = {121, 121, 78};
-    auto i = mc::index_3d_1d(ii, img_dim);
-    std::cout << "val 1 = " << img_data[i] << "\n"; //img_data_grid[ii[0]][ii[1]][ii[2]] << "\n";
-    ii[0] = 122;
-    i = mc::index_3d_1d(ii, img_dim);
-    std::cout << "val 2 = " << img_data[i] << "\n";
-    ii[0] = 123;
-    i = mc::index_3d_1d(ii, img_dim);
-    std::cout << "val 3 = " << img_data[i] << "\n";
-    ii[0] = 124;
-    i = mc::index_3d_1d(ii, img_dim);
-    std::cout << "val 4 = " << img_data[i] << "\n";
-    ii[0] = 121;
-    ii[1] = 122;
-    i = mc::index_3d_1d(ii, img_dim);
-    std::cout << "val 5 = " << img_data[i] << "\n";
-    ii[1] = 125;
-    i = mc::index_3d_1d(ii, img_dim);
-    std::cout << "val 6 = " << img_data[i] << "\n";
-  }
-
-  // output vascular domain elements
-  auto vtu_writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
-  auto fname = out_dir + "vascular_domain.vtu";
-  vtu_writer->SetFileName(fname.c_str());
-  auto points = vtkSmartPointer<vtkPoints>::New();
+  const auto &xc = eq_sys.parameters.get<lm::Point>("center");
+  const auto &l = eq_sys.parameters.get<double>("length");
 
   std::vector<unsigned int> dof_indices;
   for (const auto &elem : mesh.active_local_element_ptr_range()) {
     hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
-    auto x = elem->centroid() / voxel_size; // + lm::Point(0.5, 0.5, 0.5);
-
-    // find voxel element (1d vector representation of the image data)
-    int i = mc::locate_voxel_1d({x(0), x(1), x(2)}, img_dim);
-    auto a = img_data[i];
-
-    // debug
-    // auto a = img_data[i];
-    //    std::cout << "center = " << elem->centroid()
-    //              << ", elem id = " << elem->id()
-    //              << ", dof = " << dof_indices[0]
-    //              << ", x = " << x
-    //              << ", i = " << i
-    //              << ", data = " << a << "\n";
-
-    auto ii = mc::locate_voxel_3d({x(0), x(1), x(2)}, img_dim);
-    auto xv = lm::Point(ii[0], ii[1], ii[2]) * voxel_size;
-    if (a > 0.5) {
-      //std::cout << "vascular domain: xv = " << xv << ", elem center = " << elem->centroid() << "\n";
-      points->InsertNextPoint(xv(0), xv(1), xv(2));
-    }
-
-    // set parameter
-    if (a > 0.5)
-      hyd_cond.solution->set(dof_indices[0], input->d_K_vasc);
+    auto x = elem->centroid();
+    if ((x - xc).norm() < 0.1 * l)
+      hyd_cond.solution->set(dof_indices[0], 0.1 * input->d_K);
     else
-      hyd_cond.solution->set(dof_indices[0], input->d_K_tiss);
+      hyd_cond.solution->set(dof_indices[0], input->d_K);
   }
   hyd_cond.solution->close();
   hyd_cond.update();
+}
 
-  auto grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-  grid->SetPoints(points);
-  vtu_writer->SetInputData(grid);
-  vtu_writer->SetDataModeToAppended();
-  vtu_writer->EncodeAppendedDataOn();
-  vtu_writer->Write();
+struct NetPoint{
+  lm::Point d_x;
+  double d_R;
+  double d_p;
+  double d_Q;
+  NetPoint(double gamma = 3.) : d_x(lm::Point()), d_R(0.), d_p(0.), d_Q(std::pow(d_R, gamma)) {}
+  NetPoint(lm::Point x, double R, double p = 0., double gamma = 3.) : d_x(x), d_R(R), d_p(p), d_Q(std::pow(d_R, gamma)) {}
+};
+
+//
+void set_perfusion_pts(std::vector<NetPoint> &pts,
+                       lm::ExplicitSystem &hyd_cond,
+                       lm::EquationSystems &eq_sys,
+                       Model &model) {
+  // initialize random number generator
+  srand(0);
+
+  const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
+  const auto &mesh = eq_sys.get_mesh();
+  int nelems = mesh.n_elem();
+
+  int npts = input->d_nPerfPts;
+  pts.resize(npts);
+  std::vector<int> sel_elems;
+  for (int i=0; i<10*npts; i++) {
+    if (sel_elems.size() == npts)
+      break;
+
+    // get random integer between 0 and nelems - 1
+    int e = rand() % (nelems - 1);
+    if (mc::locate_in_set(e, sel_elems) != -1)
+      continue;
+
+    // e is not in existing list so check if it is a good candidate
+
+  }
 }
 
 } // namespace darcy3d
@@ -245,12 +214,11 @@ int main(int argc, char *argv[]) {
     ("final-time", "final simulation time", cxxopts::value<double>()->default_value("1."))                      //
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                            //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.1"))                                  //
-    ("hyd-cond-tiss", "hydraulic conductivity in tissue domain", cxxopts::value<double>()->default_value("0.1"))                       //
-    ("hyd-cond-vasc", "hydraulic conductivity in vascular domain", cxxopts::value<double>()->default_value("1."))                       //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/darcy_test_tissue_mesh.e"))                            //
-    ("vasc-nifti-file", "nifti file to inform vascular subdomain", cxxopts::value<std::string>()->default_value("data/darcy_test_vascular_domain.nii.gz"))                            //
-    ("voxel-size", "voxel size used in creating the tissue mesh", cxxopts::value<double>()->default_value("1."))                            //
-    ("output-dir", "directory for the output", cxxopts::value<std::string>()->default_value("./output_darcy_hetero/")) //
+    ("hyd-cond", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                       //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value(""))                            //
+    ("gamma", "value of coefficient for perfusion area estimation", cxxopts::value<double>()->default_value("3"))                            //
+    ("num-points", "number of perfusion points", cxxopts::value<int>()->default_value("10"))                            //
+    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_darcy3d/")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
@@ -268,9 +236,7 @@ int main(int argc, char *argv[]) {
   }
 
   auto filename = args["input-file"].as<std::string>();
-  auto out_dir = args["output-dir"].as<std::string>();
-  auto vasc_nifti_filename = args["vasc-nifti-file"].as<std::string>();
-  auto voxel_size = args["voxel-size"].as<double>();
+  auto out_dir = args["output-directory"].as<std::string>();
 
   // read input parameters
   auto input = darcy3d::InputDeck(filename);
@@ -278,9 +244,10 @@ int main(int argc, char *argv[]) {
     input.d_T = args["final-time"].as<double>();
     input.d_dt = args["time-step"].as<double>();
     input.d_h = args["mesh-size"].as<double>();
-    input.d_K_vasc = args["hyd-cond-vasc"].as<double>();
-    input.d_K_tiss = args["hyd-cond-tiss"].as<double>();
+    input.d_K = args["hyd-cond"].as<double>();
     input.d_mesh_file = args["mesh-file"].as<std::string>();
+    input.d_gamma = args["gamma"].as<double>();
+    input.d_nPerfPts = args["num-points"].as<int>();
   }
 
   // create logger
@@ -292,14 +259,11 @@ int main(int argc, char *argv[]) {
   log("creating mesh\n");
   lm::ReplicatedMesh mesh(*comm);
   long N = long(1. / input.d_h);
-  if (input.d_mesh_file != "") {
-    log("reading mesh from file\n");
+  if (input.d_mesh_file != "")
     mesh.read(input.d_mesh_file);
-  }
-  else {
-    std::cerr << "Error: For this app, we need tissue mesh.\n";
-    exit(EXIT_FAILURE);
-  }
+  else
+    lm::MeshTools::Generation::build_cube(mesh, N, N, N, 0., 1., 0.,
+                                          1., 0., 1., lm::HEX8);
 
   // create equation system
   log("creating equation system\n");
@@ -327,13 +291,11 @@ int main(int argc, char *argv[]) {
   auto l = (bbox.min() - bbox.max()).norm();
   eq_sys.parameters.set<lm::Point>("center") = xc;
   eq_sys.parameters.set<double>("length") = l;
+  darcy3d::create_heterogeneous_conductivity(mesh, hyd_cond, eq_sys);
 
-  darcy3d::create_heterogeneous_conductivity(out_dir, vasc_nifti_filename, voxel_size, mesh, hyd_cond, eq_sys);
-
-  // write
-  log("writing to file\n");
-  mc::VTKIO(mesh).write_equation_systems(out_dir + "output_0.pvtu", eq_sys);
-  //return 0;
+  // setting up perfusion points
+  std::vector<darcy3d::NetPoint> pts;
+  set_perfusion_pts(pts, hyd_cond, eq_sys, model);
 
   // time stepping
   do {
@@ -345,11 +307,15 @@ int main(int argc, char *argv[]) {
     model.d_pres.solve();
     log("solve time = " + std::to_string(mc::time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 
-    if (model.d_step % 10 == 0) {
+    if (model.d_step % 20 == 0) {
       log("writing to file\n");
-      mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step/10) + ".pvtu", eq_sys);
+      mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step/20) + ".pvtu", eq_sys);
     }
   } while (model.d_time < input.d_T);
+
+  // write
+  log("writing to file\n");
+  mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step/20) + ".pvtu", eq_sys);
 
   return 0;
 }
@@ -380,10 +346,13 @@ void darcy3d::Pres::assemble() {
     // get K at this element
     double elem_K = hyd_cond.current_solution(dof_indices[0]);
 
+    if (std::abs(elem_K - 0.1) > 1.e-10 and std::abs(elem_K - 1.) > 1.e-10)
+      std::cout << "elem_K = " << elem_K << "\n";
+
     double rhs = 0.;
     auto x = elem->centroid();
     if ((x - source_xc).norm() < 0.15 * l)
-      rhs = t*5.;
+      rhs = std::sin(t / 0.1) * std::exp(-t / 10.);
 
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
       double lhs = d_JxW[qp] * elem_K;
