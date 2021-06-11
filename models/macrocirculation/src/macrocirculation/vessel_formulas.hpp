@@ -439,6 +439,46 @@ inline std::size_t solve_at_nfurcation(const std::vector<double> &Q,
   return it;
 }
 
+/*! @brief Calculates the kinematic viscosity of blood plasma.
+ *
+ * @param r The radius in cm.
+ * @return Kinematic viscosity in cm^2 / s
+ */
+inline double viscosity_bloodplasma(double r) {
+  // for the formulas see e.g.
+  // Köppl, Tobias, Ettore Vidotto, and Barbara Wohlmuth. "A 3D‐1D coupled blood flow and oxygen transport model to generate microvascular networks."
+  // page 6, Eq. (1).
+
+  // diameter (in cm):
+  const double d = 2 * r;
+
+  // dimensionless diameter:  d / 1 micrometer
+  const double d_tilde = (1e-2*d) / 1e-6;
+
+  const double mu_0p45 = 6.0 * std::exp(-0.085 * d_tilde) + 3.2 - 2.44 * std::exp(-0.06 * std::pow(d_tilde, 0.645));
+
+  // viscosity of blood plasma [Pa s]
+  const double mu_p = 1e-3;
+
+  // the blood viscosity in [Pa s]
+  // Note: we set the hematocrit to H = 0.45
+  //       thus ((1 - H)^C -1)/ ((1 - 0.45)^C - 1) simplifies to 1
+  const double mu_bl = mu_p * (1 + (mu_0p45 - 1) * std::pow(d_tilde / (d_tilde - 1.1), 2)) * std::pow(d_tilde / (d_tilde - 1.1), 2);
+
+  // we convert to the cm units:
+  // [Pa s] = [N m^{-2} s] = [ kg m s^{-2} m^{-2} s] = [kg s^{-1} m^{-1}] = 10^{-2} * [kg s^{-1} cm^{-1}]
+  const double mu_bl_cm = mu_bl * 1e-2;
+
+  // [rho] = [kg cm^{-3}]
+  const double rho = 1.028e-3;
+
+  // we convert to the kinematic viscosity, see e.g.
+  // https://en.wikipedia.org/wiki/Viscosity#Kinematic_viscosity
+  const double nu = mu_bl_cm / rho;
+
+  return nu;
+}
+
 } // namespace macrocirculation
 
 #endif //TUMORMODELS_VESSEL_FORMULAS_HPP

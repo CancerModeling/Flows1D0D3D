@@ -89,7 +89,8 @@ def create_uniform_mesh(data, h):
             'number_edges': len(points)-1,
             'vessel_length': vessel_length,
             'wall_thickness': 0.005,      # completely artificial
-            'elastic_modulus': 1.3e6,    # completely artificial
+            'elastic_modulus': 1.3e6,     # completely artificial
+            'gamma': 2,                   # Poisseuile flow in the breast geometry
             'radii': radii,
         }
         json_data['vessels'].append(vessel)

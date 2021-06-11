@@ -25,12 +25,13 @@ class Edge;
 /*! @brief Functional to evaluate the right-hand-side S. */
 class default_S {
 public:
-  default_S(double mu, double gamma, double phi);
+  default_S(double phi);
 
   /*! @brief Evaluates the Q- and A-component of the right-hand side S,
    *         given Q and A at eacht of the quadrature points.
    */
   void operator()(double,
+                  const Edge&,
                   const std::vector<double> &,
                   const std::vector<double> &Q,
                   const std::vector<double> &A,
@@ -67,11 +68,13 @@ public:
 
   /*! @brief Function type to evaluate a vectorial quantity at all the quadrature points in one go:
    *         - the 1st argument is the current time,
-   *         - the 2nd argument are the quadrature points on the edge,
-   *         - the 3nd and 4rd components are for the flow Q and the area A, while
+   *         - the 2nd argument the vessel,
+   *         - the 3rd argument are the quadrature points on the edge,
+   *         - the 4th and 5th components are for the flow Q and the area A, while
    *         - the 5th and 6th are the components of the vector evaluated at the quadrature points.
    */
   using VectorEvaluator = std::function<void(double,
+                                             const Edge&,
                                              const std::vector<double> &,
                                              const std::vector<double> &,
                                              const std::vector<double> &,
