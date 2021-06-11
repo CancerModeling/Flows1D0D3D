@@ -41,6 +41,7 @@
       "radius": 1.2,
       "wall_thickness": 0.163,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 10,
       "left_vertex_id": 0,
       "right_vertex_id": 1
