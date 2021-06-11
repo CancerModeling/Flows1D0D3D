@@ -18,6 +18,7 @@
 #include <random>
 #include <sstream>
 #include <vector>
+#include <algorithm>
 
 namespace macrocirculation {
 
@@ -82,6 +83,42 @@ inline int locate_voxel_1d(std::vector<double> x, std::vector<int> dim, double g
 inline std::vector<int> locate_voxel_3d(std::vector<double> x, std::vector<int> dim, double grid_size = 1.) {
 
   return {int(x[0]/grid_size), int(x[1]/grid_size), int(x[2]/grid_size)};
+}
+
+/*! @brief print set in a list */
+template <class T>
+inline std::string print_str(const std::vector<T> &list) {
+  std::ostringstream oss;
+  oss << "(";
+  for (size_t i=0; i<list.size(); i++) {
+    oss << list[i];
+    if (i < list.size() - 1)
+      oss << ", ";
+    else
+      oss << ")\n";
+  }
+  return oss.str();
+}
+
+/*!
+ * @brief sort based on list and return indices
+ * see - https://stackoverflow.com/questions/1577475/c-sorting-and-keeping-track-of-indexes
+ */
+template <typename T>
+std::vector<size_t> sort_indexes(const std::vector<T> &v) {
+
+  // initialize original index locations
+  std::vector<size_t> idx(v.size());
+  std::iota(idx.begin(), idx.end(), 0);
+
+  // sort indexes based on comparing values in v
+  // using std::stable_sort instead of std::sort
+  // to avoid unnecessary index re-orderings
+  // when v contains elements of equal values
+  std::stable_sort(idx.begin(), idx.end(),
+              [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
+
+  return idx;
 }
 
 } // namespace macrocirculation
