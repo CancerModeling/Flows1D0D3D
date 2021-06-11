@@ -7,9 +7,11 @@
 
 #include "libmesh/libmesh.h"
 #include <cmath>
+#include <macrocirculation/communication/mpi.hpp>
 #include <memory>
 #include <petsc.h>
 
+#include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/implicit_advection_solver.hpp"
 
@@ -21,7 +23,10 @@ int main(int argc, char *argv[]) {
   const std::size_t num_micro_edges = 100;
 
   // initialize petsc
+  MPI_Init(&argc, &argv);
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves advection problem"));
+
+  std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
 
   const double velocity = 1;
   const double tau = 0.001;
@@ -29,20 +34,20 @@ int main(int argc, char *argv[]) {
   const auto inflow_boundary_value = [](double t_now) -> double { return std::sin(M_PI * 3 * t_now); };
   // const auto inflow_boundary_value = [](double t_now) -> double { return 1; };
 
-  // Note: This one requires pointer to comm and therefore we have to init
-  // libmesh and then call the constructor of model
-  lm::LibMeshInit init(argc, argv);
-
   // create the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
 
-  std::size_t ascending_aorta_id = 1;
-
   auto v0 = graph->create_vertex();
   auto v1 = graph->create_vertex();
-  auto edge = graph->connect(*v0, *v1, num_micro_edges);
-  edge->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1, 0, 0)}});
-  edge->add_physical_data({0, 0, 0, 1.});
+  auto v2 = graph->create_vertex();
+  auto edge1 = graph->connect(*v0, *v1, num_micro_edges);
+  auto edge2 = graph->connect(*v1, *v2, num_micro_edges);
+  edge1->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1, 0, 0)}});
+  edge1->add_physical_data({0, 0, 0, 1.});
+  edge2->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(2, 0, 0)}});
+  edge2->add_physical_data({0, 0, 0, 1.});
+
+  mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
 
   // const std::size_t N = 32;
   // auto v_prev = graph.create_vertex(lm::Point(0, 0, 0));
@@ -56,4 +61,6 @@ int main(int argc, char *argv[]) {
   solver.set_output_interval(100);
 
   solver.solve();
+
+  CHKERRQ(PetscFinalize());
 }

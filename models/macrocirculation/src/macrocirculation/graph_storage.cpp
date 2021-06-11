@@ -11,6 +11,8 @@
 #include <cassert>
 #include <utility>
 
+#include "vessel_formulas.hpp"
+
 namespace macrocirculation {
 
 Point::Point(double x, double y, double z)
@@ -22,8 +24,9 @@ Point convex_combination(const Point &left, const Point &right, double theta) {
           (1 - theta) * left.z + theta * right.z};
 }
 
-PhysicalData::PhysicalData(double G0, double A0, double rho, double length)
-    : G0(G0), A0(A0), rho(rho), length(length) {}
+PhysicalData::PhysicalData(double G0, double A0, double rho, double length, double viscosity, double gamma, double radius)
+    : G0(G0), A0(A0), rho(rho), length(length), viscosity(viscosity), gamma(gamma), radius(radius)
+{}
 
 std::size_t DiscretizationData::num_micro_edges() const {
   return lengths.size();
@@ -36,7 +39,7 @@ std::size_t Primitive::get_id() const {
   return p_id;
 }
 
-PhysicalData PhysicalData::set_from_data(double elastic_modulus, double wall_thickness, double density, double radius, double length) {
+PhysicalData PhysicalData::set_from_data(double elastic_modulus, double wall_thickness, double density, double gamma, double radius, double length) {
   // [E] = Pa = N m^{-2} = kg s^{-2} m^{-1} = kg s^{-2} cm^{-1} 100^{-1}
   const double E = elastic_modulus / 100;
 
@@ -45,8 +48,10 @@ PhysicalData PhysicalData::set_from_data(double elastic_modulus, double wall_thi
   // const double G0 = calculate_G0(d_wall_width, d_elastic_modulus, d_poisson_ratio, A0);
   const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * E * wall_thickness / std::sqrt(A0);
 
+  // the viscosity
+  const double viscosity = viscosity_bloodplasma(radius);
 
-  return {G0, A0, density, length};
+  return {G0, A0, density, length, viscosity, gamma, radius};
 }
 
 double PhysicalData::get_c0() const {

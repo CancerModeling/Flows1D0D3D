@@ -70,7 +70,7 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
     if (vessel.contains("name"))
       edge->set_name(vessel["name"]);
 
-    edge->add_physical_data(PhysicalData::set_from_data(vessel["elastic_modulus"], vessel["wall_thickness"], d_rho, r_avg, vessel["vessel_length"]));
+    edge->add_physical_data(PhysicalData::set_from_data(vessel["elastic_modulus"], vessel["wall_thickness"], d_rho, vessel["gamma"], r_avg, vessel["vessel_length"]));
   }
 
   for (auto vertex : j["vertices"]) {
