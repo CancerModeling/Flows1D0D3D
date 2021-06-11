@@ -33,8 +33,8 @@ geometry2_path = '../data/coarse-network-geometry.json'
 output_path = '../data/combined-network-geometry.json'
 
 to_connect = [
-    ConnectionPair('cw_con_1', 'bg_132', 10., 6, 60, start_radius=0.24),
-    ConnectionPair('cw_con_2', 'bg_135', 10., 6, 60, start_radius=0.24)
+    ConnectionPair('cw_con_1', 'bg_132', 10., 6, 240, start_radius=0.24),
+    ConnectionPair('cw_con_2', 'bg_135', 10., 6, 240, start_radius=0.24)
 ]
 
 with open(geometry1_path) as f:
@@ -78,7 +78,7 @@ for cpair in to_connect:
     elastic_modulus_interp = np.linspace(elastic_modulus_v0, elastic_modulus_v1, cpair.number_macro_edges+2)[1:-1]
     radius_interp = np.linspace(radius_v0, radius_v1, cpair.number_macro_edges+2)[1:-1]
 
-    num_micro_edges = min(2, int(np.floor(cpair.number_micro_edges / cpair.number_macro_edges)))
+    num_micro_edges = max(2, int(np.floor(cpair.number_micro_edges / cpair.number_macro_edges)))
 
     vessel_length = cpair.length / cpair.number_macro_edges
 
