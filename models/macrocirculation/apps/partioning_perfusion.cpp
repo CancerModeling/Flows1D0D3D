@@ -228,41 +228,14 @@ void set_perfusion_pts(std::string out_dir,
   mc::DistributionSample<UniformDistribution> uni_dist(min_dist/10., min_dist/3., seed);
   for (int i=0; i<npts; i++)
     pts[i] = NetPoint(elem_centers[sel_elems[i]], uni_dist());
-
-  // output vascular domain elements
-  auto vtu_writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
-  auto vtu_data = vtkSmartPointer<vtkUnstructuredGrid>::New();
-
-  // create vtu file
-  auto fname = out_dir + "perfusion_points.vtu";
-  vtu_writer->SetFileName(fname.c_str());
-
-  // create point and radius data
-  auto points = vtkSmartPointer<vtkPoints>::New();
-  auto radius = vtkSmartPointer<vtkDoubleArray>::New();
-  radius->SetNumberOfComponents(1);
-  radius->SetName("Radius");
-
-  // fill data
-  double p_tag[1] = {0};
-  for (int i=0; i<pts.size(); i++) {
-    auto x = pts[i].d_x;
-    p_tag[0] = pts[i].d_R;
-    points->InsertNextPoint(x(0), x(1), x(2));
-    radius->InsertNextTuple(p_tag);
-  }
-
-  vtu_data->SetPoints(points);
-  vtu_data->GetPointData()->AddArray(radius);
-  vtu_writer->SetInputData(vtu_data);
-  vtu_writer->SetDataModeToAppended();
-  vtu_writer->EncodeAppendedDataOn();
-  vtu_writer->Write();
 }
 
 //
-void create_heterogeneous_conductivity(const lm::MeshBase &mesh, lm::ExplicitSystem &hyd_cond, lm::EquationSystems &eq_sys, const std::vector<int> &elem_taken) {
-
+int create_heterogeneous_conductivity(const lm::MeshBase &mesh,
+                                       lm::ExplicitSystem &hyd_cond,
+                                       lm::EquationSystems &eq_sys,
+                                       const std::vector<int> &elem_taken,
+                                       Model &model) {
   std::vector<unsigned int> dof_indices;
   for (const auto &elem : mesh.active_local_element_ptr_range()) {
     hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
@@ -275,7 +248,7 @@ void create_heterogeneous_conductivity(const lm::MeshBase &mesh, lm::ExplicitSys
 
 //
 void create_perfusion_territory(std::string out_dir,
-                       const std::vector<NetPoint> &pts,
+                       std::vector<NetPoint> &pts,
                        lm::ExplicitSystem &hyd_cond,
                        lm::EquationSystems &eq_sys,
                        Model &model) {
@@ -304,25 +277,96 @@ void create_perfusion_territory(std::string out_dir,
   // step 1 - assign volume to each outlet point
   model.d_log("  Assigning volumes to each outlet point\n");
   std::vector<double> pts_vol;
-  std::vector<double> pts_vol_rad;
   double flow_sum = 0.;
   double min_vol = total_vol;
   for (auto i : pts) flow_sum += i.d_Q;
   for (int i=0; i<pts.size(); i++) {
     double voli = (pts[i].d_Q / flow_sum) * total_vol;
-    double radi = 2. * std::pow(3.*voli/(4. * M_PI), 1./3.);
     pts_vol.push_back(voli);
-    pts_vol_rad.push_back(radi);
 
     if (voli < min_vol)
       min_vol = voli;
 
-    model.d_log(fmt::format("    i = {}, voli = {}, radi = {}\n", i, voli, radi));
+    model.d_log(fmt::format("    i = {}, voli = {}\n", i, voli));
   }
 
-  double vol_tol = 0.1 * min_vol;
+  double vol_tol = 0.001 * min_vol;
 
-  // step 2 - brute force element assigning
+  // step 2 - sort the points based on increasing volume
+  model.d_log("  Sorting points\n");
+  auto sort_indices = mc::sort_indexes(pts_vol);
+
+  // print
+  {
+    model.d_log("    info before sorting\n");
+    std::ostringstream oss;
+    std::vector<size_t> temp;
+    for (size_t i=0; i<pts.size(); i++) temp.push_back(i);
+    oss << "    pts ids = " << mc::print_str(temp);
+    oss << "    vol target = " << mc::print_str(pts_vol);
+    model.d_log(oss.str());
+  }
+
+  // rearrange
+  std::vector<NetPoint> pts_temp = pts;
+  std::vector<double> pts_vol_temp = pts_vol;
+  std::vector<double> pts_vol_rad(pts.size(), 0.);
+  for (size_t i=0; i<sort_indices.size(); i++) {
+    auto ii = sort_indices[i];
+    pts[i] = pts_temp[ii];
+    pts_vol[i] = pts_vol_temp[ii];
+    pts_vol_rad[i] = 1.25 * std::pow(3.*pts_vol[i]/(4. * M_PI), 1./3.);
+  }
+
+  // print
+  {
+    model.d_log("    info after sorting\n");
+    std::ostringstream oss;
+    oss << "    pts ids = " << mc::print_str(sort_indices);
+    oss << "    vol target = " << mc::print_str(pts_vol);
+    oss << "    radius target = " << mc::print_str(pts_vol_rad);
+    model.d_log(oss.str());
+
+    // output vascular domain elements
+    auto vtu_writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+    auto vtu_data = vtkSmartPointer<vtkUnstructuredGrid>::New();
+
+    // create vtu file
+    auto fname = out_dir + "perfusion_points.vtu";
+    vtu_writer->SetFileName(fname.c_str());
+
+    // create point and radius data
+    auto points = vtkSmartPointer<vtkPoints>::New();
+    auto radius = vtkSmartPointer<vtkDoubleArray>::New();
+    auto indices = vtkSmartPointer<vtkDoubleArray>::New();
+    radius->SetNumberOfComponents(1);
+    radius->SetName("Radius");
+    indices->SetNumberOfComponents(1);
+    indices->SetName("Indices");
+
+    // fill data
+    double p_tag[1] = {0};
+    for (int i=0; i<pts.size(); i++) {
+      auto x = pts[i].d_x;
+      p_tag[0] = pts[i].d_R;
+      points->InsertNextPoint(x(0), x(1), x(2));
+      radius->InsertNextTuple(p_tag);
+
+      p_tag[0] = double(i+1);
+      indices->InsertNextTuple(p_tag);
+    }
+
+    vtu_data->SetPoints(points);
+    vtu_data->GetPointData()->AddArray(radius);
+    vtu_data->GetPointData()->AddArray(indices);
+    vtu_writer->SetInputData(vtu_data);
+    vtu_writer->SetDataModeToAppended();
+    vtu_writer->EncodeAppendedDataOn();
+    vtu_writer->Write();
+  }
+
+
+  // step 3 - brute force element assigning
   model.d_log("  Assigning elements to outlet points using brute-force\n");
   std::vector<std::vector<long>> pts_elem(pts.size(), std::vector<long>());
   std::vector<double> pts_actual_vol(pts.size(), 0.);
@@ -367,16 +411,20 @@ void create_perfusion_territory(std::string out_dir,
   }
 
   // update conductivity parameter and write to file
-  create_heterogeneous_conductivity(mesh, hyd_cond, eq_sys, elem_taken);
+  create_heterogeneous_conductivity(mesh, hyd_cond, eq_sys, elem_taken, model);
   model.d_log("  writing to file\n");
   mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(0) + ".pvtu", eq_sys);
 
-  // step 3 - randomly readjust the element distribution
+  // step 4 - randomly readjust the element distribution
   model.d_log("  Readjustment of element distribution\n");
   std::vector<int> pts_id_vec;
   for (int i=0; i<pts.size(); i++) pts_id_vec.push_back(i);
 
-  int num_random_loop = 10;
+  int num_random_loop = 200;
+  int out_count = 1;
+  std::vector<double> store_err;
+  std::vector<double> count_no_outlet_elem;
+  std::vector<double> vol_not_dist;
   for (int rloop = 0; rloop < num_random_loop; rloop++) {
     model.d_log("    random loop = " + std::to_string(rloop) + "\n");
 
@@ -387,26 +435,47 @@ void create_perfusion_territory(std::string out_dir,
     pts_id_vec.assign(v.begin(), v.end());
 
     std::ostringstream oss;
-    oss << "      shuffled list = (";
-    for (auto i : pts_id_vec) oss << i << " ";
-    oss << ") \n";
+    oss << "      shuffled list = " << mc::print_str(pts_id_vec);
 
-    oss << "      num elements = (";
-    for (auto i : pts_elem) oss << i.size() << " ";
-    oss << ") \n";
+    std::vector<size_t> temp;
+    for (size_t i=0; i<pts.size(); i++) temp.push_back(i);
+    oss << "      pts ids = " << mc::print_str(temp);
 
-    oss << "      vol actual = (";
-    for (auto i : pts_actual_vol) oss << i << " ";
-    oss << ") \n";
+    temp.clear();
+    for (auto i : pts_elem) temp.push_back(i.size());
+    oss << "      num elements = " << mc::print_str(temp);
 
-    oss << "      vol target = (";
-    for (auto i : pts_vol) oss << i << " ";
-    oss << ") \n";
+    oss << "      vol actual = " << mc::print_str(pts_actual_vol);
+    oss << "      vol target = " << mc::print_str(pts_vol);
+    oss << "      radius target = " << mc::print_str(pts_vol_rad);
 
-    oss << "      vol difference = (";
-    for (int i=0; i<pts.size(); i++) oss << pts_vol[i] - pts_actual_vol[i] << " ";
-    oss << ") \n";
+    std::vector<double> temp2;
+    for (int i=0; i<pts.size(); i++) temp2.push_back(100. * (pts_vol[i] - pts_actual_vol[i])/pts_vol[i]);
+    oss << "      percent vol difference = " << mc::print_str(temp2);
+
+    // get average percentage error
+    double avg_err = 0.;
+    for (auto i : temp2) avg_err += i;
+    avg_err = avg_err/temp2.size();
+    oss << "      average percent error = " << avg_err << "\n";
+    store_err.push_back(avg_err);
+
+    int no_out_el = 0;
+    for (auto i : elem_taken) {
+      if (i == -1)
+        no_out_el++;
+    }
+    oss << "      number of no outlet elems = " << no_out_el << "\n";
+    count_no_outlet_elem.push_back(no_out_el);
+
+    double vol_err = 0.;
+    for (auto i : pts_actual_vol) vol_err += i;
+    vol_err = 100. * (total_vol - vol_err)/total_vol;
+    oss << "      percent volume not distributed = " << vol_err << "\n";
+    vol_not_dist.push_back(vol_err);
+
     model.d_log(oss.str());
+
 
     // loop over outlet points
     int num_pts_change = 0;
@@ -414,12 +483,13 @@ void create_perfusion_territory(std::string out_dir,
     for (int ii = 0; ii < pts_id_vec.size(); ii++) {
       int i = pts_id_vec[ii];
 
-      auto pti = pts_id_vec[i];
+      auto pti = pts[i];
       auto voli = pts_vol[i];
       auto radi = pts_vol_rad[i];
       auto voli_act = pts_actual_vol[i];
 
       std::vector<long> elem_i_old = pts_elem[i];
+      auto & elem_i = pts_elem[i];
 
       // check if we really need to process this outlet
       if (voli_act < voli + vol_tol and voli_act > voli - vol_tol)
@@ -432,6 +502,18 @@ void create_perfusion_territory(std::string out_dir,
       double voli_sum_act = voli_act;
       for (auto e : elem_i_old) {
         auto xe = elem_centers[e];
+
+        // if element e is very far from the point center, remove it from the list
+        if ((xe - pti.d_x).norm() > 0.5 * l) {
+          auto vol_e = mesh.elem_ptr(e)->volume();
+          elem_i.erase(std::find(elem_i.begin(), elem_i.end(), e));
+          voli_sum_act -= vol_e;
+
+          // free this element
+          elem_taken[e] = -1;
+
+          continue;
+        }
 
         std::vector<size_t> ei_neighs;
         std::vector<double> ei_sqr_dist;
@@ -475,10 +557,23 @@ void create_perfusion_territory(std::string out_dir,
 
     model.d_log(fmt::format("      num_pts_change = {}, num_elem_moved = {}\n", num_pts_change, num_elem_moved));
 
-    // update conductivity parameter and write to file
-    create_heterogeneous_conductivity(mesh, hyd_cond, eq_sys, elem_taken);
-    model.d_log("      writing to file\n");
-    mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(rloop+1) + ".pvtu", eq_sys);
+    if (rloop % 10 == 0) {
+      // update conductivity parameter and write to file
+      create_heterogeneous_conductivity(mesh, hyd_cond, eq_sys, elem_taken, model);
+      model.d_log("      writing to file\n");
+      mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(out_count) + ".pvtu", eq_sys);
+      out_count++;
+    }
+  }
+
+  {
+    std::ofstream oss;
+    oss.open(out_dir + "/average_error.txt");
+    for (int i=0; i<store_err.size(); i++)
+      oss << store_err[i] << ", "
+          << count_no_outlet_elem[i] << ", "
+          << vol_not_dist[i] << "\n";
+    oss.close();
   }
 }
 
@@ -499,7 +594,7 @@ int main(int argc, char *argv[]) {
     ("hyd-cond", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                       //
     ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/darcy_test_tissue_mesh.e"))                            //
     ("gamma", "value of coefficient for perfusion area estimation", cxxopts::value<double>()->default_value("3"))                            //
-    ("num-points", "number of perfusion points", cxxopts::value<int>()->default_value("10"))                            //
+    ("num-points", "number of perfusion points", cxxopts::value<int>()->default_value("50"))                            //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_part_perfusion_test/")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
