@@ -46,6 +46,10 @@ add_executable(${ProjectName}Calibration calibration.cpp)
 target_link_libraries(${ProjectName}Calibration ${ProjectLib})
 target_link_libraries(${ProjectName}Calibration cxxopts)
 
+add_executable(${ProjectName}LinearFlow linear_flow.cpp)
+target_link_libraries(${ProjectName}LinearFlow ${ProjectLib})
+target_link_libraries(${ProjectName}LinearFlow Eigen3::Eigen)
+
 add_executable(${ProjectName}Transport transport_test.cpp)
 target_link_libraries(${ProjectName}Transport ${ProjectLib})
 
@@ -62,6 +66,7 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}Abstract33VesselsGeometry
                    ${ProjectName}CombinedGeometry
                    ${ProjectName}Transport
+                   ${ProjectName}LinearFlow
                    ${ProjectName}Darcy3D)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
