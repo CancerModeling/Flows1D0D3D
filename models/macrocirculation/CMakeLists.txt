@@ -17,6 +17,7 @@ add_library(${ProjectLib} ${SOURCES})
 target_link_libraries(${ProjectLib} PUBLIC Utils)
 target_include_directories(${ProjectLib} INTERFACE ./src)
 target_link_libraries(${ProjectLib} PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(${ProjectLib} PUBLIC Eigen3::Eigen)
 
 # ****************************************************************************
 # Add apps
@@ -46,3 +47,11 @@ if (ENABLE_UNIT_TESTS)
         FetchContent_MakeAvailable(catch2_content)
     endif()
 endif()
+
+include(FetchContent)
+FetchContent_Declare(
+        eigen_content
+        GIT_REPOSITORY https://gitlab.com/libeigen/eigen
+        GIT_TAG 3.4-rc1
+)
+FetchContent_MakeAvailable(eigen_content)
