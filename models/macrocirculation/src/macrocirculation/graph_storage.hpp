@@ -32,7 +32,7 @@ struct Point {
 Point convex_combination(const Point &left, const Point &right, double theta);
 
 struct PhysicalData {
-  PhysicalData(double G0, double A0, double rho, double length);
+  PhysicalData(double G0, double A0, double rho, double length, double viscosity, double gamma, double radius);
 
   /*! @brief Initializes the physical data from a common set of "sensible" physical units.
    *
@@ -41,7 +41,7 @@ struct PhysicalData {
    * @param density           Blood density in kg cm^{-3}! E.g. water with 997 kg/m^3 becomes 0.997e-3 kg/cm^3.
    * @param raidus            Radius in cm.
    */
-  static PhysicalData set_from_data(double elastic_modulus, double wall_thickness, double density, double radius, double length);
+  static PhysicalData set_from_data(double elastic_modulus, double wall_thickness, double density, double gamma, double radius, double length);
 
   // physical parameters:
 
@@ -56,6 +56,15 @@ struct PhysicalData {
 
   /*! @brief Initial length in cm. */
   double length;
+
+  /*! @brief Viscosity of the blood flow in [kg s^{-1} cm^{-1}]. */
+  double viscosity;
+
+  /*! @brief Shape of the bloodflow profile. */
+  double gamma;
+
+  /*! @brief Vessel radius. */
+  double radius;
 
   double get_c0() const;
 

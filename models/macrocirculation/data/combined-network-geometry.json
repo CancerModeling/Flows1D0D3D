@@ -767,6 +767,7 @@
       "radius": 1.12,
       "wall_thickness": 0.126,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 6,
       "left_vertex_id": 1,
       "right_vertex_id": 2
@@ -778,6 +779,7 @@
       "radius": 0.62,
       "wall_thickness": 0.08,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 10,
       "left_vertex_id": 1,
       "right_vertex_id": 3
@@ -789,6 +791,7 @@
       "radius": 1.07,
       "wall_thickness": 0.115,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 10,
       "left_vertex_id": 2,
       "right_vertex_id": 4
@@ -800,6 +803,7 @@
       "radius": 0.25,
       "wall_thickness": 0.063,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 50,
       "left_vertex_id": 2,
       "right_vertex_id": 5
@@ -811,6 +815,7 @@
       "radius": 0.25,
       "wall_thickness": 0.063,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 45,
       "left_vertex_id": 3,
       "right_vertex_id": 6
@@ -822,6 +827,7 @@
       "radius": 0.423,
       "wall_thickness": 0.067,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 10,
       "left_vertex_id": 3,
       "right_vertex_id": 30
@@ -833,6 +839,7 @@
       "radius": 0.999,
       "wall_thickness": 0.11,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 45,
       "left_vertex_id": 4,
       "right_vertex_id": 8
@@ -844,6 +851,7 @@
       "radius": 0.423,
       "wall_thickness": 0.067,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 10,
       "left_vertex_id": 4,
       "right_vertex_id": 9
@@ -855,6 +863,7 @@
       "radius": 0.15,
       "wall_thickness": 0.038,
       "elastic_modulus": 800000.0,
+      "gamma": 9,
       "number_edges": 45,
       "left_vertex_id": 5,
       "right_vertex_id": 10
@@ -866,6 +875,7 @@
       "radius": 0.2,
       "wall_thickness": 0.05,
       "elastic_modulus": 800000.0,
+      "gamma": 9,
       "number_edges": 45,
       "left_vertex_id": 5,
       "right_vertex_id": 11
@@ -877,6 +887,7 @@
       "radius": 0.2,
       "wall_thickness": 0.05,
       "elastic_modulus": 800000.0,
+      "gamma": 9,
       "number_edges": 45,
       "left_vertex_id": 6,
       "right_vertex_id": 12
@@ -888,6 +899,7 @@
       "radius": 0.15,
       "wall_thickness": 0.038,
       "elastic_modulus": 800000.0,
+      "gamma": 9,
       "number_edges": 45,
       "left_vertex_id": 6,
       "right_vertex_id": 13
@@ -899,6 +911,7 @@
       "radius": 0.136,
       "wall_thickness": 0.034,
       "elastic_modulus": 800000.0,
+      "gamma": 9,
       "number_edges": 32,
       "left_vertex_id": 7,
       "right_vertex_id": 21
@@ -910,6 +923,7 @@
       "radius": 0.403,
       "wall_thickness": 0.067,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 50,
       "left_vertex_id": 31,
       "right_vertex_id": 15
@@ -921,6 +935,7 @@
       "radius": 0.403,
       "wall_thickness": 0.067,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 50,
       "left_vertex_id": 9,
       "right_vertex_id": 16
@@ -932,6 +947,7 @@
       "radius": 0.136,
       "wall_thickness": 0.034,
       "elastic_modulus": 800000.0,
+      "gamma": 9,
       "number_edges": 35,
       "left_vertex_id": 9,
       "right_vertex_id": 21
@@ -943,6 +959,7 @@
       "radius": 0.2,
       "wall_thickness": 0.05,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 4,
       "left_vertex_id": 11,
       "right_vertex_id": 17
@@ -954,6 +971,7 @@
       "radius": 0.073,
       "wall_thickness": 0.018,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 6,
       "left_vertex_id": 18,
       "right_vertex_id": 11
@@ -965,6 +983,7 @@
       "radius": 0.073,
       "wall_thickness": 0.018,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 6,
       "left_vertex_id": 19,
       "right_vertex_id": 12
@@ -976,6 +995,7 @@
       "radius": 0.2,
       "wall_thickness": 0.05,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 4,
       "left_vertex_id": 12,
       "right_vertex_id": 20
@@ -987,6 +1007,7 @@
       "radius": 0.162,
       "wall_thickness": 0.04,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 4,
       "left_vertex_id": 21,
       "right_vertex_id": 14
@@ -998,6 +1019,7 @@
       "radius": 0.143,
       "wall_thickness": 0.036,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 25,
       "left_vertex_id": 17,
       "right_vertex_id": 22
@@ -1009,6 +1031,7 @@
       "radius": 0.143,
       "wall_thickness": 0.036,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 25,
       "left_vertex_id": 20,
       "right_vertex_id": 23
@@ -1020,6 +1043,7 @@
       "radius": 0.117,
       "wall_thickness": 0.029,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 5,
       "left_vertex_id": 17,
       "right_vertex_id": 24
@@ -1031,6 +1055,7 @@
       "radius": 0.117,
       "wall_thickness": 0.029,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 5,
       "left_vertex_id": 20,
       "right_vertex_id": 25
@@ -1042,6 +1067,7 @@
       "radius": 0.107,
       "wall_thickness": 0.027,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 4,
       "left_vertex_id": 14,
       "right_vertex_id": 18
@@ -1053,6 +1079,7 @@
       "radius": 0.107,
       "wall_thickness": 0.027,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 4,
       "left_vertex_id": 14,
       "right_vertex_id": 19
@@ -1064,6 +1091,7 @@
       "radius": 0.12,
       "wall_thickness": 0.03,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 20,
       "left_vertex_id": 24,
       "right_vertex_id": 26
@@ -1075,6 +1103,7 @@
       "radius": 0.12,
       "wall_thickness": 0.03,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 20,
       "left_vertex_id": 25,
       "right_vertex_id": 27
@@ -1086,6 +1115,7 @@
       "radius": 0.074,
       "wall_thickness": 0.019,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 4,
       "left_vertex_id": 24,
       "right_vertex_id": 25
@@ -1097,6 +1127,7 @@
       "radius": 0.105,
       "wall_thickness": 0.026,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 20,
       "left_vertex_id": 18,
       "right_vertex_id": 28
@@ -1108,6 +1139,7 @@
       "radius": 0.105,
       "wall_thickness": 0.026,
       "elastic_modulus": 1600000.0,
+      "gamma": 9,
       "number_edges": 20,
       "left_vertex_id": 19,
       "right_vertex_id": 29
@@ -1119,6 +1151,7 @@
       "radius": 0.423,
       "wall_thickness": 0.067,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 10,
       "left_vertex_id": 30,
       "right_vertex_id": 7
@@ -1130,6 +1163,7 @@
       "radius": 0.403,
       "wall_thickness": 0.067,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 10,
       "left_vertex_id": 7,
       "right_vertex_id": 31
@@ -1375,6 +1409,7 @@
       "vessel_length": 8.008249772098928,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.02287384482407205,
         0.022594626807761337,
@@ -1505,6 +1540,7 @@
       "vessel_length": 2.243896603791867,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.03522153169550822,
         0.02594974399751538,
@@ -1618,6 +1654,7 @@
       "vessel_length": 2.706204593221761,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.02568437137409688,
         0.02306636344486886,
@@ -1674,6 +1711,7 @@
       "vessel_length": 0.6669791354884899,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.026097061644949144,
         0.016867373552824274,
@@ -1873,6 +1911,7 @@
       "vessel_length": 6.216471265388607,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.028687698946046936,
         0.02281617966405728,
@@ -1993,6 +2032,7 @@
       "vessel_length": 2.2937552841788214,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013916264321249932,
@@ -2116,6 +2156,7 @@
       "vessel_length": 3.1851026138983367,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.021023019260771297,
         0.020853219589329928,
@@ -2339,6 +2380,7 @@
       "vessel_length": 6.601200217433191,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013355823695194974,
         0.013333333333333336,
@@ -2456,6 +2498,7 @@
       "vessel_length": 2.123120547757456,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333332,
         0.013341686392391755,
@@ -2583,6 +2626,7 @@
       "vessel_length": 3.3234980400747993,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.019289734309979035,
@@ -2632,6 +2676,7 @@
       "vessel_length": 0.33017058046767683,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013647119422139307,
         0.013333333333333336,
@@ -2714,6 +2759,7 @@
       "vessel_length": 2.0743609659504143,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.015148055481472888,
         0.016806789873184028,
@@ -2826,6 +2872,7 @@
       "vessel_length": 2.7466824178286013,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.026650843879788347,
         0.01980326108171892,
@@ -2877,6 +2924,7 @@
       "vessel_length": 0.46670138362702185,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.02292905281748539,
         0.015889910329196726,
@@ -2955,6 +3003,7 @@
       "vessel_length": 1.805226498499286,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01701316922957793,
         0.015350045792226506,
@@ -3091,6 +3140,7 @@
       "vessel_length": 3.755374834519755,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01333333333333335,
         0.013333333333333348,
@@ -3152,6 +3202,7 @@
       "vessel_length": 0.5588319948868563,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333332,
         0.017894939422912093,
@@ -3231,6 +3282,7 @@
       "vessel_length": 1.8753641650178843,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01606148623961903,
         0.014664553951482877,
@@ -3352,6 +3404,7 @@
       "vessel_length": 3.1529180579095746,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01333333333333335,
         0.013333333333333346,
@@ -3435,6 +3488,7 @@
       "vessel_length": 1.5220670449734008,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.01832484757691492,
@@ -3494,6 +3548,7 @@
       "vessel_length": 0.9910810343480195,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01768091170307403,
         0.02122022063506558,
@@ -3535,6 +3590,7 @@
       "vessel_length": 0.40302230787191295,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.015047910261011618,
@@ -3583,6 +3639,7 @@
       "vessel_length": 0.7902476127780591,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.021824877767948656,
@@ -3688,6 +3745,7 @@
       "vessel_length": 2.731097554088306,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.02407951579434972,
@@ -3769,6 +3827,7 @@
       "vessel_length": 1.5033219384323004,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333332,
         0.013444452345063841,
@@ -3843,6 +3902,7 @@
       "vessel_length": 1.4505345682201245,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.027135053653737657,
         0.024107535725314627,
@@ -3937,6 +3997,7 @@
       "vessel_length": 2.190099932835618,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.022390601261601206,
         0.023070955290811303,
@@ -4005,6 +4066,7 @@
       "vessel_length": 1.114694455136002,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.015171681056295558,
         0.020140298033400825,
@@ -4072,6 +4134,7 @@
       "vessel_length": 1.391126827721772,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.014777654292647215,
         0.018518173041169865,
@@ -4165,6 +4228,7 @@
       "vessel_length": 2.174982615091742,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.032011014609298616,
         0.02858768353343811,
@@ -4228,6 +4292,7 @@
       "vessel_length": 1.0401403171970043,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01565190864392657,
         0.014436352535424411,
@@ -4314,6 +4379,7 @@
       "vessel_length": 2.0343337390307603,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013656945814517334,
         0.015283497490271686,
@@ -4376,6 +4442,7 @@
       "vessel_length": 0.9006567009617485,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333336,
         0.013825862478590363,
@@ -4452,6 +4519,7 @@
       "vessel_length": 1.79904041659766,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013611944501405104,
         0.013571902454258981,
@@ -4507,6 +4575,7 @@
       "vessel_length": 0.8739659932806445,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013351386925946907,
@@ -4732,6 +4801,7 @@
       "vessel_length": 7.140284261841975,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.018305704709541494,
         0.01936066941001293,
@@ -4897,6 +4967,7 @@
       "vessel_length": 3.6523062141166136,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013703469470679623,
         0.01405624729417036,
@@ -4988,6 +5059,7 @@
       "vessel_length": 1.6574525694623026,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333348,
         0.013333333333333343,
@@ -5048,6 +5120,7 @@
       "vessel_length": 0.9327148210991598,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333381,
         0.013333333333333364,
@@ -5134,6 +5207,7 @@
       "vessel_length": 2.1229733910267456,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.020424815614501123,
         0.017394386726679305,
@@ -5236,6 +5310,7 @@
       "vessel_length": 2.4243924973245945,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01356925538977483,
         0.013441015163784964,
@@ -5295,6 +5370,7 @@
       "vessel_length": 0.8534057643900741,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.015493979284648263,
         0.014128778258022752,
@@ -5390,6 +5466,7 @@
       "vessel_length": 2.4111505106681905,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.015998236306276767,
         0.017192342619138008,
@@ -5454,6 +5531,7 @@
       "vessel_length": 0.9328980602968493,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333381,
         0.013333333333333364,
@@ -5515,6 +5593,7 @@
       "vessel_length": 1.2042038548656446,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01407810701989609,
         0.013688661202847618,
@@ -5562,6 +5641,7 @@
       "vessel_length": 0.6744530238877939,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333332,
         0.015052918630186705,
@@ -5651,6 +5731,7 @@
       "vessel_length": 2.183425590287156,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.015087825781831394,
         0.013636256022615957,
@@ -5729,6 +5810,7 @@
       "vessel_length": 1.4903901004747098,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01333333333333335,
         0.013333333333333343,
@@ -5798,6 +5880,7 @@
       "vessel_length": 1.2874690972762461,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.023979099842202197,
         0.021297141770503975,
@@ -5971,6 +6054,7 @@
       "vessel_length": 5.1987709587677005,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01370545996831997,
         0.013333333333333332,
@@ -6035,6 +6119,7 @@
       "vessel_length": 0.5158971341408239,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333369,
         0.013333333333333341,
@@ -6113,6 +6198,7 @@
       "vessel_length": 1.9084798818145126,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.023319830691724424,
         0.020429216707097998,
@@ -6189,6 +6275,7 @@
       "vessel_length": 1.5654862549827957,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.0233136919970027,
         0.02045808582896221,
@@ -6238,6 +6325,7 @@
       "vessel_length": 0.5434234461900873,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.04437446819228498,
         0.05702239540081235,
@@ -6307,6 +6395,7 @@
       "vessel_length": 1.614512850106116,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.017251126565738947,
         0.015838099504033205,
@@ -6441,6 +6530,7 @@
       "vessel_length": 3.6200799829596613,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.020135086405547908,
         0.02176625473310158,
@@ -6532,6 +6622,7 @@
       "vessel_length": 1.7924665522786176,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01632476630344843,
         0.014782123178768303,
@@ -6577,6 +6668,7 @@
       "vessel_length": 0.44900068737449733,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013333333333333332,
@@ -6650,6 +6742,7 @@
       "vessel_length": 1.7579198497117448,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01333333333333335,
         0.013333333333333345,
@@ -6695,6 +6788,7 @@
       "vessel_length": 0.5168208733914363,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01476343186807137,
         0.017284964897755183,
@@ -6738,6 +6832,7 @@
       "vessel_length": 0.5447106991686397,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.015467503712093227,
         0.01333333333333333,
@@ -6827,6 +6922,7 @@
       "vessel_length": 2.2753453907897785,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013338387329185228,
         0.013333333333333336,
@@ -6895,6 +6991,7 @@
       "vessel_length": 1.1491359082464632,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.015526520350404962,
@@ -6937,6 +7034,7 @@
       "vessel_length": 0.3622418882058885,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.029304283111369685,
         0.017438376202389794,
@@ -7020,6 +7118,7 @@
       "vessel_length": 2.001790181957704,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013447654197009615,
         0.013348162542779544,
@@ -7117,6 +7216,7 @@
       "vessel_length": 2.2874012684400715,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.022876813146401657,
         0.023013272665673767,
@@ -7215,6 +7315,7 @@
       "vessel_length": 2.275606607365518,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.015755802370792396,
         0.01946369177426112,
@@ -7293,6 +7394,7 @@
       "vessel_length": 1.5866128893422955,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013396048908645358,
@@ -7432,6 +7534,7 @@
       "vessel_length": 3.839638496864937,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01333333333333335,
         0.013333333333333343,
@@ -7489,6 +7592,7 @@
       "vessel_length": 0.4744278764929984,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.014591997964551183,
@@ -7532,6 +7636,7 @@
       "vessel_length": 0.6076694213719271,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.016494514759647454,
@@ -7616,6 +7721,7 @@
       "vessel_length": 2.0123692680937504,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.01346799739503433,
@@ -7663,6 +7769,7 @@
       "vessel_length": 0.4587121399734749,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.02341964608461248,
         0.018179768737649066,
@@ -7706,6 +7813,7 @@
       "vessel_length": 0.5584901326976418,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.014662497893871702,
         0.013333333333333332,
@@ -7750,6 +7858,7 @@
       "vessel_length": 0.6742548276059813,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.01898814625701569,
@@ -7794,6 +7903,7 @@
       "vessel_length": 0.6336935613371656,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.02086071511724276,
         0.027305083741191727,
@@ -7843,6 +7953,7 @@
       "vessel_length": 0.7682806998950605,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013554268360859604,
         0.013417060593677192,
@@ -7878,6 +7989,7 @@
       "vessel_length": 0.20067533825973108,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333357,
         0.01333333333333335,
@@ -8010,6 +8122,7 @@
       "vessel_length": 3.8926120501301087,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.01362674495684814,
@@ -8092,6 +8205,7 @@
       "vessel_length": 1.4175801419334495,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.01724053865149431,
@@ -8130,6 +8244,7 @@
       "vessel_length": 0.18099050163577274,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.015314349291696986,
@@ -8257,6 +8372,7 @@
       "vessel_length": 3.615988718549699,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333332,
         0.023929571830205658,
@@ -8423,6 +8539,7 @@
       "vessel_length": 4.4405370416998124,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.041941445508569514,
         0.035979475715111994,
@@ -8498,6 +8615,7 @@
       "vessel_length": 1.066179043776377,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.016745155172295103,
         0.020526741208733754,
@@ -8574,6 +8692,7 @@
       "vessel_length": 1.6484073401824477,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.04853859657460106,
         0.032377880674944515,
@@ -8649,6 +8768,7 @@
       "vessel_length": 1.4586510152109442,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.020340575215312275,
         0.017262352915988002,
@@ -8708,6 +8828,7 @@
       "vessel_length": 1.0411994029624765,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.023396776082855973,
         0.02056611832473025,
@@ -8754,6 +8875,7 @@
       "vessel_length": 0.6593860273762064,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013353568546406552,
@@ -8803,6 +8925,7 @@
       "vessel_length": 0.8024280295177084,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01808999906975349,
         0.017627219875662462,
@@ -8968,6 +9091,7 @@
       "vessel_length": 4.952518094121998,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.015863932984716715,
         0.02510970032245866,
@@ -9026,6 +9150,7 @@
       "vessel_length": 0.3066945613755487,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.020337713858158666,
         0.013707695289451805,
@@ -9073,6 +9198,7 @@
       "vessel_length": 0.8283246123933311,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333336,
         0.014287970255228419,
@@ -9123,6 +9249,7 @@
       "vessel_length": 0.7482028173235558,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.01348650435953302,
@@ -9198,6 +9325,7 @@
       "vessel_length": 1.652983534092502,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013992448960828094,
         0.013333333333333336,
@@ -9343,6 +9471,7 @@
       "vessel_length": 4.008756908358908,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01699233694545097,
         0.0157624196656034,
@@ -9411,6 +9540,7 @@
       "vessel_length": 0.8951746381396484,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013320852356976038,
@@ -9486,6 +9616,7 @@
       "vessel_length": 1.7569582831012875,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.018147684195627067,
@@ -9531,6 +9662,7 @@
       "vessel_length": 0.38089566998520824,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013385973467630785,
         0.013341275737489578,
@@ -9604,6 +9736,7 @@
       "vessel_length": 1.7689508442189505,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.05049932580656887,
         0.03389304272482139,
@@ -9669,6 +9802,7 @@
       "vessel_length": 1.1397094915232528,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.020369468707493215,
@@ -9711,6 +9845,7 @@
       "vessel_length": 0.3715473293507244,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01387517286919167,
         0.013333333333333332,
@@ -9749,6 +9884,7 @@
       "vessel_length": 0.456225165887139,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.019456184969126086,
         0.014666305725474758,
@@ -9842,6 +9978,7 @@
       "vessel_length": 2.3667556826398837,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.016912262826854284,
         0.014957966463607014,
@@ -9896,6 +10033,7 @@
       "vessel_length": 0.7139839886467826,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013976824216333665,
@@ -9940,6 +10078,7 @@
       "vessel_length": 0.5894092246807595,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.018110841054969556,
         0.017644561238419437,
@@ -9989,6 +10128,7 @@
       "vessel_length": 0.7990321862501949,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.019193791552447218,
         0.015210095403456152,
@@ -10039,6 +10179,7 @@
       "vessel_length": 0.7763238639599205,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013614553537883415,
         0.01624624515620105,
@@ -10084,6 +10225,7 @@
       "vessel_length": 0.6747786151804552,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.014583849863670728,
         0.017956610614347057,
@@ -10133,6 +10275,7 @@
       "vessel_length": 0.7310769269908863,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.014624666769731683,
         0.013619776347608876,
@@ -10178,6 +10321,7 @@
       "vessel_length": 0.615607819782102,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.015341609967082488,
         0.01568648077584958,
@@ -10212,6 +10356,7 @@
       "vessel_length": 0.18099049449354845,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333355,
         0.01333333333333334,
@@ -10274,6 +10419,7 @@
       "vessel_length": 1.3663277821948967,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.02925556825810994,
         0.0279148212266535,
@@ -10327,6 +10473,7 @@
       "vessel_length": 0.8723961930328084,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.014256456105393714,
         0.016336003300020482,
@@ -10377,6 +10524,7 @@
       "vessel_length": 0.7709092472852548,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.019537457688922247,
         0.0176409478204144,
@@ -10417,6 +10565,7 @@
       "vessel_length": 0.4187569678785661,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.02534318028866837,
         0.02691347152548771,
@@ -10450,6 +10599,7 @@
       "vessel_length": 0.30669456137554907,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.023889083970474113,
         0.013333333333333332,
@@ -10487,6 +10637,7 @@
       "vessel_length": 0.5001487459650389,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.060245641569112066,
@@ -10535,6 +10686,7 @@
       "vessel_length": 0.8409601690740753,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.04432114924867158,
         0.023594925370188577,
@@ -10585,6 +10737,7 @@
       "vessel_length": 0.8276270298459149,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.042419500157876676,
         0.030166458735768405,
@@ -10650,6 +10803,7 @@
       "vessel_length": 1.4143995771280233,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01673471214822306,
         0.02054820030322172,
@@ -10728,6 +10882,7 @@
       "vessel_length": 1.7286130129392903,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.016958734813155733,
         0.016451706842596427,
@@ -10788,6 +10943,7 @@
       "vessel_length": 0.9415454631941673,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.023960291406044065,
         0.022849044678243564,
@@ -10854,6 +11010,7 @@
       "vessel_length": 1.4342001879099462,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.023692170175204252,
         0.018540606395919514,
@@ -10967,6 +11124,7 @@
       "vessel_length": 2.9042640225846235,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01333333333333335,
         0.013333333333333346,
@@ -11084,6 +11242,7 @@
       "vessel_length": 2.87876054544691,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013658057548510261,
         0.013829558730151782,
@@ -11220,6 +11379,7 @@
       "vessel_length": 3.586936923035821,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.03956910227530397,
         0.02986923735258555,
@@ -11445,6 +11605,7 @@
       "vessel_length": 6.629705758304656,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.0352796520853536,
         0.02670998179778724,
@@ -11542,6 +11703,7 @@
       "vessel_length": 1.3995521814976164,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01333333333333335,
         0.013333333333333345,
@@ -11710,6 +11872,7 @@
       "vessel_length": 5.0328742224461465,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013415211759692087,
         0.013333333333333332,
@@ -11838,6 +12001,7 @@
       "vessel_length": 2.84842078788466,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01333909511121397,
         0.013851765211567939,
@@ -11954,6 +12118,7 @@
       "vessel_length": 2.7070379494644197,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.017144149278580063,
         0.015104042372877038,
@@ -12105,6 +12270,7 @@
       "vessel_length": 3.966867315194747,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.014006606379896957,
         0.013910969103373678,
@@ -12178,6 +12344,7 @@
       "vessel_length": 1.077013365664734,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01396581846950098,
         0.013333333333333334,
@@ -12244,6 +12411,7 @@
       "vessel_length": 1.2947642836946904,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013510440292791966,
@@ -12452,6 +12620,7 @@
       "vessel_length": 6.413282612685455,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.014998067843125564,
         0.014201197023954715,
@@ -12563,6 +12732,7 @@
       "vessel_length": 1.9252218421098384,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.030015339129002623,
         0.022768658071481616,
@@ -12614,6 +12784,7 @@
       "vessel_length": 0.5442454140504143,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013609132862885,
         0.013333333333333336,
@@ -12648,6 +12819,7 @@
       "vessel_length": 0.29933259094191533,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013465922753550824,
         0.013333333333333332,
@@ -12700,6 +12872,7 @@
       "vessel_length": 1.0002770613588143,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333332,
         0.01340116654336922,
@@ -12741,6 +12914,7 @@
       "vessel_length": 0.5333838920796249,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.016682371701550784,
         0.015708173282012086,
@@ -12799,6 +12973,7 @@
       "vessel_length": 1.1465286307521185,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.028866116367716438,
         0.022793236996887813,
@@ -12841,6 +13016,7 @@
       "vessel_length": 0.51356387456278,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.05861455243643788,
         0.040898931408697256,
@@ -12904,6 +13080,7 @@
       "vessel_length": 1.292564637172917,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.04579624509796219,
         0.030662816973748282,
@@ -12982,6 +13159,7 @@
       "vessel_length": 1.7860725788475018,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013708373782475516,
@@ -13117,6 +13295,7 @@
       "vessel_length": 3.6469361781957423,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.014248679936787738,
@@ -13178,6 +13357,7 @@
       "vessel_length": 0.6490836636122785,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01787890594170146,
         0.019897895769777747,
@@ -13222,6 +13402,7 @@
       "vessel_length": 0.565551074846485,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.016533865690336238,
@@ -13256,6 +13437,7 @@
       "vessel_length": 0.1809905016357732,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333355,
         0.013333333333333341,
@@ -13308,6 +13490,7 @@
       "vessel_length": 0.9865637305772482,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.015196981843655468,
@@ -13499,6 +13682,7 @@
       "vessel_length": 5.7812324146018765,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013333333333333334,
@@ -13567,6 +13751,7 @@
       "vessel_length": 0.40530485534117844,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.0424256389826402,
         0.017152757933439438,
@@ -13610,6 +13795,7 @@
       "vessel_length": 0.6724778375647712,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.02167192478661522,
         0.03624334145845291,
@@ -13674,6 +13860,7 @@
       "vessel_length": 1.3845263314634526,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.016307293675721528,
         0.021510176042511115,
@@ -13727,6 +13914,7 @@
       "vessel_length": 0.8053548789291296,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.016006740995737238,
         0.016699593081881788,
@@ -13827,6 +14015,7 @@
       "vessel_length": 2.6811865515472597,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01354459396305006,
         0.017668557762877908,
@@ -13882,6 +14071,7 @@
       "vessel_length": 0.7144392938476979,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01827101118554554,
         0.01485868262456366,
@@ -13956,6 +14146,7 @@
       "vessel_length": 1.7627136029002757,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01333955497541414,
         0.013333333333333332,
@@ -14036,6 +14227,7 @@
       "vessel_length": 1.6891142146117282,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01333333333333335,
         0.013333333333333346,
@@ -14131,6 +14323,7 @@
       "vessel_length": 2.1741548806835493,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013357995588364197,
         0.013333333333333332,
@@ -14179,6 +14372,7 @@
       "vessel_length": 0.5353859527130101,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013480399989490821,
@@ -14212,6 +14406,7 @@
       "vessel_length": 0.19919964919626565,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333336,
         0.013789740010158738,
@@ -14274,6 +14469,7 @@
       "vessel_length": 1.31138284374979,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013722194089169394,
@@ -14327,6 +14523,7 @@
       "vessel_length": 0.8656688313993982,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.014481820492846202,
         0.014094891195220388,
@@ -14387,6 +14584,7 @@
       "vessel_length": 1.1821165649061647,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333332,
         0.013605021448908555,
@@ -14439,6 +14637,7 @@
       "vessel_length": 0.7599718337942949,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013338222133073523,
         0.013333333333333332,
@@ -14484,6 +14683,7 @@
       "vessel_length": 0.5441956191247369,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.01490461643171877,
         0.013333333333333334,
@@ -14523,6 +14723,7 @@
       "vessel_length": 0.5125010306427985,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333369,
         0.013333333333333343,
@@ -14566,6 +14767,7 @@
       "vessel_length": 0.6069128284190038,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013346775602135066,
         0.013349564089403486,
@@ -14635,6 +14837,7 @@
       "vessel_length": 1.46889500305681,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013348044565499319,
         0.013333333333333332,
@@ -14689,6 +14892,7 @@
       "vessel_length": 0.8394494808180557,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333376,
         0.013333333333333334,
@@ -14759,6 +14963,7 @@
       "vessel_length": 1.5200799633565727,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013334761523189225,
@@ -14828,6 +15033,7 @@
       "vessel_length": 1.3661751917722218,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.02176120026718093,
         0.01798141179950611,
@@ -14881,6 +15087,7 @@
       "vessel_length": 0.8040709117795956,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.02421528632049367,
         0.02573446907638245,
@@ -14921,6 +15128,7 @@
       "vessel_length": 0.5187966324297915,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333369,
         0.013333333333333341,
@@ -14959,6 +15167,7 @@
       "vessel_length": 0.3808956699852082,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013333333333333336,
@@ -15022,6 +15231,7 @@
       "vessel_length": 1.324076999026082,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333346,
         0.013333333333333346,
@@ -15065,6 +15275,7 @@
       "vessel_length": 0.4381821432505927,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333332,
         0.013333333333333334,
@@ -15123,6 +15334,7 @@
       "vessel_length": 1.1569963069390428,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333346,
         0.013333333333333345,
@@ -15165,6 +15377,7 @@
       "vessel_length": 0.44474691940757455,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.014042539428533856,
@@ -15198,6 +15411,7 @@
       "vessel_length": 0.30203889774831477,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013333333333333336,
@@ -15230,6 +15444,7 @@
       "vessel_length": 0.24174389919958833,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333369,
         0.013333333333333343,
@@ -15262,6 +15477,7 @@
       "vessel_length": 0.30669456137554946,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013333333333333334,
@@ -15294,6 +15510,7 @@
       "vessel_length": 0.20067533825973174,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333355,
         0.01333333333333335,
@@ -15326,6 +15543,7 @@
       "vessel_length": 0.2614097262874399,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.015375077790610406,
         0.014395148352529526,
@@ -15363,6 +15581,7 @@
       "vessel_length": 0.44704391395738285,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013333333333333336,
@@ -15436,6 +15655,7 @@
       "vessel_length": 1.6777669296198705,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013797742673183415,
         0.0137924796648307,
@@ -15491,6 +15711,7 @@
       "vessel_length": 0.8073222050365151,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013344941814359898,
         0.013333333333333336,
@@ -15536,6 +15757,7 @@
       "vessel_length": 0.6336287054988905,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
+      "gamma": 2,
       "radii": [
         0.013333333333333334,
         0.013333333333333334,
