@@ -33,8 +33,10 @@ int main(int argc, char *argv[]) {
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
   const std::size_t num_edges_per_segment = 10;
+  std::cerr << "FIX physical parameters" << std::endl;
 
   // we create_for_node data for celiac ii
+  /*
   mc::PhysicalData main_vessel_data{
     1706.7e2, // 1706.7 hPa
     0.13,     // 0.13 cm^2
@@ -48,6 +50,7 @@ int main(int argc, char *argv[]) {
     1.028,                   // [kg/cm^3]
     std::sqrt(2) / 2.        // [cm]
   };
+
 
   // create_for_node the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
@@ -148,6 +151,8 @@ int main(int argc, char *argv[]) {
   const auto end_t = std::chrono::steady_clock::now();
   const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
   std::cout << "time = " << elapsed_ms * 1e-6 << " s" << std::endl;
+
+   */
 
   MPI_Finalize();
 }

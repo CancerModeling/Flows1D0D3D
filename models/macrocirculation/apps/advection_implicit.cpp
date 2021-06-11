@@ -42,10 +42,11 @@ int main(int argc, char *argv[]) {
   auto v2 = graph->create_vertex();
   auto edge1 = graph->connect(*v0, *v1, num_micro_edges);
   auto edge2 = graph->connect(*v1, *v2, num_micro_edges);
+
   edge1->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1, 0, 0)}});
-  edge1->add_physical_data({0, 0, 0, 1.});
+  edge1->add_physical_data({0, 0, 0, 1., 0, 0, 0.5});
   edge2->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(2, 0, 0)}});
-  edge2->add_physical_data({0, 0, 0, 1.});
+  edge2->add_physical_data({0, 0, 0, 1., 0, 0, 0.5});
 
   mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
 
