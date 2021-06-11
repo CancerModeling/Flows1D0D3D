@@ -38,6 +38,9 @@ int main(int argc, char *argv[]) {
   const std::size_t num_macro_edges = 4 * 6;
   const std::size_t num_edges_per_segment = 44;
 
+  std::cerr << "FIX physical parameters" << std::endl;
+
+  /*
   const mc::PhysicalData physical_data = {
     592.4e2,               // 592.4 10^2 Pa,
     6.97,                  // 6.97 cm^2,
@@ -124,6 +127,7 @@ int main(int argc, char *argv[]) {
   const auto end_t = std::chrono::steady_clock::now();
   const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
   std::cout << "time = " << elapsed_ms * 1e-6 << " s" << std::endl;
+   */
 
   MPI_Finalize();
 }
