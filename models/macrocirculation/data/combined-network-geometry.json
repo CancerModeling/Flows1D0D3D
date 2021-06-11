@@ -756,6 +756,7 @@
       "radius": 1.2,
       "wall_thickness": 0.163,
       "elastic_modulus": 400000.0,
+      "gamma": 9,
       "number_edges": 10,
       "left_vertex_id": 0,
       "right_vertex_id": 1
@@ -15773,6 +15774,7 @@
       "radius": 0.21137395068307635,
       "wall_thickness": 0.05814285714285715,
       "elastic_modulus": 528571.4285714285,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 30,
       "right_vertex_id": 178
@@ -15784,6 +15786,7 @@
       "radius": 0.1827479013661527,
       "wall_thickness": 0.04928571428571429,
       "elastic_modulus": 657142.8571428572,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 178,
       "right_vertex_id": 179
@@ -15795,6 +15798,7 @@
       "radius": 0.15412185204922907,
       "wall_thickness": 0.040428571428571425,
       "elastic_modulus": 785714.2857142857,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 179,
       "right_vertex_id": 180
@@ -15806,6 +15810,7 @@
       "radius": 0.12549580273230543,
       "wall_thickness": 0.03157142857142857,
       "elastic_modulus": 914285.7142857143,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 180,
       "right_vertex_id": 181
@@ -15817,6 +15822,7 @@
       "radius": 0.09686975341538179,
       "wall_thickness": 0.022714285714285715,
       "elastic_modulus": 1042857.1428571428,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 181,
       "right_vertex_id": 182
@@ -15828,6 +15834,7 @@
       "radius": 0.06824370409845815,
       "wall_thickness": 0.013857142857142853,
       "elastic_modulus": 1171428.5714285714,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 182,
       "right_vertex_id": 145
@@ -15839,6 +15846,7 @@
       "radius": 0.20943758414827074,
       "wall_thickness": 0.05814285714285715,
       "elastic_modulus": 528571.4285714285,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 31,
       "right_vertex_id": 183
@@ -15850,6 +15858,7 @@
       "radius": 0.1788751682965415,
       "wall_thickness": 0.04928571428571429,
       "elastic_modulus": 657142.8571428572,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 183,
       "right_vertex_id": 184
@@ -15861,6 +15870,7 @@
       "radius": 0.1483127524448122,
       "wall_thickness": 0.040428571428571425,
       "elastic_modulus": 785714.2857142857,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 184,
       "right_vertex_id": 185
@@ -15872,6 +15882,7 @@
       "radius": 0.11775033659308295,
       "wall_thickness": 0.03157142857142857,
       "elastic_modulus": 914285.7142857143,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 185,
       "right_vertex_id": 186
@@ -15883,6 +15894,7 @@
       "radius": 0.0871879207413537,
       "wall_thickness": 0.022714285714285715,
       "elastic_modulus": 1042857.1428571428,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 186,
       "right_vertex_id": 187
@@ -15894,6 +15906,7 @@
       "radius": 0.05662550488962442,
       "wall_thickness": 0.013857142857142853,
       "elastic_modulus": 1171428.5714285714,
+      "gamma": 2,
       "number_edges": 40,
       "left_vertex_id": 187,
       "right_vertex_id": 32

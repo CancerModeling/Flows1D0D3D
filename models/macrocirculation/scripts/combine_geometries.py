@@ -101,6 +101,7 @@ for cpair in to_connect:
             'radius': radius_interp[i],
             'wall_thickness': wall_thickness_interp[i],
             'elastic_modulus': elastic_modulus_interp[i],
+            'gamma': 2,
             'number_edges': num_micro_edges,
             'left_vertex_id': left_vertex['id'],
             'right_vertex_id': right_vertex['id'],
