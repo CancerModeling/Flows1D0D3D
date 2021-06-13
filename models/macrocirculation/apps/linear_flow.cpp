@@ -277,7 +277,7 @@ public:
         A->add(dof_indices_p, dof_indices_q, k_pq);
         A->add(dof_indices_q, dof_indices_q, m_loc);
         A->add(dof_indices_q, dof_indices_p, k_qp);
-        A->add(dof_indices_q, dof_indices_q, m_qp);
+        A->add(dof_indices_q, dof_indices_p, m_qp);
       }
     }
   }
@@ -361,6 +361,7 @@ public:
       if (!vertex.is_inflow())
         continue;
       const auto q_in = vertex.get_inflow_value(t);
+      std::cout << "q_in " << q_in << std::endl;
       auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
       auto &local_dof_map = d_dof_map->get_local_dof_map(neighbor_edge);
       auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
@@ -372,7 +373,7 @@ public:
       std::vector<double> rhs_values_p(local_dof_map.num_basis_functions());
       for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
         // L^{-1} * tau * q_in(t) * phi_j(-1) = L^{-1} * tau * q_in(t) * (-1)^{j}
-        rhs_values_p[j] = (1. / L) * tau * q_in * std::pow(-1, j);
+        rhs_values_p[j] = (1. / C) * tau * q_in * std::pow(-1, j);
       }
       rhs->add(dof_indices_p, rhs_values_p);
       // b_q:
@@ -383,6 +384,7 @@ public:
         // L^{-1} * tau * sqrt(L/C) * q_in(t) * phi_j(-1) = L^{-1} * tau * sqrt(L/C) * q_in(t) * (-1)^{j}
         rhs_values_q[j] = (1. / L) * tau * std::sqrt(L / C) * q_in * std::pow(-1, j);
       }
+      rhs->add(dof_indices_q, rhs_values_q);
     }
   }
 
@@ -483,7 +485,7 @@ private:
 
 int main(int argc, char *argv[]) {
   const std::size_t degree = 2;
-  const std::size_t num_micro_edges = 100;
+  const std::size_t num_micro_edges = 25;
 
   // initialize petsc
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
@@ -492,8 +494,7 @@ int main(int argc, char *argv[]) {
     std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
 
     const double tau = 0.001;
-    const double t_end = 2;
-    const auto inflow_boundary_value = [](double t_now) -> double { return 40. * std::sin(M_PI * 3 * t_now); };
+    const double t_end = 0.1;
 
     const size_t output_interval = 1;
 
@@ -512,7 +513,7 @@ int main(int argc, char *argv[]) {
     auto v1 = graph->create_vertex();
     auto edge1 = graph->connect(*v0, *v1, num_micro_edges);
 
-    v0->set_to_inflow(mc::heart_beat_inflow(40.));
+    v0->set_to_inflow(mc::heart_beat_inflow(4.));
     v1->set_to_free_outflow();
 
     edge1->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1, 0, 0)}});
