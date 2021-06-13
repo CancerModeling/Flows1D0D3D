@@ -249,6 +249,7 @@ public:
   int rank() const;
 
   std::size_t num_micro_edges() const;
+  std::size_t num_micro_vertices() const;
 
   const std::vector<MicroEdge> &micro_edges() const;
 

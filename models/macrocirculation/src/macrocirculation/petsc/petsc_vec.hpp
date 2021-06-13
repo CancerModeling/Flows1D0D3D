@@ -22,9 +22,9 @@ public:
   }
 
   PetscVec(const PetscVec &) = delete;
-  PetscVec(const PetscVec &&) = delete;
-  void operator=(const PetscVec &) = delete;
-  void operator=(const PetscVec &&) = delete;
+  PetscVec(PetscVec &&) = delete;
+  PetscVec& operator=(const PetscVec &) = delete;
+  PetscVec& operator=(PetscVec &&) = delete;
 
   ~PetscVec() {
     CHKERRABORT(PETSC_COMM_WORLD, VecDestroy(&d_vec));

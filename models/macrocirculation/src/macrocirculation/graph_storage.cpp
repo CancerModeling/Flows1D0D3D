@@ -226,6 +226,8 @@ Edge::Edge(std::size_t id,
 
 std::size_t Edge::num_micro_edges() const { return d_micro_edges.size(); };
 
+std::size_t Edge::num_micro_vertices() const { return d_micro_edges.size()+1; };
+
 const std::vector<MicroEdge> &Edge::micro_edges() const { return d_micro_edges; };
 
 const std::vector<MicroVertex> &Edge::micro_vertices() const { return d_micro_vertices; }
