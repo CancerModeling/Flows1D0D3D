@@ -27,9 +27,9 @@ public:
   }
 
   PetscKsp(const PetscKsp &) = delete;
-  PetscKsp(const PetscKsp &&) = delete;
-  void operator=(const PetscKsp &) = delete;
-  void operator=(const PetscKsp &&) = delete;
+  PetscKsp(PetscKsp &&) = delete;
+  PetscKsp& operator=(const PetscKsp &) = delete;
+  PetscKsp& operator=(PetscKsp &&) = delete;
 
   ~PetscKsp() {
     CHKERRABORT(PETSC_COMM_WORLD, KSPDestroy(&d_ksp));

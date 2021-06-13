@@ -8,6 +8,7 @@
 #ifndef TUMORMODELS_PETSC_MAT_HPP
 #define TUMORMODELS_PETSC_MAT_HPP
 
+#include <Eigen/Dense>
 #include <petsc.h>
 #include <vector>
 
@@ -25,9 +26,9 @@ public:
   }
 
   PetscMat(const PetscMat &) = delete;
-  PetscMat(const PetscMat &&) = delete;
-  void operator=(const PetscMat &) = delete;
-  void operator=(const PetscMat &&) = delete;
+  PetscMat(PetscMat &&) = delete;
+  PetscMat& operator=(const PetscMat &) = delete;
+  PetscMat& operator=(PetscMat &&) = delete;
 
   ~PetscMat() {
     CHKERRABORT(PETSC_COMM_WORLD, MatDestroy(&d_mat));
@@ -43,6 +44,36 @@ public:
     for (int r = 0; r < row_dofs.size(); r += 1)
       for (int c = 0; c < col_dofs.size(); c += 1)
         mat_memory[c + r * col_dofs.size()] = mat_loc[r][c];
+
+    std::vector<PetscInt> row_dofs_(row_dofs.size(), 0);
+    for (int r = 0; r < row_dofs.size(); r += 1)
+      row_dofs_[r] = static_cast<PetscInt>(row_dofs[r]);
+
+    std::vector<PetscInt> col_dofs_(col_dofs.size(), 0);
+    for (int c = 0; c < col_dofs.size(); c += 1)
+      col_dofs_[c] = static_cast<PetscInt>(col_dofs[c]);
+
+    // pass it to petsc
+    CHKERRABORT(PETSC_COMM_WORLD,
+                MatSetValues(d_mat,
+                             static_cast<PetscInt>(row_dofs.size()),
+                             row_dofs_.data(),
+                             static_cast<PetscInt>(col_dofs.size()),
+                             col_dofs_.data(),
+                             mat_memory.data(),
+                             ADD_VALUES));
+  }
+
+  void add(const std::vector<size_t> &row_dofs, const std::vector<size_t> &col_dofs, Eigen::MatrixXd &mat_loc) {
+    assert(row_dofs.size() == mat_loc.rows());
+    assert(col_dofs.size() == mat_loc.cols());
+
+    // we have no guarantees that gmm's memory is continuous
+    // thus we copy it over
+    std::vector<double> mat_memory(row_dofs.size() * col_dofs.size(), 0);
+    for (int r = 0; r < row_dofs.size(); r += 1)
+      for (int c = 0; c < col_dofs.size(); c += 1)
+        mat_memory[c + r * col_dofs.size()] = mat_loc(r, c);
 
     std::vector<PetscInt> row_dofs_(row_dofs.size(), 0);
     for (int r = 0; r < row_dofs.size(); r += 1)
