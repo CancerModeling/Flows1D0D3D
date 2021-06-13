@@ -267,7 +267,7 @@ public:
       Eigen::MatrixXd k_qp = (-tau / L) * k_loc;
 
       auto m_loc{create_mass(fe, local_dof_map)};
-      Eigen::MatrixXd m_qp = tau * R * m_loc;
+      Eigen::MatrixXd m_qq = tau * R * m_loc;
 
       for (const auto &edge : macro_edge->micro_edges()) {
         local_dof_map.dof_indices(edge, p_component, dof_indices_p);
@@ -277,7 +277,7 @@ public:
         A->add(dof_indices_p, dof_indices_q, k_pq);
         A->add(dof_indices_q, dof_indices_q, m_loc);
         A->add(dof_indices_q, dof_indices_p, k_qp);
-        A->add(dof_indices_q, dof_indices_p, m_qp);
+        A->add(dof_indices_q, dof_indices_q, m_qq);
       }
     }
   }
@@ -484,8 +484,8 @@ private:
 } // namespace macrocirculation
 
 int main(int argc, char *argv[]) {
-  const std::size_t degree = 2;
-  const std::size_t num_micro_edges = 25;
+  const std::size_t degree = 0;
+  const std::size_t num_micro_edges = 50;
 
   // initialize petsc
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
@@ -494,7 +494,7 @@ int main(int argc, char *argv[]) {
     std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
 
     const double tau = 0.001;
-    const double t_end = 0.1;
+    const double t_end = 1;
 
     const size_t output_interval = 1;
 
