@@ -443,7 +443,6 @@ public:
       auto &vertex = *d_graph->get_vertex(v_idx);
       if (!vertex.is_bifurcation())
         continue;
-
       const auto num_edges = vertex.get_edge_neighbors().size();
 
       // edge orientation: +1 if it point to the vertex, -1 else
@@ -514,10 +513,13 @@ public:
       for (size_t j = 0; j < num_edges; j += 1) {
         const auto e_id_j = vertex.get_edge_neighbors()[j];
         const auto &edge_j = *d_graph->get_edge(e_id_j);
+
+        // we only assemble rows for the given process.
+        if (edge_j.rank() != mpi::rank(d_comm))
+          continue;
+
         const double point = edge_j.is_pointing_to(v_idx) ? +1. : -1.;
         const auto psi = [=](size_t idx) { return std::pow(point, idx); };
-
-        // TODO: Check for active edge!
 
         auto local_dof_map_j = d_dof_map->get_local_dof_map(edge_j);
         std::vector<size_t> dofs_p_j(local_dof_map_j.num_basis_functions());
