@@ -1,25 +1,31 @@
+# import os
 import numpy as np
-
-from config._frozen_attributes_trait import FrozenAttributesTrait
-
+import sys
+import copy
+import os
+import pathlib
 
 def bool_to_string(val):
+
     if val:
         return 'true'
     else:
         return 'false'
 
+###########
+# class-def
+###########
 
-class DefaultSimParams(FrozenAttributesTrait):
+class DefaultSimParams:
     'Class to store default parameters'
 
     def __init__(self):
         self.pp_tag = 't1'
         self.model_name = 'NetFVFE'
-        self.scheme_name = 'solve_implicit'
+        self.scheme_name = 'solve_explicit'
         self.output_debug_info = True
         self.advection_active = True
-        self.coupled_1d3d = True
+        self.coupled_1d3d = False
         self.solve_ecm = True
         self.solve_pres_with_net_update = True
         self.assembly_method = 2
@@ -29,10 +35,10 @@ class DefaultSimParams(FrozenAttributesTrait):
         
         ## domain, mesh, and time
         self.L = 2.
-        self.num_elems = 32
-        self.final_time = 7.
-        self.delta_t = 0.02
-        self.total_outputs = 200
+        self.num_elems = 16
+        self.final_time = 5.
+        self.delta_t = 0.05
+        self.total_outputs = 10
         self.dt_output = int(np.floor(self.final_time / self.delta_t) / self.total_outputs)
         if self.dt_output < 1:
             self.dt_output = 1
@@ -46,10 +52,10 @@ class DefaultSimParams(FrozenAttributesTrait):
         ## 3D tumor parameters
         self.chi_c = 0.
         self.chi_h = 0.
-        self.ic_nutrient_value = 0.5
+        self.ic_nutrient_value = 0.6
         self.ECM_ic_val = 1.
         self.MDE_ic_val = 0.
-        self.D_sigma = 3.
+        self.D_sigma = 1.
         self.D_TAF = 5.e-1
         self.D_MDE = 5.e-1
         self.bar_phi_ECM_P = 0.5
@@ -69,8 +75,6 @@ class DefaultSimParams(FrozenAttributesTrait):
         self.sigma_PH  = 0.55
         self.sigma_HP = 0.65
         self.sigma_HN = 0.44
-        self.sigma_HTAF = 0.
-        self.lambda_TAF_deg = 0.
 
         ## cahn-hilliard
         self.mobility_P = 50.
@@ -81,21 +85,9 @@ class DefaultSimParams(FrozenAttributesTrait):
         self.epsilon_P = 5.e-3
         self.epsilon_H = 5.e-3
 
-        # White-Noise contributions
-        self.hyp_noise_num_eigenfunctions = 0
-        self.hyp_noise_seed = 0
-        self.hyp_noise_scale = 0.025
-        self.hyp_noise_lower_bound = 0.1
-        self.hyp_noise_upper_bound = 0.9
-        self.pro_noise_num_eigenfunctions = 0
-        self.pro_noise_seed = 1
-        self.pro_noise_scale = 0.1
-        self.pro_noise_lower_bound = 0.1
-        self.pro_noise_upper_bound = 0.9
-
         ## tumor ic
         self.tumor_ic_type = [1]
-        self.tumor_ic_center = [[0.5 * self.L, 0.4 * self.L, 0.5 * self.L]]
+        self.tumor_ic_center = [[0.5 * self.L, 0.5 * self.L, 0.5 * self.L]]
         self.tumor_ic_radius = [[0.15 * self.L, 0.15 * self.L, 0.15 * self.L]]
         self.tumor_ic_file = 'tum_ic_data_' + self.pp_tag + '.csv'
 
@@ -107,10 +99,10 @@ class DefaultSimParams(FrozenAttributesTrait):
         
         ## 1D vessel parameters
         self.vessel_D_sigma = 1.e-1
-        self.osmotic_coeff = 0.95
-        self.scenario = 'two_vessels'
+        self.osmotic_coeff = 1.
+        self.scenario = 'none'
         self.L_p = 1.e-7
-        self.L_s = 4.5
+        self.L_s = 10.
         self.vessel_in_nutrient = 1.
         self.vessel_in_nutrient_vein = 0.
         self.vessel_blood_density = 1.
@@ -122,10 +114,10 @@ class DefaultSimParams(FrozenAttributesTrait):
         self.discrete_cyl_length = 20
         self.discrete_cyl_angle = 20
         self.network_coupling_theta = 1.
-        self.vessel_pressures = [3000., 2000., 1100., 1600.]
-        self.vessel_radius = [0.046875, 0.0625]
-        self.vessel_line_1 = [0.1875, 0.1875, 0., 0.1875, 0.1875, 2.]
-        self.vessel_line_2 = [1.8125, 1.8125, 0., 1.8125, 1.8125, 2.]        
+        self.vessel_pressures = [10000., 5000., 1000., 2000.]
+        self.vessel_radius = [0.08, 0.1]
+        self.vessel_line_1 = [0.2, 0.2, 0., 0.2, 0.2, 2.]
+        self.vessel_line_2 = [1.8, 1.8, 0., 1.8, 1.8, 2.]        
         self.identify_vein_pressure = 0.99 * self.vessel_pressures[1]
         self.identify_artery_radius = self.vessel_radius[1]
         self.coupling_3d1d_integration_method = 2
@@ -149,24 +141,9 @@ class DefaultSimParams(FrozenAttributesTrait):
         self.network_sprout_prob = 0.93
         self.min_length_for_sprouting = 0.13
         self.seed = 100
-        self.network_update = True
-
-        self.network_update_absolute_upper_threshold_1d = 1e6
-        self.network_update_absolute_upper_threshold_3d = 1e6
-        self.network_update_relative_upper_threshold_1d = 1e6
-        self.network_update_relative_upper_threshold_3d = 1e6
-
-        self.k_WSS = 0.45 
-        self.k_s = 0.25
-        self.offset_tau = 0.02
+        self.network_update = False
 
         self.run_path = ''
-
-        self.remove_old_sprouters = False
-        self.pressure_initial_guess_95_percent = True 
-        self.extrapolate_nutrients_at_tips = True
-
-        self._freeze_attributes()
 
 
     def set_time(self, time, dt, total_out):
@@ -263,8 +240,6 @@ class DefaultSimParams(FrozenAttributesTrait):
         strs += '{}= {}\n'.format('{0:{space}}'.format('sigma_PH', space=space), self.sigma_PH)
         strs += '{}= {}\n'.format('{0:{space}}'.format('sigma_HP', space=space), self.sigma_HP)
         strs += '{}= {}\n'.format('{0:{space}}'.format('sigma_HN', space=space), self.sigma_HN)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('sigma_HTAF', space=space), self.sigma_HTAF)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('lambda_TAF_deg', space=space), self.lambda_TAF_deg)
 
         ## cahn-hilliard
         strs += '\n'
@@ -275,17 +250,6 @@ class DefaultSimParams(FrozenAttributesTrait):
         strs += '{}= {}\n'.format('{0:{space}}'.format('bar_E_phi_H', space=space), self.E_phi_H)
         strs += '{}= {}\n'.format('{0:{space}}'.format('epsilon_P', space=space), self.epsilon_P)
         strs += '{}= {}\n'.format('{0:{space}}'.format('epsilon_H', space=space), self.epsilon_H)
-
-        strs += '{}= {}\n'.format('{0:{space}}'.format('hyp_noise_num_eigenfunctions', space=space), self.hyp_noise_num_eigenfunctions)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('hyp_noise_seed', space=space), self.hyp_noise_seed)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('hyp_noise_scale', space=space), self.hyp_noise_scale)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('hyp_noise_lower_bound', space=space), self.hyp_noise_lower_bound)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('hyp_noise_upper_bound', space=space), self.hyp_noise_upper_bound)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('pro_noise_num_eigenfunctions', space=space), self.pro_noise_num_eigenfunctions)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('pro_noise_seed', space=space), self.pro_noise_seed)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('pro_noise_scale', space=space), self.pro_noise_scale)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('pro_noise_lower_bound', space=space), self.pro_noise_lower_bound)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('pro_noise_upper_bound', space=space), self.pro_noise_upper_bound)
 
         ## tumor ic (this data can also be provided in seperate file easier when we have multiple cores)
         strs += '\n'
@@ -372,19 +336,6 @@ class DefaultSimParams(FrozenAttributesTrait):
         strs += '{}= {}\n'.format('{0:{space}}'.format('seed', space=space), self.seed)
         strs += '{}= {}\n'.format('{0:{space}}'.format('network_update', space=space), self.network_update)
 
-        strs += '{}= {}\n'.format('{0:{space}}'.format('network_update_absolute_upper_threshold_1d', space=space), self.network_update_absolute_upper_threshold_1d)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('network_update_absolute_upper_threshold_3d', space=space), self.network_update_absolute_upper_threshold_3d)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('network_update_relative_upper_threshold_1d', space=space), self.network_update_relative_upper_threshold_1d)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('network_update_relative_upper_threshold_3d', space=space), self.network_update_relative_upper_threshold_3d)
-
-        strs += '{}= {}\n'.format('{0:{space}}'.format('k_WSS', space=space), self.k_WSS)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('k_s', space=space), self.k_s)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('offset_tau', space=space), self.offset_tau)
-
-        strs += '{}= {}\n'.format('{0:{space}}'.format('remove_old_sprouters', space=space), self.remove_old_sprouters)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('pressure_initial_guess_95_percent', space=space), self.pressure_initial_guess_95_percent)
-        strs += '{}= {}\n'.format('{0:{space}}'.format('extrapolate_nutrients_at_tips', space=space), self.extrapolate_nutrients_at_tips)
-
         if to_inp == False:
             strs += '\n------------------------------------\n'
 
@@ -394,33 +345,90 @@ class DefaultSimParams(FrozenAttributesTrait):
         print(self.write_str(False))
 
 
-class TwoVesselsSimParams(DefaultSimParams):
+###########
+# class-def
+###########
+
+class SimParams(DefaultSimParams):
     'Class to hold simulation parameters'
 
     def __init__(self):
-        super(TwoVesselsSimParams, self).__init__()
+        super(SimParams, self).__init__()
 
 
-class RatbrainSimParams(DefaultSimParams):
-    'Class to hold simulation parameters'
+###########
+# problem setup
+###########
 
-    def __init__(self):
-        super(RatbrainSimParams, self).__init__()
-        self.final_time = 6.
-        self.D_sigma = 0.05
-        self.D_TAF = 1.0e-1
-        self.tumor_ic_center = [[1.3, 0.9, 0.7]]
-        self.tumor_ic_radius = [[0.3, 0.3, 0.3]]
-        self.scenario = 'network_secomb'
-        self.L_s = 0.5
-        self.network_init_file = 'ratbrain_network.dgf'
-        self.create_init_vessel = False
-        self.vessel_num_refinement = 2
-        self.vessel_pressures = [1100., 1600., 3000., 2000.]
-        self.vessel_radius = [0.0625, 0.046875]
-        self.vessel_line_1 = [self.L - 3.*self.vessel_radius[0], self.L - 3.*self.vessel_radius[0], 0., self.L - 3.*self.vessel_radius[0], self.L - 3.*self.vessel_radius[0], self.L]
-        self.vessel_line_2 = [3.*self.vessel_radius[1], 3.*self.vessel_radius[1], 0., 3.*self.vessel_radius[1], 3.*self.vessel_radius[1], self.L]
-        self.identify_vein_pressure = 20.
-        self.identify_artery_radius = 0.05
-        self.network_update_TAF_th = 0.0075
+def gen_tumor_ic_file(file_dir, dp):
 
+    # write to file
+    inpf = open(file_dir + dp.tumor_ic_file, 'w')
+    inpf.write("type, cx, cy, cz, tum_rx, tum_ry, tum_rz, hyp_rx, hyp_ry, hyp_rz\n")
+
+    # type = 1 -- spherical tumor core
+    # type = 2 -- elliptical tumor core (sharp)
+    # type = 3 -- spherical tumor core and then spherical hypoxic core
+    # type = 5 -- spherical tumor core (sharp)
+    ic_type = dp.tumor_ic_type
+    center = dp.tumor_ic_center
+    r = dp.tumor_ic_radius
+    for i in range(len(center)):
+        inpf.write("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n".format(ic_type[i], center[i][0], center[i][1], center[i][2], r[i][0], r[i][1], r[i][2], r[i][0], r[i][1], r[i][2]))
+
+    inpf.close()
+
+def gen_init_network_file(file_dir, dp):
+
+    L = dp.L
+    R = dp.vessel_radius
+    pressures = dp.vessel_pressures
+    l1 = dp.vessel_line_1
+    l2 = dp.vessel_line_2
+
+    # write to file
+    inpf = open(file_dir + dp.network_init_file, 'w')
+    inpf.write("DGF\n")
+
+    # vertex
+    inpf.write("Vertex\n")
+    inpf.write("parameters {}\n".format(1))
+    inpf.write("{} {} {} {}\n".format(l1[0], l1[1], l1[2], pressures[0]))
+    inpf.write("{} {} {} {}\n".format(l1[3], l1[4], l1[5], pressures[1]))
+    inpf.write("{} {} {} {}\n".format(l2[0], l2[1], l2[2], pressures[2]))
+    inpf.write("{} {} {} {}\n".format(l2[3], l2[4], l2[5], pressures[3]))
+
+    # segments
+    inpf.write("#\n")
+    inpf.write("SIMPLEX\n")
+    inpf.write("parameters {}\n".format(2))
+    inpf.write("{} {} {} {}\n".format(0, 1, R[0], 0.0075))
+    inpf.write("{} {} {} {}\n".format(2, 3, R[1], 0.0075))
+    # 
+    inpf.write("#\n")
+    inpf.write("BOUNDARYDOMAIN\n")
+    inpf.write("default {}\n".format(1))
+
+    # 
+    inpf.write("#")
+    inpf.close()
+
+if __name__=="__main__":
+
+  # create sim params
+  dp = SimParams()
+  dp.pp_tag = 'two_vessels'
+  dp.run_path = './' 
+  dp.set_time(5., 0.05, 10)
+
+  # create input file
+  fo = open(dp.run_path + 'input.in', 'w')
+  fo.write(dp.write_str())
+  fo.close()
+
+  # create tumor ic file
+  gen_tumor_ic_file(dp.run_path, dp)
+
+  # create network file
+  if dp.create_init_vessel:
+    gen_init_network_file(dp.run_path, dp)

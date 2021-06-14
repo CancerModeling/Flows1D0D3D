@@ -11,9 +11,8 @@
 #include "modelUtil.hpp"
 #include "systems/systems.hpp"
 #include "umodel/model.hpp"
-#include "unet/NetworkVTKWriter.h"
-#include "unet/NetworkVTKWriterOld.h"
 #include "unet/network.hpp"
+#include "unet/network_vtk_writer.h"
 #include "usystem/ghosting_functor.hpp"
 
 // typedef network
@@ -90,7 +89,7 @@ private:
   Net d_network;
 
   /*! @brief Saves the network as a vtk file. */
-  util::unet::NetworkVTKWriter d_networkVtkWriter;
+  util::unet::network_vtk_writer d_networkVtkWriter;
   util::unet::NetworkVTKWriterOld d_networkVtkWriterOld;
 
   /*! @brief Assembly objects */

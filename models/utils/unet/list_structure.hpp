@@ -34,6 +34,57 @@ public:
     return (head == NULL);
   }
 
+  /*! Removes the given node from list by splicing it out. */
+  void remove(std::shared_ptr<Node> pointer) {
+    auto predecessor = pointer->global_predecessor;
+    auto successor = pointer->global_successor;
+
+    // sanity check for predecessor:
+    if (predecessor){
+      if( predecessor->global_successor.get() != pointer.get() )
+        throw std::runtime_error("ListStructure corrupted! Did you try to remove the same node twice?");
+    } else {
+      if ( head.get() != pointer.get() )
+        throw std::runtime_error("ListStructure corrupted! Did you try to remove the same node twice?");
+    }
+    // sanity check for successor:
+    if (successor){
+      if( successor->global_predecessor.get() != pointer.get() )
+        throw std::runtime_error("ListStructure corrupted! Did you try to remove the same node twice?");
+    } else {
+      if ( tail.get() != pointer.get() )
+        throw std::runtime_error("ListStructure corrupted! Did you try to remove the same node twice?");
+    }
+
+    // decrement the total number of nodes in the list
+    numberOfNodes -= 1;
+
+    // case: we were the last node in the graph
+    if (predecessor == nullptr && successor == nullptr) {
+      setHead(nullptr);
+      setTail(nullptr);
+    }
+
+    if (predecessor != nullptr) {
+      predecessor->global_successor = successor;
+    }
+    // case: we were the first node
+    else {
+      setHead(successor);
+    }
+
+    if (successor != nullptr) {
+      successor->global_predecessor = predecessor;
+    }
+    // case: we were the last node
+    else {
+      setTail(predecessor);
+    }
+
+    pointer->global_predecessor = nullptr;
+    pointer->global_successor = nullptr;
+  }
+
   void attachNode(Node newNode) {
 
     auto sp_newNode = std::make_shared<Node>(newNode);
@@ -69,52 +120,35 @@ public:
   }
 
   std::shared_ptr<Node> getHead() {
-
     return head;
   }
 
-
-  void setHead(const std::shared_ptr<Node> &_head) {
-    head = _head;
-  }
-
-  void setTail(const std::shared_ptr<Node> &_tail) {
-    tail = _tail;
-  }
-
-  const std::shared_ptr<Node> getHead() const {
-
+  std::shared_ptr<const Node> getHead() const {
     return head;
   }
-
 
   std::shared_ptr<Node> getTail() {
-
     return tail;
   }
 
   int getNumberOfNodes() {
-
     return numberOfNodes;
   }
 
-  void resetNumberOfNodes() {
-
-    numberOfNodes = 0;
-  }
-
   void determineNumberOfNodes() {
-
     std::shared_ptr<Node> pointer = head;
+
+    auto oldNumberOfNodes = numberOfNodes;
 
     numberOfNodes = 0;
 
     while (pointer) {
-
       numberOfNodes = numberOfNodes + 1;
-
       pointer = pointer->global_successor;
     }
+
+    if (oldNumberOfNodes != numberOfNodes)
+      throw std::runtime_error("ListStructure corrupted!");
   }
 
   void findVertex(int numberOfVertex, std::vector<double> &coord, bool &allVerticesFound) {
@@ -172,6 +206,15 @@ public:
     }
 
     throw std::runtime_error("could not find node with index " + std::to_string(indexOfNode));
+  }
+
+private:
+  void setHead(const std::shared_ptr<Node> &_head) {
+    head = _head;
+  }
+
+  void setTail(const std::shared_ptr<Node> &_tail) {
+    tail = _tail;
   }
 };
 
