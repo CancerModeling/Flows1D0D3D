@@ -295,6 +295,7 @@ netfvfe::Model::Model(
   oss << "[Network] \n";
   d_log(oss, "init");
   d_network.create_initial_network();
+  d_network.d_extrapolate_nutrients_at_tips = d_input.d_extrapolate_nutrients_at_tips;
   d_log(d_delayed_msg, "debug");
 
   // we require pressure, nutrient, and TAF localized to each processor

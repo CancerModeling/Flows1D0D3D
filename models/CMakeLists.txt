@@ -5,9 +5,6 @@ cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 # ****************************************************************************
 project(LibTG CXX)
 
-# Create executible in main directory of build directory
-SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
-
 # ****************************************************************************
 # Include directories
 # ****************************************************************************
