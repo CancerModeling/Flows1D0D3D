@@ -421,13 +421,16 @@ public:
       auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
       const auto L = get_L(neighbor_edge);
       const auto C = get_C(neighbor_edge);
+      const double sigma = neighbor_edge.is_pointing_to(v_idx) ? +1 : -1;
       local_dof_map.dof_indices(micro_edge_idx, p_component, dof_indices_p);
       local_dof_map.dof_indices(micro_edge_idx, q_component, dof_indices_q);
-      auto pattern_rr = create_boundary(local_dof_map, BoundaryPointType::Right, BoundaryPointType::Right);
-      Eigen::MatrixXd u_pp = tau * (1. / C) * (0.5 * std::sqrt(C / L)) * pattern_rr;
-      Eigen::MatrixXd u_pq = tau * (1. / C) * (0.5) * pattern_rr;
-      Eigen::MatrixXd u_qp = tau * (1. / L) * (0.5) * pattern_rr;
-      Eigen::MatrixXd u_qq = tau * (1. / L) * (0.5 * std::sqrt(L / C)) * pattern_rr;
+      auto pattern = neighbor_edge.is_pointing_to(v_idx)
+                       ? create_boundary(local_dof_map, BoundaryPointType::Right, BoundaryPointType::Right)
+                       : create_boundary(local_dof_map, BoundaryPointType::Left, BoundaryPointType::Left);
+      Eigen::MatrixXd u_pp = tau * (1. / C) * (0.5 * std::sqrt(C / L)) * pattern;
+      Eigen::MatrixXd u_pq = tau * (1. / C) * sigma * (0.5) * pattern;
+      Eigen::MatrixXd u_qp = tau * (1. / L) * sigma * (0.5) * pattern;
+      Eigen::MatrixXd u_qq = tau * (1. / L) * (0.5 * std::sqrt(L / C)) * pattern;
       A->add(dof_indices_p, dof_indices_p, u_pp);
       A->add(dof_indices_p, dof_indices_q, u_pq);
       A->add(dof_indices_q, dof_indices_p, u_qp);
@@ -627,7 +630,7 @@ int main(int argc, char *argv[]) {
     std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
 
     const double tau = 0.001;
-    const double t_end = 1;
+    const double t_end = 0.5;
 
     const size_t output_interval = 1;
 
@@ -650,8 +653,8 @@ int main(int argc, char *argv[]) {
     auto edge1 = graph->connect(*v0, *v1, num_micro_edges);
     auto edge2 = graph->connect(*v1, *v2, num_micro_edges);
     auto edge3 = graph->connect(*v1, *v3, num_micro_edges);
-    auto edge4 = graph->connect(*v1, *v4, num_micro_edges);
-    // auto edge4 = graph->connect(*v4, *v1, num_micro_edges);
+    // auto edge4 = graph->connect(*v1, *v4, num_micro_edges);
+    auto edge4 = graph->connect(*v4, *v1, num_micro_edges);
 
     v0->set_to_inflow(mc::heart_beat_inflow(4.));
     v2->set_to_free_outflow();
@@ -666,8 +669,8 @@ int main(int argc, char *argv[]) {
     edge2->add_physical_data(physical_data);
     edge3->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1, -1, 0)}});
     edge3->add_physical_data(physical_data);
-    edge4->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(2, 0, 0)}});
-    // edge4->add_embedding_data({{ mc::Point(2, 0, 0), mc::Point(1, 0, 0) }});
+    // edge4->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(2, 0, 0)}});
+    edge4->add_embedding_data({{ mc::Point(2, 0, 0), mc::Point(1, 0, 0) }});
     edge4->add_physical_data(physical_data);
 
     mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
@@ -683,8 +686,6 @@ int main(int argc, char *argv[]) {
     double t = 0;
     const auto t_max_idx = static_cast<size_t>(std::ceil(t_end / tau));
     for (size_t t_idx = 0; t_idx < t_max_idx; t_idx += 1) {
-      std::cout << "iter = " << t_idx << std::endl;
-
       t += tau;
       solver.solve(tau, t);
 
