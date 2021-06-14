@@ -77,6 +77,33 @@ find_package(LibMesh REQUIRED)
 # Note: -DPETSC_DIR should point to the same directory that libmesh was compiled with
 find_package(Petsc REQUIRED)
 
+# json
+if (USE_EXTERNAL_JSON)
+    find_package(nlohmann_json 3.2.0 REQUIRED)
+else ()
+    include(FetchContent)
+    set(JSON_BuildTests OFF)
+    FetchContent_Declare(json
+            GIT_REPOSITORY https://github.com/nlohmann/json.git
+            GIT_TAG v3.7.3)
+    FetchContent_GetProperties(json)
+    if(NOT json_POPULATED)
+        FetchContent_Populate(json)
+        add_subdirectory(${json_SOURCE_DIR} ${json_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif()
+endif()
+
+# cxxopts
+include(FetchContent)
+FetchContent_Declare(cxxopts
+        GIT_REPOSITORY https://github.com/jarro2783/cxxopts
+        GIT_TAG a20bda6179b41c0cf49d557b0b21c3fb4f6c09b7)
+FetchContent_GetProperties(cxxopts)
+if(NOT cxxopts_POPULATED)
+    FetchContent_Populate(cxxopts)
+    add_subdirectory(${cxxopts_SOURCE_DIR} ${cxxopts_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
 # debug output flags
 if (${Enable_CMAKE_Debug_Build})
 message("LIBMESH_DEFINITIONS = ${PC_LIBMESH_CFLAGS_DEFS}")
