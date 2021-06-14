@@ -314,13 +314,13 @@ public:
       // - p^{up} phi(right)
       Eigen::MatrixXd u_qp_ll = tau * (1. / L) * (+0.5) * pattern_rr;
       Eigen::MatrixXd u_qq_ll = tau * (1. / L) * (+0.5 * std::sqrt(L / C)) * pattern_rr;
-      Eigen::MatrixXd u_qp_lr = tau * (1. / L) * (-0.5) * pattern_rl;
-      Eigen::MatrixXd u_qq_lr = tau * (1. / L) * (+0.5 * std::sqrt(L / C)) * pattern_rl;
+      Eigen::MatrixXd u_qp_lr = tau * (1. / L) * (+0.5) * pattern_rl;
+      Eigen::MatrixXd u_qq_lr = tau * (1. / L) * (-0.5 * std::sqrt(L / C)) * pattern_rl;
       // + p^{up} phi(left)
       Eigen::MatrixXd u_qp_rl = tau * (1. / L) * (-0.5) * pattern_lr;
       Eigen::MatrixXd u_qq_rl = tau * (1. / L) * (-0.5 * std::sqrt(L / C)) * pattern_lr;
-      Eigen::MatrixXd u_qp_rr = tau * (1. / L) * (+0.5) * pattern_ll;
-      Eigen::MatrixXd u_qq_rr = tau * (1. / L) * (-0.5 * std::sqrt(L / C)) * pattern_ll;
+      Eigen::MatrixXd u_qp_rr = tau * (1. / L) * (-0.5) * pattern_ll;
+      Eigen::MatrixXd u_qq_rr = tau * (1. / L) * (+0.5 * std::sqrt(L / C)) * pattern_ll;
 
       for (size_t micro_vertex_id = 1; micro_vertex_id < macro_edge->num_micro_vertices() - 1; micro_vertex_id += 1) {
         auto left_edge_id = micro_vertex_id - 1;
@@ -484,7 +484,7 @@ private:
 } // namespace macrocirculation
 
 int main(int argc, char *argv[]) {
-  const std::size_t degree = 0;
+  const std::size_t degree = 2;
   const std::size_t num_micro_edges = 50;
 
   // initialize petsc
