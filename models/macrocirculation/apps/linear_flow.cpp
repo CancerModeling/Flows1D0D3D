@@ -436,12 +436,146 @@ public:
     }
   }
 
+  void assemble_matrix_nfurcations(double tau) {
+    for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+      auto &vertex = *d_graph->get_vertex(v_idx);
+      if (!vertex.is_bifurcation())
+        continue;
+
+      const auto num_edges = vertex.get_edge_neighbors().size();
+
+      // edge orientation: +1 if it point to the vertex, -1 else
+      std::vector<double> sigma;
+      std::vector<double> C;
+      std::vector<double> L;
+      std::vector<size_t> num_basis_functions;
+      size_t all_basis_functions = 0;
+      for (auto e_id : vertex.get_edge_neighbors()) {
+        const auto &edge = *d_graph->get_edge(e_id);
+        sigma.push_back(edge.is_pointing_to(v_idx) ? +1. : -1.);
+        C.push_back(get_C(edge));
+        L.push_back(get_L(edge));
+        num_basis_functions.push_back(d_dof_map->get_local_dof_map(edge).num_basis_functions());
+        all_basis_functions += num_basis_functions.back();
+      }
+
+      // inverse orientation matrix
+      Eigen::MatrixXd orientation(2 * num_edges, 2 * num_edges);
+      orientation.setZero();
+      for (int k = 0; k < num_edges; k += 1) {
+        orientation(2 * k, 2 * k) = tau * sigma[k] / L[k];
+        orientation(2 * k + 1, 2 * k + 1) = tau * sigma[k] / C[k];
+      }
+
+      // contains the conditions on the upwind vectors
+      Eigen::MatrixXd conditions(2 * num_edges, 2 * num_edges);
+      conditions.setZero();
+      // flow condition
+      for (int k = 0; k < num_edges; k += 1)
+        conditions(0, 2 * k + 1) = sigma[k];
+      // pressure conditions
+      for (int k = 1; k < num_edges; k += 1) {
+        conditions(k, 0) = 1.;
+        conditions(k, 2 * k) = -1.;
+      }
+      // characteristic conditions
+      for (int k = 0; k < num_edges; k += 1) {
+        conditions(num_edges + k, 2 * k) = sigma[k] * 0.5 * std::sqrt(C[k] / L[k]);
+        conditions(num_edges + k, 2 * k + 1) = 0.5;
+      }
+
+      // inverse conditions
+      Eigen::MatrixXd conditions_inverse = conditions.inverse();
+
+      // evaluation matrix
+      Eigen::MatrixXd evaluation_matrix(2 * num_edges, 2 * all_basis_functions);
+      evaluation_matrix.setZero();
+      size_t current_col = 0;
+      for (size_t k = 0; k < num_edges; k += 1) {
+        const auto e_id = vertex.get_edge_neighbors()[k];
+        const auto &edge = *d_graph->get_edge(e_id);
+        const double point = edge.is_pointing_to(v_idx) ? +1. : -1.;
+        const auto psi = [=](size_t idx) { return std::pow(point, idx); };
+        for (size_t i = 0; i < num_basis_functions[k]; i += 1) {
+          evaluation_matrix(num_edges + k, current_col) = sigma[k] * 0.5 * std::sqrt(C[k] / L[k]) * psi(i);
+          current_col += 1;
+        }
+        for (size_t i = 0; i < num_basis_functions[k]; i += 1) {
+          evaluation_matrix(num_edges + k, current_col) = 0.5 * psi(i);
+          current_col += 1;
+        }
+      }
+
+      Eigen::MatrixXd mat = orientation * (conditions_inverse * evaluation_matrix);
+
+      // apply test functions
+      for (size_t j = 0; j < num_edges; j += 1) {
+        const auto e_id_j = vertex.get_edge_neighbors()[j];
+        const auto &edge_j = *d_graph->get_edge(e_id_j);
+        const double point = edge_j.is_pointing_to(v_idx) ? +1. : -1.;
+        const auto psi = [=](size_t idx) { return std::pow(point, idx); };
+
+        // TODO: Check for active edge!
+
+        auto local_dof_map_j = d_dof_map->get_local_dof_map(edge_j);
+        std::vector<size_t> dofs_p_j(local_dof_map_j.num_basis_functions());
+        std::vector<size_t> dofs_q_j(local_dof_map_j.num_basis_functions());
+        size_t micro_edge_idx_j = edge_j.is_pointing_to(v_idx) ? edge_j.num_micro_edges() - 1 : 0;
+        local_dof_map_j.dof_indices(micro_edge_idx_j, p_component, dofs_p_j);
+        local_dof_map_j.dof_indices(micro_edge_idx_j, q_component, dofs_q_j);
+
+        for (size_t k = 0; k < num_edges; k += 1) {
+          const auto e_id_k = vertex.get_edge_neighbors()[k];
+          const auto &edge_k = *d_graph->get_edge(e_id_k);
+          auto local_dof_map_k = d_dof_map->get_local_dof_map(edge_k);
+          std::vector<size_t> dofs_p_k(local_dof_map_k.num_basis_functions());
+          std::vector<size_t> dofs_q_k(local_dof_map_k.num_basis_functions());
+          size_t micro_edge_idx_k = edge_k.is_pointing_to(v_idx) ? edge_k.num_micro_edges() - 1 : 0;
+          local_dof_map_k.dof_indices(micro_edge_idx_k, p_component, dofs_p_k);
+          local_dof_map_k.dof_indices(micro_edge_idx_k, q_component, dofs_q_k);
+
+          Eigen::MatrixXd mat_el(local_dof_map_j.num_basis_functions(), local_dof_map_k.num_basis_functions());
+          mat_el.setZero();
+
+          // p^{up}:
+          for (size_t row = 0; row < local_dof_map_j.num_basis_functions(); row += 1) {
+            for (size_t col = 0; col < local_dof_map_j.num_basis_functions(); col += 1) {
+              mat_el(row, col) = mat(2 * j, 2 * local_dof_map_k.num_basis_functions() * k + col) * psi(row);
+            }
+          }
+          A->add(dofs_q_j, dofs_p_k, mat_el);
+          for (size_t row = 0; row < local_dof_map_j.num_basis_functions(); row += 1) {
+            for (size_t col = 0; col < local_dof_map_j.num_basis_functions(); col += 1) {
+              mat_el(row, col) = mat(2 * j, 2 * local_dof_map_k.num_basis_functions() * k + local_dof_map_k.num_basis_functions() + col) * psi(row);
+            }
+          }
+          A->add(dofs_q_j, dofs_q_k, mat_el);
+
+          // q^{up}:
+          for (size_t row = 0; row < local_dof_map_j.num_basis_functions(); row += 1) {
+            for (size_t col = 0; col < local_dof_map_j.num_basis_functions(); col += 1) {
+              mat_el(row, col) = mat(2 * j + 1, 2 * local_dof_map_k.num_basis_functions() * k + col) * psi(row);
+            }
+          }
+          A->add(dofs_p_j, dofs_p_k, mat_el);
+          for (size_t row = 0; row < local_dof_map_j.num_basis_functions(); row += 1) {
+            for (size_t col = 0; col < local_dof_map_j.num_basis_functions(); col += 1) {
+              mat_el(row, col) = mat(2 * j + 1, 2 * local_dof_map_k.num_basis_functions() * k + local_dof_map_k.num_basis_functions() + col) * psi(row);
+            }
+          }
+          A->add(dofs_p_j, dofs_q_k, mat_el);
+        }
+      }
+    }
+  }
+
   void assemble_matrix(double tau) {
     A->zero();
     assemble_matrix_cells(tau);
     assemble_matrix_inner_boundaries(tau);
     assemble_matrix_free_outflow(tau);
     assemble_matrix_inflow(tau);
+    assemble_matrix_nfurcations(tau);
     A->assemble();
   }
 
@@ -484,7 +618,7 @@ private:
 } // namespace macrocirculation
 
 int main(int argc, char *argv[]) {
-  const std::size_t degree = 2;
+  const std::size_t degree = 0;
   const std::size_t num_micro_edges = 50;
 
   // initialize petsc
@@ -511,13 +645,24 @@ int main(int argc, char *argv[]) {
 
     auto v0 = graph->create_vertex();
     auto v1 = graph->create_vertex();
+    auto v2 = graph->create_vertex();
+    auto v3 = graph->create_vertex();
     auto edge1 = graph->connect(*v0, *v1, num_micro_edges);
+    auto edge2 = graph->connect(*v1, *v2, num_micro_edges);
+    auto edge3 = graph->connect(*v1, *v3, num_micro_edges);
 
     v0->set_to_inflow(mc::heart_beat_inflow(4.));
-    v1->set_to_free_outflow();
+    v2->set_to_free_outflow();
+    v3->set_to_free_outflow();
+
+    auto physical_data = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
 
     edge1->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1, 0, 0)}});
-    edge1->add_physical_data(mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length));
+    edge1->add_physical_data(physical_data);
+    edge2->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1, 1, 0)}});
+    edge2->add_physical_data(physical_data);
+    edge3->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1, -1, 0)}});
+    edge3->add_physical_data(physical_data);
 
     mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
 
