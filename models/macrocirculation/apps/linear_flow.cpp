@@ -361,7 +361,6 @@ public:
       if (!vertex.is_inflow())
         continue;
       const auto q_in = vertex.get_inflow_value(t);
-      std::cout << "q_in " << q_in << std::endl;
       auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
       auto &local_dof_map = d_dof_map->get_local_dof_map(neighbor_edge);
       auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
@@ -618,7 +617,7 @@ private:
 } // namespace macrocirculation
 
 int main(int argc, char *argv[]) {
-  const std::size_t degree = 0;
+  const std::size_t degree = 2;
   const std::size_t num_micro_edges = 50;
 
   // initialize petsc
@@ -647,13 +646,17 @@ int main(int argc, char *argv[]) {
     auto v1 = graph->create_vertex();
     auto v2 = graph->create_vertex();
     auto v3 = graph->create_vertex();
+    auto v4 = graph->create_vertex();
     auto edge1 = graph->connect(*v0, *v1, num_micro_edges);
     auto edge2 = graph->connect(*v1, *v2, num_micro_edges);
     auto edge3 = graph->connect(*v1, *v3, num_micro_edges);
+    auto edge4 = graph->connect(*v1, *v4, num_micro_edges);
+    // auto edge4 = graph->connect(*v4, *v1, num_micro_edges);
 
     v0->set_to_inflow(mc::heart_beat_inflow(4.));
     v2->set_to_free_outflow();
     v3->set_to_free_outflow();
+    v4->set_to_free_outflow();
 
     auto physical_data = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
 
@@ -663,6 +666,9 @@ int main(int argc, char *argv[]) {
     edge2->add_physical_data(physical_data);
     edge3->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1, -1, 0)}});
     edge3->add_physical_data(physical_data);
+    edge4->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(2, 0, 0)}});
+    // edge4->add_embedding_data({{ mc::Point(2, 0, 0), mc::Point(1, 0, 0) }});
+    edge4->add_physical_data(physical_data);
 
     mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
 
