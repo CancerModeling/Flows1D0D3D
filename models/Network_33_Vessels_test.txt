@@ -1,0 +1,5 @@
+Number [-]  Length [cm]   Radius [cm]  Wall thickness [cm]  Elastic modulus [Pa]  Peripheral resistance [Pa s m^-3] Peripheral compliance [Pa s m^-3] Connections1 Connections2 NumberEdges
+0 4.0 1.200 0.163 0.4e6 0.0 0.0 -1 -1 1 2 10
+1 4.0 1.200 0.163 0.4e6 0.0 0.0 -1 -1 -1 -1 10
+2 4.0 1.200 0.163 0.4e6 0.0 0.0 -1 -1 -1 -1 10
+#

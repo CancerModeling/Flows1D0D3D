@@ -1,0 +1,323 @@
+{
+  "vertices": [
+    {
+      "id": 0,
+      "name": "cw_in",
+      "inflow": true
+    },
+    {
+      "id": 1
+    },
+    {
+      "id": 2
+    },
+    {
+      "id": 3
+    },
+    {
+      "id": 4
+    },
+    {
+      "id": 5
+    },
+    {
+      "id": 6
+    },
+    {
+      "id": 7
+    },
+    {
+      "id": 8,
+      "name": "cw_out_8",
+      "peripheral_compliance": 0.7590282234584442,
+      "peripheral_resistance": 1.668317402852107
+    },
+    {
+      "id": 9
+    },
+    {
+      "id": 10,
+      "name": "cw_out_10",
+      "peripheral_compliance": 0.004140503146762525,
+      "peripheral_resistance": 305.8323951382008
+    },
+    {
+      "id": 11,
+      "name": "cw_out_11",
+      "peripheral_compliance": 0.008891223945611851,
+      "peripheral_resistance": 142.42133616222844
+    },
+    {
+      "id": 12,
+      "name": "cw_out_12",
+      "peripheral_compliance": 0.00907071785638981,
+      "peripheral_resistance": 139.6030627895237
+    },
+    {
+      "id": 13,
+      "name": "cw_out_13",
+      "peripheral_compliance": 0.004224318761722318,
+      "peripheral_resistance": 299.76430896406856
+    },
+    {
+      "id": 14,
+      "name": "cw_out_15",
+      "peripheral_compliance": 0.07509603865475686,
+      "peripheral_resistance": 16.862407353778952
+    },
+    {
+      "id": 15,
+      "name": "cw_out_16",
+      "peripheral_compliance": 0.07487741832704434,
+      "peripheral_resistance": 16.911640688795973
+    },
+    {
+      "id": 16
+    },
+    {
+      "id": 17
+    },
+    {
+      "id": 18,
+      "name": "cw_out_17",
+      "peripheral_compliance": 0.004829451636891182,
+      "peripheral_resistance": 262.2036805956678
+    },
+    {
+      "id": 19,
+      "name": "cw_out_14",
+      "peripheral_compliance": 0.004842100071810026,
+      "peripheral_resistance": 261.5187574961219
+    }
+  ],
+  "vessels": [
+    {
+      "id": 0,
+      "name": "cw_01",
+      "vessel_length": 4.0,
+      "radius": 1.2,
+      "wall_thickness": 0.163,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 10,
+      "left_vertex_id": 0,
+      "right_vertex_id": 1
+    },
+    {
+      "id": 1,
+      "name": "cw_02",
+      "vessel_length": 2.0,
+      "radius": 1.12,
+      "wall_thickness": 0.126,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 6,
+      "left_vertex_id": 1,
+      "right_vertex_id": 2
+    },
+    {
+      "id": 2,
+      "name": "cw_03",
+      "vessel_length": 3.4,
+      "radius": 0.62,
+      "wall_thickness": 0.08,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 10,
+      "left_vertex_id": 1,
+      "right_vertex_id": 3
+    },
+    {
+      "id": 3,
+      "name": "cw_04",
+      "vessel_length": 3.9,
+      "radius": 1.07,
+      "wall_thickness": 0.115,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 10,
+      "left_vertex_id": 2,
+      "right_vertex_id": 4
+    },
+    {
+      "id": 4,
+      "name": "cw_05",
+      "vessel_length": 20.8,
+      "radius": 0.25,
+      "wall_thickness": 0.063,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 50,
+      "left_vertex_id": 2,
+      "right_vertex_id": 5
+    },
+    {
+      "id": 5,
+      "name": "cw_06",
+      "vessel_length": 17.7,
+      "radius": 0.25,
+      "wall_thickness": 0.063,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 45,
+      "left_vertex_id": 3,
+      "right_vertex_id": 6
+    },
+    {
+      "id": 6,
+      "name": "cw_07",
+      "vessel_length": 1.7,
+      "radius": 0.423,
+      "wall_thickness": 0.067,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 10,
+      "left_vertex_id": 3,
+      "right_vertex_id": 16
+    },
+    {
+      "id": 7,
+      "name": "cw_08",
+      "vessel_length": 15.6,
+      "radius": 0.999,
+      "wall_thickness": 0.11,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 45,
+      "left_vertex_id": 4,
+      "right_vertex_id": 8
+    },
+    {
+      "id": 8,
+      "name": "cw_09",
+      "vessel_length": 3.4,
+      "radius": 0.423,
+      "wall_thickness": 0.067,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 10,
+      "left_vertex_id": 4,
+      "right_vertex_id": 9
+    },
+    {
+      "id": 9,
+      "name": "cw_10",
+      "vessel_length": 17.7,
+      "radius": 0.15,
+      "wall_thickness": 0.038,
+      "elastic_modulus": 800000.0,
+      "gamma": 9,
+      "number_edges": 45,
+      "left_vertex_id": 5,
+      "right_vertex_id": 10
+    },
+    {
+      "id": 10,
+      "name": "cw_11",
+      "vessel_length": 17.7,
+      "radius": 0.2,
+      "wall_thickness": 0.05,
+      "elastic_modulus": 800000.0,
+      "gamma": 9,
+      "number_edges": 45,
+      "left_vertex_id": 5,
+      "right_vertex_id": 11
+    },
+    {
+      "id": 11,
+      "name": "cw_12",
+      "vessel_length": 17.7,
+      "radius": 0.2,
+      "wall_thickness": 0.05,
+      "elastic_modulus": 800000.0,
+      "gamma": 9,
+      "number_edges": 45,
+      "left_vertex_id": 6,
+      "right_vertex_id": 12
+    },
+    {
+      "id": 12,
+      "name": "cw_13",
+      "vessel_length": 17.7,
+      "radius": 0.15,
+      "wall_thickness": 0.038,
+      "elastic_modulus": 800000.0,
+      "gamma": 9,
+      "number_edges": 45,
+      "left_vertex_id": 6,
+      "right_vertex_id": 13
+    },
+    {
+      "id": 13,
+      "name": "cw_14",
+      "vessel_length": 7.4,
+      "radius": 0.136,
+      "wall_thickness": 0.034,
+      "elastic_modulus": 800000.0,
+      "gamma": 9,
+      "number_edges": 32,
+      "left_vertex_id": 7,
+      "right_vertex_id": 19
+    },
+    {
+      "id": 14,
+      "name": "cw_15",
+      "vessel_length": 40.5,
+      "radius": 0.403,
+      "wall_thickness": 0.067,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 50,
+      "left_vertex_id": 17,
+      "right_vertex_id": 14
+    },
+    {
+      "id": 15,
+      "name": "cw_16",
+      "vessel_length": 42.2,
+      "radius": 0.403,
+      "wall_thickness": 0.067,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 50,
+      "left_vertex_id": 9,
+      "right_vertex_id": 15
+    },
+    {
+      "id": 16,
+      "name": "cw_17",
+      "vessel_length": 7.4,
+      "radius": 0.136,
+      "wall_thickness": 0.034,
+      "elastic_modulus": 800000.0,
+      "gamma": 9,
+      "number_edges": 35,
+      "left_vertex_id": 9,
+      "right_vertex_id": 18
+    },
+    {
+      "id": 17,
+      "name": "cw_inserted_1",
+      "vessel_length": 1.7,
+      "radius": 0.423,
+      "wall_thickness": 0.067,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 10,
+      "left_vertex_id": 16,
+      "right_vertex_id": 7
+    },
+    {
+      "id": 18,
+      "name": "cw_inserted_2",
+      "vessel_length": 1.7,
+      "radius": 0.403,
+      "wall_thickness": 0.067,
+      "elastic_modulus": 400000.0,
+      "gamma": 9,
+      "number_edges": 10,
+      "left_vertex_id": 7,
+      "right_vertex_id": 17
+    }
+  ]
+}
