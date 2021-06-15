@@ -17,6 +17,7 @@
 #include "libmesh/libmesh.h"
 #include "libmesh/linear_implicit_system.h"
 #include "libmesh/mesh.h"
+#include "libmesh/mesh_tools.h"
 #include "libmesh/mesh_generation.h"
 #include "libmesh/parallel_mesh.h"
 #include "libmesh/point.h"

@@ -1,0 +1,16 @@
+name: pymesh
+channels:
+  - conda
+  - conda-forge
+dependencies:
+  - python=3.7
+  - pip
+  - numpy
+  - matplotlib
+  - jupyter
+  - scipy
+  - vtk=8
+  - pip:
+    - h5py
+    - meshio
+    - pyvista

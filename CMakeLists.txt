@@ -104,6 +104,16 @@ if(NOT cxxopts_POPULATED)
     add_subdirectory(${cxxopts_SOURCE_DIR} ${cxxopts_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
+# fmt
+FetchContent_Declare(fmt
+        GIT_REPOSITORY https://github.com/fmtlib/fmt
+        GIT_TAG 7.1.3)
+FetchContent_GetProperties(fmt)
+if(NOT fmt_POPULATED)
+    FetchContent_Populate(fmt)
+    add_subdirectory(${fmt_SOURCE_DIR} ${fmt_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
 # debug output flags
 if (${Enable_CMAKE_Debug_Build})
 message("LIBMESH_DEFINITIONS = ${PC_LIBMESH_CFLAGS_DEFS}")
@@ -131,6 +141,19 @@ if ((NOT MPI_FOUND) AND (NOT LIBMESH_FOUND))
     message(FATAL_ERROR "ERROR: MPI and LIBMESH are required")
 endif ()
 
+#if ("${PETSC_DIR}" STREQUAL "")
+#    message(FATAL_ERROR "ERROR: Please specify petsc directory")
+#endif ()
+
+# nanoflann
+FetchContent_Declare(nanoflann
+        GIT_REPOSITORY https://github.com/jlblancoc/nanoflann
+        GIT_TAG v1.3.2)
+FetchContent_GetProperties(nanoflann)
+if(NOT nanoflann_POPULATED)
+    FetchContent_Populate(nanoflann)
+    add_subdirectory(${nanoflann_SOURCE_DIR} ${nanoflann_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 # ****************************************************************************
 # Build, compiler, linker flags
 # ****************************************************************************
