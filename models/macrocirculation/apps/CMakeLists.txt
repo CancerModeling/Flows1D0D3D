@@ -46,6 +46,10 @@ add_executable(${ProjectName}Calibration calibration.cpp)
 target_link_libraries(${ProjectName}Calibration ${ProjectLib})
 target_link_libraries(${ProjectName}Calibration cxxopts)
 
+add_executable(${ProjectName}LinearFlow linear_flow.cpp)
+target_link_libraries(${ProjectName}LinearFlow ${ProjectLib})
+target_link_libraries(${ProjectName}LinearFlow Eigen3::Eigen)
+
 add_executable(${ProjectName}Transport transport_test.cpp)
 target_link_libraries(${ProjectName}Transport ${ProjectLib})
 
@@ -86,6 +90,7 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}DarcyHetero
                    ${ProjectName}LegacyVTK
                    ${ProjectName}PartPerfusionTest)
+                   ${ProjectName}LinearFlow)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
@@ -111,6 +116,11 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
             TARGET ${TargetName} PRE_BUILD
             COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessels.py $<TARGET_FILE_DIR:${TargetName}>/plot_vessels.py
             COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessels.py")
+
+    add_custom_command(
+            TARGET ${TargetName} PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_windkessel.py $<TARGET_FILE_DIR:${TargetName}>/plot_windkessel.py
+            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_windkessel.py")
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD

@@ -9,16 +9,20 @@
 
 #include "graph_storage.hpp"
 
+#include "communication/mpi.hpp"
 #include "dof_map.hpp"
 #include "fe_type.hpp"
 #include "gmm.h"
 #include "graph_pvd_writer.hpp"
 #include "interpolate_to_vertices.hpp"
+#include "petsc/petsc_ksp.hpp"
+#include "petsc/petsc_mat.hpp"
+#include "petsc/petsc_vec.hpp"
 
 namespace macrocirculation {
 
 ImplicitAdvectionSolver::ImplicitAdvectionSolver(std::shared_ptr<GraphStorage> graph, std::size_t degree, double tau, double t_end, double velocity, InflowValueFct inflow_value_fct)
-    : d_comm(MPI_COMM_WORLD),
+    : d_comm(PETSC_COMM_WORLD),
       d_degree(degree),
       d_tau(tau),
       d_t_end(t_end),
@@ -27,23 +31,86 @@ ImplicitAdvectionSolver::ImplicitAdvectionSolver(std::shared_ptr<GraphStorage> g
       d_inflow_value_fct(std::move(inflow_value_fct)),
       d_graph(std::move(graph)) {}
 
+void extract_dof(const std::vector<std::size_t> &dof_indices,
+                 const PetscVec &global,
+                 std::vector<double> &local) {
+  assert(dof_indices.size() == local.size());
+
+  for (std::size_t i = 0; i < dof_indices.size(); i += 1)
+    local[i] = global.get(dof_indices[i]);
+}
+
+void interpolate_to_vertices(const MPI_Comm comm,
+                             const GraphStorage &graph,
+                             const DofMap &map,
+                             const std::size_t component,
+                             const PetscVec &dof_vector,
+                             std::vector<Point> &points,
+                             std::vector<double> &interpolated) {
+  points.clear();
+  interpolated.clear();
+
+  std::vector<std::size_t> dof_indices;
+  std::vector<double> dof_vector_local;
+  std::vector<double> evaluated_at_qps;
+
+  for (auto e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
+    auto edge = graph.get_edge(e_id);
+
+    // we only write out embedded vessel segments
+    if (!edge->has_embedding_data())
+      continue;
+    const auto &embedding = edge->get_embedding_data();
+
+    auto local_dof_map = map.get_local_dof_map(*edge);
+
+    if (embedding.points.size() == 2 && local_dof_map.num_micro_edges() > 1)
+      linear_interpolate_points(embedding.points[0], embedding.points[1], local_dof_map.num_micro_edges(), points);
+    else if (embedding.points.size() == local_dof_map.num_micro_edges() + 1)
+      add_discontinuous_points(embedding.points, points);
+    else
+      throw std::runtime_error("this type of embedding is not implemented");
+
+    FETypeNetwork fe(create_trapezoidal_rule(), local_dof_map.num_basis_functions() - 1);
+
+    dof_indices.resize(local_dof_map.num_basis_functions());
+    dof_vector_local.resize(local_dof_map.num_basis_functions());
+    evaluated_at_qps.resize(fe.num_quad_points());
+
+    const auto &param = edge->get_physical_data();
+    const double h = param.length / local_dof_map.num_micro_edges();
+
+    fe.reinit(h);
+
+    for (std::size_t micro_edge_id = 0; micro_edge_id < local_dof_map.num_micro_edges(); micro_edge_id += 1) {
+      local_dof_map.dof_indices(micro_edge_id, component, dof_indices);
+      extract_dof(dof_indices, dof_vector, dof_vector_local);
+      const auto boundary_values = fe.evaluate_dof_at_boundary_points(dof_vector_local);
+
+      interpolated.push_back(boundary_values.left);
+      interpolated.push_back(boundary_values.right);
+    }
+  }
+}
+
+
 void ImplicitAdvectionSolver::solve() const {
   // we only support one macro edge for now
-  assert(d_graph->num_edges() < 2);
+  assert(d_graph->num_edges() == 2);
 
   // assemble finite element system
   const std::size_t num_components = 1;
   const std::size_t num_basis_functions = d_degree + 1;
 
   const auto dof_map = std::make_shared<DofMap>(d_graph->num_vertices(), d_graph->num_edges());
-  dof_map->create(MPI_COMM_WORLD, *d_graph, num_components, d_degree, true);
+  dof_map->create(PETSC_COMM_WORLD, *d_graph, num_components, d_degree, true);
 
-  const std::size_t num_dofs = dof_map->num_dof();
+  // setup matrix
+  PetscVec u_now("u_now", *dof_map);
+  PetscVec u_prev("u_prev", *dof_map);
+  PetscVec f("f", *dof_map);
 
-  gmm::row_matrix<gmm::wsvector<double>> A(num_dofs, num_dofs);
-  std::vector<double> f(num_dofs);
-  std::vector<double> u_now(num_dofs, 0);
-  std::vector<double> u_prev(num_dofs, 0);
+  PetscMat A("advection", *dof_map);
 
   std::size_t it = 0;
 
@@ -56,15 +123,9 @@ void ImplicitAdvectionSolver::solve() const {
     it += 1;
 
     // reset matrix and rhs
-    for (int i = 0; i < A.nrows(); i++)
-      A[i].clear();
-
-    for (int i = 0; i < f.size(); i++)
-      f[i] = 0;
-
-    // next time step
-    for (int i = 0; i < u_now.size(); i++)
-      u_prev[i] = u_now[i];
+    A.zero();
+    f.zero();
+    u_prev.swap(u_now);
 
     {
       gmm::row_matrix<gmm::wsvector<double>> A_loc(num_components * num_basis_functions, num_components * num_basis_functions);
@@ -83,7 +144,7 @@ void ImplicitAdvectionSolver::solve() const {
       std::vector<double> u_prev_qp(qf.size(), 0);
 
       // assemble cell integrals
-      for (const auto &e_id : d_graph->get_edge_ids()) {
+      for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(PETSC_COMM_WORLD))) {
         const auto macro_edge = d_graph->get_edge(e_id);
 
         const auto &local_dof_map = dof_map->get_local_dof_map(*macro_edge);
@@ -119,12 +180,8 @@ void ImplicitAdvectionSolver::solve() const {
           }
 
           // copy into global matrix
-          for (std::size_t i = 0; i < dof_indices.size(); i += 1) {
-            f[dof_indices[i]] += f_loc[i];
-            for (std::size_t j = 0; j < dof_indices.size(); j += 1) {
-              A(dof_indices[i], dof_indices[j]) += A_loc(i, j);
-            }
-          }
+          A.add(dof_indices, dof_indices, A_loc);
+          f.add(dof_indices, f_loc);
         }
       }
     }
@@ -150,7 +207,7 @@ void ImplicitAdvectionSolver::solve() const {
       std::vector<std::size_t> dof_indices_r(num_basis_functions);
 
       // assemble inner boundary integrals
-      for (const auto &e_id : d_graph->get_edge_ids()) {
+      for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(PETSC_COMM_WORLD))) {
         const auto macro_edge = d_graph->get_edge(e_id);
 
         const auto &local_dof_map = dof_map->get_local_dof_map(*macro_edge);
@@ -202,14 +259,10 @@ void ImplicitAdvectionSolver::solve() const {
           }
 
           // copy into global matrix
-          for (std::size_t i = 0; i < dof_indices_r.size(); i += 1) {
-            for (std::size_t j = 0; j < dof_indices_r.size(); j += 1) {
-              A(dof_indices_r[i], dof_indices_r[j]) += A_rr_loc(i, j);
-              A(dof_indices_l[i], dof_indices_l[j]) += A_ll_loc(i, j);
-              A(dof_indices_r[i], dof_indices_l[j]) += A_rl_loc(i, j);
-              A(dof_indices_l[i], dof_indices_r[j]) += A_lr_loc(i, j);
-            }
-          }
+          A.add(dof_indices_r, dof_indices_r, A_rr_loc);
+          A.add(dof_indices_l, dof_indices_l, A_ll_loc);
+          A.add(dof_indices_r, dof_indices_l, A_rl_loc);
+          A.add(dof_indices_l, dof_indices_r, A_lr_loc);
         }
       }
     }
@@ -222,16 +275,17 @@ void ImplicitAdvectionSolver::solve() const {
       const auto &phi_l = fe.get_phi_boundary()[0];
       const auto &phi_r = fe.get_phi_boundary()[1];
 
-
       // block matrices for exterior boundaries
       gmm::row_matrix<gmm::wsvector<double>> A_ext_loc(num_components * num_basis_functions, num_components * num_basis_functions);
 
       // right hand side for inner boundaries
       std::vector<double> f_ext_loc(num_components * num_basis_functions);
 
-      std::vector<std::size_t > dof_indices(num_components * num_basis_functions);
+      std::vector<std::size_t> dof_indices(num_components * num_basis_functions);
 
-      for (const auto &e_id : d_graph->get_edge_ids()) {
+      // refactor this!
+      std::cout << "out!" << std::endl;
+      for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(PETSC_COMM_WORLD))) {
         const auto macro_edge = d_graph->get_edge(e_id);
 
         const auto &local_dof_map = dof_map->get_local_dof_map(*macro_edge);
@@ -240,59 +294,62 @@ void ImplicitAdvectionSolver::solve() const {
 
         fe.reinit(h);
 
-        std::array< MicroVertex, 2 > micro_vertices = {macro_edge->left_micro_vertex(), macro_edge->right_micro_vertex()};
-        std::array< MicroEdge, 2 > neighbor_edges = {*micro_vertices[0].get_right_edge(), *micro_vertices[1].get_left_edge()};
-        std::array< double, 2 > normal = {-1, +1};
-        std::array< std::reference_wrapper<const std::vector< double >>, 2 > phi = {phi_l, phi_r};
+        std::array<MicroVertex, 2> micro_vertices = {macro_edge->left_micro_vertex(), macro_edge->right_micro_vertex()};
+        std::array<MicroEdge, 2> neighbor_edges = {*micro_vertices[0].get_right_edge(), *micro_vertices[1].get_left_edge()};
+        std::array<double, 2> normal = {-1, +1};
+        std::array<std::reference_wrapper<const std::vector<double>>, 2> phi = {phi_l, phi_r};
 
-        for (std::size_t v_idx=0; v_idx < 2; v_idx += 1)
-        {
-          local_dof_map.dof_indices(neighbor_edges[v_idx], 0, dof_indices);
+        // zero local system
+        for (std::size_t i = 0; i < num_basis_functions; i += 1) {
+          f_ext_loc[i] = 0;
+          for (std::size_t j = 0; j < num_basis_functions; j += 1)
+            A_ext_loc(i, j) = 0;
+        }
 
-          // zero local system
-          for (std::size_t i = 0; i < num_basis_functions; i += 1) {
-            f_ext_loc[i] = 0;
-            for (std::size_t j = 0; j < num_basis_functions; j += 1)
-              A_ext_loc(i, j) = 0;
+
+        // inflow boundary
+        // if (normal[v_idx] * d_velocity < 0)
+        if (macro_edge->get_vertex_neighbors()[0] == 0) {
+          local_dof_map.dof_indices(neighbor_edges[0], 0, dof_indices);
+          std::cout << "left!" << e_id << std::endl;
+          const auto inflow_value = d_inflow_value_fct(t_now);
+          for (unsigned int i = 0; i < num_basis_functions; i += 1) {
+            f_ext_loc[i] += (-d_tau) * inflow_value * d_velocity * normal[0] * phi[0].get()[i];
           }
 
-          // inflow boundary
-          if (normal[v_idx] * d_velocity < 0) {
-            const auto inflow_value = d_inflow_value_fct(t_now);
-            for (unsigned int i = 0; i < num_basis_functions; i += 1) {
-              f_ext_loc[i] += (-d_tau) * inflow_value * d_velocity * normal[v_idx] * phi[v_idx].get()[i];
-            }
-          }
-            // outflow boundary
-          else {
-            for (unsigned int i = 0; i < num_basis_functions; i += 1) {
-              for (unsigned int j = 0; j < num_basis_functions; j += 1) {
-                A_ext_loc(i, j) += d_tau * phi[v_idx].get()[i] * d_velocity * normal[v_idx] * phi[v_idx].get()[j];
-              }
+          // copy into global matrix
+          f.add(dof_indices, f_ext_loc);
+          A.add(dof_indices, dof_indices, A_ext_loc);
+        }
+          // outflow boundary
+        else if (macro_edge->get_vertex_neighbors()[1] == 2) {
+          local_dof_map.dof_indices(neighbor_edges[1], 0, dof_indices);
+          std::cout << "outflow!" << e_id << std::endl;
+          for (unsigned int i = 0; i < num_basis_functions; i += 1) {
+            for (unsigned int j = 0; j < num_basis_functions; j += 1) {
+              A_ext_loc(i, j) += d_tau * phi[1].get()[i] * d_velocity * normal[1] * phi[1].get()[j];
             }
           }
 
           // copy into global matrix
-          for (std::size_t i = 0; i < num_basis_functions; i += 1) {
-            f[dof_indices[i]] += f_ext_loc[i];
-            for (std::size_t j = 0; j < num_basis_functions; j += 1) {
-              A(dof_indices[i], dof_indices[j]) += A_ext_loc(i, j);
-            }
-          }
+          f.add(dof_indices, f_ext_loc);
+          A.add(dof_indices, dof_indices, A_ext_loc);
         }
       }
     }
 
-    gmm::iteration iter(1.0E-10);
-    gmm::ilu_precond<gmm::row_matrix<gmm::wsvector<double>>> PR(A);
-    gmm::gmres(A, u_now, f, PR, 500, iter);
+    A.assemble();
+    f.assemble();
+
+    PetscKsp ksp(A);
+    ksp.solve(f, u_now);
 
     if (it % d_output_interval == 0) {
       std::cout << "it = " << it << std::endl;
 
       std::vector<Point> points;
       std::vector<double> u_vertex_values;
-      interpolate_to_vertices(MPI_COMM_WORLD, *d_graph, *dof_map, 0, u_now, points, u_vertex_values);
+      interpolate_to_vertices(PETSC_COMM_WORLD, *d_graph, *dof_map, 0, u_now, points, u_vertex_values);
 
       writer.set_points(points);
       writer.add_vertex_data("concentration", u_vertex_values);

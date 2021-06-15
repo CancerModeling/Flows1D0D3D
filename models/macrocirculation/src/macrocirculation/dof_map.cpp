@@ -61,7 +61,9 @@ std::size_t LocalEdgeDofMap::num_basis_functions() const {
 DofMap::DofMap(std::size_t num_vertices, std::size_t num_edges)
     : d_local_dof_maps(num_edges),
       d_local_vertex_dof_maps(num_vertices),
-      d_num_dof(0) {}
+      d_num_dof(0),
+      d_first_owned_global_dof(0),
+      d_num_owned_dofs(0) {}
 
 void DofMap::add_local_dof_map(const Edge &e,
                                std::size_t num_components,
@@ -106,19 +108,29 @@ void DofMap::create(MPI_Comm comm,
                     std::size_t degree,
                     bool global) {
   for (int rank = 0; rank < mpi::size(comm); rank += 1) {
+    const bool callingRank = (rank == mpi::rank(comm));
+
     // if we do not assign all the ranks AND this is not the calling rank we add nothing
-    if (!global && (rank != mpi::rank(comm)))
+    if (!global && !callingRank)
       continue;
 
-    for (const auto &e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
+    // if we are the rank
+    if (callingRank)
+      d_first_owned_global_dof = d_num_dof;
+
+    for (const auto &e_id : graph.get_active_edge_ids(rank)) {
       const auto edge = graph.get_edge(e_id);
       add_local_dof_map(*edge, num_components, degree + 1, edge->num_micro_edges());
+      if (callingRank)
+        d_num_owned_dofs += get_local_dof_map(*edge).num_local_dof();
     }
 
-    for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
+    for (const auto &v_id : graph.get_active_vertex_ids(rank)) {
       const auto vertex = graph.get_vertex(v_id);
       if (vertex->is_windkessel_outflow()) {
         add_local_dof_map(*vertex, 1);
+        if (callingRank)
+          d_num_owned_dofs += get_local_dof_map(*vertex).num_local_dof();
       }
     }
   }
@@ -134,6 +146,10 @@ LocalVertexDofMap::LocalVertexDofMap(std::size_t dof_interval_start, std::size_t
   for (size_t c = 0; c < num_components; c += 1)
     d_dof_indices.push_back(dof_interval_start + c);
 }
+
+size_t DofMap::first_owned_global_dof() const { return d_first_owned_global_dof; }
+
+size_t DofMap::num_owned_dofs() const { return d_num_owned_dofs; }
 
 std::size_t LocalVertexDofMap::num_local_dof() const { return d_dof_indices.size(); }
 

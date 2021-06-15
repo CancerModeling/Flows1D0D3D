@@ -16,12 +16,11 @@
 
 namespace macrocirculation {
 
-default_S::default_S(double mu, double gamma, double phi)
-    : d_mu(mu),
-      d_gamma(gamma),
-      d_phi(phi) {}
+default_S::default_S(double phi)
+    : d_phi(phi) {}
 
 void default_S::operator()(double,
+                           const Edge &e,
                            const std::vector<double> &,
                            const std::vector<double> &Q,
                            const std::vector<double> &A,
@@ -32,8 +31,11 @@ void default_S::operator()(double,
   assert(Q.size() == S_Q_out.size());
   assert(Q.size() == S_A_out.size());
 
+  const double mu = e.get_physical_data().viscosity;
+  const double gamma = e.get_physical_data().gamma;
+
   for (std::size_t qp = 0; qp < Q.size(); qp += 1) {
-    S_Q_out[qp] = -2 * d_mu * M_PI * (d_gamma + 2) * Q[qp] / A[qp];
+    S_Q_out[qp] = -2 * mu * M_PI * (gamma + 2) * Q[qp] / A[qp];
     S_A_out[qp] = d_phi;
   }
 }
@@ -98,9 +100,7 @@ RightHandSideEvaluator::RightHandSideEvaluator(MPI_Comm comm,
       d_dof_map(std::move(dof_map)),
       d_flow_upwind_evaluator(comm, d_graph, d_dof_map),
       d_S_evaluator(default_S{
-        4.24e-2, // 4.5 mPa / s
-        9,      // Poiseuille flow
-        0       // 0 cm^2/s, no wall permeability
+        0        // 0 cm^2/s, no wall permeability
       }),
       d_degree(degree),
       d_inverse_mass(d_dof_map->num_dof()) {
@@ -205,7 +205,7 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
         F_Q[qp] = F_Q_eval(Q_prev_qp[qp], A_prev_qp[qp]);
 
       // evaluate S = (S_Q, S_A) at the quadrature points
-      d_S_evaluator(t, points, Q_prev_qp, A_prev_qp, S_Q, S_A);
+      d_S_evaluator(t, *edge, points, Q_prev_qp, A_prev_qp, S_Q, S_A);
 
       for (std::size_t i = 0; i < num_basis_functions; i += 1) {
         // rhs integral
@@ -251,8 +251,7 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
       assert(edge.has_physical_data());
       const auto &param = edge.get_physical_data();
 
-      // only one direction at the beginning.
-      assert(edge.is_pointing_to(vertex->get_id()));
+      const bool is_pointing_to = edge.is_pointing_to(vertex->get_id());
 
       const auto &vertex_dof_map = d_dof_map->get_local_dof_map(*vertex);
       const auto &vertex_dofs = vertex_dof_map.dof_indices();
@@ -260,16 +259,18 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
       d_flow_upwind_evaluator.get_fluxes_on_nfurcation(t, *vertex, Q_up_macro_edge, A_up_macro_edge);
       auto Q_out = Q_up_macro_edge.front();
 
+      const double sgn = is_pointing_to ? +1 : -1;
+
       const auto p_c = u_prev[vertex_dofs[0]];
 
-      const double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
-      const double R1 = param.rho * c0 / param.A0;
+      // TODO: Move this calculation to the vertex.
+      const double R1 = param.rho * param.get_c0() / param.A0;
       const double R2 = vertex->get_peripheral_vessel_data().resistance - R1;
 
       // pressure in the veins:
-      const double p_v = 5.0 * 1.333322;
+      const double p_v = vertex->get_peripheral_vessel_data().p_out;
 
-      rhs[vertex_dofs[0]] = 1. / vertex->get_peripheral_vessel_data().compliance * (Q_out - (p_c - p_v) / R2);
+      rhs[vertex_dofs[0]] = 1. / vertex->get_peripheral_vessel_data().compliance * (sgn * Q_out - (p_c - p_v) / R2);
     }
   }
 }

@@ -26,13 +26,13 @@ class MicroEdge;
 class LocalEdgeDofMap {
 public:
   LocalEdgeDofMap(std::size_t dof_interval_start,
-              std::size_t num_components,
-              std::size_t num_basis_functions,
-              std::size_t num_micro_edges);
+                  std::size_t num_components,
+                  std::size_t num_basis_functions,
+                  std::size_t num_micro_edges);
 
   void dof_indices(std::size_t local_micro_edge_id, std::size_t component, std::vector<std::size_t> &dof_indices) const;
 
-  void dof_indices(const MicroEdge& micro_edge, std::size_t component, std::vector<std::size_t> &dof_indices) const;
+  void dof_indices(const MicroEdge &micro_edge, std::size_t component, std::vector<std::size_t> &dof_indices) const;
 
   std::size_t num_local_dof() const;
   std::size_t num_micro_edges() const;
@@ -56,10 +56,10 @@ public:
 
   std::size_t num_local_dof() const;
 
-  const std::vector< std::size_t > & dof_indices() const;
+  const std::vector<std::size_t> &dof_indices() const;
 
 private:
-  std::vector< std::size_t > d_dof_indices;
+  std::vector<std::size_t> d_dof_indices;
 };
 
 /** @brief Stores and returns the local dof-maps for all macro primitives. */
@@ -99,12 +99,19 @@ public:
               std::size_t degree,
               bool global);
 
+  size_t first_owned_global_dof() const;
+
+  size_t num_owned_dofs() const;
+
 private:
   std::vector<std::unique_ptr<LocalEdgeDofMap>> d_local_dof_maps;
 
   std::vector<std::unique_ptr<LocalVertexDofMap>> d_local_vertex_dof_maps;
 
   std::size_t d_num_dof;
+
+  size_t d_first_owned_global_dof;
+  size_t d_num_owned_dofs;
 };
 
 /*! @brief Copies the dof values in dof_indices from a global vector into a local vector. */

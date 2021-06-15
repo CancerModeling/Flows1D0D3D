@@ -41,12 +41,7 @@ int main(int argc, char *argv[]) {
   const std::size_t num_macro_edges = 4;
   const std::size_t num_edges_per_segment = 11;
 
-  const mc::PhysicalData physical_data = {
-      4.0 / 3.0 * std::sqrt(M_PI) * 4000 * 0.1 / std::sqrt(1.),
-    1,
-    1.028e-3,
-    1. / num_macro_edges
-  };
+  const mc::PhysicalData physical_data = mc::PhysicalData::set_from_data(400000, 1, 1.028e-2, 9, 1., 1./num_macro_edges);
 
   std::cout << mc::calculate_c0(physical_data.G0, physical_data.rho, physical_data.A0) << std::endl;
 
