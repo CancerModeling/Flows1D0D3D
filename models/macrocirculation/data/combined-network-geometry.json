@@ -716,6 +716,14 @@
     {
       "id": 177,
       "name": "bg_115"
+    },
+    {
+      "id": 178,
+      "name": "mp_(cw_con_1)_(bg_132)_(bg_141)"
+    },
+    {
+      "id": 179,
+      "name": "mp_(cw_con_2)_(bg_135)_(bg_119)"
     }
   ],
   "vessels": [
@@ -15739,27 +15747,75 @@
     },
     {
       "id": 223,
-      "name": "con_vertex(cw_con_1)_vertex(bg_132)",
-      "vessel_length": 10.0,
-      "radius": 0.24,
+      "name": "con_vertex(cw_con_1)_vertex(mp_(cw_con_1)_(bg_132)_(bg_141))",
+      "vessel_length": 5,
+      "radius": 0.06,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
       "gamma": 2,
-      "number_edges": 240,
+      "number_edges": 120,
       "left_vertex_id": 30,
-      "right_vertex_id": 145
+      "right_vertex_id": 178
     },
     {
       "id": 224,
-      "name": "con_vertex(cw_con_2)_vertex(bg_135)",
-      "vessel_length": 10.0,
-      "radius": 0.24,
+      "name": "con_vertex[mp_(cw_con_1)_(bg_132)_(bg_141)]_vertex[bg_132]",
+      "vessel_length": 2.5,
+      "radius": 0.06,
       "wall_thickness": 0.005,
       "elastic_modulus": 1300000.0,
       "gamma": 2,
-      "number_edges": 240,
+      "number_edges": 60,
+      "left_vertex_id": 178,
+      "right_vertex_id": 145
+    },
+    {
+      "id": 225,
+      "name": "con_vertex[mp_(cw_con_1)_(bg_132)_(bg_141)]_vertex[bg_141]",
+      "vessel_length": 5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 120,
+      "left_vertex_id": 178,
+      "right_vertex_id": 30
+    },
+    {
+      "id": 226,
+      "name": "con_vertex(cw_con_2)_vertex(mp_(cw_con_2)_(bg_135)_(bg_119))",
+      "vessel_length": 5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 120,
       "left_vertex_id": 31,
+      "right_vertex_id": 179
+    },
+    {
+      "id": 227,
+      "name": "con_vertex[mp_(cw_con_2)_(bg_135)_(bg_119)]_vertex[bg_135]",
+      "vessel_length": 2.5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 60,
+      "left_vertex_id": 179,
       "right_vertex_id": 32
+    },
+    {
+      "id": 228,
+      "name": "con_vertex[mp_(cw_con_2)_(bg_135)_(bg_119)]_vertex[bg_119]",
+      "vessel_length": 7,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 168,
+      "left_vertex_id": 179,
+      "right_vertex_id": 31
     }
   ]
 }
