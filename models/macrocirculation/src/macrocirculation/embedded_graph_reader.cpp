@@ -62,24 +62,15 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
     } else if (vessel.contains("radii")) {
       for (double r : vessel["radii"])
         r_avg += r;
-      r_avg /= vessel["radii"].size();
+      r_avg /= static_cast<double>(vessel["radii"].size());
     } else {
       throw std::runtime_error("cannot infer radius");
     }
 
-    const double wall_thickness = vessel["wall_thickness"];
-    double E = vessel["elastic_modulus"];
-    E /= 100.;
-
-    const double A0 = std::pow(r_avg, 2) * M_PI;
-    // const double G0 = calculate_G0(d_wall_width, d_elastic_modulus, d_poisson_ratio, A0);
-    const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * E * wall_thickness / std::sqrt(A0);
-    const double length = vessel["vessel_length"];
-
     if (vessel.contains("name"))
       edge->set_name(vessel["name"]);
 
-    edge->add_physical_data({G0, A0, d_rho, length});
+    edge->add_physical_data(PhysicalData::set_from_data(vessel["elastic_modulus"], vessel["wall_thickness"], d_rho, vessel["gamma"], r_avg, vessel["vessel_length"]));
   }
 
   for (auto vertex : j["vertices"]) {

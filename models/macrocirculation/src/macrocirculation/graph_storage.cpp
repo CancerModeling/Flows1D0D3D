@@ -4,12 +4,14 @@
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
-#include <cmath> // (add before graph_storage.hpp) easy fix for compile error about std::abs
 #include "graph_storage.hpp"
+#include <cmath> // (add before graph_storage.hpp) easy fix for compile error about std::abs
 
 #include <algorithm>
 #include <cassert>
 #include <utility>
+
+#include "vessel_formulas.hpp"
 
 namespace macrocirculation {
 
@@ -22,8 +24,9 @@ Point convex_combination(const Point &left, const Point &right, double theta) {
           (1 - theta) * left.z + theta * right.z};
 }
 
-PhysicalData::PhysicalData(double G0, double A0, double rho, double length)
-    : G0(G0), A0(A0), rho(rho), length(length) {}
+PhysicalData::PhysicalData(double G0, double A0, double rho, double length, double viscosity, double gamma, double radius)
+    : G0(G0), A0(A0), rho(rho), length(length), viscosity(viscosity), gamma(gamma), radius(radius)
+{}
 
 std::size_t DiscretizationData::num_micro_edges() const {
   return lengths.size();
@@ -34,6 +37,25 @@ Primitive::Primitive(std::size_t id)
 
 std::size_t Primitive::get_id() const {
   return p_id;
+}
+
+PhysicalData PhysicalData::set_from_data(double elastic_modulus, double wall_thickness, double density, double gamma, double radius, double length) {
+  // [E] = Pa = N m^{-2} = kg s^{-2} m^{-1} = kg s^{-2} cm^{-1} 100^{-1}
+  const double E = elastic_modulus / 100;
+
+  const double A0 = std::pow(radius, 2) * M_PI;
+
+  // const double G0 = calculate_G0(d_wall_width, d_elastic_modulus, d_poisson_ratio, A0);
+  const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * E * wall_thickness / std::sqrt(A0);
+
+  // the viscosity
+  const double viscosity = viscosity_bloodplasma(radius);
+
+  return {G0, A0, density, length, viscosity, gamma, radius};
+}
+
+double PhysicalData::get_c0() const {
+  return std::pow(G0 / (2.0 * rho), 0.5);
 }
 
 const std::string &Primitive::get_name() const {
@@ -85,6 +107,8 @@ void Vertex::set_to_windkessel_outflow(double r, double c) {
   p_flow_type = FlowType::Windkessel;
   p_peripheral_vessel_data.resistance = r;
   p_peripheral_vessel_data.compliance = c;
+  // TODO: Make this settable from outside!
+  p_peripheral_vessel_data.p_out = 5.0 * 1.333322;
 }
 
 const PeripheralVesselData &Vertex::get_peripheral_vessel_data() const { return p_peripheral_vessel_data; }
@@ -201,6 +225,8 @@ Edge::Edge(std::size_t id,
 };
 
 std::size_t Edge::num_micro_edges() const { return d_micro_edges.size(); };
+
+std::size_t Edge::num_micro_vertices() const { return d_micro_edges.size()+1; };
 
 const std::vector<MicroEdge> &Edge::micro_edges() const { return d_micro_edges; };
 
