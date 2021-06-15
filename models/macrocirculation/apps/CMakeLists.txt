@@ -56,7 +56,26 @@ target_link_libraries(${ProjectName}Transport ${ProjectLib})
 # Darcy's flow in 3D tissue domain
 add_executable(${ProjectName}Darcy3D tissue_domain_darcy.cpp)
 target_link_libraries(${ProjectName}Darcy3D ${ProjectLib})
-target_link_libraries(${ProjectName}Darcy3D cxxopts)
+target_link_libraries(${ProjectName}Darcy3D cxxopts fmt)
+
+# Test nifti reader
+add_executable(${ProjectName}NiftiRW test_nifti_reader.cpp)
+target_link_libraries(${ProjectName}NiftiRW ${ProjectLib})
+target_link_libraries(${ProjectName}NiftiRW cxxopts)
+
+# Model Darcy's flow with heterogeneous parameter field
+add_executable(${ProjectName}DarcyHetero darcy_test_heterogeneous.cpp)
+target_link_libraries(${ProjectName}DarcyHetero ${ProjectLib})
+target_link_libraries(${ProjectName}DarcyHetero cxxopts)
+
+add_executable(${ProjectName}LegacyVTK legacy_vtk_reader.cpp)
+target_link_libraries(${ProjectName}LegacyVTK ${ProjectLib})
+target_link_libraries(${ProjectName}LegacyVTK cxxopts)
+
+# test perfusion partitioning
+add_executable(${ProjectName}PartPerfusionTest partioning_perfusion.cpp)
+target_link_libraries(${ProjectName}PartPerfusionTest ${ProjectLib})
+target_link_libraries(${ProjectName}PartPerfusionTest cxxopts nanoflann fmt)
 
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
@@ -66,11 +85,27 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}Abstract33VesselsGeometry
                    ${ProjectName}CombinedGeometry
                    ${ProjectName}Transport
-                   ${ProjectName}LinearFlow
-                   ${ProjectName}Darcy3D)
+                   ${ProjectName}Darcy3D
+                   ${ProjectName}NiftiRW
+                   ${ProjectName}DarcyHetero
+                   ${ProjectName}LegacyVTK
+                   ${ProjectName}PartPerfusionTest)
+                   ${ProjectName}LinearFlow)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:${TargetName}>/output_darcy3d)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:${TargetName}>/output_darcy_hetero)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:${TargetName}>/output_part_perfusion_test)
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD

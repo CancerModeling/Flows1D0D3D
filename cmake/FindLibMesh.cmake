@@ -99,7 +99,7 @@ endif()
 # handle the QUIETLY and REQUIRED arguments and set LIBMESH_FOUND to TRUE if
 # all listed variables are TRUE
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(Libmesh
+find_package_handle_standard_args(LibMesh
   FOUND_VAR LIBMESH_FOUND
   REQUIRED_VARS LIBMESH_LIBRARIES LIBMESH_INCLUDE_DIRS LIBMESH_DEFINITIONS
     LIBMESH_FLAGS
