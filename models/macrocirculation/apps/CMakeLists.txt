@@ -48,7 +48,7 @@ target_link_libraries(${ProjectName}Calibration cxxopts)
 
 add_executable(${ProjectName}LinearFlow linear_flow.cpp)
 target_link_libraries(${ProjectName}LinearFlow ${ProjectLib})
-target_link_libraries(${ProjectName}LinearFlow Eigen3::Eigen)
+target_link_libraries(${ProjectName}LinearFlow  ${LIBMESH_LIBRARIES}) # libmesh for eigen
 
 add_executable(${ProjectName}Transport transport_test.cpp)
 target_link_libraries(${ProjectName}Transport ${ProjectLib})
@@ -89,7 +89,7 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NiftiRW
                    ${ProjectName}DarcyHetero
                    ${ProjectName}LegacyVTK
-                   ${ProjectName}PartPerfusionTest)
+                   ${ProjectName}PartPerfusionTest
                    ${ProjectName}LinearFlow)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
