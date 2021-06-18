@@ -80,13 +80,13 @@ void assemble_inverse_mass(MPI_Comm comm, const GraphStorage &graph, const DofMa
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
     auto &vertex = *graph.get_vertex(v_id);
 
-    if (!vertex.is_windkessel_outflow())
-      continue;
-
-    auto &vertex_dof_map = dof_map.get_local_dof_map(vertex);
-    auto &indices = vertex_dof_map.dof_indices();
-    for (auto i : indices) {
-      inv_mass[i] = 1;
+    // TODO: This is stupid!
+    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow()) {
+      auto &vertex_dof_map = dof_map.get_local_dof_map(vertex);
+      auto &indices = vertex_dof_map.dof_indices();
+      for (auto i : indices) {
+        inv_mass[i] = 1;
+      }
     }
   }
 }
@@ -100,7 +100,7 @@ RightHandSideEvaluator::RightHandSideEvaluator(MPI_Comm comm,
       d_dof_map(std::move(dof_map)),
       d_flow_upwind_evaluator(comm, d_graph, d_dof_map),
       d_S_evaluator(default_S{
-        0        // 0 cm^2/s, no wall permeability
+        0 // 0 cm^2/s, no wall permeability
       }),
       d_degree(degree),
       d_inverse_mass(d_dof_map->num_dof()) {
@@ -271,6 +271,53 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
       const double p_v = vertex->get_peripheral_vessel_data().p_out;
 
       rhs[vertex_dofs[0]] = 1. / vertex->get_peripheral_vessel_data().compliance * (sgn * Q_out - (p_c - p_v) / R2);
+    }
+    // TODO: merge code with windkessel
+    else if (vertex->is_leaf() && vertex->is_vessel_tree_outflow()) {
+      const auto &edge = *d_graph->get_edge(vertex->get_edge_neighbors()[0]);
+      assert(edge.has_physical_data());
+      const auto &param = edge.get_physical_data();
+
+      const bool is_pointing_to = edge.is_pointing_to(vertex->get_id());
+
+      const auto &vertex_dof_map = d_dof_map->get_local_dof_map(*vertex);
+      const auto &vertex_dofs = vertex_dof_map.dof_indices();
+
+      d_flow_upwind_evaluator.get_fluxes_on_nfurcation(t, *vertex, Q_up_macro_edge, A_up_macro_edge);
+      auto Q_out = Q_up_macro_edge.front();
+
+      const double sgn = is_pointing_to ? +1 : -1;
+
+      std::vector<double> p_c;
+      for (size_t k = 0; k < vertex_dofs.size(); k += 1) {
+        p_c.push_back(u_prev[vertex_dofs[k]]);
+      }
+
+      // std::cout << p_c << std::endl;
+
+      const auto &vtd = vertex->get_vessel_tree_data();
+      assert(vertex_dofs.size() == vtd.capacitances.size());
+      assert(vertex_dofs.size() == vtd.resistances.size());
+      const auto &C = vtd.capacitances;
+      // const double R_in = param.rho * param.get_c0() / param.A0;
+      const double p_out = vtd.p_out;
+      // we copy the resistances vector:
+      std::vector<double> R{vtd.resistances};
+
+      // std::cout << "vid " << vertex->get_id() << " Q_out = " << Q_out << std::endl;
+
+      // first
+      rhs[vertex_dofs[0]] = 1. / C[0] * (sgn * Q_out - (p_c[0] - p_c[1]) / R[0]);
+
+      // std::cout << rhs[vertex_dofs[0]] << std::endl;
+
+      // middle
+      for (size_t k = 1; k < p_c.size() - 1; k += 1)
+        rhs[vertex_dofs[k]] = 1. / C[k] * ((p_c[k - 1] - p_c[k]) / (2 * R[k - 1]) - (p_c[k] - p_c[k + 1]) / R[k]);
+
+      //last
+      const size_t k_last = p_c.size() - 1;
+      rhs[vertex_dofs[k_last]] = 1. / C[k_last] * ((p_c[k_last - 1] - p_c[k_last]) / (2 * R[k_last - 1]) - (p_c[k_last] - p_out) / (R[k_last]));
     }
   }
 }

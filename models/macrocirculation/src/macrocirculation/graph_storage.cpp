@@ -24,9 +24,15 @@ Point convex_combination(const Point &left, const Point &right, double theta) {
           (1 - theta) * left.z + theta * right.z};
 }
 
-PhysicalData::PhysicalData(double G0, double A0, double rho, double length, double viscosity, double gamma, double radius)
-    : G0(G0), A0(A0), rho(rho), length(length), viscosity(viscosity), gamma(gamma), radius(radius)
-{}
+PhysicalData::PhysicalData(double elastic_modulus, double G0, double A0, double rho, double length, double viscosity, double gamma, double radius)
+    : elastic_modulus(elastic_modulus),
+      G0(G0),
+      A0(A0),
+      rho(rho),
+      length(length),
+      viscosity(viscosity),
+      gamma(gamma),
+      radius(radius) {}
 
 std::size_t DiscretizationData::num_micro_edges() const {
   return lengths.size();
@@ -51,7 +57,7 @@ PhysicalData PhysicalData::set_from_data(double elastic_modulus, double wall_thi
   // the viscosity
   const double viscosity = viscosity_bloodplasma(radius);
 
-  return {G0, A0, density, length, viscosity, gamma, radius};
+  return {elastic_modulus, G0, A0, density, length, viscosity, gamma, radius};
 }
 
 double PhysicalData::get_c0() const {
@@ -111,11 +117,22 @@ void Vertex::set_to_windkessel_outflow(double r, double c) {
   p_peripheral_vessel_data.p_out = 5.0 * 1.333322;
 }
 
+void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances) {
+  p_flow_type = FlowType::VesselTree;
+  p_vessel_tree_data.p_out = p;
+  p_vessel_tree_data.resistances = resistances;
+  p_vessel_tree_data.capacitances = capacitances;
+}
+
 const PeripheralVesselData &Vertex::get_peripheral_vessel_data() const { return p_peripheral_vessel_data; }
+
+const VesselTreeData &Vertex::get_vessel_tree_data() const { return p_vessel_tree_data; }
 
 bool Vertex::is_free_outflow() const { return p_flow_type == FlowType::FreeOutflow; }
 
 bool Vertex::is_windkessel_outflow() const { return p_flow_type == FlowType::Windkessel; };
+
+bool Vertex::is_vessel_tree_outflow() const { return p_flow_type == FlowType::VesselTree; };
 
 bool Vertex::is_inflow() const {
   return p_flow_type == FlowType::Inflow;
@@ -226,7 +243,7 @@ Edge::Edge(std::size_t id,
 
 std::size_t Edge::num_micro_edges() const { return d_micro_edges.size(); };
 
-std::size_t Edge::num_micro_vertices() const { return d_micro_edges.size()+1; };
+std::size_t Edge::num_micro_vertices() const { return d_micro_edges.size() + 1; };
 
 const std::vector<MicroEdge> &Edge::micro_edges() const { return d_micro_edges; };
 
