@@ -14,11 +14,11 @@
 #include "fe_type.hpp"
 #include "gmm.h"
 #include "graph_pvd_writer.hpp"
+#include "implicit_linear_flow_solver.hpp"
 #include "interpolate_to_vertices.hpp"
 #include "petsc/petsc_ksp.hpp"
 #include "petsc/petsc_mat.hpp"
 #include "petsc/petsc_vec.hpp"
-#include "implicit_linear_flow_solver.hpp"
 
 namespace macrocirculation {
 
@@ -259,7 +259,7 @@ void ImplicitAdvectionSolver::solve() const {
           f.add(dof_indices, f_ext_loc);
           A.add(dof_indices, dof_indices, A_ext_loc);
         }
-          // outflow boundary
+        // outflow boundary
         else if (macro_edge->get_vertex_neighbors()[1] == 2) {
           local_dof_map.dof_indices(neighbor_edges[1], 0, dof_indices);
           std::cout << "outflow!" << e_id << std::endl;

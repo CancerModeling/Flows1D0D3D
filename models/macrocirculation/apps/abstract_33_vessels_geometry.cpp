@@ -35,9 +35,10 @@ int main(int argc, char *argv[]) {
     ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/network-33-vessels.json")) //
     ("boundary-file", "path to the file for the boundary conditions", cxxopts::value<std::string>()->default_value(""))      //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))              //
+    ("inlet-name", "the name of the inlet", cxxopts::value<std::string>()->default_value("cw_in"))                           //
     ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                    //
     ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                         //
-    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-3"))                            //
+    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-4"))                            //
     ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("1"))                                        //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
@@ -66,7 +67,44 @@ int main(int argc, char *argv[]) {
     graph_reader.set_boundary_data(boundary_file_path, *graph);
   }
 
-  graph->find_vertex_by_name("cw_in")->set_to_inflow(mc::heart_beat_inflow(args["heart-amplitude"].as<double>()));
+  graph->find_vertex_by_name(args["inlet-name"].as<std::string>())->set_to_inflow(mc::heart_beat_inflow(args["heart-amplitude"].as<double>()));
+
+  for (auto &v_id : graph->get_vertex_ids()) {
+    auto &vertex = *graph->get_vertex(v_id);
+    if (!vertex.is_leaf())
+      continue;
+
+    if (vertex.is_inflow())
+    {
+      std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << " found inflow " << vertex.get_name() << std::endl;
+      continue;
+    }
+
+    std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << " sets " << vertex.get_name() << " to tree bc" << std::endl;
+    auto &edge = *graph->get_edge(vertex.get_edge_neighbors()[0]);
+    auto &param = edge.get_physical_data();
+    const double E = param.elastic_modulus;
+    const double r_0 = param.radius;
+    const double r_cap = 5e-4;
+    const double h_0 = 1e-4;
+    const double p_cap = 30 * (133.333) * 1e-2;
+    const int N = static_cast<int>(std::ceil(3 * std::log(r_0 / r_cap) / std::log(2.)));
+    const auto alpha = 1. / std::pow(2, 1 / 3.);
+    std::vector<double> list_C;
+    std::vector<double> list_R;
+    double r = r_0 * alpha;
+    //double l = 0.2;
+    double l = param.length;
+    for (size_t k = 0; k < N; k += 1) {
+      const double C = 3 * std::pow(r, 3) * M_PI * l / (2 * E * h_0);
+      const double R = 2 * (param.gamma + 2) * param.viscosity * l / (std::pow(r, 2));
+      list_C.push_back(C);
+      list_R.push_back(R);
+      r *= alpha;
+    }
+
+    vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C);
+  }
 
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
@@ -106,11 +144,23 @@ int main(int argc, char *argv[]) {
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "abstract_33_vessels");
 
   // output for 0D-Model:
-  std::vector< double > list_t;
+  std::vector<double> list_t;
   std::map<size_t, std::vector<mc::Values0DModel>> list_0d;
-  for (auto v_id : graph->get_vertex_ids()) {
+  for (auto v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
     if (graph->get_vertex(v_id)->is_windkessel_outflow())
       list_0d[v_id] = std::vector<mc::Values0DModel>{};
+  }
+
+  for (auto &v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
+    auto &vertex = *graph->get_vertex(v_id);
+    if (vertex.is_vessel_tree_outflow()) {
+      const auto &vertex_dof_map = dof_map_flow->get_local_dof_map(vertex);
+      const auto &vertex_dofs = vertex_dof_map.dof_indices();
+      auto &u = flow_solver.get_solution();
+
+      for (size_t k = 0; k < vertex_dofs.size(); k += 1)
+        u[vertex_dofs[k]] = 0. * 1.33333;
+    }
   }
 
   const auto begin_t = std::chrono::steady_clock::now();
@@ -138,8 +188,34 @@ int main(int argc, char *argv[]) {
       pvd_writer.add_vertex_data("vessel_id", vessel_ids);
       pvd_writer.write(flow_solver.get_time());
 
+      for (auto &v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
+        auto &vertex = *graph->get_vertex(v_id);
+        if (vertex.is_vessel_tree_outflow()) {
+          const auto &vertex_dof_map = dof_map_flow->get_local_dof_map(vertex);
+          const auto &vertex_dofs = vertex_dof_map.dof_indices();
+          const auto &u = flow_solver.get_solution();
+
+          std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << std::endl;
+          std::cout << "vertex = " << vertex.get_name() << "\n";
+          std::cout << " p = ";
+          for (size_t k = 0; k < vertex_dofs.size(); k += 1)
+            std::cout << u[vertex_dofs[k]] << ", ";
+          std::cout << std::endl;
+          std::cout << " R = ";
+          for (size_t k = 0; k < vertex_dofs.size(); k += 1)
+            std::cout << vertex.get_vessel_tree_data().resistances[k] << ", ";
+          std::cout << std::endl;
+          std::cout << " C = ";
+          for (size_t k = 0; k < vertex_dofs.size(); k += 1)
+            std::cout << vertex.get_vessel_tree_data().capacitances[k] << ", ";
+          std::cout << std::endl;
+        } else {
+          // std::cout << "vertex = " << vertex.get_name() << " (no tree outflow)\n";
+        }
+      }
+
       // update and write 0D-Model
-      for (auto v_id : graph->get_vertex_ids()) {
+      for (auto v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
         auto v = graph->get_vertex(v_id);
         if (v->is_windkessel_outflow()) {
           auto res = flow_solver.get_0D_values(*v);
