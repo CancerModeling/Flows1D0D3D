@@ -31,7 +31,7 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 # set default build type "Release"
 if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
-endif()
+endif ()
 
 # set flag for information dump during cmake build
 set(Enable_CMAKE_Debug_Build TRUE CACHE BOOL "Output important information during cmake for isolating build issues")
@@ -53,14 +53,14 @@ enable_testing()
 
 if (${Enable_CMAKE_Debug_Build})
     message("Enable_Tests = ${Enable_Tests}")
-endif()
+endif ()
 
 # ****************************************************************************
 # Package search
 # ****************************************************************************
 
 # **** bash ****#
-find_program (BASH_PROGRAM bash REQUIRED)
+find_program(BASH_PROGRAM bash REQUIRED)
 
 # **** MPI ****#
 find_package(MPI REQUIRED)
@@ -87,11 +87,11 @@ else ()
             GIT_REPOSITORY https://github.com/nlohmann/json.git
             GIT_TAG v3.7.3)
     FetchContent_GetProperties(json)
-    if(NOT json_POPULATED)
+    if (NOT json_POPULATED)
         FetchContent_Populate(json)
         add_subdirectory(${json_SOURCE_DIR} ${json_BINARY_DIR} EXCLUDE_FROM_ALL)
-    endif()
-endif()
+    endif ()
+endif ()
 
 # cxxopts
 include(FetchContent)
@@ -99,29 +99,29 @@ FetchContent_Declare(cxxopts
         GIT_REPOSITORY https://github.com/jarro2783/cxxopts
         GIT_TAG a20bda6179b41c0cf49d557b0b21c3fb4f6c09b7)
 FetchContent_GetProperties(cxxopts)
-if(NOT cxxopts_POPULATED)
+if (NOT cxxopts_POPULATED)
     FetchContent_Populate(cxxopts)
     add_subdirectory(${cxxopts_SOURCE_DIR} ${cxxopts_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
+endif ()
 
 # fmt
 FetchContent_Declare(fmt
         GIT_REPOSITORY https://github.com/fmtlib/fmt
         GIT_TAG 7.1.3)
 FetchContent_GetProperties(fmt)
-if(NOT fmt_POPULATED)
+if (NOT fmt_POPULATED)
     FetchContent_Populate(fmt)
     add_subdirectory(${fmt_SOURCE_DIR} ${fmt_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
+endif ()
 
 # debug output flags
 if (${Enable_CMAKE_Debug_Build})
-message("LIBMESH_DEFINITIONS = ${PC_LIBMESH_CFLAGS_DEFS}")
-message("LIBMESH_FLAGS = ${PC_LIBMESH_CFLAGS_FLAGS}")
-message("LIBMESH_INCLUDE_DIRS = ${LIBMESH_INCLUDE_DIRS}")
-message("LIBMESH_LIBRARIES = ${LIBMESH_LIBRARIES}")
-message("PETSC_LIBRARIES = ${PETSC_LIBRARIES}")
-endif()
+    message("LIBMESH_DEFINITIONS = ${PC_LIBMESH_CFLAGS_DEFS}")
+    message("LIBMESH_FLAGS = ${PC_LIBMESH_CFLAGS_FLAGS}")
+    message("LIBMESH_INCLUDE_DIRS = ${LIBMESH_INCLUDE_DIRS}")
+    message("LIBMESH_LIBRARIES = ${LIBMESH_LIBRARIES}")
+    message("PETSC_LIBRARIES = ${PETSC_LIBRARIES}")
+endif ()
 
 # **** vtk ****#
 find_package(VTK REQUIRED)
@@ -134,7 +134,7 @@ if (${Enable_CMAKE_Debug_Build})
     message("VTK_DIR = ${VTK_DIR}")
     message("VTK_LIBRARIES = ${VTK_LIBRARIES}")
     message("VTK_INCLUDE_DIRS = ${VTK_INCLUDE_DIRS}")
-endif()
+endif ()
 
 # issue error and exit
 if ((NOT MPI_FOUND) AND (NOT LIBMESH_FOUND))
@@ -150,10 +150,10 @@ FetchContent_Declare(nanoflann
         GIT_REPOSITORY https://github.com/jlblancoc/nanoflann
         GIT_TAG v1.3.2)
 FetchContent_GetProperties(nanoflann)
-if(NOT nanoflann_POPULATED)
+if (NOT nanoflann_POPULATED)
     FetchContent_Populate(nanoflann)
     add_subdirectory(${nanoflann_SOURCE_DIR} ${nanoflann_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
+endif ()
 # ****************************************************************************
 # Build, compiler, linker flags
 # ****************************************************************************
@@ -172,7 +172,7 @@ if (${Enable_CMAKE_Debug_Build})
     message("CMAKE_EXE_LINKER_FLAGS = ${CMAKE_EXE_LINKER_FLAGS}")
     message("CMAKE_CXX_FLAGS = ${CMAKE_CXX_FLAGS}")
     message("CMAKE_CXX_STANDARD = ${CMAKE_CXX_STANDARD}")
-endif()
+endif ()
 
 
 # ****************************************************************************
@@ -181,40 +181,46 @@ endif()
 include_directories(${LIBMESH_INCLUDE_DIRS})
 include_directories(${MPI_INCLUDE_PATH})
 
+# external headeronly dependencies
+include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/gmm")
+include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/aixlog")
+include_directories(${VTK_INCLUDE_DIRS})
+
 # ****************************************************************************
 # Add subprojects
 # ****************************************************************************
 if (${Enable_CMAKE_Debug_Build})
     message("LIBTG_BUILD_FLAG: ${LIBTG_BUILD_FLAG}")
-endif()
+endif ()
 
 if (${Enable_CMAKE_Debug_Build})
     message("Gnerating build files for LibTG ")
-endif()
+endif ()
 add_subdirectory(models)
+add_subdirectory(src)
 
-if(${Enable_Tests})
+if (${Enable_Tests})
     message("Gnerating build files for Test ")
     add_subdirectory(models/tests)
     add_subdirectory(tests)
-endif()
+endif ()
 
 # documentation
-if(${Enable_Documentation})
+if (${Enable_Documentation})
     if (${Enable_CMAKE_Debug_Build})
         message("Adding Documentation ")
-    endif()
+    endif ()
     add_subdirectory(docs)
-endif()
+endif ()
 
 # ****************************************************************************
 # Post build operations
 # ****************************************************************************
 # test directory
-if(${Enable_Tests})
+if (${Enable_Tests})
     if (${Enable_CMAKE_Debug_Build})
         message("Copying test data to build directory ")
-    endif()
+    endif ()
 
     add_custom_target("copydata" ALL)
     add_custom_command(
@@ -222,4 +228,6 @@ if(${Enable_Tests})
             COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_SOURCE_DIR}/tests/test_data/
             ${PROJECT_BINARY_DIR}/tests/test_data/)
-endif()
+endif ()
+
+
