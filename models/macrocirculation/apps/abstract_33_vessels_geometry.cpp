@@ -80,6 +80,13 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
+    // we do not touch the circle of willis
+    if (vertex.get_name().rfind("cw_") == 0)
+    {
+      std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << " found cw node " << vertex.get_name() << " and keeps windkessel bc." << std::endl;
+      continue;
+    }
+
     std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << " sets " << vertex.get_name() << " to tree bc" << std::endl;
     auto &edge = *graph->get_edge(vertex.get_edge_neighbors()[0]);
     auto &param = edge.get_physical_data();
@@ -93,8 +100,7 @@ int main(int argc, char *argv[]) {
     std::vector<double> list_C;
     std::vector<double> list_R;
     double r = r_0 * alpha;
-    //double l = 0.2;
-    double l = param.length;
+    double l = 0.2; // 2mm is the average vessel length
     for (size_t k = 0; k < N; k += 1) {
       const double C = 3 * std::pow(r, 3) * M_PI * l / (2 * E * h_0);
       const double R = 2 * (param.gamma + 2) * param.viscosity * l / (std::pow(r, 2));
