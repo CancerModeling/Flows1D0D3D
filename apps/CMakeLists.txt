@@ -124,6 +124,6 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data $<TARGET_FILE_DIR:${ProjectName}CombinedGeometry>/data
+            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data $<TARGET_FILE_DIR:${TargetName}>/data
             COMMENT "Copying symlinking folder: data")
 endforeach()

@@ -18,7 +18,7 @@ namespace mc = macrocirculation;
 int main(int argc, char *argv[]) {
   cxxopts::Options options(argv[0], "Test nifti reader");
   options.add_options()("input-file", "path to the input file",
-                        cxxopts::value<std::string>()->default_value("data/test.nii.gz")) //
+                        cxxopts::value<std::string>()->default_value("data/meshes/test.nii.gz")) //
     ("h,help", "print usage");
   auto args = options.parse(argc, argv);
   if (args.count("help")) {

@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 
   mc::EmbeddedGraphReader graph_reader;
   // graph_reader.append("data/coarse-network-geometry.json", *graph);
-  graph_reader.append("data/network-33-vessels-with-connection.json", *graph);
+  graph_reader.append("data/meshes/network-33-vessels-with-connection.json", *graph);
 
   auto &v_in = *graph->get_vertex(0);
   auto &v1 = *graph->get_vertex(30);
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 
   v_in.set_to_inflow(mc::heart_beat_inflow(485.0));
 
-  graph_reader.append("data/coarse-network-geometry.json", *graph);
+  graph_reader.append("data/meshes/coarse-network-geometry.json", *graph);
 
   auto create_physical_data = [](double radius, double vessel_length) -> mc::PhysicalData {
     const double wall_thickness = 0.1;
