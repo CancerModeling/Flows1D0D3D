@@ -90,7 +90,6 @@ private:
 
   /*! @brief Saves the network as a vtk file. */
   util::unet::network_vtk_writer d_networkVtkWriter;
-  util::unet::NetworkVTKWriterOld d_networkVtkWriterOld;
 
   /*! @brief Assembly objects */
   NutAssembly d_nut_assembly;

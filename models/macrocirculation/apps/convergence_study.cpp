@@ -86,7 +86,7 @@ double run_scenario(std::size_t num_micro_edges_per_segment, double tau, bool us
   auto end = graph->create_vertex();
   auto vessel = graph->connect(*start, *end, num_micro_edges_per_segment);
   vessel->add_embedding_data(mc::EmbeddingData{{mc::Point(0, 0, 0), mc::Point(length, 0, 0)}});
-  vessel->add_physical_data(mc::PhysicalData{G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0/M_PI)});
+  vessel->add_physical_data(mc::PhysicalData{0., G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0/M_PI)});
 
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
@@ -160,7 +160,7 @@ void run_temporal_convergence_study(std::size_t num_micro_edges_per_segment, std
   auto end = graph->create_vertex();
   auto vessel = graph->connect(*start, *end, num_micro_edges_per_segment);
   vessel->add_embedding_data(mc::EmbeddingData{{mc::Point(0, 0, 0), mc::Point(length, 0, 0)}});
-  vessel->add_physical_data(mc::PhysicalData{G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0/M_PI)});
+  vessel->add_physical_data(mc::PhysicalData{0, G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0/M_PI)});
 
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
