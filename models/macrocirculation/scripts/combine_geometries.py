@@ -6,13 +6,15 @@ import numpy as np
 
 
 class ConnectionPair:
-    def __init__(self, name0, name1, length, number_macro_edges, number_micro_edges, start_radius):
+    def __init__(self, name0, name1, name2, length, number_micro_edges, radius, elastic_modulus, wall_thickness):
         self.name0 = name0
         self.name1 = name1
+        self.name2 = name2
         self.length = length
-        self.number_macro_edges = number_macro_edges
         self.number_micro_edges = number_micro_edges
-        self.start_radius = start_radius
+        self.radius = radius
+        self.elastic_modulus = elastic_modulus
+        self.wall_thickness = wall_thickness
 
 
 def find_vertex_by_name(geo, name):
@@ -33,8 +35,8 @@ geometry2_path = '../data/coarse-network-geometry.json'
 output_path = '../data/combined-network-geometry.json'
 
 to_connect = [
-    ConnectionPair('cw_con_1', 'bg_132', 10., 6, 240, start_radius=0.24),
-    ConnectionPair('cw_con_2', 'bg_135', 10., 6, 240, start_radius=0.24)
+    ConnectionPair('cw_con_1', 'bg_132', 'bg_141', [5, 2.5, 5], [120, 60, 120], radius=0.06, elastic_modulus=1300000.0, wall_thickness=0.005),
+    ConnectionPair('cw_con_2', 'bg_135', 'bg_119', [5, 2.5, 7], [120, 60, 168], radius=0.06, elastic_modulus=1300000.0, wall_thickness=0.005)
 ]
 
 with open(geometry1_path) as f:
@@ -57,58 +59,61 @@ for e in geo2['vessels']:
 geo['vertices'] += geo2['vertices']
 geo['vessels'] += geo2['vessels']
 
-max_vertex_id = max([v["id"] for v in geo['vertices']])
 max_vessel_id = max([e["id"] for e in geo['vessels']])
+max_vertex_id = max([v["id"] for v in geo['vertices']])
 
 for cpair in to_connect:
     v0 = find_vertex_by_name(geo, cpair.name0)
     v1 = find_vertex_by_name(geo, cpair.name1)
+    v2 = find_vertex_by_name(geo, cpair.name2)
 
-    neighbors_v0 = find_edges_neighbors_by_vertex_id(geo, v0)
-    neighbors_v1 = find_edges_neighbors_by_vertex_id(geo, v1)
+    new_vertex = {'id': max_vertex_id+1, 'name': 'mp_({})_({})_({})'.format(v0['name'], v1['name'], v2['name'])}
+    max_vertex_id += 1
 
-    elastic_modulus_v0 = np.mean([e['elastic_modulus'] for e in neighbors_v0])
-    wall_thickness_v0 = np.mean([e['wall_thickness'] for e in neighbors_v0])
-    radius_v0 = cpair.start_radius
-    elastic_modulus_v1 = np.mean([e['elastic_modulus'] for e in neighbors_v1])
-    wall_thickness_v1 = np.mean([e['wall_thickness'] for e in neighbors_v1])
-    radius_v1 = np.mean([e.get('radius') or np.mean(e['radii']) for e in neighbors_v1])
-
-    wall_thickness_interp = np.linspace(wall_thickness_v0, wall_thickness_v1, cpair.number_macro_edges+2)[1:-1]
-    elastic_modulus_interp = np.linspace(elastic_modulus_v0, elastic_modulus_v1, cpair.number_macro_edges+2)[1:-1]
-    radius_interp = np.linspace(radius_v0, radius_v1, cpair.number_macro_edges+2)[1:-1]
-
-    num_micro_edges = max(2, int(np.floor(cpair.number_micro_edges / cpair.number_macro_edges)))
-
-    vessel_length = cpair.length / cpair.number_macro_edges
-
-    # create new microvertices
-    new_microvertices = [{'id': i+max_vertex_id+1 } for i in range(cpair.number_macro_edges-1)]
-    geo['vertices'] += new_microvertices
-    max_vertex_id += len(new_microvertices)
-
-    # we collect all the microvertices in one list
-    all_microvertices = [v0] + new_microvertices + [v1]
+    geo['vertices'] += [new_vertex]
 
     new_microedges = []
-    for i in range(cpair.number_macro_edges):
-        left_vertex = all_microvertices[i]
-        right_vertex = all_microvertices[i+1]
-        d = {
-            'id': max_vessel_id + i + 1,
-            'name': 'con_vertex({})_vertex({})_({})'.format(cpair.name0, cpair.name1, i),
-            'vessel_length': vessel_length,
-            'radius': radius_interp[i],
-            'wall_thickness': wall_thickness_interp[i],
-            'elastic_modulus': elastic_modulus_interp[i],
-            'gamma': 2,
-            'number_edges': num_micro_edges,
-            'left_vertex_id': left_vertex['id'],
-            'right_vertex_id': right_vertex['id'],
-        }
-        new_microedges.append(d)
+    new_microedges.append({
+        'id': max_vessel_id + 1,
+        'name': 'con_vertex({})_vertex({})'.format(v0['name'], new_vertex['name']),
+        'vessel_length': cpair.length[0],
+        'radius': cpair.radius,
+        'wall_thickness': cpair.wall_thickness,
+        'elastic_modulus': cpair.elastic_modulus,
+        'gamma': 2,
+        'number_edges': cpair.number_micro_edges[0],
+        'left_vertex_id': v0['id'],
+        'right_vertex_id': new_vertex['id'],
+    })
+    max_vessel_id += 1
+    new_microedges.append({
+        'id': max_vessel_id + 1,
+        'name': 'con_vertex[{}]_vertex[{}]'.format(new_vertex['name'], v1['name']),
+        'vessel_length': cpair.length[1],
+        'radius': cpair.radius,
+        'wall_thickness': cpair.wall_thickness,
+        'elastic_modulus': cpair.elastic_modulus,
+        'gamma': 2,
+        'number_edges': cpair.number_micro_edges[1],
+        'left_vertex_id': new_vertex['id'],
+        'right_vertex_id': v1['id'],
+    })
+    max_vessel_id += 1
+    new_microedges.append({
+        'id': max_vessel_id + 1,
+        'name': 'con_vertex[{}]_vertex[{}]'.format(new_vertex['name'], v2['name']),
+        'vessel_length': cpair.length[2],
+        'radius': cpair.radius,
+        'wall_thickness': cpair.wall_thickness,
+        'elastic_modulus': cpair.elastic_modulus,
+        'gamma': 2,
+        'number_edges': cpair.number_micro_edges[2],
+        'left_vertex_id': new_vertex['id'],
+        'right_vertex_id': v0['id'],
+    })
+    max_vessel_id += 1
+
     geo['vessels'] += new_microedges
-    max_vessel_id += len(new_microedges)
 
 with open(output_path, 'w') as f:
     f.write(json.dumps(geo, indent=2))

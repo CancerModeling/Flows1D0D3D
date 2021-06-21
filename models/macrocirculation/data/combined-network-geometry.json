@@ -718,34 +718,12 @@
       "name": "bg_115"
     },
     {
-      "id": 178
+      "id": 178,
+      "name": "mp_(cw_con_1)_(bg_132)_(bg_141)"
     },
     {
-      "id": 179
-    },
-    {
-      "id": 180
-    },
-    {
-      "id": 181
-    },
-    {
-      "id": 182
-    },
-    {
-      "id": 183
-    },
-    {
-      "id": 184
-    },
-    {
-      "id": 185
-    },
-    {
-      "id": 186
-    },
-    {
-      "id": 187
+      "id": 179,
+      "name": "mp_(cw_con_2)_(bg_135)_(bg_119)"
     }
   ],
   "vessels": [
@@ -15769,147 +15747,75 @@
     },
     {
       "id": 223,
-      "name": "con_vertex(cw_con_1)_vertex(bg_132)_(0)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.21137395068307635,
-      "wall_thickness": 0.05814285714285715,
-      "elastic_modulus": 528571.4285714285,
+      "name": "con_vertex(cw_con_1)_vertex(mp_(cw_con_1)_(bg_132)_(bg_141))",
+      "vessel_length": 5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
       "gamma": 2,
-      "number_edges": 40,
+      "number_edges": 120,
       "left_vertex_id": 30,
       "right_vertex_id": 178
     },
     {
       "id": 224,
-      "name": "con_vertex(cw_con_1)_vertex(bg_132)_(1)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.1827479013661527,
-      "wall_thickness": 0.04928571428571429,
-      "elastic_modulus": 657142.8571428572,
+      "name": "con_vertex[mp_(cw_con_1)_(bg_132)_(bg_141)]_vertex[bg_132]",
+      "vessel_length": 2.5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
       "gamma": 2,
-      "number_edges": 40,
+      "number_edges": 60,
       "left_vertex_id": 178,
-      "right_vertex_id": 179
-    },
-    {
-      "id": 225,
-      "name": "con_vertex(cw_con_1)_vertex(bg_132)_(2)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.15412185204922907,
-      "wall_thickness": 0.040428571428571425,
-      "elastic_modulus": 785714.2857142857,
-      "gamma": 2,
-      "number_edges": 40,
-      "left_vertex_id": 179,
-      "right_vertex_id": 180
-    },
-    {
-      "id": 226,
-      "name": "con_vertex(cw_con_1)_vertex(bg_132)_(3)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.12549580273230543,
-      "wall_thickness": 0.03157142857142857,
-      "elastic_modulus": 914285.7142857143,
-      "gamma": 2,
-      "number_edges": 40,
-      "left_vertex_id": 180,
-      "right_vertex_id": 181
-    },
-    {
-      "id": 227,
-      "name": "con_vertex(cw_con_1)_vertex(bg_132)_(4)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.09686975341538179,
-      "wall_thickness": 0.022714285714285715,
-      "elastic_modulus": 1042857.1428571428,
-      "gamma": 2,
-      "number_edges": 40,
-      "left_vertex_id": 181,
-      "right_vertex_id": 182
-    },
-    {
-      "id": 228,
-      "name": "con_vertex(cw_con_1)_vertex(bg_132)_(5)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.06824370409845815,
-      "wall_thickness": 0.013857142857142853,
-      "elastic_modulus": 1171428.5714285714,
-      "gamma": 2,
-      "number_edges": 40,
-      "left_vertex_id": 182,
       "right_vertex_id": 145
     },
     {
-      "id": 229,
-      "name": "con_vertex(cw_con_2)_vertex(bg_135)_(0)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.20943758414827074,
-      "wall_thickness": 0.05814285714285715,
-      "elastic_modulus": 528571.4285714285,
+      "id": 225,
+      "name": "con_vertex[mp_(cw_con_1)_(bg_132)_(bg_141)]_vertex[bg_141]",
+      "vessel_length": 5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
       "gamma": 2,
-      "number_edges": 40,
+      "number_edges": 120,
+      "left_vertex_id": 178,
+      "right_vertex_id": 30
+    },
+    {
+      "id": 226,
+      "name": "con_vertex(cw_con_2)_vertex(mp_(cw_con_2)_(bg_135)_(bg_119))",
+      "vessel_length": 5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 120,
       "left_vertex_id": 31,
-      "right_vertex_id": 183
+      "right_vertex_id": 179
     },
     {
-      "id": 230,
-      "name": "con_vertex(cw_con_2)_vertex(bg_135)_(1)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.1788751682965415,
-      "wall_thickness": 0.04928571428571429,
-      "elastic_modulus": 657142.8571428572,
+      "id": 227,
+      "name": "con_vertex[mp_(cw_con_2)_(bg_135)_(bg_119)]_vertex[bg_135]",
+      "vessel_length": 2.5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
       "gamma": 2,
-      "number_edges": 40,
-      "left_vertex_id": 183,
-      "right_vertex_id": 184
-    },
-    {
-      "id": 231,
-      "name": "con_vertex(cw_con_2)_vertex(bg_135)_(2)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.1483127524448122,
-      "wall_thickness": 0.040428571428571425,
-      "elastic_modulus": 785714.2857142857,
-      "gamma": 2,
-      "number_edges": 40,
-      "left_vertex_id": 184,
-      "right_vertex_id": 185
-    },
-    {
-      "id": 232,
-      "name": "con_vertex(cw_con_2)_vertex(bg_135)_(3)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.11775033659308295,
-      "wall_thickness": 0.03157142857142857,
-      "elastic_modulus": 914285.7142857143,
-      "gamma": 2,
-      "number_edges": 40,
-      "left_vertex_id": 185,
-      "right_vertex_id": 186
-    },
-    {
-      "id": 233,
-      "name": "con_vertex(cw_con_2)_vertex(bg_135)_(4)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.0871879207413537,
-      "wall_thickness": 0.022714285714285715,
-      "elastic_modulus": 1042857.1428571428,
-      "gamma": 2,
-      "number_edges": 40,
-      "left_vertex_id": 186,
-      "right_vertex_id": 187
-    },
-    {
-      "id": 234,
-      "name": "con_vertex(cw_con_2)_vertex(bg_135)_(5)",
-      "vessel_length": 1.6666666666666667,
-      "radius": 0.05662550488962442,
-      "wall_thickness": 0.013857142857142853,
-      "elastic_modulus": 1171428.5714285714,
-      "gamma": 2,
-      "number_edges": 40,
-      "left_vertex_id": 187,
+      "number_edges": 60,
+      "left_vertex_id": 179,
       "right_vertex_id": 32
+    },
+    {
+      "id": 228,
+      "name": "con_vertex[mp_(cw_con_2)_(bg_135)_(bg_119)]_vertex[bg_119]",
+      "vessel_length": 7,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 168,
+      "left_vertex_id": 179,
+      "right_vertex_id": 31
     }
   ]
 }

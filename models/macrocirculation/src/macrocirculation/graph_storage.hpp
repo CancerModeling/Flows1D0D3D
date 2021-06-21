@@ -32,7 +32,7 @@ struct Point {
 Point convex_combination(const Point &left, const Point &right, double theta);
 
 struct PhysicalData {
-  PhysicalData(double G0, double A0, double rho, double length, double viscosity, double gamma, double radius);
+  PhysicalData(double E, double G0, double A0, double rho, double length, double viscosity, double gamma, double radius);
 
   /*! @brief Initializes the physical data from a common set of "sensible" physical units.
    *
@@ -44,6 +44,8 @@ struct PhysicalData {
   static PhysicalData set_from_data(double elastic_modulus, double wall_thickness, double density, double gamma, double radius, double length);
 
   // physical parameters:
+
+  double elastic_modulus;
 
   /*! @brief Prefactor for static pressure, i.e. p = G0*(sqrt{A/A0} - 1) in kg s^{-2} cm^{-1}. */
   double G0;
@@ -67,7 +69,6 @@ struct PhysicalData {
   double radius;
 
   double get_c0() const;
-
 };
 
 struct DiscretizationData {
@@ -80,11 +81,18 @@ struct EmbeddingData {
   std::vector<Point> points;
 };
 
+// TODO: Change class name to RCR-model
 struct PeripheralVesselData {
   double resistance;
   double compliance;
 
   /*! @brief The pressure at the output of the RCR model. */
+  double p_out;
+};
+
+struct VesselTreeData {
+  std::vector< double > resistances;
+  std::vector< double > capacitances;
   double p_out;
 };
 
@@ -167,7 +175,8 @@ enum class FlowType {
   Undefined,
   Inflow,
   FreeOutflow,
-  Windkessel
+  Windkessel,
+  VesselTree
 };
 
 class Vertex : public Primitive {
@@ -189,6 +198,8 @@ public:
   /*! @brief Marks the given vertex as part of the free outflow boundary. */
   void set_to_windkessel_outflow(double r, double c);
 
+  void set_to_vessel_tree_outflow(double p, const std::vector<double>& resistances, const std::vector<double>& capacitances);
+
   /*! @brief Returns whether the given vertex is part of the inflow boundary. */
   bool is_inflow() const;
 
@@ -197,9 +208,13 @@ public:
 
   const PeripheralVesselData &get_peripheral_vessel_data() const;
 
+  const VesselTreeData &get_vessel_tree_data() const;
+
   bool is_free_outflow() const;
 
   bool is_windkessel_outflow() const;
+
+  bool is_vessel_tree_outflow() const;
 
 private:
   std::function<double(double)> p_inflow_value;
@@ -207,6 +222,8 @@ private:
   FlowType p_flow_type;
 
   PeripheralVesselData p_peripheral_vessel_data;
+
+  VesselTreeData p_vessel_tree_data;
 
   std::vector<std::size_t> p_neighbors;
 
