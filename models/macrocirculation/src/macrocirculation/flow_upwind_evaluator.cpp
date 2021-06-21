@@ -240,6 +240,59 @@ void FlowUpwindEvaluator::calculate_nfurcation_fluxes(const std::vector<double> 
   }
 }
 
+double calculate_R1(const PhysicalData & param)
+{
+  const double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
+  const double R1 = param.rho * c0 / param.A0;
+  return R1;
+}
+
+void calculate_windkessel_upwind_values(const PhysicalData& param, bool is_pointing_to, double R1, double Q_DG, double A_DG, double p_c, double& Q_out, double& A_out)
+{
+  const auto W = is_pointing_to ? calculate_W2_value(Q_DG, A_DG, param.G0, param.rho, param.A0)
+                                : calculate_W1_value(Q_DG, A_DG, param.G0, param.rho, param.A0);
+
+  const double c0 = param.get_c0();
+
+  const auto f = [&](auto A_out) {
+    auto p = param.G0 * (std::sqrt(A_out / param.A0) - 1);
+    return W - (p - p_c) / (A_out * R1) - 4 * c0 * std::pow(A_out / param.A0, 0.25);
+  };
+
+  const auto df = [&](auto A_out) {
+    auto p = param.G0 * (std::sqrt(A_out / param.A0) - 1);
+    auto dp = param.G0 * 0.5 / std::sqrt(A_out * param.A0);
+    return - dp / (A_out * R1) + (p - p_c) / (A_out * A_out * R1) - c0 * std::pow(A_out, -0.75) / std::pow(param.A0, 0.25);
+  };
+
+  const double TOL = 1.0e-10;
+  const double omega = 0.5 / 2.;
+  double error = INFINITY;
+  int num_iter = 0;
+
+  A_out = A_DG;
+
+  while (num_iter < 250 && error > TOL) {
+    // std::cout << "f_prev" << f(A_out) << std::endl;
+    const double f_value = f(A_out);
+    const double df_value = df(A_out);
+    const double dx = -f_value / df_value;
+
+    A_out = A_out + omega * dx;
+
+    error = std::abs(f(A_out));
+    num_iter += 1;
+
+    // std::cout << "f_now " << f(A_out) << std::endl;
+    if (num_iter == 250)
+      std::cerr << "warning: Newton did not converge" << std::endl;
+  }
+
+  const double sgn = is_pointing_to ? + 1 : -1;
+
+  Q_out = sgn * (calculate_static_p(A_out, param.G0, param.A0) - p_c) / R1;
+}
+
 void FlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<double> &u_prev) {
   // initial value of the flow
   // TODO: make this more generic for other initial flow values
@@ -298,7 +351,7 @@ void FlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<dou
           d_Q_macro_edge_flux_l[edge->get_id()] = Q_up;
           d_A_macro_edge_flux_l[edge->get_id()] = A_up;
         }
-      } else if (vertex->is_windkessel_outflow()) {
+      } else if (vertex->is_windkessel_outflow() || vertex->is_vessel_tree_outflow()) {
         const bool is_pointing_to = edge->is_pointing_to(vertex->get_id());
 
         const auto &vertex_dof_map = d_dof_map->get_local_dof_map(*vertex);
@@ -311,51 +364,11 @@ void FlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<dou
 
         const auto p_c = u_prev[vertex_dofs[0]];
 
-        const double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
-        const double R1 = param.rho * c0 / param.A0;
+        const double R1 = calculate_R1(param);
 
-        const auto W = is_pointing_to ? calculate_W2_value(Q, A, param.G0, param.rho, param.A0)
-                                      : calculate_W1_value(Q, A, param.G0, param.rho, param.A0);
-
-        const auto f = [&](auto A_out) {
-          auto p = param.G0 * (std::sqrt(A_out / param.A0) - 1);
-          return W - (p - p_c) / (A_out * R1) - 4 * c0 * std::pow(A_out / param.A0, 0.25);
-        };
-
-        const auto df = [&](auto A_out) {
-          auto p = param.G0 * (std::sqrt(A_out / param.A0) - 1);
-          auto dp = param.G0 * 0.5 / std::sqrt(A_out * param.A0);
-          return - dp / (A_out * R1) + (p - p_c) / (A_out * A_out * R1) - c0 * std::pow(A_out, -0.75) / std::pow(param.A0, 0.25);
-        };
-
-        const double TOL = 1.0e-10;
-        const double omega = 0.5 / 2.;
-        double error = INFINITY;
-        int num_iter = 0;
-
-        double A_out = A;
-
-        while (num_iter < 250 && error > TOL) {
-          // std::cout << "f_prev" << f(A_out) << std::endl;
-          const double f_value = f(A_out);
-          const double df_value = df(A_out);
-          const double dx = -f_value / df_value;
-
-          A_out = A_out + omega * dx;
-
-          error = std::abs(f(A_out));
-          num_iter += 1;
-
-          // std::cout << "f_now " << f(A_out) << std::endl;
-          if (num_iter == 250)
-            std::cerr << "warning: Newton did not converge" << std::endl;
-        }
-
-        const double sgn = is_pointing_to ? + 1 : -1;
-
-        const double Q_out = sgn * (calculate_static_p(A_out, param.G0, param.A0) - p_c) / R1;
-
-        // std::cout << vertex->get_id() << " " << "A_out " << A_out << " Q_out " << Q_out << std::endl;
+        double Q_out = 0;
+        double A_out = 0;
+        calculate_windkessel_upwind_values( param, is_pointing_to, R1, Q, A, p_c, Q_out, A_out );
 
         if (is_pointing_to) {
           d_Q_macro_edge_flux_r[edge->get_id()] = Q_out;

@@ -8,6 +8,7 @@
 #ifndef TUMORMODELS_PETSC_MAT_HPP
 #define TUMORMODELS_PETSC_MAT_HPP
 
+#include "gmm.h"
 #include <Eigen/Dense>
 #include <petsc.h>
 #include <vector>
@@ -27,8 +28,8 @@ public:
 
   PetscMat(const PetscMat &) = delete;
   PetscMat(PetscMat &&) = delete;
-  PetscMat& operator=(const PetscMat &) = delete;
-  PetscMat& operator=(PetscMat &&) = delete;
+  PetscMat &operator=(const PetscMat &) = delete;
+  PetscMat &operator=(PetscMat &&) = delete;
 
   ~PetscMat() {
     CHKERRABORT(PETSC_COMM_WORLD, MatDestroy(&d_mat));

@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
     const double rho = 1.028e-3;
     const double viscosity = 4.24e-2; // 4.5 mPa / s
     const double gamma = 9;
-    return {G0, A0, rho, vessel_length, viscosity, gamma, radius};
+    return {elastic_modulus, G0, A0, rho, vessel_length, viscosity, gamma, radius};
   };
 
   auto interpolate_physical_data = [create_physical_data](size_t num_macro_edges, double start_radius, double end_radius, double vessel_length) {
