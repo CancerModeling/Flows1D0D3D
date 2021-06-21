@@ -1,4 +1,7 @@
-# Macrocirculation submodule
+# Flows1D0D3D
+
+Application which (currently) simulates bloodflows with coupled 1D, 0D and 3D models.
+Its future goal is to simulate and study breast cancer models.
 
 ## Directory structure
 
