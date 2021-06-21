@@ -5,7 +5,7 @@
 #//  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #////////////////////////////////////////////////////////////////////////////////
 
-cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 
 # ****************************************************************************
 # Project information
@@ -37,23 +37,10 @@ endif ()
 set(Enable_CMAKE_Debug_Build TRUE CACHE BOOL "Output important information during cmake for isolating build issues")
 
 # set flag for documentation
-set(Enable_Documentation FALSE CACHE BOOL "Generate documentation")
+set(Enable_Documentation TRUE CACHE BOOL "Generate documentation")
 
 # set flag that enables or disables tests
-set(Enable_Tests FALSE CACHE BOOL "Build test executibles and perform tests")
-
-# add flag which allows user to restrict building only specific models
-set(LIBTG_BUILD_FLAG "Build_NetFVFE" CACHE STRING "Specify which if all or subset
-of models to be built")
-
-# ****************************************************************************
-# Testing
-# ****************************************************************************
-enable_testing()
-
-if (${Enable_CMAKE_Debug_Build})
-    message("Enable_Tests = ${Enable_Tests}")
-endif ()
+set(Enable_Tests TRUE CACHE BOOL "Build test executibles and perform tests")
 
 # ****************************************************************************
 # Package search
@@ -154,6 +141,7 @@ if (NOT nanoflann_POPULATED)
     FetchContent_Populate(nanoflann)
     add_subdirectory(${nanoflann_SOURCE_DIR} ${nanoflann_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
+
 # ****************************************************************************
 # Build, compiler, linker flags
 # ****************************************************************************
@@ -187,20 +175,39 @@ include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/aixlog")
 include_directories(${VTK_INCLUDE_DIRS})
 
 # ****************************************************************************
-# Add subprojects
+# Add subfolders
 # ****************************************************************************
 if (${Enable_CMAKE_Debug_Build})
     message("LIBTG_BUILD_FLAG: ${LIBTG_BUILD_FLAG}")
 endif ()
 
-if (${Enable_CMAKE_Debug_Build})
-    message("Gnerating build files for LibTG ")
-endif ()
-add_subdirectory(models)
 add_subdirectory(src)
 add_subdirectory(apps)
 
+
+# ****************************************************************************
+# Testing
+# ****************************************************************************
+if (${Enable_CMAKE_Debug_Build})
+    message("Enable_Tests = ${Enable_Tests}")
+endif ()
 if (${Enable_Tests})
+    enable_testing()
+
+    add_subdirectory(tests)
+
+    find_package(Catch2 QUIET)
+    # if cmake cannot find the package, we download it
+    if (NOT Catch2_FOUND)
+        # get catch2 for testing
+        include(FetchContent)
+        FetchContent_Declare(
+                catch2_content
+                GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+                GIT_TAG v2.13.1
+        )
+        FetchContent_MakeAvailable(catch2_content)
+    endif()
 endif ()
 
 # documentation
@@ -210,22 +217,3 @@ if (${Enable_Documentation})
     endif ()
     add_subdirectory(docs)
 endif ()
-
-# ****************************************************************************
-# Post build operations
-# ****************************************************************************
-# test directory
-if (${Enable_Tests})
-    if (${Enable_CMAKE_Debug_Build})
-        message("Copying test data to build directory ")
-    endif ()
-
-    add_custom_target("copydata" ALL)
-    add_custom_command(
-            TARGET "copydata" POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/tests/test_data/
-            ${PROJECT_BINARY_DIR}/tests/test_data/)
-endif ()
-
-
