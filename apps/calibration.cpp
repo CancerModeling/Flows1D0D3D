@@ -30,8 +30,8 @@ int main(int argc, char *argv[]) {
 
   cxxopts::Options options(argv[0], "Abstract 33 vessel geometry");
   options.add_options()                                                                                                              //
-    ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/network-33-vessels.json"))         //
-    ("output-file", "path to the output file", cxxopts::value<std::string>()->default_value("./data/boundary-data-33-vessels.json")) //
+    ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/meshes/network-33-vessels.json"))         //
+    ("output-file", "path to the output file", cxxopts::value<std::string>()->default_value("./data/meshes/boundary-data-33-vessels.json")) //
     ("inflow-vertex-name", "the name of the inflow vertex", cxxopts::value<std::string>()->default_value("cw_in"))                   //
     ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                            //
     ("heart-period", "the period of one heartbeat", cxxopts::value<double>()->default_value("1."))                                   //

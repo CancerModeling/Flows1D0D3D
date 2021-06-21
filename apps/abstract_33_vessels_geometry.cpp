@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 
   cxxopts::Options options(argv[0], "Abstract 33 vessel geometry");
   options.add_options()                                                                                                      //
-    ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/network-33-vessels.json")) //
+    ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/meshes/network-33-vessels.json")) //
     ("boundary-file", "path to the file for the boundary conditions", cxxopts::value<std::string>()->default_value(""))      //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))              //
     ("inlet-name", "the name of the inlet", cxxopts::value<std::string>()->default_value("cw_in"))                           //

@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
   auto graph = std::make_shared<mc::GraphStorage>();
 
   mc::EmbeddedGraphReader graph_reader;
-  graph_reader.append("data/coarse-network-geometry.json", *graph);
+  graph_reader.append("data/meshes/coarse-network-geometry.json", *graph);
 
   // auto inflow_vertices = graph->find_embedded_vertices({ 9.093333333333334, 9.173333333333334, 8.053333333333335 });
   std::vector<mc::Point> inflow_points = {

@@ -198,6 +198,7 @@ if (${Enable_CMAKE_Debug_Build})
 endif ()
 add_subdirectory(models)
 add_subdirectory(src)
+add_subdirectory(apps)
 
 if (${Enable_Tests})
     message("Gnerating build files for Test ")
