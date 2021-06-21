@@ -7,10 +7,9 @@
 
 #include <chrono>
 #include <cxxopts.hpp>
-#include <macrocirculation/communication/mpi.hpp>
-#include <macrocirculation/quantities_of_interest.hpp>
 #include <memory>
 
+#include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
@@ -19,6 +18,8 @@
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
+#include "macrocirculation/quantities_of_interest.hpp"
+#include "macrocirculation/set_0d_tree_boundary_conditions.hpp"
 #include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 #include "macrocirculation/write_0d_data_to_json.hpp"
@@ -31,15 +32,15 @@ int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
   cxxopts::Options options(argv[0], "Abstract 33 vessel geometry");
-  options.add_options()                                                                                                      //
+  options.add_options()                                                                                                             //
     ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/meshes/network-33-vessels.json")) //
-    ("boundary-file", "path to the file for the boundary conditions", cxxopts::value<std::string>()->default_value(""))      //
-    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))              //
-    ("inlet-name", "the name of the inlet", cxxopts::value<std::string>()->default_value("cw_in"))                           //
-    ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                    //
-    ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                         //
-    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-4"))                            //
-    ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("1"))                                        //
+    ("boundary-file", "path to the file for the boundary conditions", cxxopts::value<std::string>()->default_value(""))             //
+    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))                     //
+    ("inlet-name", "the name of the inlet", cxxopts::value<std::string>()->default_value("cw_in"))                                  //
+    ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                           //
+    ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                                //
+    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-4"))                                   //
+    ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("1"))                                               //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
@@ -69,48 +70,7 @@ int main(int argc, char *argv[]) {
 
   graph->find_vertex_by_name(args["inlet-name"].as<std::string>())->set_to_inflow(mc::heart_beat_inflow(args["heart-amplitude"].as<double>()));
 
-  for (auto &v_id : graph->get_vertex_ids()) {
-    auto &vertex = *graph->get_vertex(v_id);
-    if (!vertex.is_leaf())
-      continue;
-
-    if (vertex.is_inflow())
-    {
-      std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << " found inflow " << vertex.get_name() << std::endl;
-      continue;
-    }
-
-    // we do not touch the circle of willis
-    if (vertex.get_name().rfind("cw_") == 0)
-    {
-      std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << " found cw node " << vertex.get_name() << " and keeps windkessel bc." << std::endl;
-      continue;
-    }
-
-    std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << " sets " << vertex.get_name() << " to tree bc" << std::endl;
-    auto &edge = *graph->get_edge(vertex.get_edge_neighbors()[0]);
-    auto &param = edge.get_physical_data();
-    const double E = param.elastic_modulus;
-    const double r_0 = param.radius;
-    const double r_cap = 5e-4;
-    const double h_0 = 1e-4;
-    const double p_cap = 30 * (133.333) * 1e-2;
-    const int N = static_cast<int>(std::ceil(3 * std::log(r_0 / r_cap) / std::log(2.)));
-    const auto alpha = 1. / std::pow(2, 1 / 3.);
-    std::vector<double> list_C;
-    std::vector<double> list_R;
-    double r = r_0 * alpha;
-    double l = 0.2; // 2mm is the average vessel length
-    for (size_t k = 0; k < N; k += 1) {
-      const double C = 3 * std::pow(r, 3) * M_PI * l / (2 * E * h_0);
-      const double R = 2 * (param.gamma + 2) * param.viscosity * l / (std::pow(r, 2));
-      list_C.push_back(C);
-      list_R.push_back(R);
-      r *= alpha;
-    }
-
-    vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C);
-  }
+  set_0d_tree_boundary_conditions(graph, "bg_");
 
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
