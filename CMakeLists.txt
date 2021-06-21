@@ -199,11 +199,6 @@ if(${Enable_Tests})
     add_subdirectory(tests)
 endif()
 
-if (${Enable_CMAKE_Debug_Build})
-    message("Adding applications ")
-endif()
-add_subdirectory(applications)
-
 # documentation
 if(${Enable_Documentation})
     if (${Enable_CMAKE_Debug_Build})
