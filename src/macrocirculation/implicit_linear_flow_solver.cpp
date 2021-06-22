@@ -570,66 +570,82 @@ void LinearFlowSolver::assemble_matrix_0d_model(double tau) {
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *d_graph->get_vertex(v_idx);
 
-    if (!vertex.is_windkessel_outflow())
-      continue;
+    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow()) {
+      auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
+      auto &local_dof_map_edge = d_dof_map->get_local_dof_map(neighbor_edge);
+      auto &local_dof_map_vertex = d_dof_map->get_local_dof_map(vertex);
 
-    auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
-    auto &local_dof_map_edge = d_dof_map->get_local_dof_map(neighbor_edge);
-    auto &local_dof_map_vertex = d_dof_map->get_local_dof_map(vertex);
+      std::vector<size_t> dof_indices_p(local_dof_map_edge.num_basis_functions());
+      std::vector<size_t> dof_indices_q(local_dof_map_edge.num_basis_functions());
 
-    std::vector<size_t> dof_indices_p(local_dof_map_edge.num_basis_functions());
-    std::vector<size_t> dof_indices_q(local_dof_map_edge.num_basis_functions());
+      auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
+      const auto L = get_L(neighbor_edge);
+      const auto C = get_C(neighbor_edge);
+      const double sigma = neighbor_edge.is_pointing_to(v_idx) ? +1 : -1;
 
-    auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
-    const auto L = get_L(neighbor_edge);
-    const auto C = get_C(neighbor_edge);
-    const double sigma = neighbor_edge.is_pointing_to(v_idx) ? +1 : -1;
+      local_dof_map_edge.dof_indices(micro_edge_idx, p_component, dof_indices_p);
+      local_dof_map_edge.dof_indices(micro_edge_idx, q_component, dof_indices_q);
 
-    local_dof_map_edge.dof_indices(micro_edge_idx, p_component, dof_indices_p);
-    local_dof_map_edge.dof_indices(micro_edge_idx, q_component, dof_indices_q);
+      const auto &dof_indices_ptilde = local_dof_map_vertex.dof_indices();
 
-    const auto &dof_indices_ptilde = local_dof_map_vertex.dof_indices();
+      auto E = neighbor_edge.is_pointing_to(v_idx)
+                 ? create_boundary(local_dof_map_edge, BoundaryPointType::Right, BoundaryPointType::Right)
+                 : create_boundary(local_dof_map_edge, BoundaryPointType::Left, BoundaryPointType::Left);
+      auto e = neighbor_edge.is_pointing_to(v_idx)
+                 ? create_boundary(local_dof_map_edge, BoundaryPointType::Right)
+                 : create_boundary(local_dof_map_edge, BoundaryPointType::Left);
 
-    auto E = neighbor_edge.is_pointing_to(v_idx)
-               ? create_boundary(local_dof_map_edge, BoundaryPointType::Right, BoundaryPointType::Right)
-               : create_boundary(local_dof_map_edge, BoundaryPointType::Left, BoundaryPointType::Left);
-    auto e = neighbor_edge.is_pointing_to(v_idx)
-               ? create_boundary(local_dof_map_edge, BoundaryPointType::Right)
-               : create_boundary(local_dof_map_edge, BoundaryPointType::Left);
+      const double R0 = calculate_R1(neighbor_edge.get_physical_data());
+      const auto R1 = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().resistance - R0 : vertex.get_vessel_tree_data().resistances[0];
+      const auto C_tilde = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().compliance : vertex.get_vessel_tree_data().capacitances[0];
 
-    const auto &data = vertex.get_peripheral_vessel_data();
+      const double alpha = sigma / (std::sqrt(C / L) + 1. / R0);
 
-    const double R0 = calculate_R1(neighbor_edge.get_physical_data());
-    const auto R1 = data.resistance - R0;
-    const auto C_tilde = data.compliance;
+      Eigen::MatrixXd u_qp = (+sigma * tau / L) * alpha * (sigma * std::sqrt(C / L)) * E;
+      Eigen::MatrixXd u_qq = (+sigma * tau / L) * alpha * E;
+      Eigen::MatrixXd u_q_ptilde = (+sigma * tau / L) * alpha * sigma / R0 * e;
 
-    const double alpha = sigma / (std::sqrt(C / L) + 1. / R0);
+      Eigen::MatrixXd u_pp = (+sigma * tau / C) * sigma * (1. / R0 * alpha * sigma * std::sqrt(C / L)) * E;
+      Eigen::MatrixXd u_pq = (+sigma * tau / C) * sigma * (1. / R0 * alpha) * E;
+      Eigen::MatrixXd u_p_ptilde = (+sigma * tau / C) * sigma * (1. / R0 * (alpha * sigma / R0 - 1)) * e;
 
-    Eigen::MatrixXd u_qp = (+sigma * tau / L) * alpha * (sigma * std::sqrt(C / L)) * E;
-    Eigen::MatrixXd u_qq = (+sigma * tau / L) * alpha * E;
-    Eigen::MatrixXd u_q_ptilde = (+sigma * tau / L) * alpha * sigma / R0 * e;
+      Eigen::MatrixXd u_p0tilde_p0tilde(1, 1);
+      u_p0tilde_p0tilde << 1. + tau / R0 / C_tilde + tau / R1 / C_tilde - tau / (R0 * C_tilde) * alpha * sigma / R0;
+      Eigen::MatrixXd u_p0tilde_p = -tau / (R0 * C_tilde) * alpha * sigma * std::sqrt(C / L) * e.transpose();
+      Eigen::MatrixXd u_p0tilde_q = -tau / (R0 * C_tilde) * alpha * e.transpose();
 
-    Eigen::MatrixXd u_pp = (+sigma * tau / C) * sigma * (1. / R0 * alpha * sigma * std::sqrt(C / L)) * E;
-    Eigen::MatrixXd u_pq = (+sigma * tau / C) * sigma * (1. / R0 * alpha) * E;
-    Eigen::MatrixXd u_p_ptilde = (+sigma * tau / C) * sigma * (1. / R0 * (alpha * sigma / R0 - 1)) * e;
+      A->add(dof_indices_q, dof_indices_q, u_qq);
+      A->add(dof_indices_q, dof_indices_p, u_qp);
+      A->add(dof_indices_q, {dof_indices_ptilde[0]}, u_q_ptilde);
 
-    Eigen::MatrixXd u_p0tilde_p0tilde(1, 1);
-    u_p0tilde_p0tilde << 1. + tau / R0 / C_tilde + tau / R1 / C_tilde - tau / (R0 * C_tilde) * alpha * sigma / R0;
-    Eigen::MatrixXd u_p0tilde_p = -tau / (R0 * C_tilde) * alpha * sigma * std::sqrt(C / L) * e.transpose();
-    Eigen::MatrixXd u_p0tilde_q = -tau / (R0 * C_tilde) * alpha * e.transpose();
+      A->add(dof_indices_p, dof_indices_q, u_pq);
+      A->add(dof_indices_p, dof_indices_p, u_pp);
+      A->add(dof_indices_p, {dof_indices_ptilde[0]}, u_p_ptilde);
 
-    A->add(dof_indices_q, dof_indices_q, u_qq);
-    A->add(dof_indices_q, dof_indices_p, u_qp);
-    A->add(dof_indices_q, dof_indices_ptilde, u_q_ptilde);
+      // beginning
+      A->add({dof_indices_ptilde[0]}, dof_indices_q, u_p0tilde_q);
+      A->add({dof_indices_ptilde[0]}, dof_indices_p, u_p0tilde_p);
+      A->add({dof_indices_ptilde[0]}, {dof_indices_ptilde[0]}, u_p0tilde_p0tilde);
 
-    A->add(dof_indices_p, dof_indices_q, u_pq);
-    A->add(dof_indices_p, dof_indices_p, u_pp);
-    A->add(dof_indices_p, dof_indices_ptilde, u_p_ptilde);
+      if (vertex.is_vessel_tree_outflow()) {
+        const auto &data = vertex.get_vessel_tree_data();
+        const auto &R = data.resistances;
+        const auto &C_tilde2 = data.capacitances;
 
-    // beginning
-    A->add(dof_indices_ptilde, dof_indices_q, u_p0tilde_q);
-    A->add(dof_indices_ptilde, dof_indices_p, u_p0tilde_p);
-    A->add(dof_indices_ptilde, dof_indices_ptilde, u_p0tilde_p0tilde);
+        for (size_t k = 1; k < R.size(); k += 1) {
+          Eigen::MatrixXd mat_k_km1(1, 1);
+          mat_k_km1 << -tau / (2 * R[k - 1]) / C_tilde2[k];
+          Eigen::MatrixXd mat_k_k(1, 1);
+          mat_k_k << 1. + tau / (2 * R[k - 1] * C_tilde2[k]) + tau / (R[k] * C_tilde2[k]);
+          Eigen::MatrixXd mat_km1_k(1, 1);
+          mat_km1_k << -tau / (R[k - 1] * C_tilde2[k - 1]);
+
+          A->add({dof_indices_ptilde[k]}, {dof_indices_ptilde[k - 1]}, mat_k_km1);
+          A->add({dof_indices_ptilde[k]}, {dof_indices_ptilde[k]}, mat_k_k);
+          A->add({dof_indices_ptilde[k - 1]}, {dof_indices_ptilde[k]}, mat_km1_k);
+        }
+      }
+    }
   }
 }
 
@@ -637,23 +653,26 @@ void LinearFlowSolver::assemble_rhs_0d_model(double tau) {
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *d_graph->get_vertex(v_idx);
 
-    if (!vertex.is_windkessel_outflow())
-      continue;
+    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow()) {
+      auto &edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
 
-    auto &edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
+      auto &local_dof_map_vertex = d_dof_map->get_local_dof_map(vertex);
 
-    auto &local_dof_map_vertex = d_dof_map->get_local_dof_map(vertex);
+      const auto &dof_indices_ptilde = local_dof_map_vertex.dof_indices();
 
-    const auto &dof_indices_ptilde = local_dof_map_vertex.dof_indices();
+      const double R0 = calculate_R1(edge.get_physical_data());
+      const auto R1 = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().resistance - R0 : vertex.get_vessel_tree_data().resistances.back();
+      const auto C_tilde = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().compliance : vertex.get_vessel_tree_data().capacitances.back();
+      const auto p_out = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().p_out : vertex.get_vessel_tree_data().p_out;
 
-    const auto &data = vertex.get_peripheral_vessel_data();
-    const auto R1 = data.resistance - calculate_R1(edge.get_physical_data());
-    const auto C_tilde = data.compliance;
-    const auto p_out = data.p_out;
+      std::vector<double> value{tau * p_out / (R1 * C_tilde)};
 
-    std::vector<double> value{tau * p_out / (R1 * C_tilde)};
+      for (auto i : dof_indices_ptilde)
+        std::cout << u->get(i) << " ";
+      std::cout << std::endl;
 
-    rhs->add({dof_indices_ptilde.back()}, value);
+      rhs->add({dof_indices_ptilde.back()}, value);
+    }
   }
 }
 
