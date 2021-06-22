@@ -353,19 +353,18 @@ void LinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
       continue;
     const auto q_in = vertex.get_inflow_value(t);
     auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
-    if (neighbor_edge.is_pointing_to(v_idx))
-      throw std::runtime_error("arbitrary inflow orientations not implemented yet ");
     auto &local_dof_map = d_dof_map->get_local_dof_map(neighbor_edge);
     auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
     const auto L = get_L(neighbor_edge);
     const auto C = get_C(neighbor_edge);
+    const double sigma = neighbor_edge.is_pointing_to(v_idx) ? +1 : -1;
     // b_p:
     std::vector<size_t> dof_indices_p(local_dof_map.num_basis_functions());
     local_dof_map.dof_indices(micro_edge_idx, p_component, dof_indices_p);
     std::vector<double> rhs_values_p(local_dof_map.num_basis_functions());
     for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
       // L^{-1} * tau * q_in(t) * phi_j(-1) = L^{-1} * tau * q_in(t) * (-1)^{j}
-      rhs_values_p[j] = (1. / C) * tau * q_in * std::pow(-1, j);
+      rhs_values_p[j] = (-sigma / C) * tau * (-sigma * q_in) * std::pow(sigma, j);
     }
     rhs->add(dof_indices_p, rhs_values_p);
     // b_q:
@@ -374,7 +373,7 @@ void LinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
     std::vector<double> rhs_values_q(local_dof_map.num_basis_functions());
     for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
       // L^{-1} * tau * sqrt(L/C) * q_in(t) * phi_j(-1) = L^{-1} * tau * sqrt(L/C) * q_in(t) * (-1)^{j}
-      rhs_values_q[j] = (1. / L) * tau * std::sqrt(L / C) * q_in * std::pow(-1, j);
+      rhs_values_q[j] = (-sigma / L) * tau * (sigma * std::sqrt(L / C)) * (sigma * q_in) * std::pow(sigma, j);
     }
     rhs->add(dof_indices_q, rhs_values_q);
   }
@@ -390,13 +389,14 @@ void LinearFlowSolver::assemble_matrix_inflow(double tau) {
     std::vector<size_t> dof_indices_p(local_dof_map.num_basis_functions());
     std::vector<size_t> dof_indices_q(local_dof_map.num_basis_functions());
     auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
+    const double sigma = neighbor_edge.is_pointing_to(v_idx) ? +1 : -1;
     const auto L = get_L(neighbor_edge);
     const auto C = get_C(neighbor_edge);
     local_dof_map.dof_indices(micro_edge_idx, p_component, dof_indices_p);
     local_dof_map.dof_indices(micro_edge_idx, q_component, dof_indices_q);
-    auto pattern_ll = create_boundary(local_dof_map, BoundaryPointType::Left, BoundaryPointType::Left);
-    Eigen::MatrixXd u_qp = tau * (1. / L) * (-1.) * pattern_ll;
-    Eigen::MatrixXd u_qq = tau * (1. / L) * (std::sqrt(L / C)) * pattern_ll;
+    auto pattern = neighbor_edge.is_pointing_to(v_idx) ? create_boundary(local_dof_map, BoundaryPointType::Right, BoundaryPointType::Right) : create_boundary(local_dof_map, BoundaryPointType::Left, BoundaryPointType::Left);
+    Eigen::MatrixXd u_qp = sigma * tau * (1. / L) * pattern;
+    Eigen::MatrixXd u_qq = tau * (1. / L) * (std::sqrt(L / C)) * pattern;
     A->add(dof_indices_q, dof_indices_p, u_qp);
     A->add(dof_indices_q, dof_indices_q, u_qq);
   }
