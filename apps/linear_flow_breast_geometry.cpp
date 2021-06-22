@@ -6,21 +6,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "libmesh/libmesh.h"
-#include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include <cmath>
-#include <macrocirculation/set_0d_tree_boundary_conditions.hpp>
 #include <memory>
 #include <petsc.h>
 #include <utility>
 
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
+#include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/fe_type.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
+#include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/petsc/petsc_ksp.hpp"
+#include "macrocirculation/set_0d_tree_boundary_conditions.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
 namespace lm = libMesh;
@@ -29,7 +30,7 @@ namespace mc = macrocirculation;
 
 int main(int argc, char *argv[]) {
   const std::size_t degree = 2;
-  const std::size_t num_micro_edges = 44;
+  const std::size_t num_micro_edges = 50;
 
   // initialize petsc
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
@@ -37,53 +38,24 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
 
-    const double tau = 1e-3;
-    const double t_end = 1.;
+    const double tau = 0.001;
+    const double t_end = 4;
 
     const size_t output_interval = 1;
 
     // vessel parameters
-    const double vessel_length = 42.2;
-    const double radius = 0.403;
-    const double wall_thickness = 0.067;
-    const double elastic_modulus = 400000.0;
-    const double gamma = 9;
-    const double density = 1.028e-3;
 
     // create the ascending aorta
     auto graph = std::make_shared<mc::GraphStorage>();
 
-    auto v0 = graph->create_vertex();
-    auto v1 = graph->create_vertex();
-    //auto v2 = graph->create_vertex();
-    // auto v3 = graph->create_vertex();
-    // auto v4 = graph->create_vertex();
-    auto edge1 = graph->connect(*v0, *v1, num_micro_edges);
-    //auto edge2 = graph->connect(*v1, *v2, num_micro_edges);
-    //auto edge3 = graph->connect(*v1, *v3, num_micro_edges);
-    //auto edge4 = graph->connect(*v1, *v4, num_micro_edges);
-    // auto edge4 = graph->connect(*v4, *v1, num_micro_edges);
+    mc::EmbeddedGraphReader graph_reader;
+    graph_reader.append("./data/meshes/coarse-network-geometry.json", *graph);
 
-    v0->set_to_inflow(mc::heart_beat_inflow(4.));
-    //v2->set_to_free_outflow();
-    v1->set_to_windkessel_outflow(1.8, 0.387);
-    //v3->set_to_free_outflow();
-    //v4->set_to_free_outflow();
-    // v2->set_name("b_2");
-    // v3->set_name("b_3");
-    // v4->set_name("b_4");
+    //graph->find_vertex_by_name("bg_132")->set_to_inflow(mc::heart_beat_inflow(4.8));
+    graph->find_vertex_by_name("bg_135")->set_to_inflow(mc::heart_beat_inflow(4.8));
+    // graph->find_vertex_by_name("bg_141")->set_to_inflow(mc::heart_beat_inflow(4.8));
+    // graph->find_vertex_by_name("bg_119")->set_to_inflow(mc::heart_beat_inflow(4.8));
 
-    auto physical_data = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
-
-    edge1->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1, 0, 0)}});
-    edge1->add_physical_data(physical_data);
-    // edge2->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(2, 0, 0)}});
-    // edge2->add_physical_data(physical_data);
-    //edge3->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1, -1, 0)}});
-    //edge3->add_physical_data(physical_data);
-    //edge4->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(2, 0, 0)}});
-    // edge4->add_embedding_data({{ mc::Point(2, 0, 0), mc::Point(1, 0, 0) }});
-    //edge4->add_physical_data(physical_data);
 
     mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
 

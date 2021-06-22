@@ -37,7 +37,7 @@ public:
     for (int r = 0; r < dofs.size(); r += 1)
       dofs_[r] = static_cast<PetscInt>(dofs[r]);
 
-    VecSetValues(d_vec, static_cast<PetscInt>(dofs_.size()), dofs_.data(), values.data(), ADD_VALUES);
+    CHKERRABORT(PETSC_COMM_WORLD, VecSetValues(d_vec, static_cast<PetscInt>(dofs_.size()), dofs_.data(), values.data(), ADD_VALUES));
   }
 
   void set(PetscInt idx, double value) {
