@@ -16,6 +16,7 @@
 #include "petsc/petsc_ksp.hpp"
 #include "petsc/petsc_mat.hpp"
 #include "petsc/petsc_vec.hpp"
+#include "vessel_formulas.hpp"
 
 namespace macrocirculation {
 
@@ -56,13 +57,12 @@ void assemble_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_m
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
     auto &vertex = *graph.get_vertex(v_id);
 
-    if (!vertex.is_windkessel_outflow())
-      continue;
-
-    auto &vertex_dof_map = dof_map.get_local_dof_map(vertex);
-    auto &indices = vertex_dof_map.dof_indices();
-    for (auto i : indices)
-      mass_vec.set(static_cast<PetscInt>(dof_indices[i]), 1.);
+    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow()) {
+      auto &vertex_dof_map = dof_map.get_local_dof_map(vertex);
+      auto &indices = vertex_dof_map.dof_indices();
+      for (auto i : indices)
+        mass_vec.set(static_cast<PetscInt>(dof_indices[i]), 1.);
+    }
   }
 }
 
@@ -206,6 +206,16 @@ Eigen::MatrixXd LinearFlowSolver::create_boundary(const LocalEdgeDofMap &local_d
       u_loc(j, i) = psi(j) * phi(i);
     }
   }
+  return u_loc;
+}
+
+Eigen::MatrixXd LinearFlowSolver::create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType type) {
+  Eigen::VectorXd u_loc(local_dof_map.num_basis_functions());
+  const auto left = [](size_t i) -> double { return std::pow(-1., i); };
+  const auto right = [](size_t i) -> double { return 1.; };
+  const auto phi = (type == BoundaryPointType::Left) ? left : right;
+  for (int j = 0; j < local_dof_map.num_basis_functions(); j += 1)
+    u_loc(j) = phi(j);
   return u_loc;
 }
 
@@ -554,6 +564,129 @@ void LinearFlowSolver::assemble_matrix_nfurcations(double tau) {
   }
 }
 
+void LinearFlowSolver::assemble_matrix_0d_model(double tau) {
+  for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+    auto &vertex = *d_graph->get_vertex(v_idx);
+
+    if (!vertex.is_vessel_tree_outflow())
+      continue;
+
+    auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
+    auto &local_dof_map_edge = d_dof_map->get_local_dof_map(neighbor_edge);
+    auto &local_dof_map_vertex = d_dof_map->get_local_dof_map(vertex);
+
+    std::vector<size_t> dof_indices_p(local_dof_map_edge.num_basis_functions());
+    std::vector<size_t> dof_indices_q(local_dof_map_edge.num_basis_functions());
+
+    auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
+    const auto L = get_L(neighbor_edge);
+    const auto C = get_C(neighbor_edge);
+    const double sigma = neighbor_edge.is_pointing_to(v_idx) ? +1 : -1;
+
+    local_dof_map_edge.dof_indices(micro_edge_idx, p_component, dof_indices_p);
+    local_dof_map_edge.dof_indices(micro_edge_idx, q_component, dof_indices_q);
+
+    const auto &dof_indices_ptilde = local_dof_map_vertex.dof_indices();
+    std::vector<size_t> dof_indices_p0tilde{dof_indices_ptilde[0]};
+
+    auto E = neighbor_edge.is_pointing_to(v_idx)
+               ? create_boundary(local_dof_map_edge, BoundaryPointType::Right, BoundaryPointType::Right)
+               : create_boundary(local_dof_map_edge, BoundaryPointType::Left, BoundaryPointType::Left);
+    auto e = neighbor_edge.is_pointing_to(v_idx)
+               ? create_boundary(local_dof_map_edge, BoundaryPointType::Right)
+               : create_boundary(local_dof_map_edge, BoundaryPointType::Left);
+
+    const auto &data = vertex.get_vessel_tree_data();
+    const auto &R = data.resistances;
+    const auto &C_tilde = data.capacitances;
+
+    const double R0 = calculate_R1(neighbor_edge.get_physical_data());
+
+    const double alpha = sigma * (std::sqrt(C / L) + 1. / R0);
+
+    Eigen::MatrixXd u_qp = -tau / L * sigma * alpha * (sigma * std::sqrt(C / L)) * E;
+    Eigen::MatrixXd u_qq = -tau / L * sigma * alpha * E;
+    Eigen::MatrixXd u_q_ptilde = -tau / L * sigma * alpha * sigma / R0 * e;
+
+    Eigen::MatrixXd u_pp = -tau / C * sigma * sigma / R0 * alpha * sigma * std::sqrt(C / L) * E;
+    Eigen::MatrixXd u_pq = -tau / C * sigma * sigma / R0 * alpha * E;
+    Eigen::MatrixXd u_p_ptilde = -tau / C * sigma * sigma / R0 * (alpha * sigma / R0 - 1) * e;
+
+    Eigen::MatrixXd u_p0tilde_p0tilde(1, 1);
+    u_p0tilde_p0tilde << 1. + tau / R0 / C_tilde[0] + tau / R[0] / C_tilde[0] - tau / R0 / R0 * (alpha * sigma / R0 - 1) / C_tilde[0];
+    Eigen::MatrixXd u_p0tilde_p = -tau / R0 / R0 * alpha * sigma * std::sqrt(C / L) / C_tilde[0] * e.transpose();
+    Eigen::MatrixXd u_p0tilde_q = -tau / R0 / R0 * alpha / C_tilde[0] * e.transpose();
+
+    Eigen::MatrixXd u_p0tilde_p1tilde(1, 1);
+    u_p0tilde_p1tilde << -tau / R[0] / C_tilde[0];
+
+    A->add(dof_indices_q, dof_indices_q, u_qq);
+    A->add(dof_indices_q, dof_indices_p, u_qp);
+    A->add(dof_indices_q, dof_indices_p0tilde, u_q_ptilde);
+
+    A->add(dof_indices_p, dof_indices_q, u_pq);
+    A->add(dof_indices_p, dof_indices_p, u_pp);
+    A->add(dof_indices_p, dof_indices_p0tilde, u_p_ptilde);
+
+    // beginning
+    A->add(dof_indices_p0tilde, dof_indices_q, u_p0tilde_q);
+    A->add(dof_indices_p0tilde, dof_indices_p, u_p0tilde_p);
+    A->add(dof_indices_p0tilde, dof_indices_p0tilde, u_p0tilde_p0tilde);
+
+    A->add(dof_indices_p0tilde, {dof_indices_ptilde[1]}, u_p0tilde_p1tilde);
+
+    // middle
+    for (size_t k = 1; k < R.size() - 1; k += 1) {
+      // rhs[vertex_dofs[k]] = 1. / C[k] * ((p_c[k - 1] - p_c[k]) / (2 * R[k - 1]) - (p_c[k] - p_c[k + 1]) / R[k]);
+      Eigen::MatrixXd mat_k_km1(1, 1);
+      mat_k_km1 << -tau / (2 * R[k - 1]) / C_tilde[k];
+      Eigen::MatrixXd mat_k_k(1, 1);
+      mat_k_k << 1. + tau / (2 * R[k - 1]) / C_tilde[k] + tau / R[k] / C_tilde[k];
+      Eigen::MatrixXd mat_k_kp1(1, 1);
+      mat_k_kp1 << -tau / R[k] / C_tilde[k];
+
+      A->add({dof_indices_ptilde[k]}, {dof_indices_ptilde[k - 1]}, mat_k_km1);
+      A->add({dof_indices_ptilde[k]}, {dof_indices_ptilde[k]}, mat_k_k);
+      A->add({dof_indices_ptilde[k]}, {dof_indices_ptilde[k + 1]}, mat_k_kp1);
+    }
+
+    // end
+    {
+      const size_t k_last = R.size() - 1;
+      Eigen::MatrixXd mat_k_km1(1, 1);
+      mat_k_km1 << -tau / (2 * R[k_last - 1]) / C_tilde[k_last];
+      Eigen::MatrixXd mat_k_k(1, 1);
+      mat_k_k << 1. + tau / (2 * R[k_last - 1]) / C_tilde[k_last] + tau / R[k_last] / C_tilde[k_last];
+
+      A->add({dof_indices_ptilde[k_last]}, {dof_indices_ptilde[k_last - 1]}, mat_k_km1);
+      A->add({dof_indices_ptilde[k_last]}, {dof_indices_ptilde[k_last]}, mat_k_k);
+    }
+  }
+}
+
+void LinearFlowSolver::assemble_rhs_0d_model(double tau) {
+  for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+    auto &vertex = *d_graph->get_vertex(v_idx);
+
+    if (!vertex.is_vessel_tree_outflow())
+      continue;
+
+    auto &local_dof_map_vertex = d_dof_map->get_local_dof_map(vertex);
+
+    const auto &dof_indices_ptilde = local_dof_map_vertex.dof_indices();
+    std::vector<size_t> dof_indices_p0tilde{dof_indices_ptilde[0]};
+
+    const auto &data = vertex.get_vessel_tree_data();
+    const auto &R = data.resistances;
+    const auto &C_tilde = data.capacitances;
+    const auto p_out = data.p_out;
+
+    std::vector< double > value { tau * p_out / R.back() / C_tilde.back() };
+
+    rhs->add({ dof_indices_ptilde.back()}, value);
+  }
+}
+
 void LinearFlowSolver::assemble_matrix(double tau) {
   A->zero();
   assemble_matrix_cells(tau);
@@ -561,6 +694,7 @@ void LinearFlowSolver::assemble_matrix(double tau) {
   assemble_matrix_free_outflow(tau);
   assemble_matrix_inflow(tau);
   assemble_matrix_nfurcations(tau);
+  assemble_matrix_0d_model(tau);
   A->assemble();
 }
 
@@ -572,6 +706,7 @@ void LinearFlowSolver::assemble_rhs(double tau, double t) {
   rhs->zero();
   assemble_rhs_cells();
   assemble_rhs_inflow(tau, t);
+  assemble_rhs_0d_model(tau);
   rhs->assemble();
 }
 

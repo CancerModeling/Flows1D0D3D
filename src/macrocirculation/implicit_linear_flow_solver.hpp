@@ -73,6 +73,8 @@ private:
 
   static Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row, BoundaryPointType col);
 
+  static Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row);
+
   static double get_C(const Edge &e);
 
   static double get_L(const Edge &e);
@@ -92,6 +94,9 @@ private:
   void assemble_matrix_nfurcations(double tau);
 
   void assemble_rhs_cells();
+
+  void assemble_matrix_0d_model(double tau);
+  void assemble_rhs_0d_model(double tau);
 
 private:
   MPI_Comm d_comm;
