@@ -240,13 +240,6 @@ void FlowUpwindEvaluator::calculate_nfurcation_fluxes(const std::vector<double> 
   }
 }
 
-double calculate_R1(const PhysicalData & param)
-{
-  const double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
-  const double R1 = param.rho * c0 / param.A0;
-  return R1;
-}
-
 void calculate_windkessel_upwind_values(const PhysicalData& param, bool is_pointing_to, double R1, double Q_DG, double A_DG, double p_c, double& Q_out, double& A_out)
 {
   const auto W = is_pointing_to ? calculate_W2_value(Q_DG, A_DG, param.G0, param.rho, param.A0)

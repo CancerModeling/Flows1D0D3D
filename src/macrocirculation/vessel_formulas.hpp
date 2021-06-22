@@ -479,6 +479,15 @@ inline double viscosity_bloodplasma(double r) {
   return nu;
 }
 
+/*! @brief input resistance to the 0D models. */
+inline double calculate_R1(const PhysicalData & param)
+{
+  const double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
+  const double R1 = param.rho * c0 / param.A0;
+  return R1;
+}
+
+
 } // namespace macrocirculation
 
 #endif //TUMORMODELS_VESSEL_FORMULAS_HPP
