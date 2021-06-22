@@ -96,6 +96,7 @@ private:
   void assemble_rhs_cells();
 
   void assemble_matrix_0d_model(double tau);
+
   void assemble_rhs_0d_model(double tau);
 
 private:

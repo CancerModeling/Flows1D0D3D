@@ -27,11 +27,11 @@ constexpr std::size_t degree = 2;
 int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
-  const double t_end = 0.4;
+  const double t_end = 1.;
   const std::size_t max_iter = 1600000;
   // const std::size_t max_iter = 1;
 
-  const double tau = 2.5e-4 / 4 / 2 / 6;
+  const double tau = 1e-5;
   const double tau_out = 1e-3;
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
@@ -40,13 +40,14 @@ int main(int argc, char *argv[]) {
 
   std::cerr << "FIX physical parameters" << std::endl;
 
-  /*
-  const mc::PhysicalData physical_data = {
-    592.4e2,               // 592.4 10^2 Pa,
-    6.97,                  // 6.97 cm^2,
-    1.028,                 // 1.028 kg/cm^3,
-    1.0 / num_macro_edges // 4 cm
-  };
+  const double vessel_length = 42.2;
+  const double radius = 0.403;
+  const double wall_thickness = 0.067;
+  const double elastic_modulus = 400000.0;
+  const double gamma = 9;
+  const double density = 1.028e-3;
+
+  auto physical_data = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
 
   // create_for_node the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
@@ -68,7 +69,7 @@ int main(int argc, char *argv[]) {
   end->set_to_free_outflow();
 
   // set inflow boundary conditions
-  start->set_to_inflow(mc::heart_beat_inflow());
+  start->set_to_inflow(mc::heart_beat_inflow(4.));
 
   // partition graph
   // TODO: app crashes if not enabled -> fix this!
@@ -127,7 +128,6 @@ int main(int argc, char *argv[]) {
   const auto end_t = std::chrono::steady_clock::now();
   const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
   std::cout << "time = " << elapsed_ms * 1e-6 << " s" << std::endl;
-   */
 
   MPI_Finalize();
 }
