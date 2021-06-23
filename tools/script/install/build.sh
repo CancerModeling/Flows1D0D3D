@@ -17,11 +17,8 @@ fi
 # build
 source="../../."
 cmake -DLIBMESH_DIR="$libmesh" \
-			-DPETSC_LIB="$petsc/lib" \
+			-DPETSC_DIR="$petsc" \
 			-DCMAKE_BUILD_TYPE=Release \
-			-DCMAKE_C_COMPILER=/usr/bin/gcc \
-			-DCMAKE_CXX_COMPILER=/usr/bin/g++ \
-  	  -DLIBTG_BUILD_FLAG=Build_NetFVFE \
   	  -DEnable_Tests=ON \
 			"$source"
 

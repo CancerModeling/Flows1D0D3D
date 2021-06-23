@@ -58,7 +58,7 @@ jobs:
             - checkout
             - libcmake
             - libmake
-            - libtest
+            #- libtest
     deploy:
       machine:
         image: ubuntu-2004:202008-01

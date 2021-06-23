@@ -21,14 +21,17 @@ Application which (currently) simulates bloodflows with coupled 1D, 0D and 3D mo
 Its future goal is to simulate and study breast cancer models.
 
 ## Directory structure
-
-- `apps`: contains the demo applications (executibles are created inside `<build path>/bin/macrocirculation`)
-- `data/meshes`: contains the 1D and 3D meshes, boundary conditions, and other files used in demo apps
-- `tools`: contains utility scripts
-  - `mesh_creation`: scripts for creating the 1D mesh 
-  - `script/install`: install scripts to facilitate setup
-- `src`: the source code of the library 
-- `tests`: a few catch2 unittests for critical components
+  - `apps`: contains the demo applications (executibles are created inside `<build path>/bin/macrocirculation`)
+  - `assets`: contains asset files
+  - `cmake`: contains cmake modules to locate petsc and libmesh
+  - `docs`: doxygen related files
+  - `external`: keep external libraries
+  - `data/meshes`: contains the 1D and 3D meshes, boundary conditions, and other files used in demo apps
+  - `tools`: contains utility scripts
+    - `mesh_creation`: scripts for creating the 1D mesh 
+    - `script/install`: install scripts to facilitate setup
+  - `src`: the source code of the library 
+  - `tests`: a few catch2 unittests for critical components
 
 ## Installation
 
@@ -124,7 +127,7 @@ sudo apt-get install -y build-essential ubuntu-dev-tools \
 pip3 install numpy
 ```
 
-2. Build petsc and libmesh. To learn how to build petsc and libmesh on ubuntu 18.04 and 20.04, you can follow the [dockerfile](https://github.com/prashjha/dockerimages/blob/main/angio-base-bionic/Dockerfile). We plan to include seperate shell script to install petsc and libmesh.
+2. Build petsc and libmesh. To learn how to build petsc and libmesh on ubuntu 18.04 and 20.04, you can follow the [dockerfile](https://github.com/prashjha/dockerimages/blob/main/angio-base-bionic/Dockerfile). [Shell script](tools/script/install/install_petsc_libmesh.sh) could also be helpful.
 
 3. Use instructions in previous section to build `Flows1D0D3D` (provide right paths to libmesh and petsc). 
 
