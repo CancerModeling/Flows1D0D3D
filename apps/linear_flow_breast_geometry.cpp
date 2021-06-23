@@ -81,7 +81,8 @@ int main(int argc, char *argv[]) {
 
     mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
 
-    mc::set_0d_tree_boundary_conditions(graph, "bg_");
+    // mc::set_0d_tree_boundary_conditions(graph, "bg_");
+    graph_reader.set_boundary_data("./data/meshes/boundary-combined-network-geometry-wo-cow-dofs.json", *graph);
 
     auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
     dof_map->create(PETSC_COMM_WORLD, *graph, 2, degree, true);
