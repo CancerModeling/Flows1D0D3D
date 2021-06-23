@@ -480,7 +480,8 @@ inline double viscosity_bloodplasma(double r) {
 }
 
 /*! @brief input resistance to the 0D models. */
-inline double calculate_R1(const PhysicalData & param)
+template < typename Data >
+inline double calculate_R1(const Data & param)
 {
   const double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
   const double R1 = param.rho * c0 / param.A0;

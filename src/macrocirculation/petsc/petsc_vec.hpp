@@ -8,6 +8,8 @@
 #ifndef TUMORMODELS_PETSC_VEC_HPP
 #define TUMORMODELS_PETSC_VEC_HPP
 
+#include "petsc.h"
+
 namespace macrocirculation {
 
 class PetscVec {

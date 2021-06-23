@@ -30,12 +30,6 @@ void assemble_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_m
 
 // TODO: Move somewhere else!!!
 // TODO: Clean up from implicit advection solver
-void extract_dof(const std::vector<std::size_t> &dof_indices,
-                 const PetscVec &global,
-                 std::vector<double> &local);
-
-// TODO: Move somewhere else!!!
-// TODO: Clean up from implicit advection solver
 void interpolate_to_vertices(const MPI_Comm comm,
                              const GraphStorage &graph,
                              const DofMap &map,
