@@ -19,6 +19,7 @@ class Vertex;
 class Edge;
 class GraphStorage;
 class MicroEdge;
+class PetscVec;
 
 /*! @brief Simple dof map, which orders the dofs on the macro edge by the formula
  *         dof_interval_start + edge_id * num_components * num_basis_functions + num_basis_functions * component_id + basis_function_id
@@ -117,6 +118,11 @@ private:
 /*! @brief Copies the dof values in dof_indices from a global vector into a local vector. */
 void extract_dof(const std::vector<std::size_t> &dof_indices,
                  const std::vector<double> &global,
+                 std::vector<double> &local);
+
+/*! @brief Copies the dof values in dof_indices from a global vector into a local vector. */
+void extract_dof(const std::vector<std::size_t> &dof_indices,
+                 const PetscVec &global,
                  std::vector<double> &local);
 
 } // namespace macrocirculation

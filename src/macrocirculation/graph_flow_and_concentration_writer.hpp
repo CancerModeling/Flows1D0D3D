@@ -17,6 +17,7 @@ namespace macrocirculation {
 
 class GraphStorage;
 class DofMap;
+class PetscVec;
 
 class GraphFlowAndConcentrationWriter {
 public:
@@ -29,6 +30,8 @@ public:
 
   void write(double t, const std::vector<double> &flow, const std::vector<double> &transport) const;
 
+  void write(double t, const PetscVec &flow, const PetscVec &transport) const;
+
 private:
   MPI_Comm d_comm;
   std::string d_foldername;
@@ -39,6 +42,9 @@ private:
 
   std::string get_name(const std::string &name_quantity, std::size_t vessel) const;
   std::string get_name_times() const;
+
+  template < typename GenericVectorType >
+  void write_generic(double t, const GenericVectorType &flow, const GenericVectorType &transport) const;
 };
 
 } // namespace macrocirculation

@@ -30,12 +30,6 @@ void assemble_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_m
 
 // TODO: Move somewhere else!!!
 // TODO: Clean up from implicit advection solver
-void extract_dof(const std::vector<std::size_t> &dof_indices,
-                 const PetscVec &global,
-                 std::vector<double> &local);
-
-// TODO: Move somewhere else!!!
-// TODO: Clean up from implicit advection solver
 void interpolate_to_vertices(const MPI_Comm comm,
                              const GraphStorage &graph,
                              const DofMap &map,
@@ -73,6 +67,8 @@ private:
 
   static Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row, BoundaryPointType col);
 
+  static Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row);
+
   static double get_C(const Edge &e);
 
   static double get_L(const Edge &e);
@@ -92,6 +88,10 @@ private:
   void assemble_matrix_nfurcations(double tau);
 
   void assemble_rhs_cells();
+
+  void assemble_matrix_0d_model(double tau);
+
+  void assemble_rhs_0d_model(double tau);
 
 private:
   MPI_Comm d_comm;
