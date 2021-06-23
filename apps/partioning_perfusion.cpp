@@ -592,7 +592,7 @@ int main(int argc, char *argv[]) {
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                            //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.1"))                                  //
     ("hyd-cond", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                       //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/darcy_test_tissue_mesh.e"))                            //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/darcy_test_tissue_mesh.e"))                            //
     ("gamma", "value of coefficient for perfusion area estimation", cxxopts::value<double>()->default_value("3"))                            //
     ("num-points", "number of perfusion points", cxxopts::value<int>()->default_value("50"))                            //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_part_perfusion_test/")) //
