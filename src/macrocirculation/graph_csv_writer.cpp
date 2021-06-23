@@ -7,12 +7,12 @@
 
 #include "graph_csv_writer.hpp"
 
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <utility>
-#include <cmath>
 
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
@@ -53,7 +53,9 @@ GraphCSVWriter::GraphCSVWriter(MPI_Comm comm,
     {
       std::fstream filecsv;
       std::stringstream name;
-      name << d_foldername << "/" << d_datasetname << "_" << "p" << "_vessel" << std::setfill('0') << std::setw(5) << eid << ".csv";
+      name << d_foldername << "/" << d_datasetname << "_"
+           << "p"
+           << "_vessel" << std::setfill('0') << std::setw(5) << eid << ".csv";
       filecsv.open(name.str(), std::ios::out);
       for (std::size_t micro_edge = 0; micro_edge < local_dof_map.num_micro_edges(); micro_edge += 1) {
         if (micro_edge > 0)
@@ -82,7 +84,16 @@ std::string GraphCSVWriter::get_name_times() const {
   return d_foldername + "/" + d_datasetname + "_times.csv";
 }
 
-void GraphCSVWriter::write(double time, const std::vector<double> &data) const {
+void GraphCSVWriter::write(double t, const std::vector<double> &data) const {
+  write_generic(t, data);
+}
+
+void GraphCSVWriter::write(double t, const PetscVec &data) const {
+  write_generic(t, data);
+}
+
+template<typename FunctionType>
+void GraphCSVWriter::write_generic(double time, const FunctionType &data) const {
   // write time step information
   if (mpi::rank(d_comm) == 0) {
     std::fstream filecsv;
@@ -124,11 +135,13 @@ void GraphCSVWriter::write(double time, const std::vector<double> &data) const {
       const auto A0 = edge->get_physical_data().A0;
       const auto G0 = edge->get_physical_data().G0;
 
-      const auto pressure = [=](auto A){ return G0 * (std::sqrt(A / A0) - 1.0) / 1.33332; };
+      const auto pressure = [=](auto A) { return G0 * (std::sqrt(A / A0) - 1.0) / 1.33332; };
 
       std::fstream filecsv;
       std::stringstream name;
-      name << d_foldername << "/" << d_datasetname << "_" << "p" << "_vessel" << std::setfill('0') << std::setw(5) << eid << ".csv";
+      name << d_foldername << "/" << d_datasetname << "_"
+           << "p"
+           << "_vessel" << std::setfill('0') << std::setw(5) << eid << ".csv";
       filecsv.open(name.str(), std::ios::app);
       for (std::size_t micro_edge = 0; micro_edge < local_dof_map.num_micro_edges(); micro_edge += 1) {
         if (micro_edge > 0)

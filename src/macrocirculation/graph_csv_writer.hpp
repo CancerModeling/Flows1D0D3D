@@ -17,6 +17,7 @@ namespace macrocirculation {
 
 class GraphStorage;
 class DofMap;
+class PetscVec;
 
 class GraphCSVWriter {
 public:
@@ -29,6 +30,9 @@ public:
 
   void write(double t, const std::vector<double> &data) const;
 
+  void write(double t, const PetscVec &data) const;
+
+
 private:
   MPI_Comm d_comm;
   std::string d_foldername;
@@ -39,6 +43,9 @@ private:
 
   std::string get_name(std::size_t component, std::size_t vessel) const;
   std::string get_name_times() const;
+
+  template< typename FunctionType >
+  void write_generic(double t, const FunctionType &data) const;
 };
 
 } // namespace macrocirculation
