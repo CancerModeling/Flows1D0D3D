@@ -53,6 +53,7 @@ target_link_libraries(${ProjectName}LinearFlow ${LIBMESH_LIBRARIES}) # libmesh f
 add_executable(${ProjectName}LinearFlowBreastGeometry linear_flow_breast_geometry.cpp)
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${ProjectLib})
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${LIBMESH_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}LinearFlowBreastGeometry cxxopts)
 
 add_executable(${ProjectName}Transport transport_test.cpp)
 target_link_libraries(${ProjectName}Transport ${ProjectLib})

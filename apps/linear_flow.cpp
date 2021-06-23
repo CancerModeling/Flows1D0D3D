@@ -55,6 +55,7 @@ int main(int argc, char *argv[]) {
 
     auto v0 = graph->create_vertex();
     auto v1 = graph->create_vertex();
+    v1->set_name("b_1");
     //auto v2 = graph->create_vertex();
     // auto v3 = graph->create_vertex();
     // auto v4 = graph->create_vertex();
@@ -66,7 +67,9 @@ int main(int argc, char *argv[]) {
 
     v0->set_to_inflow(mc::heart_beat_inflow(4.));
     //v2->set_to_free_outflow();
-    v1->set_to_windkessel_outflow(1.8, 0.387);
+    v1->set_to_vessel_tree_outflow(5.0 * 1.333322, {1.8, 1.8, 1.8}, {0.387, 0.387, 0.387});
+    //v1->set_to_windkessel_outflow(1.8, 0.387);
+
     //v3->set_to_free_outflow();
     //v4->set_to_free_outflow();
     // v2->set_name("b_2");
@@ -87,7 +90,7 @@ int main(int argc, char *argv[]) {
 
     mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
 
-    // mc::set_0d_tree_boundary_conditions(graph, "b_");
+    mc::set_0d_tree_boundary_conditions(graph, "b_");
 
     auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
     dof_map->create(PETSC_COMM_WORLD, *graph, 2, degree, true);
