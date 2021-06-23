@@ -1,0 +1,25 @@
+# base ubuntu image with petsc, libmesh, hpx
+FROM prashjha/angio-base-bionic:latest
+
+## build command
+## docker build --network=host --no-cache  -t flows1d0d3d-bionic -f Dockerfile-bionic .
+
+# Set metadata
+LABEL maintainer="Prashant K. Jha <pjha.sci@gmail.com>, Andreas Wagner <wagneran@ma.tum.de>, Tobias Koeppl <koepplto@ma.tum.de> "
+LABEL description="Flows1D0D3D docker image"
+
+WORKDIR /
+
+RUN git clone  https://github.com/CancerModeling/Flows1D0D3D.git
+
+RUN cd /Flows1D0D3D && \
+		mkdir build && \
+		cd build && \
+		cmake -DLIBMESH_DIR=${LIBMESH_DIR} \
+					-DPETSC_DIR=${PETSC_DIR} \
+					-DCMAKE_BUILD_TYPE=Release \
+					-DEnable_Tests=ON \
+					.. && \
+		make -j 2 && \
+		make install
+

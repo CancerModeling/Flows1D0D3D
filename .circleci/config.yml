@@ -9,14 +9,14 @@ version: 2.1
 parameters:
   docker-img-os:
     type: string
-    default: u1804
+    default: bionic
     
 commands:
   libcmake:
     parameters:
       cmake-args:
         type: string
-        default: -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DEnable_Tests=ON -DLIBMESH_DIR=/usr/lib/libmesh-1.5.0 -DPETSC_LIB=/usr/lib/petsc-3.13.3
+        default: -DCMAKE_BUILD_TYPE=Release -DEnable_Tests=ON -DLIBMESH_DIR=${LIBMESH_DIR} -DPETSC_DIR=${PETSC_DIR}
     steps:
       - run: 
           name: Configure
@@ -53,17 +53,18 @@ commands:
 jobs:
     build:
         docker:
-          - image: prashjha/<<pipeline.parameters.docker-img-os>>-comp:latest
+          - image: prashjha/angio-base-<<pipeline.parameters.docker-img-os>>:latest
         steps:
             - checkout
             - libcmake
             - libmake
+            - libtest
     deploy:
       machine:
         image: ubuntu-2004:202008-01
       environment:
         IMAGE_FILE_NAME: .circleci/Docker/Dockerfile-<<pipeline.parameters.docker-img-os>>
-        IMAGE_NAME: tumormodels-<<pipeline.parameters.docker-img-os>>:latest
+        IMAGE_NAME: flows1d0d3d-<<pipeline.parameters.docker-img-os>>:latest
       steps:
         - checkout
         - run:
@@ -83,8 +84,8 @@ jobs:
             command: |
               if [ "${CIRCLE_BRANCH}" == "main" ]; then
                  docker login docker.pkg.github.com --username prashjha -p ${G_TOKEN}
-                 docker tag prashjha/${IMAGE_NAME} docker.pkg.github.com/prashjha/tumormodels/${IMAGE_NAME}
-                 docker push docker.pkg.github.com/prashjha/tumormodels/${IMAGE_NAME}
+                 docker tag prashjha/${IMAGE_NAME} docker.pkg.github.com/cancermodeling/flows1d0d3d/${IMAGE_NAME}
+                 docker push docker.pkg.github.com/cancermodeling/flows1d0d3d/${IMAGE_NAME}
               fi
 workflows:
   version: 2

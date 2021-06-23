@@ -231,7 +231,7 @@ void set_perfusion_pts(std::string out_dir,
 }
 
 //
-void create_heterogeneous_conductivity(const lm::MeshBase &mesh,
+int create_heterogeneous_conductivity(const lm::MeshBase &mesh,
                                        lm::ExplicitSystem &hyd_cond,
                                        lm::EquationSystems &eq_sys,
                                        const std::vector<int> &elem_taken,
