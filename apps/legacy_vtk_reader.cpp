@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
   cxxopts::Options options(argv[0], "Darcy's flow in 3D tissue domain");
   options.add_options()("input-file", "path to the input file",
                         cxxopts::value<std::string>()->default_value(""))                                       //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test.vtk"))                            //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/test.vtk"))                            //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
