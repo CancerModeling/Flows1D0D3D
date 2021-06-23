@@ -92,7 +92,7 @@ GraphFlowAndConcentrationWriter::GraphFlowAndConcentrationWriter(MPI_Comm comm,
   }
 }
 
-std::string GraphFlowAndConcentrationWriter::get_name(const std::string& name_quantity, std::size_t vessel) const {
+std::string GraphFlowAndConcentrationWriter::get_name(const std::string &name_quantity, std::size_t vessel) const {
   std::stringstream name;
   name << d_foldername << "/" << d_datasetname << "_" << name_quantity << "_vessel" << std::setfill('0') << std::setw(5) << vessel
        << ".csv";
@@ -104,6 +104,15 @@ std::string GraphFlowAndConcentrationWriter::get_name_times() const {
 }
 
 void GraphFlowAndConcentrationWriter::write(double time, const std::vector<double> &flow, const std::vector<double> &transport) const {
+  write_generic(time, flow, transport);
+}
+
+void GraphFlowAndConcentrationWriter::write(double time, const PetscVec &flow, const PetscVec &transport) const {
+  write_generic(time, flow, transport);
+}
+
+template<typename GenericVectorType>
+void GraphFlowAndConcentrationWriter::write_generic(double time, const GenericVectorType &flow, const GenericVectorType &transport) const {
   // write time step information
   if (mpi::rank(d_comm) == 0) {
     std::fstream filecsv;

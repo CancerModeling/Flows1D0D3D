@@ -5,9 +5,10 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include "libmesh/libmesh.h"
+#include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include <cmath>
+#include <macrocirculation/set_0d_tree_boundary_conditions.hpp>
 #include <memory>
 #include <petsc.h>
 #include <utility>
@@ -28,7 +29,7 @@ namespace mc = macrocirculation;
 
 int main(int argc, char *argv[]) {
   const std::size_t degree = 2;
-  const std::size_t num_micro_edges = 50;
+  const std::size_t num_micro_edges = 44;
 
   // initialize petsc
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
@@ -36,8 +37,8 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
 
-    const double tau = 0.001;
-    const double t_end = 0.5;
+    const double tau = 1e-3;
+    const double t_end = 1.;
 
     const size_t output_interval = 1;
 
@@ -60,27 +61,37 @@ int main(int argc, char *argv[]) {
     auto edge1 = graph->connect(*v0, *v1, num_micro_edges);
     auto edge2 = graph->connect(*v1, *v2, num_micro_edges);
     auto edge3 = graph->connect(*v1, *v3, num_micro_edges);
-    // auto edge4 = graph->connect(*v1, *v4, num_micro_edges);
-    auto edge4 = graph->connect(*v4, *v1, num_micro_edges);
+    auto edge4 = graph->connect(*v1, *v4, num_micro_edges);
 
     v0->set_to_inflow(mc::heart_beat_inflow(4.));
-    v2->set_to_free_outflow();
-    v3->set_to_free_outflow();
-    v4->set_to_free_outflow();
+    //v2->set_to_free_outflow();
+    // v1->set_to_vessel_tree_outflow(5.0 * 1.333322, {1.8, 1.8, 1.8}, {0.387, 0.387, 0.387});
+    // v1->set_to_windkessel_outflow(1.8, 0.387);
+    v2->set_to_windkessel_outflow(1.8, 0.387);
+    v3->set_to_windkessel_outflow(1.8, 0.387);
+    v4->set_to_windkessel_outflow(1.8, 0.387);
 
-    auto physical_data = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
+    v2->set_name("b_2");
+    v3->set_name("b_3");
+    v4->set_name("b_4");
+
+    auto physical_data_1 = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
+    auto physical_data_2 = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
+    auto physical_data_3 = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
+    auto physical_data_4 = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
 
     edge1->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1, 0, 0)}});
-    edge1->add_physical_data(physical_data);
-    edge2->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1, 1, 0)}});
-    edge2->add_physical_data(physical_data);
+    edge1->add_physical_data(physical_data_1);
+    edge2->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(2, 0, 0)}});
+    edge2->add_physical_data(physical_data_2);
     edge3->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1, -1, 0)}});
-    edge3->add_physical_data(physical_data);
-    // edge4->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(2, 0, 0)}});
-    edge4->add_embedding_data({{ mc::Point(2, 0, 0), mc::Point(1, 0, 0) }});
-    edge4->add_physical_data(physical_data);
+    edge3->add_physical_data(physical_data_3);
+    edge4->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1, +1, 0)}});
+    edge4->add_physical_data(physical_data_4);
 
     mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
+
+    // mc::set_0d_tree_boundary_conditions(graph, "b_");
 
     auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
     dof_map->create(PETSC_COMM_WORLD, *graph, 2, degree, true);
