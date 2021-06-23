@@ -220,7 +220,7 @@ double LinearFlowSolver::get_L(const Edge &e) {
 
 double LinearFlowSolver::get_R(const Edge &e) {
   const auto &data = e.get_physical_data();
-  return 2 * (data.gamma + 2) * M_PI * data.viscosity / std::pow(data.A0, 2);
+  return 2 * (data.gamma + 2) * M_PI * data.viscosity / data.A0;
 }
 
 void LinearFlowSolver::assemble_matrix_cells(double tau) {
@@ -655,10 +655,6 @@ void LinearFlowSolver::assemble_rhs_0d_model(double tau) {
       const auto p_out = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().p_out : vertex.get_vessel_tree_data().p_out;
 
       std::vector<double> value{tau * p_out / (R1 * C_tilde)};
-
-      for (auto i : dof_indices_ptilde)
-        std::cout << u->get(i) << " ";
-      std::cout << std::endl;
 
       rhs->add({dof_indices_ptilde.back()}, value);
     }

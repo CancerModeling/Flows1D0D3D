@@ -73,14 +73,8 @@ public:
     // thus we copy it over
     std::vector<double> mat_memory(row_dofs.size() * col_dofs.size(), 0);
     for (int r = 0; r < row_dofs.size(); r += 1)
-    {
       for (int c = 0; c < col_dofs.size(); c += 1)
-      {
         mat_memory[c + r * col_dofs.size()] = mat_loc(r, c);
-        std::cout << r << " " << c << mat_loc(r, c) << std::endl;
-      }
-    }
-
 
     std::vector<PetscInt> row_dofs_(row_dofs.size(), 0);
     for (int r = 0; r < row_dofs.size(); r += 1)
