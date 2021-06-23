@@ -247,8 +247,8 @@ int main(int argc, char *argv[]) {
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.1"))                                  //
     ("hyd-cond-tiss", "hydraulic conductivity in tissue domain", cxxopts::value<double>()->default_value("0.1"))                       //
     ("hyd-cond-vasc", "hydraulic conductivity in vascular domain", cxxopts::value<double>()->default_value("1."))                       //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/darcy_test_tissue_mesh.e"))                            //
-    ("vasc-nifti-file", "nifti file to inform vascular subdomain", cxxopts::value<std::string>()->default_value("data/meshes/darcy_test_vascular_domain.nii.gz"))                            //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/darcy_test_tissue_mesh.e"))                            //
+    ("vasc-nifti-file", "nifti file to inform vascular subdomain", cxxopts::value<std::string>()->default_value("data/darcy_test_vascular_domain.nii.gz"))                            //
     ("voxel-size", "voxel size used in creating the tissue mesh", cxxopts::value<double>()->default_value("1."))                            //
     ("output-dir", "directory for the output", cxxopts::value<std::string>()->default_value("./output_darcy_hetero/")) //
     ("h,help", "print usage");
