@@ -372,6 +372,37 @@ void FlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<dou
           d_Q_macro_edge_flux_l[edge->get_id()] = Q_out;
           d_A_macro_edge_flux_l[edge->get_id()] = A_out;
         }
+      }  else if (vertex->is_nonlinear_characteristic_inflow()) {
+
+        auto& data = vertex->get_nonlinear_characteristic_data();
+
+        double A_r = data.A0 * std::pow(data.p/data.G0 + 1, 2);
+
+        std::vector<double> Q_list = {Q, data.q};
+        std::vector<double> A_list = {A, A_r};
+
+        std::vector<double> Q_up_list = Q_list;
+        std::vector<double> A_up_list = A_list;
+
+        std::vector< VesselParameters > param_list = {
+          {param.G0, param.A0, param.rho},
+          {data.G0, data.A0, data.rho}
+        };
+
+        std::vector< bool > points_to_vertex_list = {
+          edge->is_pointing_to(v_id),
+          true
+        };
+
+        solve_at_nfurcation(Q_list, A_list, param_list, points_to_vertex_list, Q_up_list, A_up_list);
+
+        if (edge->is_pointing_to(v_id)) {
+          d_Q_macro_edge_flux_r[edge->get_id()] = Q_up_list[0];
+          d_A_macro_edge_flux_r[edge->get_id()] = A_up_list[0];
+        } else {
+          d_Q_macro_edge_flux_l[edge->get_id()] = Q_up_list[0];
+          d_A_macro_edge_flux_l[edge->get_id()] = A_up_list[0];
+        }
       } else {
         throw std::runtime_error("undefined boundary type!");
       }

@@ -124,9 +124,25 @@ void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &res
   p_vessel_tree_data.capacitances = capacitances;
 }
 
-const PeripheralVesselData &Vertex::get_peripheral_vessel_data() const { return p_peripheral_vessel_data; }
+const PeripheralVesselData &Vertex::get_peripheral_vessel_data() const {
+  assert(is_windkessel_outflow());
+  return p_peripheral_vessel_data;
+}
 
-const VesselTreeData &Vertex::get_vessel_tree_data() const { return p_vessel_tree_data; }
+const VesselTreeData &Vertex::get_vessel_tree_data() const {
+  assert(is_vessel_tree_outflow());
+  return p_vessel_tree_data;
+}
+
+const LinearCharacteristicData &Vertex::get_linear_characteristic_data() const {
+  assert(is_linear_characteristic());
+  return p_linear_characteristic_data;
+}
+
+const NonlinearCharacteristicData &Vertex::get_nonlinear_characteristic_data() const {
+  assert(is_nonlinear_characteristic());
+  return p_nonlinear_characteristic_data;
+}
 
 bool Vertex::is_free_outflow() const { return p_flow_type == FlowType::FreeOutflow; }
 
@@ -138,8 +154,51 @@ bool Vertex::is_inflow() const {
   return p_flow_type == FlowType::Inflow;
 }
 
+bool Vertex::is_linear_characteristic_inflow() const {
+  return p_flow_type == FlowType::LinearCharacteristic;
+}
+
+bool Vertex::is_nonlinear_characteristic_inflow() const {
+  return p_flow_type == FlowType::NonlinearCharacteristic;
+}
+
 double Vertex::get_inflow_value(double time) const {
   return p_inflow_value(time);
+}
+
+void Vertex::set_to_linear_characteristic_inflow(double C, double L, bool points_towards_vertex, double p, double q) {
+  p_flow_type = FlowType::LinearCharacteristic;
+  double sigma = points_towards_vertex ? +1 : -1;
+  p_linear_characteristic_data.C = C;
+  p_linear_characteristic_data.L = L;
+  p_linear_characteristic_data.points_towards_vertex = points_towards_vertex;
+  p_linear_characteristic_data.p = p;
+  p_linear_characteristic_data.q = sigma * q;
+}
+
+void Vertex::set_to_nonlinear_characteristic_inflow(double G0, double A0, double rho, bool points_towards_vertex, double p, double q) {
+  p_flow_type = FlowType::NonlinearCharacteristic;
+  double sigma = points_towards_vertex ? +1 : -1;
+  p_nonlinear_characteristic_data.G0 = G0;
+  p_nonlinear_characteristic_data.A0 = A0;
+  p_nonlinear_characteristic_data.rho = rho;
+  p_nonlinear_characteristic_data.points_towards_vertex = points_towards_vertex;
+  p_nonlinear_characteristic_data.p = p;
+  p_nonlinear_characteristic_data.q = sigma * q;
+}
+
+void Vertex::update_linear_characteristic_inflow(double p, double q) {
+  assert(flow_type == FlowType::LinearCharacteristic);
+  double sigma = p_linear_characteristic_data.points_towards_vertex ? +1 : -1;
+  p_linear_characteristic_data.p = p;
+  p_linear_characteristic_data.q = sigma * q;
+}
+
+void Vertex::update_nonlinear_characteristic_inflow(double p, double q) {
+  assert(flow_type == FlowType::NonlinearCharacteristic);
+  double sigma = p_nonlinear_characteristic_data.points_towards_vertex ? +1 : -1;
+  p_nonlinear_characteristic_data.p = p;
+  p_nonlinear_characteristic_data.q = sigma * q;
 }
 
 bool Edge::is_pointing_to(std::size_t vertex_id) const {

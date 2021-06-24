@@ -25,6 +25,7 @@ class FETypeNetwork;
 class Point;
 class LocalEdgeDofMap;
 class Edge;
+class Vertex;
 
 void assemble_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, PetscVec &mass_vec);
 
@@ -57,6 +58,14 @@ public:
 
   void assemble(double tau, double t);
 
+  static double get_C(const Edge &e);
+
+  static double get_L(const Edge &e);
+
+  static double get_R(const Edge &e);
+
+  void get_1d_values_at_vertex(const Vertex& v, double& p, double& q) const;
+
 private:
   static Eigen::MatrixXd create_mass(const FETypeNetwork &fe, const LocalEdgeDofMap &local_dof_map);
 
@@ -68,12 +77,6 @@ private:
   static Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row, BoundaryPointType col);
 
   static Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row);
-
-  static double get_C(const Edge &e);
-
-  static double get_L(const Edge &e);
-
-  static double get_R(const Edge &e);
 
   void assemble_matrix_cells(double tau);
 
@@ -92,6 +95,10 @@ private:
   void assemble_matrix_0d_model(double tau);
 
   void assemble_rhs_0d_model(double tau);
+
+  void assemble_matrix_characteristic(double tau);
+
+  void assemble_rhs_characteristic(double tau);
 
 private:
   MPI_Comm d_comm;
