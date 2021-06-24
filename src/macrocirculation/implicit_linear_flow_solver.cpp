@@ -700,7 +700,7 @@ void LinearFlowSolver::assemble_matrix_characteristic(double tau) {
       // Eigen::MatrixXd u_pp = (-tau / C_e) * (beta_e * (alpha * beta_e - 1.)) * E;
 
       Eigen::MatrixXd u_pq = (-tau / C_e) * beta_v * alpha * E;
-      Eigen::MatrixXd u_pp = (-tau / C_e) * ( -beta_v * alpha * beta_e ) * E;
+      Eigen::MatrixXd u_pp = (-tau / C_e) * (-beta_v * alpha * beta_e) * E;
 
       Eigen::MatrixXd u_qp = (-tau / L_e) * alpha * beta_e * E;
       Eigen::MatrixXd u_qq = (-tau / L_e) * alpha * (-1.) * E;
@@ -752,13 +752,54 @@ void LinearFlowSolver::assemble_rhs_characteristic(double tau) {
 
       for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
         //rhs_values_p[j] = (+tau/C_e) * (+beta_e*alpha*beta_v*p_v + beta_e *alpha*q_v) * std::pow(sigma, j);
-        rhs_values_p[j] = (+tau/C_e) * ( beta_v * ( 1- alpha*beta_v) * p_v + (1- beta_v * alpha) * q_v ) * std::pow(sigma, j);
-        rhs_values_q[j] = (+tau/L_e) * alpha * ( beta_v * p_v + q_v) * std::pow(sigma, j);
+        rhs_values_p[j] = (+tau / C_e) * (beta_v * (1 - alpha * beta_v) * p_v + (1 - beta_v * alpha) * q_v) * std::pow(sigma, j);
+        rhs_values_q[j] = (+tau / L_e) * alpha * (beta_v * p_v + q_v) * std::pow(sigma, j);
       }
 
       rhs->add(dof_indices_p, rhs_values_p);
       rhs->add(dof_indices_q, rhs_values_q);
     }
+  }
+}
+
+void LinearFlowSolver::get_1d_values_at_vertex(const Vertex &v, double &p, double &q) const {
+  if (!v.is_leaf())
+    throw std::runtime_error("flow can only be calculated at leafs");
+
+  const auto e_id = v.get_edge_neighbors()[0];
+
+  const auto &edge = *d_graph->get_edge(e_id);
+
+  const auto ldofmap = d_dof_map->get_local_dof_map(edge);
+
+  QuadratureFormula qf = create_gauss4();
+  FETypeNetwork fe(qf, ldofmap.num_basis_functions() - 1);
+
+  std::vector<size_t> dof_indices_p(ldofmap.num_basis_functions(), 0);
+  std::vector<size_t> dof_indices_q(ldofmap.num_basis_functions(), 0);
+
+  if (edge.is_pointing_to(v.get_id())) {
+    ldofmap.dof_indices(edge.num_micro_edges() - 1, p_component, dof_indices_p);
+    ldofmap.dof_indices(edge.num_micro_edges() - 1, q_component, dof_indices_q);
+  } else {
+    ldofmap.dof_indices(0, p_component, dof_indices_p);
+    ldofmap.dof_indices(0, q_component, dof_indices_q);
+  }
+
+  std::vector<double> dof_values_q(ldofmap.num_basis_functions(), 0);
+  extract_dof(dof_indices_q, *u, dof_values_q);
+  auto boundary_values_q = fe.evaluate_dof_at_boundary_points(dof_values_q);
+
+  std::vector<double> dof_values_p(ldofmap.num_basis_functions(), 0);
+  extract_dof(dof_indices_p, *u, dof_values_p);
+  auto boundary_values_p = fe.evaluate_dof_at_boundary_points(dof_values_p);
+
+  if (edge.is_pointing_to(v.get_id())) {
+    p = boundary_values_p.right;
+    q = boundary_values_q.right;
+  } else {
+    p = boundary_values_p.left;
+    q = boundary_values_q.left;
   }
 }
 

@@ -25,6 +25,7 @@ class FETypeNetwork;
 class Point;
 class LocalEdgeDofMap;
 class Edge;
+class Vertex;
 
 void assemble_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, PetscVec &mass_vec);
 
@@ -62,6 +63,8 @@ public:
   static double get_L(const Edge &e);
 
   static double get_R(const Edge &e);
+
+  void get_1d_values_at_vertex(const Vertex& v, double& p, double& q) const;
 
 private:
   static Eigen::MatrixXd create_mass(const FETypeNetwork &fe, const LocalEdgeDofMap &local_dof_map);
