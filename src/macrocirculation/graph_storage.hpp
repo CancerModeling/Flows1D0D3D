@@ -91,9 +91,25 @@ struct PeripheralVesselData {
 };
 
 struct VesselTreeData {
-  std::vector< double > resistances;
-  std::vector< double > capacitances;
+  std::vector<double> resistances;
+  std::vector<double> capacitances;
   double p_out;
+};
+
+struct LinearCharacteristicData {
+  double C;
+  double L;
+  bool points_towards_vertex;
+  double p;
+  double q;
+};
+
+struct NonlinearCharacteristicData {
+  double G0;
+  double rho;
+  bool points_towards_vertex;
+  double p;
+  double q;
 };
 
 class MicroEdge {
@@ -176,7 +192,9 @@ enum class FlowType {
   Inflow,
   FreeOutflow,
   Windkessel,
-  VesselTree
+  VesselTree,
+  LinearCharacteristic,
+  NonlinearCharacteristic,
 };
 
 class Vertex : public Primitive {
@@ -186,7 +204,9 @@ public:
   const std::vector<std::size_t> &get_edge_neighbors() const;
 
   bool is_leaf() const;
+
   bool is_unconnected() const;
+
   bool is_bifurcation() const;
 
   /*! @brief Marks the given vertex as part of the inflow boundary, where the given time dependent function provides the boundary values. */
@@ -198,7 +218,15 @@ public:
   /*! @brief Marks the given vertex as part of the free outflow boundary. */
   void set_to_windkessel_outflow(double r, double c);
 
-  void set_to_vessel_tree_outflow(double p, const std::vector<double>& resistances, const std::vector<double>& capacitances);
+  void set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances);
+
+  void set_to_linear_characteristic_inflow(double C, double L, bool points_towards_vertex, double p, double q);
+
+  void update_linear_characteristic_inflow(double p, double q);
+
+  void set_to_nonlinear_characteristic_inflow(double G0, double rh0, bool points_towards_vertex, double p, double q);
+
+  void update_nonlinear_characteristic_inflow(double p, double q);
 
   /*! @brief Returns whether the given vertex is part of the inflow boundary. */
   bool is_inflow() const;
@@ -210,11 +238,19 @@ public:
 
   const VesselTreeData &get_vessel_tree_data() const;
 
+  const LinearCharacteristicData &get_linear_characteristic_data() const;
+
+  const NonlinearCharacteristicData &get_nonlinear_characteristic_data() const;
+
   bool is_free_outflow() const;
 
   bool is_windkessel_outflow() const;
 
   bool is_vessel_tree_outflow() const;
+
+  bool is_linear_characteristic_inflow() const;
+
+  bool is_nonlinear_characteristic_inflow() const;
 
 private:
   std::function<double(double)> p_inflow_value;
@@ -224,6 +260,10 @@ private:
   PeripheralVesselData p_peripheral_vessel_data;
 
   VesselTreeData p_vessel_tree_data;
+
+  LinearCharacteristicData p_linear_characteristic_data;
+
+  NonlinearCharacteristicData p_nonlinear_characteristic_data;
 
   std::vector<std::size_t> p_neighbors;
 
