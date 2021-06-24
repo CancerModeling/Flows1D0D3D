@@ -189,14 +189,16 @@ void Vertex::set_to_nonlinear_characteristic_inflow(double G0, double A0, double
 
 void Vertex::update_linear_characteristic_inflow(double p, double q) {
   assert(flow_type == FlowType::LinearCharacteristic);
+  double sigma = p_linear_characteristic_data.points_towards_vertex ? +1 : -1;
   p_linear_characteristic_data.p = p;
-  p_linear_characteristic_data.q = q;
+  p_linear_characteristic_data.q = sigma * q;
 }
 
 void Vertex::update_nonlinear_characteristic_inflow(double p, double q) {
   assert(flow_type == FlowType::NonlinearCharacteristic);
+  double sigma = p_nonlinear_characteristic_data.points_towards_vertex ? +1 : -1;
   p_nonlinear_characteristic_data.p = p;
-  p_nonlinear_characteristic_data.q = q;
+  p_nonlinear_characteristic_data.q = sigma * q;
 }
 
 bool Edge::is_pointing_to(std::size_t vertex_id) const {
