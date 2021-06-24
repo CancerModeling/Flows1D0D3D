@@ -25,13 +25,13 @@ class Edge;
 /*! @brief Functional to evaluate the right-hand-side S. */
 class default_S {
 public:
-  default_S(double phi);
+  explicit default_S(double phi);
 
   /*! @brief Evaluates the Q- and A-component of the right-hand side S,
    *         given Q and A at eacht of the quadrature points.
    */
   void operator()(double,
-                  const Edge&,
+                  const Edge &,
                   const std::vector<double> &,
                   const std::vector<double> &Q,
                   const std::vector<double> &A,
@@ -39,12 +39,6 @@ public:
                   std::vector<double> &S_A_out) const;
 
 private:
-  /*! @brief Blood viscosity [m Pa s]. */
-  double d_mu;
-
-  /*! @brief Shape of velocity profile. */
-  double d_gamma;
-
   /*! @brief Wall permeability [cm^2 s^{-1}]. */
   double d_phi;
 };
@@ -74,7 +68,7 @@ public:
    *         - the 5th and 6th are the components of the vector evaluated at the quadrature points.
    */
   using VectorEvaluator = std::function<void(double,
-                                             const Edge&,
+                                             const Edge &,
                                              const std::vector<double> &,
                                              const std::vector<double> &,
                                              const std::vector<double> &,
