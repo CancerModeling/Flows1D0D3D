@@ -55,6 +55,11 @@ target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${ProjectLib})
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${LIBMESH_LIBRARIES}) # libmesh for eigen
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry cxxopts)
 
+add_executable(${ProjectName}ExplicitImplicitScheme explicit_implicit_scheme.cpp)
+target_link_libraries(${ProjectName}ExplicitImplicitScheme ${ProjectLib})
+target_link_libraries(${ProjectName}ExplicitImplicitScheme ${LIBMESH_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}ExplicitImplicitScheme cxxopts)
+
 add_executable(${ProjectName}Transport transport_test.cpp)
 target_link_libraries(${ProjectName}Transport ${ProjectLib})
 
