@@ -257,7 +257,7 @@ void LinearFlowSolver::assemble_matrix_cells(double tau) {
       A->add(dof_indices_p, dof_indices_q, k_pq);
       A->add(dof_indices_q, dof_indices_q, m_loc);
       A->add(dof_indices_q, dof_indices_p, k_qp);
-      // A->add(dof_indices_q, dof_indices_q, m_qq);
+      A->add(dof_indices_q, dof_indices_q, m_qq);
     }
   }
 }
@@ -696,8 +696,11 @@ void LinearFlowSolver::assemble_matrix_characteristic(double tau) {
       const double beta_e = std::sqrt(C_e / L_e);
       const double alpha = 1. / (beta_v + beta_e);
 
-      Eigen::MatrixXd u_pq = (-tau / C_e) * (1 - alpha * beta_e) * E;
-      Eigen::MatrixXd u_pp = (-tau / C_e) * (-beta_e * (1 - alpha * beta_e)) * E;
+      // Eigen::MatrixXd u_pq = (-tau / C_e) * (1 - alpha * beta_e) * E;
+      // Eigen::MatrixXd u_pp = (-tau / C_e) * (beta_e * (alpha * beta_e - 1.)) * E;
+
+      Eigen::MatrixXd u_pq = (-tau / C_e) * beta_v * alpha * E;
+      Eigen::MatrixXd u_pp = (-tau / C_e) * ( -beta_v * alpha * beta_e ) * E;
 
       Eigen::MatrixXd u_qp = (-tau / L_e) * alpha * beta_e * E;
       Eigen::MatrixXd u_qq = (-tau / L_e) * alpha * (-1.) * E;
@@ -748,7 +751,8 @@ void LinearFlowSolver::assemble_rhs_characteristic(double tau) {
       std::vector<double> rhs_values_q(local_dof_map.num_basis_functions());
 
       for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
-        rhs_values_p[j] = (+tau/C_e) * (+beta_e*alpha*beta_v*p_v + beta_e *alpha*q_v) * std::pow(sigma, j);
+        //rhs_values_p[j] = (+tau/C_e) * (+beta_e*alpha*beta_v*p_v + beta_e *alpha*q_v) * std::pow(sigma, j);
+        rhs_values_p[j] = (+tau/C_e) * ( beta_v * ( 1- alpha*beta_v) * p_v + (1- beta_v * alpha) * q_v ) * std::pow(sigma, j);
         rhs_values_q[j] = (+tau/L_e) * alpha * ( beta_v * p_v + q_v) * std::pow(sigma, j);
       }
 
