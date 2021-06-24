@@ -73,6 +73,8 @@ public:
   /*! @brief Calculates the flow Q pointing towards the vertex v. */
   [[nodiscard]] double get_flow_at_vessel_tip(const Vertex& v) const;
 
+  void get_1d_values_at_vertex(const Vertex& v, double& Q, double& A) const;
+
   [[nodiscard]] Values0DModel get_0D_values(const Vertex& v) const;
 private:
   /*! @brief The mpi communicator. */
