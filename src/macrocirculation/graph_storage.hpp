@@ -106,6 +106,7 @@ struct LinearCharacteristicData {
 
 struct NonlinearCharacteristicData {
   double G0;
+  double A0;
   double rho;
   bool points_towards_vertex;
   double p;
@@ -224,7 +225,7 @@ public:
 
   void update_linear_characteristic_inflow(double p, double q);
 
-  void set_to_nonlinear_characteristic_inflow(double G0, double rh0, bool points_towards_vertex, double p, double q);
+  void set_to_nonlinear_characteristic_inflow(double G0, double A0, double rh0, bool points_towards_vertex, double p, double q);
 
   void update_nonlinear_characteristic_inflow(double p, double q);
 

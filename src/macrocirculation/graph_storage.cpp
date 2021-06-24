@@ -173,17 +173,18 @@ void Vertex::set_to_linear_characteristic_inflow(double C, double L, bool points
   p_linear_characteristic_data.L = L;
   p_linear_characteristic_data.points_towards_vertex = points_towards_vertex;
   p_linear_characteristic_data.p = p;
-  p_linear_characteristic_data.q = sigma*q;
+  p_linear_characteristic_data.q = sigma * q;
 }
 
-void Vertex::set_to_nonlinear_characteristic_inflow(double G0, double rho, bool points_towards_vertex, double p, double q) {
+void Vertex::set_to_nonlinear_characteristic_inflow(double G0, double A0, double rho, bool points_towards_vertex, double p, double q) {
   p_flow_type = FlowType::NonlinearCharacteristic;
   double sigma = points_towards_vertex ? +1 : -1;
   p_nonlinear_characteristic_data.G0 = G0;
+  p_nonlinear_characteristic_data.A0 = A0;
   p_nonlinear_characteristic_data.rho = rho;
   p_nonlinear_characteristic_data.points_towards_vertex = points_towards_vertex;
   p_nonlinear_characteristic_data.p = p;
-  p_nonlinear_characteristic_data.q = sigma*q;
+  p_nonlinear_characteristic_data.q = sigma * q;
 }
 
 void Vertex::update_linear_characteristic_inflow(double p, double q) {
