@@ -68,6 +68,9 @@ public:
 
   void get_1d_values_at_vertex(const Vertex& v, double& p, double& q) const;
 
+  /*! @brief Evaluates p and q of the current solution on the edge e parametrized on [0, 1] at \f$ s \in [0,1] \f$. */
+  void evaluate_1d_values(const Edge& e, double s, double& p, double& q) const;
+
 private:
   static Eigen::MatrixXd create_mass(const FETypeNetwork &fe, const LocalEdgeDofMap &local_dof_map);
 
