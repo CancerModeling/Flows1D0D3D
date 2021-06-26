@@ -26,6 +26,7 @@ class DofMap;
 class RightHandSideEvaluator;
 class TimeIntegrator;
 class Vertex;
+class Edge;
 
 struct Values0DModel {
   double p_c;
@@ -49,7 +50,16 @@ public:
   explicit ExplicitNonlinearFlowSolver(MPI_Comm comm,
                                        std::shared_ptr<GraphStorage> graph,
                                        std::shared_ptr<DofMap> dof_map);
+
   ~ExplicitNonlinearFlowSolver();
+
+  /*! @brief The component index of the flow Q inside the dof map.
+   *         This can be used inside a local dof map to get the dof indices for a single component. */
+  static const size_t Q_component = 0;
+
+  /*! @brief The component index of the area A inside the dof map.
+   *         This can be used inside a local dof map to get the dof indices for a single component. */
+  static const size_t A_component = 1;
 
   void solve();
 
@@ -76,6 +86,10 @@ public:
   void get_1d_values_at_vertex(const Vertex& v, double& Q, double& A) const;
 
   [[nodiscard]] Values0DModel get_0D_values(const Vertex& v) const;
+
+  /*! @brief Evaluates A and Q of the current solution on the edge e parametrized on [0, 1] at \f$ s \in [0,1] \f$. */
+  void evaluate_1d_values(const Edge& e, double s, double& A, double& Q) const;
+
 private:
   /*! @brief The mpi communicator. */
   MPI_Comm d_comm;
