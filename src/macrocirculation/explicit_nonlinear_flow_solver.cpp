@@ -277,6 +277,25 @@ template<size_t degree>
   return result;
 }
 
+template<size_t degree>
+void ExplicitNonlinearFlowSolver<degree>::evaluate_1d_values(const Edge& e, double s, double& A, double& Q) const {
+  // on which micro edge is the given value
+  auto micro_edge_id = static_cast<size_t>(std::ceil(e.num_micro_edges() * s));
+  micro_edge_id = std::min(micro_edge_id, e.num_micro_edges() - 1);
+  const double h = 1. / e.num_micro_edges();
+  // get parametrization value on the micro edge
+  const double s_tilde = 2 * (s - h * static_cast<double>(micro_edge_id)) / h - 1;
+  // get dof information
+  const auto &local_dof_map = d_dof_map->get_local_dof_map(e);
+  std::vector<size_t> dof(local_dof_map.num_basis_functions());
+  std::vector<double> dof_values(local_dof_map.num_basis_functions());
+  local_dof_map.dof_indices(micro_edge_id, A_component, dof);
+  extract_dof(dof, d_u_now, dof_values);
+  A = FETypeNetwork::evaluate_dof(dof_values, s_tilde);
+  local_dof_map.dof_indices(micro_edge_id, Q_component, dof);
+  extract_dof(dof, d_u_now, dof_values);
+  Q = FETypeNetwork::evaluate_dof(dof_values, s_tilde);
+}
 
 // template instantiations:
 template class ExplicitNonlinearFlowSolver<0>;

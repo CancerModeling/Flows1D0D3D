@@ -120,6 +120,9 @@ public:
   void evaluate_dof_at_quadrature_points(const std::vector<double> &dof_values,
                                          std::vector<double> &quadrature_point_values) const;
 
+  /*! @brief Evaluates the finite element basis functions on the interval \f$[-1,+1]\f$ at \f$s\in[-1,+1]\f$. */
+  static double evaluate_dof(const std::vector<double> &dof_values, double s);
+
   /*! @brief Evaluates the function with the given dof values at the quadratures points. */
   EdgeBoundaryValues evaluate_dof_at_boundary_points(const std::vector<double> &dof_values) const;
 

@@ -40,21 +40,24 @@ int main(int argc, char *argv[]) {
     std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
 
     const double tau = 1e-4;
-    const double t_end = 2.;
+    const double t_end = 3.;
+    const double tau_out = 1e-2;
 
-    const size_t output_interval = 100;
+    const auto output_interval = static_cast<std::size_t>(tau_out / tau);
+    const size_t skip_length = 1;
 
     // vessel parameters
     const double vessel_length = 21.1 * 8;
     const double radius = 0.403;
     const double wall_thickness = 0.067;
     const double elastic_modulus = 400000.0;
-    const double gamma = 2;
     const double density = 1.028e-3;
 
-    auto physical_data = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
+    auto physical_data_1 = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 9., radius, vessel_length);
+    auto physical_data_2 = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length);
     // we set the viscosity to zero
-    physical_data.viscosity = 0;
+    // physical_data_1.viscosity = 0;
+    // physical_data_2.viscosity = 0;
 
     // create the ascending aorta
     auto graph_nl = std::make_shared<mc::GraphStorage>();
@@ -65,7 +68,7 @@ int main(int argc, char *argv[]) {
     auto edge_nl = graph_nl->connect(*v0_nl, *v1_nl, num_micro_edges);
 
     edge_nl->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1, 0, 0)}});
-    edge_nl->add_physical_data(physical_data);
+    edge_nl->add_physical_data(physical_data_1);
 
     auto graph_li = std::make_shared<mc::GraphStorage>();
 
@@ -75,13 +78,14 @@ int main(int argc, char *argv[]) {
     auto edge_li = graph_li->connect(*v0_li, *v1_li, num_micro_edges);
 
     edge_li->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(2, 0, 0)}});
-    edge_li->add_physical_data(physical_data);
+    edge_li->add_physical_data(physical_data_2);
 
-    v0_nl->set_to_inflow(mc::heart_beat_inflow(0.4));
-    v1_nl->set_to_nonlinear_characteristic_inflow(physical_data.G0, physical_data.A0, physical_data.rho, false, 0, 0);
+    v0_nl->set_to_inflow(mc::heart_beat_inflow(4));
+    v1_nl->set_to_nonlinear_characteristic_inflow(physical_data_2.G0, physical_data_2.A0, physical_data_2.rho, false, 0, 0);
 
-    v0_li->set_to_linear_characteristic_inflow(mc::LinearFlowSolver::get_C(*edge_li), mc::LinearFlowSolver::get_L(*edge_li), true, 0, 0);
+    v0_li->set_to_linear_characteristic_inflow(mc::LinearFlowSolver::get_C(*edge_nl), mc::LinearFlowSolver::get_L(*edge_nl), true, 0, 0);
     v1_li->set_to_free_outflow();
+    v1_li->set_to_windkessel_outflow(1.8, 0.387);
 
     mc::naive_mesh_partitioner(*graph_li, PETSC_COMM_WORLD);
     mc::naive_mesh_partitioner(*graph_nl, PETSC_COMM_WORLD);
@@ -94,10 +98,11 @@ int main(int argc, char *argv[]) {
 
     mc::ExplicitNonlinearFlowSolver<degree> solver_nl(MPI_COMM_WORLD, graph_nl, dof_map_nl);
     solver_nl.use_explicit_euler_method();
+    // solver_nl.use_ssp_method();
     solver_nl.set_tau(tau);
 
     mc::LinearFlowSolver solver_li(PETSC_COMM_WORLD, graph_li, dof_map_li, degree);
-    solver_li.setup(tau);
+    solver_li.setup(tau*skip_length);
 
     mc::GraphPVDWriter writer_li(PETSC_COMM_WORLD, "./output", "explicit_implicit_li");
     mc::GraphPVDWriter writer_nl(PETSC_COMM_WORLD, "./output", "explicit_implicit_nl");
@@ -112,13 +117,14 @@ int main(int argc, char *argv[]) {
         double Q,A;
         solver_nl.get_1d_values_at_vertex(*v1_nl, Q, A);
         const auto& param = v0_li->get_linear_characteristic_data();
-        const double p = physical_data.G0 * (std::sqrt(A/physical_data.A0) - 1);
+        const double p = physical_data_1.G0 * (std::sqrt(A/physical_data_1.A0) - 1);
         v0_li->update_linear_characteristic_inflow(p, Q);
 
-        std::cout << " p=" << p << " Q=" << Q << std::endl;
+        // std::cout << " p=" << p << " Q=" << Q << std::endl;
       }
 
-      solver_li.solve(tau, t);
+      if (t_idx % skip_length  == 0)
+        solver_li.solve(tau*skip_length, t);
 
       {
         double p,q;
@@ -126,7 +132,7 @@ int main(int argc, char *argv[]) {
         const auto& param = v1_nl->get_nonlinear_characteristic_data();
         v1_nl->update_nonlinear_characteristic_inflow(p, q);
 
-        std::cout << " p=" << p << " q=" << q << std::endl;
+        // std::cout << " p=" << p << " q=" << q << std::endl;
       }
 
       if (t_idx % output_interval == 0) {
