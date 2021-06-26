@@ -48,6 +48,8 @@ public:
 
   const PetscVec &get_solution() const { return *u; }
 
+  void set_initial_value(double p, double q);
+
   void setup(double tau);
 
   void solve(double tau, double t);

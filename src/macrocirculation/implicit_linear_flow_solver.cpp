@@ -696,14 +696,14 @@ void LinearFlowSolver::assemble_matrix_characteristic(double tau) {
       const double beta_e = std::sqrt(C_e / L_e);
       const double alpha = 1. / (beta_v + beta_e);
 
-      // Eigen::MatrixXd u_pq = (-tau / C_e) * (1 - alpha * beta_e) * E;
-      // Eigen::MatrixXd u_pp = (-tau / C_e) * (beta_e * (alpha * beta_e - 1.)) * E;
+      // Eigen::MatrixXd u_pq = (sigma * tau / C_e) * (1 - alpha * beta_e) * E;
+      // Eigen::MatrixXd u_pp = (sigma * tau / C_e) * (sigma * beta_e * (1 - alpha * beta_e)) * E;
 
-      Eigen::MatrixXd u_pq = (-tau / C_e) * beta_v * alpha * E;
-      Eigen::MatrixXd u_pp = (-tau / C_e) * (-beta_v * alpha * beta_e) * E;
+      Eigen::MatrixXd u_pq = (sigma * tau / C_e) * beta_v * alpha * E;
+      Eigen::MatrixXd u_pp = (sigma * tau / C_e) * (sigma * beta_v * alpha * beta_e) * E;
 
-      Eigen::MatrixXd u_qp = (-tau / L_e) * alpha * beta_e * E;
-      Eigen::MatrixXd u_qq = (-tau / L_e) * alpha * (-1.) * E;
+      Eigen::MatrixXd u_qp = (sigma * tau / L_e) * alpha * beta_e * E;
+      Eigen::MatrixXd u_qq = (sigma * tau / L_e) * alpha * sigma * E;
 
       A->add(dof_indices_p, dof_indices_q, u_pq);
       A->add(dof_indices_p, dof_indices_p, u_pp);
@@ -751,9 +751,9 @@ void LinearFlowSolver::assemble_rhs_characteristic(double tau) {
       std::vector<double> rhs_values_q(local_dof_map.num_basis_functions());
 
       for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
-        //rhs_values_p[j] = (+tau/C_e) * (+beta_e*alpha*beta_v*p_v + beta_e *alpha*q_v) * std::pow(sigma, j);
-        rhs_values_p[j] = (+tau / C_e) * (beta_v * (1 - alpha * beta_v) * p_v + (1 - beta_v * alpha) * q_v) * std::pow(sigma, j);
-        rhs_values_q[j] = (+tau / L_e) * alpha * (beta_v * p_v + q_v) * std::pow(sigma, j);
+        // rhs_values_p[j] = (- sigma * tau/C_e) * (- sigma * beta_e*alpha*beta_v*p_v - sigma * beta_e *alpha*q_v) * std::pow(sigma, j);
+        rhs_values_p[j] = (- sigma * tau / C_e) * ( sigma *beta_v * (alpha * beta_v - 1) * p_v + sigma * (beta_v * alpha - 1) * q_v) * std::pow(sigma, j);
+        rhs_values_q[j] = (- sigma * tau / L_e) * alpha * (beta_v * p_v + q_v) * std::pow(sigma, j);
       }
 
       rhs->add(dof_indices_p, rhs_values_p);
@@ -831,6 +831,26 @@ void LinearFlowSolver::assemble_rhs(double tau, double t) {
 void LinearFlowSolver::assemble(double tau, double t) {
   assemble_matrix(tau);
   assemble_rhs(tau, t);
+}
+
+void LinearFlowSolver::set_initial_value(double p, double q)
+{
+  u->zero();
+  for (auto e_id : d_graph->get_edge_ids())
+  {
+    auto& edge = *d_graph->get_edge(e_id);
+    auto ldofmap = d_dof_map->get_local_dof_map(edge);
+    std::vector<size_t> dofs_p ( ldofmap.num_basis_functions() );
+    std::vector<size_t> dofs_q ( ldofmap.num_basis_functions() );
+    for (size_t m_e_id = 0; m_e_id < edge.num_micro_edges(); m_e_id += 1)
+    {
+      ldofmap.dof_indices(m_e_id, p_component, dofs_p);
+      ldofmap.dof_indices(m_e_id, q_component, dofs_q);
+      u->set(dofs_p[0], p);
+      u->set(dofs_q[0], q);
+    }
+  }
+  u->assemble();
 }
 
 } // namespace macrocirculation
