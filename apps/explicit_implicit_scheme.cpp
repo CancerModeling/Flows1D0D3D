@@ -11,14 +11,14 @@
 #include <petsc.h>
 #include <utility>
 
-#include "macrocirculation/implicit_linear_flow_solver.hpp"
-#include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
+#include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/fe_type.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
+#include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/petsc/petsc_ksp.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
@@ -28,9 +28,78 @@
 namespace lm = libMesh;
 namespace mc = macrocirculation;
 
+class NonlinearLinearCoupling {
+public:
+  NonlinearLinearCoupling(
+    std::shared_ptr<mc::GraphStorage> graph_nl,
+    std::shared_ptr<mc::GraphStorage> graph_li,
+    std::shared_ptr<mc::ExplicitNonlinearFlowSolver> nonlinear_solver,
+    std::shared_ptr<mc::ImplicitLinearFlowSolver> linear_solver)
+      : d_graph_nl(std::move(graph_nl)),
+        d_graph_li(std::move(graph_li)),
+        d_nonlinear_solver(std::move(nonlinear_solver)),
+        d_linear_solver(std::move(linear_solver)) {}
+
+  void add_coupled_vertices(const std::string &name) {
+    add_coupled_vertices(name, name);
+  }
+
+  // TODO: calling this after having assembled the matrices will make the solvers fail
+  //       -> find a way to prevent this.
+  void add_coupled_vertices(const std::string &name_nl, const std::string &name_li) {
+    auto v_nl = d_graph_nl->find_vertex_by_name(name_nl);
+    auto v_li = d_graph_li->find_vertex_by_name(name_li);
+    auto e_nl = d_graph_nl->get_edge(v_nl->get_edge_neighbors()[0]);
+    auto e_li = d_graph_li->get_edge(v_li->get_edge_neighbors()[0]);
+    const auto &data_nl = e_nl->get_physical_data();
+    const auto &data_li = e_li->get_physical_data();
+    v_nl->set_to_nonlinear_characteristic_inflow(data_li.G0, data_li.A0, data_li.rho, e_li->is_pointing_to(v_li->get_id()), 0, 0);
+    v_li->set_to_linear_characteristic_inflow(mc::linear::get_C(data_nl), mc::linear::get_L(data_nl), e_nl->is_pointing_to(v_nl->get_id()), 0, 0);
+    coupled_vertices.push_back({v_nl->get_id(), v_li->get_id()});
+  }
+
+  void update_linear_solver() {
+    for (auto vertex_pair : coupled_vertices) {
+      auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);
+      auto v_li = d_graph_li->get_vertex(vertex_pair.vertex_id_2);
+
+      double p, q;
+      d_nonlinear_solver->get_1d_pq_values_at_vertex(*v_nl, p, q);
+      std::cout << " p=" << p << " q=" << q << std::endl;
+      v_li->update_linear_characteristic_inflow(p, q);
+    }
+  }
+
+  void update_nonlinear_solver() {
+    for (auto vertex_pair : coupled_vertices) {
+      auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);
+      auto v_li = d_graph_li->get_vertex(vertex_pair.vertex_id_2);
+
+      double p, q;
+      d_linear_solver->get_1d_pq_values_at_vertex(*v_li, p, q);
+      std::cout << " p=" << p << " q=" << q << std::endl;
+      v_nl->update_nonlinear_characteristic_inflow(p, q);
+    }
+  }
+
+private:
+  struct CoupledVertices {
+    size_t vertex_id_1;
+    size_t vertex_id_2;
+  };
+
+  std::vector<CoupledVertices> coupled_vertices;
+
+private:
+  std::shared_ptr<mc::GraphStorage> d_graph_nl;
+  std::shared_ptr<mc::GraphStorage> d_graph_li;
+
+  std::shared_ptr<mc::ExplicitNonlinearFlowSolver> d_nonlinear_solver;
+  std::shared_ptr<mc::ImplicitLinearFlowSolver> d_linear_solver;
+};
 
 int main(int argc, char *argv[]) {
-  const std::size_t degree = 2;
+  const std::size_t degree = 1;
   const std::size_t num_micro_edges = 20;
 
   // initialize petsc
@@ -40,7 +109,7 @@ int main(int argc, char *argv[]) {
     std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
 
     const double tau = 1e-4;
-    const double t_end = 3.;
+    const double t_end = 0.4;
     const double tau_out = 1e-2;
 
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
@@ -81,10 +150,10 @@ int main(int argc, char *argv[]) {
     edge_li->add_physical_data(physical_data_2);
 
     v0_nl->set_to_inflow(mc::heart_beat_inflow(4));
-    v1_nl->set_to_nonlinear_characteristic_inflow(physical_data_2.G0, physical_data_2.A0, physical_data_2.rho, false, 0, 0);
+    v1_nl->set_name("nl_out");
 
-    v0_li->set_to_linear_characteristic_inflow(mc::ImplicitLinearFlowSolver::get_C(*edge_nl), mc::ImplicitLinearFlowSolver::get_L(*edge_nl), true, 0, 0);
-    v1_li->set_to_free_outflow();
+    v0_li->set_name("li_in");
+    // v1_li->set_to_free_outflow();
     v1_li->set_to_windkessel_outflow(1.8, 0.387);
 
     mc::naive_mesh_partitioner(*graph_li, PETSC_COMM_WORLD);
@@ -96,40 +165,35 @@ int main(int argc, char *argv[]) {
     auto dof_map_li = std::make_shared<mc::DofMap>(graph_li->num_vertices(), graph_li->num_edges());
     dof_map_li->create(PETSC_COMM_WORLD, *graph_li, 2, degree, true);
 
-    mc::ExplicitNonlinearFlowSolver solver_nl(MPI_COMM_WORLD, graph_nl, dof_map_nl, degree);
-    solver_nl.use_explicit_euler_method();
-    // solver_nl.use_ssp_method();
-    solver_nl.set_tau(tau);
+    auto solver_nl = std::make_shared< mc::ExplicitNonlinearFlowSolver > (MPI_COMM_WORLD, graph_nl, dof_map_nl, degree);
+    auto solver_li = std::make_shared< mc::ImplicitLinearFlowSolver >(PETSC_COMM_WORLD, graph_li, dof_map_li, degree);
 
-    mc::ImplicitLinearFlowSolver solver_li(PETSC_COMM_WORLD, graph_li, dof_map_li, degree);
-    solver_li.setup(tau * skip_length);
+    NonlinearLinearCoupling coupling(graph_nl, graph_li, solver_nl, solver_li);
+    coupling.add_coupled_vertices("nl_out", "li_in");
 
     mc::GraphPVDWriter writer_li(PETSC_COMM_WORLD, "./output", "explicit_implicit_li");
     mc::GraphPVDWriter writer_nl(PETSC_COMM_WORLD, "./output", "explicit_implicit_nl");
+
+    solver_nl->use_explicit_euler_method();
+    // solver_nl.use_ssp_method();
+    solver_nl->set_tau(tau);
+    solver_li->setup(tau * skip_length);
 
     double t = 0;
     const auto t_max_idx = static_cast<size_t>(std::ceil(t_end / tau));
     for (size_t t_idx = 0; t_idx < t_max_idx; t_idx += 1) {
       t += tau;
-      solver_nl.solve();
+      solver_nl->solve();
 
       {
-        double p, q;
-        solver_nl.get_1d_pq_values_at_vertex(*v1_nl, p, q);
-        v0_li->update_linear_characteristic_inflow(p, q);
-
-        // std::cout << " p=" << p << " q=" << q << std::endl;
+        coupling.update_linear_solver();
       }
 
       if (t_idx % skip_length == 0)
-        solver_li.solve(tau * skip_length, t);
+        solver_li->solve(tau * skip_length, t);
 
       {
-        double p, q;
-        solver_li.get_1d_pq_values_at_vertex(*v0_li, p, q);
-        v1_nl->update_nonlinear_characteristic_inflow(p, q);
-
-        // std::cout << " p=" << p << " q=" << q << std::endl;
+        coupling.update_nonlinear_solver();
       }
 
       if (t_idx % output_interval == 0) {
@@ -141,8 +205,8 @@ int main(int argc, char *argv[]) {
           std::vector<mc::Point> points;
           std::vector<double> p_vertex_values;
           std::vector<double> q_vertex_values;
-          interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_li, solver_li.p_component, solver_li.get_solution(), points, p_vertex_values);
-          interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_li, solver_li.q_component, solver_li.get_solution(), points, q_vertex_values);
+          interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_li, solver_li->p_component, solver_li->get_solution(), points, p_vertex_values);
+          interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_li, solver_li->q_component, solver_li->get_solution(), points, q_vertex_values);
 
           writer_li.set_points(points);
           writer_li.add_vertex_data("p", p_vertex_values);
@@ -158,10 +222,10 @@ int main(int argc, char *argv[]) {
           std::vector<double> p_total_vertex_values;
           std::vector<double> p_static_vertex_values;
 
-          mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, 0, solver_nl.get_solution(), points, Q_vertex_values);
-          mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, 1, solver_nl.get_solution(), points, A_vertex_values);
-          mc::calculate_total_pressure(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl.get_solution(), points, p_total_vertex_values);
-          mc::calculate_static_pressure(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl.get_solution(), points, p_static_vertex_values);
+          mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, 0, solver_nl->get_solution(), points, Q_vertex_values);
+          mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, 1, solver_nl->get_solution(), points, A_vertex_values);
+          mc::calculate_total_pressure(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl->get_solution(), points, p_total_vertex_values);
+          mc::calculate_static_pressure(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl->get_solution(), points, p_static_vertex_values);
 
           writer_nl.set_points(points);
           writer_nl.add_vertex_data("Q", Q_vertex_values);
