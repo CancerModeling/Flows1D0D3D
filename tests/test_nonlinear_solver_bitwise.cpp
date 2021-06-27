@@ -44,7 +44,7 @@ TEST_CASE("NonlinearSolverBitwise", "[NonlinearSolverBitwise]") {
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
+  mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
   solver.set_tau(tau);
   solver.use_ssp_method();
 

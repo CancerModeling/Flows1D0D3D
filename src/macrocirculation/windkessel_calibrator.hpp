@@ -15,7 +15,6 @@
 namespace macrocirculation {
 
 class GraphStorage;
-template<size_t degree>
 class ExplicitNonlinearFlowSolver;
 
 struct RCRData {
@@ -34,14 +33,7 @@ public:
   void calculate_total_edge_capacitance();
 
   /*! @brief Adds the flow contributions of the current time step to the total amount */
-  template<size_t degree>
-  void update_flow(const ExplicitNonlinearFlowSolver<degree> &solver, double tau) {
-    for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
-      auto v = d_graph->get_vertex(v_id);
-      if (v->is_leaf())
-        d_total_flows[v_id] += solver.get_flow_at_vessel_tip(*v) * tau;
-    }
-  }
+  void update_flow(const ExplicitNonlinearFlowSolver &solver, double tau);
 
   std::map<size_t, RCRData> estimate_parameters_local();
 

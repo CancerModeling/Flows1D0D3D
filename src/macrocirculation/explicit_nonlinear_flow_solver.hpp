@@ -44,12 +44,12 @@ void interpolate_constant(MPI_Comm comm,
 /*! @brief Sets the given function to A=A0 and Q=0. WARNING: Assumes legendre basis! */
 void set_to_A0(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, std::vector<double> &result);
 
-template<std::size_t degree>
 class ExplicitNonlinearFlowSolver {
 public:
   explicit ExplicitNonlinearFlowSolver(MPI_Comm comm,
                                        std::shared_ptr<GraphStorage> graph,
-                                       std::shared_ptr<DofMap> dof_map);
+                                       std::shared_ptr<DofMap> dof_map,
+                                       size_t degree);
 
   ~ExplicitNonlinearFlowSolver();
 
@@ -101,6 +101,9 @@ private:
 
   /*! @brief The dof map for our domain. */
   std::shared_ptr<DofMap> d_dof_map;
+
+  /*! @brief The degree of the finite element space. */
+  size_t d_degree;
 
   /*! @brief Utility class for evaluating the right hand side, to allow different explicit schemes. */
   std::shared_ptr<RightHandSideEvaluator> d_right_hand_side_evaluator;

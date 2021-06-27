@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver<degree> flow_solver(MPI_COMM_WORLD, graph, dof_map_flow);
+  mc::ExplicitNonlinearFlowSolver flow_solver(MPI_COMM_WORLD, graph, dof_map_flow, degree);
   flow_solver.set_tau(tau);
   flow_solver.use_ssp_method();
 

@@ -10,10 +10,12 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
+#include "windkessel_calibrator.hpp"
+
 #include "communication/mpi.hpp"
+#include "explicit_nonlinear_flow_solver.hpp"
 #include "graph_storage.hpp"
 #include "vessel_formulas.hpp"
-#include "windkessel_calibrator.hpp"
 
 namespace macrocirculation {
 
@@ -56,6 +58,14 @@ void WindkesselCalibrator::calculate_total_edge_capacitance() {
   }
 
   MPI_Allreduce(&d_total_C_edge, &d_total_C_edge, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+}
+
+void WindkesselCalibrator::update_flow(const ExplicitNonlinearFlowSolver &solver, double tau) {
+  for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
+    auto v = d_graph->get_vertex(v_id);
+    if (v->is_leaf())
+      d_total_flows[v_id] += solver.get_flow_at_vessel_tip(*v) * tau;
+  }
 }
 
 std::map<size_t, RCRData> WindkesselCalibrator::estimate_parameters_local() {

@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
     auto dof_map_li = std::make_shared<mc::DofMap>(graph_li->num_vertices(), graph_li->num_edges());
     dof_map_li->create(PETSC_COMM_WORLD, *graph_li, 2, degree, true);
 
-    mc::ExplicitNonlinearFlowSolver<degree> solver_nl(MPI_COMM_WORLD, graph_nl, dof_map_nl);
+    mc::ExplicitNonlinearFlowSolver solver_nl(MPI_COMM_WORLD, graph_nl, dof_map_nl, degree);
     solver_nl.use_explicit_euler_method();
     // solver_nl.use_ssp_method();
     solver_nl.set_tau(tau);
