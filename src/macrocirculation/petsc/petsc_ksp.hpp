@@ -24,6 +24,8 @@ public:
     CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
     CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
 
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(ksp->d_ksp));
+
     return ksp;
   }
 
@@ -31,8 +33,11 @@ public:
     std::shared_ptr<PetscKsp> ksp(new PetscKsp(mat));
 
     PC pc;
+    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
     CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCHYPRE));
     CHKERRABORT(PETSC_COMM_WORLD, PCHYPRESetType(pc, "pilut"));
+
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(ksp->d_ksp));
 
     return ksp;
   }
@@ -56,8 +61,6 @@ protected:
   PetscKsp(PetscMat &mat) {
     CHKERRABORT(PETSC_COMM_WORLD, KSPCreate(PETSC_COMM_WORLD, &d_ksp));
     CHKERRABORT(PETSC_COMM_WORLD, KSPSetOperators(d_ksp, mat.get_mat(), mat.get_mat()));
-
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(d_ksp));
   }
 
 private:
