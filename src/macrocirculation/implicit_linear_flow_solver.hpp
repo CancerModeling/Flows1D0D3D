@@ -53,6 +53,8 @@ public:
 
   const PetscVec &get_solution() const { return *u; }
 
+  PetscKsp &get_solver() { return *linear_solver; }
+
   void set_initial_value(double p, double q);
 
   void setup(double tau);

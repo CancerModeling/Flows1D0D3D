@@ -47,6 +47,7 @@ TEST_CASE("NonlinearSolverBitwise", "[NonlinearSolverBitwise]") {
 
   // configure solver
   mc::LinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
+  solver.get_solver().set_pc_to_jacobi();
   solver.setup(tau);
 
   double t = 0;

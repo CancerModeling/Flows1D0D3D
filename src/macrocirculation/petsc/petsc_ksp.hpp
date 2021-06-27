@@ -20,12 +20,16 @@ public:
     CHKERRABORT(PETSC_COMM_WORLD, KSPSetOperators(d_ksp, mat.get_mat(), mat.get_mat()));
 
     PC pc;
-    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(d_ksp, &pc));
-    // CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
     CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCHYPRE));
     CHKERRABORT(PETSC_COMM_WORLD, PCHYPRESetType(pc, "pilut"));
 
     CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(d_ksp));
+  }
+
+  void set_pc_to_jacobi() {
+    PC pc;
+    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(d_ksp, &pc));
+    CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
   }
 
   PetscKsp(const PetscKsp &) = delete;
