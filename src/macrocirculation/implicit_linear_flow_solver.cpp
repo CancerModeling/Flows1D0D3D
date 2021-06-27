@@ -209,18 +209,15 @@ Eigen::MatrixXd ImplicitLinearFlowSolver::create_boundary(const LocalEdgeDofMap 
 }
 
 double ImplicitLinearFlowSolver::get_C(const Edge &e) {
-  const auto &data = e.get_physical_data();
-  return data.A0 / (data.rho * std::pow(data.get_c0(), 2));
+  return linear::get_C(e.get_physical_data());
 }
 
 double ImplicitLinearFlowSolver::get_L(const Edge &e) {
-  const auto &data = e.get_physical_data();
-  return data.rho / data.A0;
+  return linear::get_L(e.get_physical_data());
 }
 
 double ImplicitLinearFlowSolver::get_R(const Edge &e) {
-  const auto &data = e.get_physical_data();
-  return 2 * (data.gamma + 2) * M_PI * data.viscosity / data.A0;
+  return linear::get_R(e.get_physical_data());
 }
 
 void ImplicitLinearFlowSolver::assemble_matrix_cells(double tau) {

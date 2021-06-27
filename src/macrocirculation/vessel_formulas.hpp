@@ -13,6 +13,12 @@
 
 namespace macrocirculation {
 
+/*! @brief Calculates c0. */
+template<typename PhysicalParameters>
+inline double calculate_c0(const PhysicalParameters &param) {
+  return std::sqrt(param.G0 / (2 * param.rho));
+}
+
 /*! @brief Saves the material constants on a vessel. */
 struct VesselParameters {
   VesselParameters() = default;
@@ -30,17 +36,41 @@ namespace nonlinear {
 
 /*! @brief Converts the vessel area A to the static pressure p. */
 template<typename PhysicalParameters>
-double get_p_from_A(const PhysicalParameters &param, double A) {
+inline double get_p_from_A(const PhysicalParameters &param, double A) {
   return param.G0 * (std::sqrt(A / param.A0) - 1);
 }
 
 /*! @brief Converts the static pressure p to the vessel area A. */
 template<typename PhysicalParameters>
-double get_A_from_p(const PhysicalParameters &param, double p) {
+inline double get_A_from_p(const PhysicalParameters &param, double p) {
   return param.A0 * std::pow(p / param.G0 + 1, 2);
 }
 
 } // namespace nonlinear
+
+/*! @brief Formulas especially for the linear flow model. */
+namespace linear {
+
+/*! @brief Gets the inductivity of the linearized flow model. */
+template<typename PhysicalParameters>
+inline double get_L(const PhysicalParameters &param) {
+  return param.rho / param.A0;
+}
+
+/*! @brief Gets the capacitance of the linearized flow model. */
+template<typename PhysicalParameters>
+inline double get_C(const PhysicalParameters &param) {
+  const double c0 = calculate_c0(param);
+  return param.A0 / (param.rho * std::pow(c0, 2));
+}
+
+/*! @brief Gets the resistance of the linearized flow model. */
+template<typename PhysicalParameters>
+inline double get_R(const PhysicalParameters &param) {
+  return 2 * (param.gamma + 2) * M_PI * param.viscosity / param.A0;
+}
+
+} // namespace linear
 
 /*! @brief Calculates Eq. (2.8) from "Multi-scale modeling of flow and transport processes in arterial networks and tissue".
  *
