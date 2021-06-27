@@ -98,7 +98,7 @@ double run_scenario(std::size_t num_micro_edges_per_segment, double tau, bool us
   end->set_to_inflow([](auto) { return 0.; });
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
+  mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
   solver.set_tau(tau);
   if (use_ssp)
     solver.use_ssp_method();
@@ -179,7 +179,7 @@ void run_temporal_convergence_study(std::size_t num_micro_edges_per_segment, std
   // get reference solution for smallest time step.
   std::vector<double> reference_solution;
   {
-    mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
+    mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
     solver.get_rhs_evaluator().set_rhs_S(test_S(length, c0, A0));
     solver.set_tau(tau_min);
     solver.use_ssp_method();
@@ -205,7 +205,7 @@ void run_temporal_convergence_study(std::size_t num_micro_edges_per_segment, std
     const auto begin_t = std::chrono::steady_clock::now();
 
     const double tau = tau_max / (1 << m);
-    mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
+    mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
     solver.get_rhs_evaluator().set_rhs_S(test_S(length, c0, A0));
     solver.set_tau(tau);
     solver.use_ssp_method();

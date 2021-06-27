@@ -7,6 +7,7 @@
 
 #include "catch2/catch.hpp"
 #include "mpi.h"
+#include <iomanip>
 #include <memory>
 #include <petsc.h>
 #include <utility>
@@ -16,6 +17,7 @@
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_storage.hpp"
+#include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/petsc/petsc_ksp.hpp"
 
@@ -23,11 +25,11 @@
 
 namespace mc = macrocirculation;
 
-/*! @brief Checks if we get the same solution values for A and Q as always.
+/*! @brief Checks if we get the same solution values for p and q as always.
  *         This should prevent unintended changes to the solver due to refactorings.
  *         Of course the resulting values should not be taken too seriously and might change if bugs are found.
  */
-TEST_CASE("NonlinearSolverBitwise", "[NonlinearSolverBitwise]") {
+TEST_CASE("LinearSolverBitwise", "[LinearSolverBitwise]") {
   const double t_end = 1.2;
   const std::size_t max_iter = 160000000;
   const size_t degree = 2;
@@ -41,37 +43,39 @@ TEST_CASE("NonlinearSolverBitwise", "[NonlinearSolverBitwise]") {
 
   // initialize dof map
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
-  dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
+  dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, true);
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
-  solver.set_tau(tau);
-  solver.use_ssp_method();
+  mc::ImplicitLinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
+  solver.use_pc_jacobi();
+  solver.setup(tau);
 
+  double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    solver.solve();
+    t += tau;
+    solver.solve(tau, it * tau);
 
-    if (solver.get_time() > t_end + 1e-12)
+    if (t > t_end + 1e-12)
       break;
   }
 
   // values of A we have calculated previously:
-  const std::vector<double> edge_id_to_A{
-    6.5155018925380483e+00,
-    6.1024958654010675e+00,
-    1.7777985228282513e+00};
+  const std::vector<double> edge_id_to_p{
+    1.4862924418636430e+02,
+    1.4995440475551933e+02,
+    1.5002923944324172e+02};
 
   // values of Q we have calculated previously:
-  const std::vector<double> edge_id_to_Q{
-    4.1595860742808094e+02,
-    3.1718725628944367e+02,
-    9.1211576554297366e+01};
+  const std::vector<double> edge_id_to_q{
+    4.1768385246597893e+02,
+    3.1987614522229723e+02,
+    9.2213401604731729e+01};
 
   for (auto e_id : graph->get_active_edge_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
     auto &edge = *graph->get_edge(e_id);
-    double A, Q;
-    solver.evaluate_1d_AQ_values(edge, 0.5, A, Q);
-    REQUIRE(A == Approx(edge_id_to_A[e_id]).epsilon(1e-10));
-    REQUIRE(Q == Approx(edge_id_to_Q[e_id]).epsilon(1e-10));
+    double p, q;
+    solver.evaluate_1d_pq_values(edge, 0.5, p, q);
+    REQUIRE(p == Approx(edge_id_to_p[e_id]).epsilon(1e-10));
+    REQUIRE(q == Approx(edge_id_to_q[e_id]).epsilon(1e-10));
   }
 }

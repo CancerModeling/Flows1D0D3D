@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
 
   mc::Transport transport(MPI_COMM_WORLD, graph,  dof_map_flow, dof_map_transport);
 
-  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map_flow);
+  mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map_flow, degree);
   solver.set_tau(tau);
   solver.use_ssp_method();
 

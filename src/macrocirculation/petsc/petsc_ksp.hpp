@@ -5,6 +5,8 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <memory>
+
 #include "petsc_mat.hpp"
 #include "petsc_vec.hpp"
 
@@ -15,23 +17,35 @@ namespace macrocirculation {
 
 class PetscKsp {
 public:
-  PetscKsp(PetscMat &mat) {
-    CHKERRABORT(PETSC_COMM_WORLD, KSPCreate(PETSC_COMM_WORLD, &d_ksp));
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetOperators(d_ksp, mat.get_mat(), mat.get_mat()));
+  static std::shared_ptr<PetscKsp> create_with_pc_jacobi(PetscMat &mat) {
+    std::shared_ptr<PetscKsp> ksp(new PetscKsp(mat));
 
     PC pc;
-    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(d_ksp, &pc));
-    // CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
+    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
+    CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
+
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(ksp->d_ksp));
+
+    return ksp;
+  }
+
+  static std::shared_ptr<PetscKsp> create_with_pc_ilu(PetscMat &mat) {
+    std::shared_ptr<PetscKsp> ksp(new PetscKsp(mat));
+
+    PC pc;
+    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
     CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCHYPRE));
     CHKERRABORT(PETSC_COMM_WORLD, PCHYPRESetType(pc, "pilut"));
 
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(d_ksp));
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(ksp->d_ksp));
+
+    return ksp;
   }
 
   PetscKsp(const PetscKsp &) = delete;
   PetscKsp(PetscKsp &&) = delete;
-  PetscKsp& operator=(const PetscKsp &) = delete;
-  PetscKsp& operator=(PetscKsp &&) = delete;
+  PetscKsp &operator=(const PetscKsp &) = delete;
+  PetscKsp &operator=(PetscKsp &&) = delete;
 
   ~PetscKsp() {
     CHKERRABORT(PETSC_COMM_WORLD, KSPDestroy(&d_ksp));
@@ -42,6 +56,12 @@ public:
   }
 
   KSP &get_ksp() { return d_ksp; }
+
+protected:
+  PetscKsp(PetscMat &mat) {
+    CHKERRABORT(PETSC_COMM_WORLD, KSPCreate(PETSC_COMM_WORLD, &d_ksp));
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetOperators(d_ksp, mat.get_mat(), mat.get_mat()));
+  }
 
 private:
   KSP d_ksp;

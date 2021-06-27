@@ -376,7 +376,7 @@ void FlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<dou
 
         auto& data = vertex->get_nonlinear_characteristic_data();
 
-        double A_r = data.A0 * std::pow(data.p/data.G0 + 1, 2);
+        double A_r = nonlinear::get_A_from_p(data, data.p);
 
         std::vector<double> Q_list = {Q, data.q};
         std::vector<double> A_list = {A, A_r};

@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
   // configure solver
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
-  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
+  mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
   solver.set_tau(tau);
   solver.use_ssp_method();
 

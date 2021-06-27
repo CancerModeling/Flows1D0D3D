@@ -39,9 +39,9 @@ void interpolate_to_vertices(const MPI_Comm comm,
                              std::vector<Point> &points,
                              std::vector<double> &interpolated);
 
-class LinearFlowSolver {
+class ImplicitLinearFlowSolver {
 public:
-  LinearFlowSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map, size_t degree);
+  ImplicitLinearFlowSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map, size_t degree);
 
   /*! @brief The component index of the pressure p inside the dof map.
    *         This can be used inside a local dof map to get the dof indices for a single component. */
@@ -52,6 +52,8 @@ public:
   static const size_t q_component = 1;
 
   const PetscVec &get_solution() const { return *u; }
+
+  void use_pc_jacobi();
 
   void set_initial_value(double p, double q);
 
@@ -71,10 +73,10 @@ public:
 
   static double get_R(const Edge &e);
 
-  void get_1d_values_at_vertex(const Vertex& v, double& p, double& q) const;
+  void get_1d_pq_values_at_vertex(const Vertex &v, double &p, double &q) const;
 
   /*! @brief Evaluates p and q of the current solution on the edge e parametrized on [0, 1] at \f$ s \in [0,1] \f$. */
-  void evaluate_1d_values(const Edge& e, double s, double& p, double& q) const;
+  void evaluate_1d_pq_values(const Edge &e, double s, double &p, double &q) const;
 
 private:
   static Eigen::MatrixXd create_mass(const FETypeNetwork &fe, const LocalEdgeDofMap &local_dof_map);

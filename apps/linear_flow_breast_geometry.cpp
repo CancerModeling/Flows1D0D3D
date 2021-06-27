@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
     dof_map->create(PETSC_COMM_WORLD, *graph, 2, degree, true);
 
-    mc::LinearFlowSolver solver(PETSC_COMM_WORLD, graph, dof_map, degree);
+    mc::ImplicitLinearFlowSolver solver(PETSC_COMM_WORLD, graph, dof_map, degree);
     solver.setup(tau);
 
     mc::GraphPVDWriter writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "breast_geometry_linearized");

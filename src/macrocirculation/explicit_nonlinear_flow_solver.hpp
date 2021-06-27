@@ -44,12 +44,12 @@ void interpolate_constant(MPI_Comm comm,
 /*! @brief Sets the given function to A=A0 and Q=0. WARNING: Assumes legendre basis! */
 void set_to_A0(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, std::vector<double> &result);
 
-template<std::size_t degree>
 class ExplicitNonlinearFlowSolver {
 public:
   explicit ExplicitNonlinearFlowSolver(MPI_Comm comm,
                                        std::shared_ptr<GraphStorage> graph,
-                                       std::shared_ptr<DofMap> dof_map);
+                                       std::shared_ptr<DofMap> dof_map,
+                                       size_t degree);
 
   ~ExplicitNonlinearFlowSolver();
 
@@ -83,12 +83,17 @@ public:
   /*! @brief Calculates the flow Q pointing towards the vertex v. */
   [[nodiscard]] double get_flow_at_vessel_tip(const Vertex& v) const;
 
-  void get_1d_values_at_vertex(const Vertex& v, double& Q, double& A) const;
+  void get_1d_AQ_values_at_vertex(const Vertex& v, double& A, double& Q) const;
+
+  void get_1d_pq_values_at_vertex(const Vertex& v, double& p, double& q) const;
 
   [[nodiscard]] Values0DModel get_0D_values(const Vertex& v) const;
 
   /*! @brief Evaluates A and Q of the current solution on the edge e parametrized on [0, 1] at \f$ s \in [0,1] \f$. */
-  void evaluate_1d_values(const Edge& e, double s, double& A, double& Q) const;
+  void evaluate_1d_AQ_values(const Edge& e, double s, double& A, double& Q) const;
+
+  /*! @brief Evaluates p and q of the current solution on the edge e parametrized on [0, 1] at \f$ s \in [0,1] \f$. */
+  void evaluate_1d_pq_values(const Edge& e, double s, double& p, double& q) const;
 
 private:
   /*! @brief The mpi communicator. */
@@ -99,6 +104,9 @@ private:
 
   /*! @brief The dof map for our domain. */
   std::shared_ptr<DofMap> d_dof_map;
+
+  /*! @brief The degree of the finite element space. */
+  size_t d_degree;
 
   /*! @brief Utility class for evaluating the right hand side, to allow different explicit schemes. */
   std::shared_ptr<RightHandSideEvaluator> d_right_hand_side_evaluator;

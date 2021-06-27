@@ -279,8 +279,8 @@ void ImplicitAdvectionSolver::solve() const {
     A.assemble();
     f.assemble();
 
-    PetscKsp ksp(A);
-    ksp.solve(f, u_now);
+    auto ksp = PetscKsp::create_with_pc_ilu(A);
+    ksp->solve(f, u_now);
 
     if (it % d_output_interval == 0) {
       std::cout << "it = " << it << std::endl;
