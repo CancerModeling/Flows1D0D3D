@@ -78,9 +78,9 @@ void set_to_A0(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, 
 }
 
 ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(MPI_Comm comm,
-                                                                 std::shared_ptr<GraphStorage> graph,
-                                                                 std::shared_ptr<DofMap> dof_map,
-                                                                 size_t degree)
+                                                         std::shared_ptr<GraphStorage> graph,
+                                                         std::shared_ptr<DofMap> dof_map,
+                                                         size_t degree)
     : d_comm(comm),
       d_graph(std::move(graph)),
       d_dof_map(std::move(dof_map)),
@@ -262,6 +262,16 @@ void ExplicitNonlinearFlowSolver::evaluate_1d_AQ_values(const Edge &e, double s,
   local_dof_map.dof_indices(micro_edge_id, Q_component, dof);
   extract_dof(dof, d_u_now, dof_values);
   Q = FETypeNetwork::evaluate_dof(dof_values, s_tilde);
+}
+
+void ExplicitNonlinearFlowSolver::evaluate_1d_pq_values(const Edge &e, double s, double &p, double &q) const {
+  auto &data = e.get_physical_data();
+
+  double A, Q;
+  evaluate_1d_AQ_values(e, s, A, Q);
+
+  q = Q;
+  p = nonlinear::get_p_from_A(data, A);
 }
 
 } // namespace macrocirculation
