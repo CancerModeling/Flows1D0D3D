@@ -131,7 +131,7 @@ LinearFlowSolver::LinearFlowSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> 
       rhs(std::make_shared<PetscVec>("rhs", *d_dof_map)),
       A(std::make_shared<PetscMat>("A", *d_dof_map)),
       mass(std::make_shared<PetscVec>("mass", *d_dof_map)),
-      linear_solver(std::make_shared<PetscKsp>(*A)) {
+      linear_solver(PetscKsp::create_with_pc_ilu(*A)) {
   assemble_mass(d_comm, *d_graph, *d_dof_map, *mass);
   u->zero();
   rhs->zero();
@@ -867,6 +867,10 @@ void LinearFlowSolver::evaluate_1d_pq_values(const Edge &e, double s, double &p,
   local_dof_map.dof_indices(micro_edge_id, q_component, dof);
   extract_dof(dof, *u, dof_values);
   q = FETypeNetwork::evaluate_dof(dof_values, s_tilde);
+}
+
+void LinearFlowSolver::use_pc_jacobi() {
+  linear_solver = PetscKsp::create_with_pc_jacobi(*A);
 }
 
 } // namespace macrocirculation

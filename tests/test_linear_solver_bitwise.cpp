@@ -47,7 +47,7 @@ TEST_CASE("NonlinearSolverBitwise", "[NonlinearSolverBitwise]") {
 
   // configure solver
   mc::LinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
-  solver.get_solver().set_pc_to_jacobi();
+  solver.use_pc_jacobi();
   solver.setup(tau);
 
   double t = 0;
@@ -75,7 +75,6 @@ TEST_CASE("NonlinearSolverBitwise", "[NonlinearSolverBitwise]") {
     auto &edge = *graph->get_edge(e_id);
     double p, q;
     solver.evaluate_1d_pq_values(edge, 0.5, p, q);
-    std::cout << e_id << std::scientific << std::setprecision(16) << " p = " << p << " q = " << q << std::endl;
     REQUIRE(p == Approx(edge_id_to_p[e_id]).epsilon(1e-10));
     REQUIRE(q == Approx(edge_id_to_q[e_id]).epsilon(1e-10));
   }
