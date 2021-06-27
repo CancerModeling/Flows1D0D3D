@@ -6,15 +6,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "libmesh/libmesh.h"
-#include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include <cmath>
-#include <macrocirculation/explicit_nonlinear_flow_solver.hpp>
-#include <macrocirculation/quantities_of_interest.hpp>
-#include <macrocirculation/set_0d_tree_boundary_conditions.hpp>
 #include <memory>
 #include <petsc.h>
 #include <utility>
 
+#include "macrocirculation/implicit_linear_flow_solver.hpp"
+#include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/fe_type.hpp"
@@ -23,6 +21,8 @@
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/petsc/petsc_ksp.hpp"
+#include "macrocirculation/quantities_of_interest.hpp"
+#include "macrocirculation/set_0d_tree_boundary_conditions.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
 namespace lm = libMesh;
@@ -62,8 +62,8 @@ int main(int argc, char *argv[]) {
     // create the ascending aorta
     auto graph_nl = std::make_shared<mc::GraphStorage>();
 
-    auto v0_nl = graph_nl ->create_vertex();
-    auto v1_nl = graph_nl ->create_vertex();
+    auto v0_nl = graph_nl->create_vertex();
+    auto v1_nl = graph_nl->create_vertex();
 
     auto edge_nl = graph_nl->connect(*v0_nl, *v1_nl, num_micro_edges);
 
@@ -72,8 +72,8 @@ int main(int argc, char *argv[]) {
 
     auto graph_li = std::make_shared<mc::GraphStorage>();
 
-    auto v0_li = graph_li ->create_vertex();
-    auto v1_li = graph_li ->create_vertex();
+    auto v0_li = graph_li->create_vertex();
+    auto v1_li = graph_li->create_vertex();
 
     auto edge_li = graph_li->connect(*v0_li, *v1_li, num_micro_edges);
 
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     solver_nl.set_tau(tau);
 
     mc::LinearFlowSolver solver_li(PETSC_COMM_WORLD, graph_li, dof_map_li, degree);
-    solver_li.setup(tau*skip_length);
+    solver_li.setup(tau * skip_length);
 
     mc::GraphPVDWriter writer_li(PETSC_COMM_WORLD, "./output", "explicit_implicit_li");
     mc::GraphPVDWriter writer_nl(PETSC_COMM_WORLD, "./output", "explicit_implicit_nl");
@@ -114,22 +114,22 @@ int main(int argc, char *argv[]) {
       solver_nl.solve();
 
       {
-        double Q,A;
+        double Q, A;
         solver_nl.get_1d_values_at_vertex(*v1_nl, Q, A);
-        const auto& param = v0_li->get_linear_characteristic_data();
-        const double p = physical_data_1.G0 * (std::sqrt(A/physical_data_1.A0) - 1);
+        const auto &param = v0_li->get_linear_characteristic_data();
+        const double p = mc::nonlinear::get_p_from_A(physical_data_1, A);
         v0_li->update_linear_characteristic_inflow(p, Q);
 
         // std::cout << " p=" << p << " Q=" << Q << std::endl;
       }
 
-      if (t_idx % skip_length  == 0)
-        solver_li.solve(tau*skip_length, t);
+      if (t_idx % skip_length == 0)
+        solver_li.solve(tau * skip_length, t);
 
       {
-        double p,q;
+        double p, q;
         solver_li.get_1d_values_at_vertex(*v0_li, p, q);
-        const auto& param = v1_nl->get_nonlinear_characteristic_data();
+        const auto &param = v1_nl->get_nonlinear_characteristic_data();
         v1_nl->update_nonlinear_characteristic_inflow(p, q);
 
         // std::cout << " p=" << p << " q=" << q << std::endl;

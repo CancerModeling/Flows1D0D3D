@@ -51,8 +51,7 @@ PhysicalData PhysicalData::set_from_data(double elastic_modulus, double wall_thi
 
   const double A0 = std::pow(radius, 2) * M_PI;
 
-  // const double G0 = calculate_G0(d_wall_width, d_elastic_modulus, d_poisson_ratio, A0);
-  const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * E * wall_thickness / std::sqrt(A0);
+  const double G0 = calculate_G0(wall_thickness, E, A0);
 
   // the viscosity
   const double viscosity = viscosity_bloodplasma(radius);

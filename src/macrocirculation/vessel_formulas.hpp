@@ -25,15 +25,33 @@ struct VesselParameters {
   double rho{};
 };
 
+/*! @brief Formulas especially for the nonlinear flow model. */
+namespace nonlinear {
+
+/*! @brief Converts the vessel area A to the static pressure p. */
+template<typename PhysicalParameters>
+double get_p_from_A(const PhysicalParameters &param, double A) {
+  return param.G0 * (std::sqrt(A / param.A0) - 1);
+}
+
+/*! @brief Converts the static pressure p to the vessel area A. */
+template<typename PhysicalParameters>
+double get_A_from_p(const PhysicalParameters &param, double p) {
+  return param.A0 * std::pow(p / param.G0 + 1, 2);
+}
+
+} // namespace nonlinear
+
 /*! @brief Calculates Eq. (2.8) from "Multi-scale modeling of flow and transport processes in arterial networks and tissue".
  *
  * @param h0 The thickness of the blood vessel.
  * @param E Young's modulus.
- * @param nu Poisson ratio.
  * @param A0 The vessel area at p=0.
  * @return
  */
-inline double calculate_G0(double h0, double E, double nu, double A0) {
+inline double calculate_G0(double h0, double E, double A0) {
+  // the poisson ratio:
+  const double nu = 0.5;
   return std::sqrt(M_PI) * h0 * E / ((1 - nu * nu) * std::sqrt(A0));
 }
 
@@ -453,7 +471,7 @@ inline double viscosity_bloodplasma(double r) {
   const double d = 2 * r;
 
   // dimensionless diameter:  d / 1 micrometer
-  const double d_tilde = (1e-2*d) / 1e-6;
+  const double d_tilde = (1e-2 * d) / 1e-6;
 
   const double mu_0p45 = 6.0 * std::exp(-0.085 * d_tilde) + 3.2 - 2.44 * std::exp(-0.06 * std::pow(d_tilde, 0.645));
 
@@ -480,9 +498,8 @@ inline double viscosity_bloodplasma(double r) {
 }
 
 /*! @brief input resistance to the 0D models. */
-template < typename Data >
-inline double calculate_R1(const Data & param)
-{
+template<typename Data>
+inline double calculate_R1(const Data &param) {
   const double c0 = std::pow(param.G0 / (2.0 * param.rho), 0.5);
   const double R1 = param.rho * c0 / param.A0;
   return R1;
