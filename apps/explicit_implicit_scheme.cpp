@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "macrocirculation/communication/mpi.hpp"
+#include "macrocirculation/communication/buffer.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/fe_type.hpp"
@@ -31,6 +32,7 @@ namespace mc = macrocirculation;
 class NonlinearLinearCoupling {
 public:
   NonlinearLinearCoupling(
+    MPI_Comm comm,
     std::shared_ptr<mc::GraphStorage> graph_nl,
     std::shared_ptr<mc::GraphStorage> graph_li,
     std::shared_ptr<mc::ExplicitNonlinearFlowSolver> nonlinear_solver,
@@ -38,7 +40,10 @@ public:
       : d_graph_nl(std::move(graph_nl)),
         d_graph_li(std::move(graph_li)),
         d_nonlinear_solver(std::move(nonlinear_solver)),
-        d_linear_solver(std::move(linear_solver)) {}
+        d_linear_solver(std::move(linear_solver)),
+        d_comm(comm),
+        d_buffer_system(comm, 1)
+  {}
 
   void add_coupled_vertices(const std::string &name) {
     add_coupled_vertices(name, name);
@@ -49,6 +54,8 @@ public:
   void add_coupled_vertices(const std::string &name_nl, const std::string &name_li) {
     auto v_nl = d_graph_nl->find_vertex_by_name(name_nl);
     auto v_li = d_graph_li->find_vertex_by_name(name_li);
+    assert(v_nl.is_leaf());
+    assert(v_li.is_leaf());
     auto e_nl = d_graph_nl->get_edge(v_nl->get_edge_neighbors()[0]);
     auto e_li = d_graph_li->get_edge(v_li->get_edge_neighbors()[0]);
     const auto &data_nl = e_nl->get_physical_data();
@@ -58,28 +65,81 @@ public:
     coupled_vertices.push_back({v_nl->get_id(), v_li->get_id()});
   }
 
+  int get_rank(mc::GraphStorage & graph, mc::Vertex& v) {
+    assert(v.is_leaf());
+    return graph.get_edge(v.get_edge_neighbors()[0])->rank();
+  }
+
   void update_linear_solver() {
+    // send data
     for (auto vertex_pair : coupled_vertices) {
       auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);
       auto v_li = d_graph_li->get_vertex(vertex_pair.vertex_id_2);
 
-      double p, q;
-      d_nonlinear_solver->get_1d_pq_values_at_vertex(*v_nl, p, q);
-      std::cout << " p=" << p << " q=" << q << std::endl;
-      v_li->update_linear_characteristic_inflow(p, q);
+      auto sender = get_rank(*d_graph_nl, *v_nl);
+      auto receiver = get_rank(*d_graph_li, *v_li);
+
+      if (sender == mc::mpi::rank(d_comm)) {
+        double p, q;
+        d_nonlinear_solver->get_1d_pq_values_at_vertex(*v_nl, p, q);
+        d_buffer_system.get_send_buffer(receiver) << p << q;
+      }
     }
+
+    d_buffer_system.start_communication();
+    d_buffer_system.end_communication();
+
+    for (auto vertex_pair : coupled_vertices) {
+      auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);
+      auto v_li = d_graph_li->get_vertex(vertex_pair.vertex_id_2);
+
+      auto sender = get_rank(*d_graph_nl, *v_nl);
+      auto receiver = get_rank(*d_graph_li, *v_li);
+
+      if (receiver == mc::mpi::rank(d_comm)) {
+        double p, q;
+        d_buffer_system.get_receive_buffer(sender) >> p >> q;
+        v_li->update_linear_characteristic_inflow(p, q);
+      }
+    }
+
+    d_buffer_system.clear();
   }
 
   void update_nonlinear_solver() {
+    // send data
     for (auto vertex_pair : coupled_vertices) {
       auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);
       auto v_li = d_graph_li->get_vertex(vertex_pair.vertex_id_2);
 
-      double p, q;
-      d_linear_solver->get_1d_pq_values_at_vertex(*v_li, p, q);
-      std::cout << " p=" << p << " q=" << q << std::endl;
-      v_nl->update_nonlinear_characteristic_inflow(p, q);
+      auto sender = get_rank(*d_graph_li, *v_li);
+      auto receiver = get_rank(*d_graph_nl, *v_nl);
+
+      if (sender == mc::mpi::rank(d_comm)) {
+        double p, q;
+        d_linear_solver->get_1d_pq_values_at_vertex(*v_li, p, q);
+        d_buffer_system.get_send_buffer(receiver) << p << q;
+      }
     }
+
+    d_buffer_system.start_communication();
+    d_buffer_system.end_communication();
+
+    for (auto vertex_pair : coupled_vertices) {
+      auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);
+      auto v_li = d_graph_li->get_vertex(vertex_pair.vertex_id_2);
+
+      auto sender = get_rank(*d_graph_li, *v_li);
+      auto receiver = get_rank(*d_graph_nl, *v_nl);
+
+      if (receiver == mc::mpi::rank(d_comm)) {
+        double p, q;
+        d_buffer_system.get_receive_buffer(sender) >> p >> q;
+        v_nl->update_nonlinear_characteristic_inflow(p, q);
+      }
+    }
+
+    d_buffer_system.clear();
   }
 
 private:
@@ -96,6 +156,10 @@ private:
 
   std::shared_ptr<mc::ExplicitNonlinearFlowSolver> d_nonlinear_solver;
   std::shared_ptr<mc::ImplicitLinearFlowSolver> d_linear_solver;
+
+  MPI_Comm d_comm;
+
+  mc::BufferSystem d_buffer_system;
 };
 
 int main(int argc, char *argv[]) {
@@ -109,14 +173,14 @@ int main(int argc, char *argv[]) {
     std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
 
     const double tau = 1e-4;
-    const double t_end = 0.4;
+    const double t_end = 3.;
     const double tau_out = 1e-2;
 
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
     const size_t skip_length = 1;
 
     // vessel parameters
-    const double vessel_length = 21.1 * 8;
+    const double vessel_length = 21.1 * 4;
     const double radius = 0.403;
     const double wall_thickness = 0.067;
     const double elastic_modulus = 400000.0;
@@ -133,34 +197,42 @@ int main(int argc, char *argv[]) {
 
     auto v0_nl = graph_nl->create_vertex();
     auto v1_nl = graph_nl->create_vertex();
+    auto v2_nl = graph_nl->create_vertex();
 
-    auto edge_nl = graph_nl->connect(*v0_nl, *v1_nl, num_micro_edges);
+    auto edge_0_nl = graph_nl->connect(*v0_nl, *v1_nl, num_micro_edges);
+    auto edge_1_nl = graph_nl->connect(*v1_nl, *v2_nl, num_micro_edges);
 
-    edge_nl->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1, 0, 0)}});
-    edge_nl->add_physical_data(physical_data_1);
+    edge_0_nl->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
+    edge_0_nl->add_physical_data(physical_data_1);
+    edge_1_nl->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1, 0, 0)}});
+    edge_1_nl->add_physical_data(physical_data_1);
 
     auto graph_li = std::make_shared<mc::GraphStorage>();
 
     auto v0_li = graph_li->create_vertex();
     auto v1_li = graph_li->create_vertex();
+    auto v2_li = graph_li->create_vertex();
 
-    auto edge_li = graph_li->connect(*v0_li, *v1_li, num_micro_edges);
+    auto edge_0_li = graph_li->connect(*v0_li, *v1_li, num_micro_edges);
+    auto edge_1_li = graph_li->connect(*v1_li, *v2_li, num_micro_edges);
 
-    edge_li->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(2, 0, 0)}});
-    edge_li->add_physical_data(physical_data_2);
+    edge_0_li->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1.5, 0, 0)}});
+    edge_0_li->add_physical_data(physical_data_2);
+    edge_1_li->add_embedding_data({{mc::Point(1.5, 0, 0), mc::Point(2, 0, 0)}});
+    edge_1_li->add_physical_data(physical_data_2);
 
     v0_nl->set_to_inflow(mc::heart_beat_inflow(4));
-    v1_nl->set_name("nl_out");
+    v2_nl->set_name("nl_out");
 
     v0_li->set_name("li_in");
     // v1_li->set_to_free_outflow();
-    v1_li->set_to_windkessel_outflow(1.8, 0.387);
+    v2_li->set_to_windkessel_outflow(1.8, 0.387);
 
     mc::naive_mesh_partitioner(*graph_li, PETSC_COMM_WORLD);
     mc::naive_mesh_partitioner(*graph_nl, PETSC_COMM_WORLD);
 
     auto dof_map_nl = std::make_shared<mc::DofMap>(graph_nl->num_vertices(), graph_nl->num_edges());
-    dof_map_nl->create(PETSC_COMM_WORLD, *graph_nl, 2, degree, true);
+    dof_map_nl->create(PETSC_COMM_WORLD, *graph_nl, 2, degree, false);
 
     auto dof_map_li = std::make_shared<mc::DofMap>(graph_li->num_vertices(), graph_li->num_edges());
     dof_map_li->create(PETSC_COMM_WORLD, *graph_li, 2, degree, true);
@@ -168,7 +240,7 @@ int main(int argc, char *argv[]) {
     auto solver_nl = std::make_shared< mc::ExplicitNonlinearFlowSolver > (MPI_COMM_WORLD, graph_nl, dof_map_nl, degree);
     auto solver_li = std::make_shared< mc::ImplicitLinearFlowSolver >(PETSC_COMM_WORLD, graph_li, dof_map_li, degree);
 
-    NonlinearLinearCoupling coupling(graph_nl, graph_li, solver_nl, solver_li);
+    NonlinearLinearCoupling coupling(MPI_COMM_WORLD, graph_nl, graph_li, solver_nl, solver_li);
     coupling.add_coupled_vertices("nl_out", "li_in");
 
     mc::GraphPVDWriter writer_li(PETSC_COMM_WORLD, "./output", "explicit_implicit_li");
