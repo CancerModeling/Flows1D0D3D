@@ -762,7 +762,7 @@ void LinearFlowSolver::assemble_rhs_characteristic(double tau) {
   }
 }
 
-void LinearFlowSolver::get_1d_values_at_vertex(const Vertex &v, double &p, double &q) const {
+void LinearFlowSolver::get_1d_pq_values_at_vertex(const Vertex &v, double &p, double &q) const {
   if (!v.is_leaf())
     throw std::runtime_error("flow can only be calculated at leafs");
 
@@ -850,7 +850,7 @@ void LinearFlowSolver::set_initial_value(double p, double q) {
   u->assemble();
 }
 
-void LinearFlowSolver::evaluate_1d_values(const Edge &e, double s, double &p, double &q) const {
+void LinearFlowSolver::evaluate_1d_pq_values(const Edge &e, double s, double &p, double &q) const {
   // on which micro edge is the given value
   auto micro_edge_id = static_cast<size_t>(std::ceil(e.num_micro_edges() * s));
   micro_edge_id = std::min(micro_edge_id, e.num_micro_edges() - 1);

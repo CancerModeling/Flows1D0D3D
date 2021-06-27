@@ -74,17 +74,17 @@ TEST_CASE("LinearCharacteristicBCs", "[LinearCharacteristicBCs]") {
 
   double p, q;
   // at the left tip
-  solver.evaluate_1d_values(*edge1, 0, p, q);
+  solver.evaluate_1d_pq_values(*edge1, 0, p, q);
   REQUIRE(p == Approx(p_in).margin(3e-4));
   REQUIRE(q == Approx(q_in).margin(3e-4));
 
   // in the middle
-  solver.evaluate_1d_values(*edge1, 0.5, p, q);
+  solver.evaluate_1d_pq_values(*edge1, 0.5, p, q);
   REQUIRE(p == Approx(p_in).margin(3e-4));
   REQUIRE(q == Approx(q_in).margin(3e-4));
 
   // at the right tip
-  solver.evaluate_1d_values(*edge1, 1, p, q);
+  solver.evaluate_1d_pq_values(*edge1, 1, p, q);
   REQUIRE(p == Approx(p_in).margin(3e-4));
   REQUIRE(q == Approx(q_in).margin(3e-4));
 }

@@ -207,7 +207,7 @@ double ExplicitNonlinearFlowSolver<degree>::get_flow_at_vessel_tip(const Vertex 
 }
 
 template<size_t degree>
-void ExplicitNonlinearFlowSolver<degree>::get_1d_values_at_vertex(const Vertex &v, double &Q, double &A) const {
+void ExplicitNonlinearFlowSolver<degree>::get_1d_AQ_values_at_vertex(const Vertex &v, double &A, double &Q) const {
   if (!v.is_leaf())
     throw std::runtime_error("flow can only be calculated at leafs");
 
@@ -278,7 +278,7 @@ template<size_t degree>
 }
 
 template<size_t degree>
-void ExplicitNonlinearFlowSolver<degree>::evaluate_1d_values(const Edge& e, double s, double& A, double& Q) const {
+void ExplicitNonlinearFlowSolver<degree>::evaluate_1d_AQ_values(const Edge& e, double s, double& A, double& Q) const {
   // on which micro edge is the given value
   auto micro_edge_id = static_cast<size_t>(std::ceil(e.num_micro_edges() * s));
   micro_edge_id = std::min(micro_edge_id, e.num_micro_edges() - 1);

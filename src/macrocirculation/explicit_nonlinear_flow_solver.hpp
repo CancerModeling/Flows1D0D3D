@@ -83,12 +83,12 @@ public:
   /*! @brief Calculates the flow Q pointing towards the vertex v. */
   [[nodiscard]] double get_flow_at_vessel_tip(const Vertex& v) const;
 
-  void get_1d_values_at_vertex(const Vertex& v, double& Q, double& A) const;
+  void get_1d_AQ_values_at_vertex(const Vertex& v, double& A, double& Q) const;
 
   [[nodiscard]] Values0DModel get_0D_values(const Vertex& v) const;
 
   /*! @brief Evaluates A and Q of the current solution on the edge e parametrized on [0, 1] at \f$ s \in [0,1] \f$. */
-  void evaluate_1d_values(const Edge& e, double s, double& A, double& Q) const;
+  void evaluate_1d_AQ_values(const Edge& e, double s, double& A, double& Q) const;
 
 private:
   /*! @brief The mpi communicator. */

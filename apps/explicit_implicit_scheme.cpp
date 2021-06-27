@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
 
       {
         double Q, A;
-        solver_nl.get_1d_values_at_vertex(*v1_nl, Q, A);
+        solver_nl.get_1d_AQ_values_at_vertex(*v1_nl, A, Q);
         const auto &param = v0_li->get_linear_characteristic_data();
         const double p = mc::nonlinear::get_p_from_A(physical_data_1, A);
         v0_li->update_linear_characteristic_inflow(p, Q);
@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
 
       {
         double p, q;
-        solver_li.get_1d_values_at_vertex(*v0_li, p, q);
+        solver_li.get_1d_pq_values_at_vertex(*v0_li, p, q);
         const auto &param = v1_nl->get_nonlinear_characteristic_data();
         v1_nl->update_nonlinear_characteristic_inflow(p, q);
 

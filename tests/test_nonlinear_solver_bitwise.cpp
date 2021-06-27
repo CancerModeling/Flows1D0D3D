@@ -70,7 +70,7 @@ TEST_CASE("NonlinearSolverBitwise", "[NonlinearSolverBitwise]") {
   for (auto e_id : graph->get_active_edge_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
     auto &edge = *graph->get_edge(e_id);
     double A, Q;
-    solver.evaluate_1d_values(edge, 0.5, A, Q);
+    solver.evaluate_1d_AQ_values(edge, 0.5, A, Q);
     REQUIRE(A == Approx(A).epsilon(1e-16));
     REQUIRE(Q == Approx(Q).epsilon(1e-16));
   }
