@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
     v0_nl->set_to_inflow(mc::heart_beat_inflow(4));
     v1_nl->set_to_nonlinear_characteristic_inflow(physical_data_2.G0, physical_data_2.A0, physical_data_2.rho, false, 0, 0);
 
-    v0_li->set_to_linear_characteristic_inflow(mc::LinearFlowSolver::get_C(*edge_nl), mc::LinearFlowSolver::get_L(*edge_nl), true, 0, 0);
+    v0_li->set_to_linear_characteristic_inflow(mc::ImplicitLinearFlowSolver::get_C(*edge_nl), mc::ImplicitLinearFlowSolver::get_L(*edge_nl), true, 0, 0);
     v1_li->set_to_free_outflow();
     v1_li->set_to_windkessel_outflow(1.8, 0.387);
 
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
     // solver_nl.use_ssp_method();
     solver_nl.set_tau(tau);
 
-    mc::LinearFlowSolver solver_li(PETSC_COMM_WORLD, graph_li, dof_map_li, degree);
+    mc::ImplicitLinearFlowSolver solver_li(PETSC_COMM_WORLD, graph_li, dof_map_li, degree);
     solver_li.setup(tau * skip_length);
 
     mc::GraphPVDWriter writer_li(PETSC_COMM_WORLD, "./output", "explicit_implicit_li");

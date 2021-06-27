@@ -39,9 +39,9 @@ void interpolate_to_vertices(const MPI_Comm comm,
                              std::vector<Point> &points,
                              std::vector<double> &interpolated);
 
-class LinearFlowSolver {
+class ImplicitLinearFlowSolver {
 public:
-  LinearFlowSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map, size_t degree);
+  ImplicitLinearFlowSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map, size_t degree);
 
   /*! @brief The component index of the pressure p inside the dof map.
    *         This can be used inside a local dof map to get the dof indices for a single component. */

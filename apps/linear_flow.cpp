@@ -66,15 +66,15 @@ int main(int argc, char *argv[]) {
     const double p_in = 5.;
     const double q_in = 4.;
 
-    v0->set_to_linear_characteristic_inflow(mc::LinearFlowSolver::get_C(*edge1), mc::LinearFlowSolver::get_L(*edge1),true, p_in, q_in);
-    v1->set_to_linear_characteristic_inflow(mc::LinearFlowSolver::get_C(*edge1), mc::LinearFlowSolver::get_L(*edge1),false, p_in, q_in);
+    v0->set_to_linear_characteristic_inflow(mc::ImplicitLinearFlowSolver::get_C(*edge1), mc::ImplicitLinearFlowSolver::get_L(*edge1),true, p_in, q_in);
+    v1->set_to_linear_characteristic_inflow(mc::ImplicitLinearFlowSolver::get_C(*edge1), mc::ImplicitLinearFlowSolver::get_L(*edge1),false, p_in, q_in);
 
     mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
 
     auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
     dof_map->create(PETSC_COMM_WORLD, *graph, 2, degree, true);
 
-    mc::LinearFlowSolver solver(PETSC_COMM_WORLD, graph, dof_map, degree);
+    mc::ImplicitLinearFlowSolver solver(PETSC_COMM_WORLD, graph, dof_map, degree);
     solver.setup(tau);
 
 
