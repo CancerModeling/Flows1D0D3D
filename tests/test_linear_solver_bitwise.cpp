@@ -29,7 +29,7 @@ namespace mc = macrocirculation;
  *         This should prevent unintended changes to the solver due to refactorings.
  *         Of course the resulting values should not be taken too seriously and might change if bugs are found.
  */
-TEST_CASE("NonlinearSolverBitwise", "[NonlinearSolverBitwise]") {
+TEST_CASE("LinearSolverBitwise", "[LinearSolverBitwise]") {
   const double t_end = 1.2;
   const std::size_t max_iter = 160000000;
   const size_t degree = 2;
