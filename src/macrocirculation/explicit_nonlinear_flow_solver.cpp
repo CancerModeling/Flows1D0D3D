@@ -249,6 +249,17 @@ void ExplicitNonlinearFlowSolver<degree>::get_1d_AQ_values_at_vertex(const Verte
 }
 
 template<size_t degree>
+void ExplicitNonlinearFlowSolver<degree>::get_1d_pq_values_at_vertex(const Vertex &v, double &p, double &q) const {
+  auto &data = d_graph->get_edge(v.get_edge_neighbors()[0])->get_physical_data();
+
+  double A, Q;
+  get_1d_AQ_values_at_vertex(v, A, Q);
+
+  q = Q;
+  p = nonlinear::get_p_from_A(data, A);
+}
+
+template<size_t degree>
 [[nodiscard]] Values0DModel ExplicitNonlinearFlowSolver<degree>::get_0D_values(const Vertex &v) const {
   Values0DModel result{0, 0};
 
@@ -278,7 +289,7 @@ template<size_t degree>
 }
 
 template<size_t degree>
-void ExplicitNonlinearFlowSolver<degree>::evaluate_1d_AQ_values(const Edge& e, double s, double& A, double& Q) const {
+void ExplicitNonlinearFlowSolver<degree>::evaluate_1d_AQ_values(const Edge &e, double s, double &A, double &Q) const {
   // on which micro edge is the given value
   auto micro_edge_id = static_cast<size_t>(std::ceil(e.num_micro_edges() * s));
   micro_edge_id = std::min(micro_edge_id, e.num_micro_edges() - 1);
