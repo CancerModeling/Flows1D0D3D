@@ -210,6 +210,12 @@ public:
 
   bool is_bifurcation() const;
 
+  /*! @brief Returns true if the boundary conditions on this vertex have been finalized and are not allowed to change anymore. */
+  bool bc_finalized() const;
+
+  /*! @brief Finalizes the boundary conditions on this vertex. After this, they cannot be changed anymore! */
+  void finalize_bcs();
+
   /*! @brief Marks the given vertex as part of the inflow boundary, where the given time dependent function provides the boundary values. */
   void set_to_inflow(std::function<double(double)> inflow_value);
 
@@ -267,6 +273,8 @@ private:
   NonlinearCharacteristicData p_nonlinear_characteristic_data;
 
   std::vector<std::size_t> p_neighbors;
+
+  bool d_bcs_finalized;
 
   friend GraphStorage;
 };
@@ -367,6 +375,9 @@ public:
 
   size_t num_vertices() const;
   size_t num_edges() const;
+
+  /*! @brief Finalizes all the boundary conditions on the vertices. */
+  void finalize_bcs();
 
   /*! @brief Returns all the edge ids assigned to the given rank. */
   std::vector<std::size_t> get_active_edge_ids(int rank) const;

@@ -25,23 +25,19 @@ public:
   NonlinearLinearCoupling(
     MPI_Comm comm,
     std::shared_ptr<GraphStorage> graph_nl,
-    std::shared_ptr<GraphStorage> graph_li,
-    std::shared_ptr<ExplicitNonlinearFlowSolver> nonlinear_solver,
-    std::shared_ptr<ImplicitLinearFlowSolver> linear_solver);
+    std::shared_ptr<GraphStorage> graph_li);
 
   void add_coupled_vertices(const std::string &name);
 
-  // TODO: calling this after having assembled the matrices will make the solvers fail
-  //       -> find a way to prevent this.
   void add_coupled_vertices(const std::string &name_nl, const std::string &name_li);
 
-  int get_rank(GraphStorage &graph, Vertex &v);
+  void update_linear_solver( const ExplicitNonlinearFlowSolver& nonlinear_solver, ImplicitLinearFlowSolver& linear_solver );
 
-  void update_linear_solver();
-
-  void update_nonlinear_solver();
+  void update_nonlinear_solver( const ImplicitLinearFlowSolver& linear_solver,  ExplicitNonlinearFlowSolver& nonlinear_solver );
 
 private:
+  static int get_rank(GraphStorage &graph, Vertex &v);
+
   struct CoupledVertices {
     size_t vertex_id_1;
     size_t vertex_id_2;
@@ -52,9 +48,6 @@ private:
 private:
   std::shared_ptr<GraphStorage> d_graph_nl;
   std::shared_ptr<GraphStorage> d_graph_li;
-
-  std::shared_ptr<ExplicitNonlinearFlowSolver> d_nonlinear_solver;
-  std::shared_ptr<ImplicitLinearFlowSolver> d_linear_solver;
 
   MPI_Comm d_comm;
 

@@ -19,13 +19,9 @@ NonlinearLinearCoupling::
   NonlinearLinearCoupling(
     MPI_Comm comm,
     std::shared_ptr<GraphStorage> graph_nl,
-    std::shared_ptr<GraphStorage> graph_li,
-    std::shared_ptr<ExplicitNonlinearFlowSolver> nonlinear_solver,
-    std::shared_ptr<ImplicitLinearFlowSolver> linear_solver)
+    std::shared_ptr<GraphStorage> graph_li )
     : d_graph_nl(std::move(graph_nl)),
       d_graph_li(std::move(graph_li)),
-      d_nonlinear_solver(std::move(nonlinear_solver)),
-      d_linear_solver(std::move(linear_solver)),
       d_comm(comm),
       d_buffer_system(comm, 1) {}
 
@@ -54,7 +50,7 @@ int NonlinearLinearCoupling::get_rank(GraphStorage &graph, Vertex &v) {
   return graph.get_edge(v.get_edge_neighbors()[0])->rank();
 }
 
-void NonlinearLinearCoupling::update_linear_solver() {
+void NonlinearLinearCoupling::update_linear_solver( const ExplicitNonlinearFlowSolver& nonlinear_solver, ImplicitLinearFlowSolver& linear_solver ){
   // send data
   for (auto vertex_pair : coupled_vertices) {
     auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);
@@ -65,7 +61,7 @@ void NonlinearLinearCoupling::update_linear_solver() {
 
     if (sender == mpi::rank(d_comm)) {
       double p, q;
-      d_nonlinear_solver->get_1d_pq_values_at_vertex(*v_nl, p, q);
+      nonlinear_solver.get_1d_pq_values_at_vertex(*v_nl, p, q);
       d_buffer_system.get_send_buffer(receiver) << p << q;
     }
   }
@@ -90,7 +86,7 @@ void NonlinearLinearCoupling::update_linear_solver() {
   d_buffer_system.clear();
 }
 
-void NonlinearLinearCoupling::update_nonlinear_solver() {
+void NonlinearLinearCoupling::update_nonlinear_solver( const ImplicitLinearFlowSolver& linear_solver,  ExplicitNonlinearFlowSolver& nonlinear_solver ) {
   // send data
   for (auto vertex_pair : coupled_vertices) {
     auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);
@@ -101,7 +97,7 @@ void NonlinearLinearCoupling::update_nonlinear_solver() {
 
     if (sender == mpi::rank(d_comm)) {
       double p, q;
-      d_linear_solver->get_1d_pq_values_at_vertex(*v_li, p, q);
+      linear_solver.get_1d_pq_values_at_vertex(*v_li, p, q);
       d_buffer_system.get_send_buffer(receiver) << p << q;
     }
   }

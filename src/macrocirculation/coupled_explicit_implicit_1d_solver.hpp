@@ -24,12 +24,11 @@ class CoupledExplicitImplicit1DSolver {
 public:
   CoupledExplicitImplicit1DSolver(
     MPI_Comm comm,
+    std::shared_ptr< NonlinearLinearCoupling > coupling,
     std::shared_ptr<GraphStorage> graph_nl,
     std::shared_ptr<GraphStorage> graph_li,
     size_t degree_nl,
     size_t degree_li);
-
-  void add_coupled_vertices(const std::string &name_vertex_nl, const std::string &name_vertex_li);
 
   void setup(double tau);
 

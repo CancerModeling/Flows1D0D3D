@@ -95,11 +95,16 @@ int main(int argc, char *argv[]) {
     v0_li->set_name("li_in");
     // v1_li->set_to_free_outflow();
     v2_li->set_to_windkessel_outflow(1.8, 0.387);
+    // v2_li->set_name("windkessel_outflow");
+    // mc::set_0d_tree_boundary_conditions(graph_li, "windkessel_outflow");
 
     mc::naive_mesh_partitioner(*graph_li, PETSC_COMM_WORLD);
     mc::naive_mesh_partitioner(*graph_nl, PETSC_COMM_WORLD);
 
-    mc::CoupledExplicitImplicit1DSolver solver(MPI_COMM_WORLD, graph_nl, graph_li, degree, degree);
+    auto coupling = std::make_shared< mc::NonlinearLinearCoupling > (MPI_COMM_WORLD, graph_nl, graph_li);
+    coupling->add_coupled_vertices("nl_out", "li_in");
+
+    mc::CoupledExplicitImplicit1DSolver solver(MPI_COMM_WORLD, coupling, graph_nl, graph_li, degree, degree);
 
     auto dof_map_nl = std::make_shared<mc::DofMap>(graph_nl->num_vertices(), graph_nl->num_edges());
     dof_map_nl->create(PETSC_COMM_WORLD, *graph_nl, 2, degree, false);
@@ -109,10 +114,6 @@ int main(int argc, char *argv[]) {
 
     auto solver_nl = solver.get_explicit_solver();
     auto solver_li = solver.get_implicit_solver();
-
-    auto coupling = solver.get_coupling();
-    // mc::NonlinearLinearCoupling coupling(MPI_COMM_WORLD, graph_nl, graph_li, solver_nl, solver_li);
-    solver.add_coupled_vertices("nl_out", "li_in");
 
     mc::GraphPVDWriter writer_li(PETSC_COMM_WORLD, "./output", "explicit_implicit_li");
     mc::GraphPVDWriter writer_nl(PETSC_COMM_WORLD, "./output", "explicit_implicit_nl");

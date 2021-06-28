@@ -24,6 +24,7 @@
 #include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
+#include "macrocirculation/nonlinear_linear_coupling.hpp"
 
 namespace mc = macrocirculation;
 
@@ -56,12 +57,15 @@ int main(int argc, char *argv[]) {
     graph_reader.append("data/meshes/coarse-network-geometry.json", *graph_li);
     graph_reader.set_boundary_data("data/meshes/boundary-coarse-network-geometry.json", *graph_li);
     mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
+    mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
 
-    mc::CoupledExplicitImplicit1DSolver solver(MPI_COMM_WORLD, graph_nl, graph_li, degree, degree);
-    solver.add_coupled_vertices("cw_out_1_1", "bg_132");
-    solver.add_coupled_vertices("cw_out_1_2", "bg_141");
-    solver.add_coupled_vertices("cw_out_2_1", "bg_135");
-    solver.add_coupled_vertices("cw_out_2_2", "bg_119");
+    auto coupling = std::make_shared< mc::NonlinearLinearCoupling > (MPI_COMM_WORLD, graph_nl, graph_li);
+    coupling->add_coupled_vertices("cw_out_1_1", "bg_132");
+    coupling->add_coupled_vertices("cw_out_1_2", "bg_141");
+    coupling->add_coupled_vertices("cw_out_2_1", "bg_135");
+    coupling->add_coupled_vertices("cw_out_2_2", "bg_119");
+
+    mc::CoupledExplicitImplicit1DSolver solver(MPI_COMM_WORLD, coupling, graph_nl, graph_li, degree, degree);
 
     const double t_end = args["t-end"].as<double>();
     const std::size_t max_iter = 160000000;
