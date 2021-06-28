@@ -25,6 +25,7 @@
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/set_0d_tree_boundary_conditions.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
+#include "macrocirculation/coupled_explicit_implicit_1d_solver.hpp"
 
 namespace lm = libMesh;
 namespace mc = macrocirculation;
@@ -98,38 +99,31 @@ int main(int argc, char *argv[]) {
     mc::naive_mesh_partitioner(*graph_li, PETSC_COMM_WORLD);
     mc::naive_mesh_partitioner(*graph_nl, PETSC_COMM_WORLD);
 
+    mc::CoupledExplicitImplicit1DSolver solver(MPI_COMM_WORLD, graph_nl, graph_li, degree, degree);
+
     auto dof_map_nl = std::make_shared<mc::DofMap>(graph_nl->num_vertices(), graph_nl->num_edges());
     dof_map_nl->create(PETSC_COMM_WORLD, *graph_nl, 2, degree, false);
 
     auto dof_map_li = std::make_shared<mc::DofMap>(graph_li->num_vertices(), graph_li->num_edges());
     dof_map_li->create(PETSC_COMM_WORLD, *graph_li, 2, degree, true);
 
-    auto solver_nl = std::make_shared<mc::ExplicitNonlinearFlowSolver>(MPI_COMM_WORLD, graph_nl, dof_map_nl, degree);
-    auto solver_li = std::make_shared<mc::ImplicitLinearFlowSolver>(PETSC_COMM_WORLD, graph_li, dof_map_li, degree);
+    auto solver_nl = solver.get_explicit_solver();
+    auto solver_li = solver.get_implicit_solver();
 
-    mc::NonlinearLinearCoupling coupling(MPI_COMM_WORLD, graph_nl, graph_li, solver_nl, solver_li);
-    coupling.add_coupled_vertices("nl_out", "li_in");
+    auto coupling = solver.get_coupling();
+    // mc::NonlinearLinearCoupling coupling(MPI_COMM_WORLD, graph_nl, graph_li, solver_nl, solver_li);
+    solver.add_coupled_vertices("nl_out", "li_in");
 
     mc::GraphPVDWriter writer_li(PETSC_COMM_WORLD, "./output", "explicit_implicit_li");
     mc::GraphPVDWriter writer_nl(PETSC_COMM_WORLD, "./output", "explicit_implicit_nl");
 
-    solver_nl->use_explicit_euler_method();
-    // solver_nl.use_ssp_method();
-    solver_nl->set_tau(tau);
-    solver_li->setup(tau * skip_length);
+    solver.setup(tau);
 
     double t = 0;
     const auto t_max_idx = static_cast<size_t>(std::ceil(t_end / tau));
     for (size_t t_idx = 0; t_idx < t_max_idx; t_idx += 1) {
+      solver.solve(tau, t);
       t += tau;
-      solver_nl->solve();
-
-      coupling.update_linear_solver();
-
-      if (t_idx % skip_length == 0) {
-        solver_li->solve(tau * skip_length, t);
-        coupling.update_nonlinear_solver();
-      }
 
       if (t_idx % output_interval == 0) {
         std::cout << "it = " << t_idx << std::endl;
