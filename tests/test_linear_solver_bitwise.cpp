@@ -38,6 +38,8 @@ TEST_CASE("LinearSolverBitwise", "[LinearSolverBitwise]") {
   // create_for_node the ascending aorta
   auto graph = test_macrocirculation::util::create_3_vessel_network();
 
+  graph->finalize_bcs();
+
   // partition graph
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
