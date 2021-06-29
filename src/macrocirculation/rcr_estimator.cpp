@@ -10,7 +10,7 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
-#include "windkessel_calibrator.hpp"
+#include "rcr_estimator.hpp"
 
 #include "communication/mpi.hpp"
 #include "explicit_nonlinear_flow_solver.hpp"

@@ -18,8 +18,8 @@
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
+#include "macrocirculation/rcr_estimator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/windkessel_calibrator.hpp"
 
 namespace mc = macrocirculation;
 
