@@ -14,39 +14,70 @@
 
 #include "communication/mpi.hpp"
 #include "explicit_nonlinear_flow_solver.hpp"
+#include "implicit_linear_flow_solver.hpp"
 #include "graph_storage.hpp"
 #include "vessel_formulas.hpp"
 
 namespace macrocirculation {
 
-WindkesselCalibrator::WindkesselCalibrator(std::shared_ptr<GraphStorage> graph, bool verbose)
-    : d_graph(std::move(graph)),
-      d_verbose(verbose),
-      d_total_C_edge(0),
-      d_total_R(1.34),   // 1.34e8 Pa s / m^3   ([Pa s / m^-3] = 10^{-8} [kg/s cm])
-      d_total_C(9.45e-1) // 9.e5e-9 m^3/Pa ([m^3 / Pa] = 10^8 [cm s^2 / kg])
-{
+FlowIntegrator::FlowIntegrator(std::shared_ptr<GraphStorage> graph)
+    : d_graph(std::move(graph)) {
   reset();
 }
 
-void WindkesselCalibrator::reset() {
-  reset_total_flows();
-  calculate_total_edge_capacitance();
-}
-
-void WindkesselCalibrator::reset_total_flows() {
+void FlowIntegrator::reset() {
   d_total_flows.clear();
 
   for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
-    if (d_graph->get_vertex(v_id)->is_leaf())
+    if (d_graph->get_vertex(v_id)->is_free_outflow())
       d_total_flows[v_id] = 0.;
   }
 }
 
-void WindkesselCalibrator::calculate_total_edge_capacitance() {
-  d_total_C_edge = 0;
-  for (auto e_id : d_graph->get_active_edge_ids(mpi::rank(MPI_COMM_WORLD))) {
-    auto e = d_graph->get_edge(e_id);
+void FlowIntegrator::update_flow(const ExplicitNonlinearFlowSolver &solver, double tau) {
+  update_flow_abstract(solver, tau);
+}
+
+void FlowIntegrator::update_flow(const ImplicitLinearFlowSolver &solver, double tau) {
+  update_flow_abstract(solver, tau);
+}
+
+template<typename Solver>
+void FlowIntegrator::update_flow_abstract(const Solver &solver, double tau) {
+  for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
+    auto v = d_graph->get_vertex(v_id);
+    if (v->is_leaf()) {
+      double p, q;
+      solver.get_1d_pq_values_at_vertex(*v, p, q);
+      d_total_flows[v_id] += q * tau;
+    }
+  }
+}
+
+FlowData FlowIntegrator::get_free_outflow_data() const {
+  FlowData data;
+  data.total_flow = 0;
+
+  for (auto v_id : d_graph->get_vertex_ids()) {
+    auto v = d_graph->get_vertex(v_id);
+    if (v->is_free_outflow()) {
+      auto &e = *d_graph->get_edge(v->get_edge_neighbors()[0]);
+      double q = 0;
+      if (e.rank() == mpi::rank(MPI_COMM_WORLD)) {
+        q = data.flows[v_id];
+      }
+      MPI_Bcast(&q, 1, MPI_DOUBLE, e.rank(), MPI_COMM_WORLD);
+      data.flows[v_id] = q;
+      data.total_flow += q;
+    }
+  }
+  return data;
+};
+
+double get_total_edge_capacitance(const std::shared_ptr<GraphStorage> &graph) {
+  double total_C_edge = 0;
+  for (auto e_id : graph->get_active_edge_ids(mpi::rank(MPI_COMM_WORLD))) {
+    auto e = graph->get_edge(e_id);
     auto &data = e->get_physical_data();
 
     double c0 = calculate_c0(data.G0, data.rho, data.A0); // [cm/s]
@@ -54,87 +85,58 @@ void WindkesselCalibrator::calculate_total_edge_capacitance() {
     // in meter
     double C_e = (1e-2 * data.length) * (1e-4 * data.A0) / (1060 * std::pow(1e-2 * c0, 2));
 
-    d_total_C_edge += C_e;
+    total_C_edge += C_e;
   }
 
-  MPI_Allreduce(&d_total_C_edge, &d_total_C_edge, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&total_C_edge, &total_C_edge, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+  return total_C_edge;
 }
 
-void WindkesselCalibrator::update_flow(const ExplicitNonlinearFlowSolver &solver, double tau) {
-  for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
-    auto v = d_graph->get_vertex(v_id);
-    if (v->is_leaf())
-      d_total_flows[v_id] += solver.get_flow_at_vessel_tip(*v) * tau;
-  }
+double get_total_edge_capacitance(const std::vector<std::shared_ptr<GraphStorage>> &list) {
+  double sum = 0;
+  for (auto graph : list)
+    sum += get_total_edge_capacitance(graph);
+  return sum;
 }
 
-std::map<size_t, RCRData> WindkesselCalibrator::estimate_parameters_local() {
+double get_total_flow(const std::vector<FlowData> &flows) {
+  double sum = 0;
+  for (auto &d : flows)
+    sum += d.total_flow;
+  return sum;
+}
 
-  // print the total flows
-  double sum_of_flows = 0;
-  double sum_of_out_flows = 0;
-  for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
-    auto v = d_graph->get_vertex(v_id);
-    if (v->is_leaf()) {
-      if (d_verbose)
-        std::cout << "flow at " << v_id << " = " << d_total_flows[v_id] << std::endl;
-      sum_of_flows += d_total_flows[v_id];
-      if (v->is_free_outflow()) {
-        sum_of_out_flows += d_total_flows[v_id];
-      }
-    }
-  }
-  MPI_Allreduce(&sum_of_flows, &sum_of_flows, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&sum_of_out_flows, &sum_of_out_flows, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+RCREstimator::RCREstimator(std::vector<std::shared_ptr<GraphStorage>> graph_list, bool verbose)
+    : d_graph_list(std::move(graph_list)),
+      d_total_C_edge(0),
+      d_total_R(1.34),   // 1.34e8 Pa s / m^3   ([Pa s / m^-3] = 10^{-8} [kg/s cm])
+      d_total_C(9.45e-1) // 9.e5e-9 m^3/Pa ([m^3 / Pa] = 10^8 [cm s^2 / kg])
+{
+  reset();
+}
 
-  if (d_verbose)
-    std::cout << "flow-sum = " << sum_of_flows << std::endl;
+void RCREstimator::reset() {
+  d_total_C_edge = get_total_edge_capacitance(d_graph_list);
+}
 
+void RCREstimator::set_total_C(double C) { d_total_C = C; }
+
+void RCREstimator::set_total_R(double R) { d_total_R = R; }
+
+std::map<size_t, RCRData> RCREstimator::estimate_parameters(const std::map<size_t, double> &flows, double total_flow) {
   std::map<size_t, RCRData> resistances;
 
-  // divide resistances
-  for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
-    auto v = d_graph->get_vertex(v_id);
-    if (v->is_free_outflow()) {
-      auto z = d_total_flows[v_id] / sum_of_out_flows;
-      double local_R = d_total_R / z;
-      double C = z * (d_total_C - d_total_C_edge);
+  for (auto it : flows) {
+    auto z = it.second / total_flow;
+    double local_R = d_total_R / z;
+    double C = z * (d_total_C - d_total_C_edge);
 
-      if (d_verbose)
-        std::cout << "vertex=" << v->get_name() << " R=" << local_R * 1e-1 << "10^9 Pa s m^{-3}, C=" << C * 1e2 << " 10^{-10} m^3 Pa^{-1}" << std::endl;
-
-      resistances[v_id] = {local_R, C};
-    }
+    resistances[it.first] = {local_R, C};
   }
 
   return resistances;
 };
-
-std::map<size_t, RCRData> WindkesselCalibrator::estimate_parameters() {
-  auto local_parameters = estimate_parameters_local();
-  std::map<size_t, RCRData> global_parameters;
-
-  std::array<double, 2> data{0., 0.};
-
-  for (auto v_id : d_graph->get_vertex_ids()) {
-    auto v = d_graph->get_vertex(v_id);
-    if (v->is_free_outflow()) {
-      auto &e = *d_graph->get_edge(v->get_edge_neighbors()[0]);
-      if (e.rank() == mpi::rank(MPI_COMM_WORLD)) {
-        data[0] = local_parameters[v_id].resistance;
-        data[1] = local_parameters[v_id].capacitance;
-      }
-      MPI_Bcast(&data[0], 2, MPI_DOUBLE, e.rank(), MPI_COMM_WORLD);
-      global_parameters[v_id] = {data[0], data[1]};
-    }
-  }
-
-  return global_parameters;
-}
-
-void WindkesselCalibrator::set_total_C(double C) { d_total_C = C; }
-
-void WindkesselCalibrator::set_total_R(double R) { d_total_R = R; }
 
 void parameters_to_json(const std::string &filepath, const std::map<size_t, RCRData> &parameters, const std::shared_ptr<GraphStorage> &storage) {
   // only root writes the file
