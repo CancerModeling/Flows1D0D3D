@@ -69,6 +69,8 @@ int main(int argc, char *argv[]) {
       v->set_to_free_outflow();
   }
 
+  graph->finalize_bcs();
+
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
   auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
