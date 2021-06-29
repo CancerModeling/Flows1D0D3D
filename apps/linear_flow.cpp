@@ -69,6 +69,8 @@ int main(int argc, char *argv[]) {
     v0->set_to_linear_characteristic_inflow(mc::ImplicitLinearFlowSolver::get_C(*edge1), mc::ImplicitLinearFlowSolver::get_L(*edge1),true, p_in, q_in);
     v1->set_to_linear_characteristic_inflow(mc::ImplicitLinearFlowSolver::get_C(*edge1), mc::ImplicitLinearFlowSolver::get_L(*edge1),false, p_in, q_in);
 
+    graph->finalize_bcs();
+
     mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
 
     auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());

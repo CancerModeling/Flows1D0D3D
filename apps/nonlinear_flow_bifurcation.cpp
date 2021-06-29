@@ -100,6 +100,7 @@ int main(int argc, char *argv[]) {
 
   // create_for_node the ascending aorta
   auto graph = create_3_vessel_network();
+  graph->finalize_bcs();
 
   // partition graph
   // TODO: app crashes if not enabled -> fix this!

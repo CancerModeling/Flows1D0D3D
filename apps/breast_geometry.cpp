@@ -46,6 +46,8 @@ int main(int argc, char *argv[]) {
     inflow_vertices[0]->set_to_inflow(mc::heart_beat_inflow(4.85 / 8.));
   }
 
+  graph->finalize_bcs();
+
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
   auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());

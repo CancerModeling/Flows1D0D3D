@@ -70,7 +70,8 @@ int main(int argc, char *argv[]) {
 
   graph->find_vertex_by_name(args["inlet-name"].as<std::string>())->set_to_inflow(mc::heart_beat_inflow(args["heart-amplitude"].as<double>()));
 
-  set_0d_tree_boundary_conditions(graph, "bg_");
+  // set_0d_tree_boundary_conditions(graph, "bg_");
+  graph->finalize_bcs();
 
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
