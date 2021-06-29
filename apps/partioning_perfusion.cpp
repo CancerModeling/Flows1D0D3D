@@ -112,9 +112,9 @@ class Pres : public mc::BaseAssembly {
 public:
   Pres(Model *model, lm::MeshBase &mesh,
        lm::TransientLinearImplicitSystem &sys)
-      : mc::BaseAssembly("P", mesh, sys, 1,
-                         {sys.variable_number("p")}),
-        d_model_p(model) {
+    : mc::BaseAssembly("P", mesh, sys, 1,
+                       {sys.variable_number("p")}),
+      d_model_p(model) {
     sys.attach_assemble_object(
       *this);                     // attach this element assembly object
     sys.attach_init_function(ic); // add ic
@@ -135,10 +135,10 @@ public:
         lm::TransientLinearImplicitSystem &pres,
         lm::ExplicitSystem &hyd_cond,
         mc::Logger &log)
-      : mc::BaseModel(comm, mesh, eq_sys, log, "Darcy_3D"),
-        d_input(input),
-        d_pres(this, d_mesh, pres),
-        d_hyd_cond(hyd_cond) {
+    : mc::BaseModel(comm, mesh, eq_sys, log, "Darcy_3D"),
+      d_input(input),
+      d_pres(this, d_mesh, pres),
+      d_hyd_cond(hyd_cond) {
     d_log("model created\n");
   };
 
@@ -232,10 +232,10 @@ void set_perfusion_pts(std::string out_dir,
 
 //
 int create_heterogeneous_conductivity(const lm::MeshBase &mesh,
-                                       lm::ExplicitSystem &hyd_cond,
-                                       lm::EquationSystems &eq_sys,
-                                       const std::vector<int> &elem_taken,
-                                       Model &model) {
+                                      lm::ExplicitSystem &hyd_cond,
+                                      lm::EquationSystems &eq_sys,
+                                      const std::vector<int> &elem_taken,
+                                      Model &model) {
   std::vector<unsigned int> dof_indices;
   for (const auto &elem : mesh.active_local_element_ptr_range()) {
     hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
@@ -248,10 +248,10 @@ int create_heterogeneous_conductivity(const lm::MeshBase &mesh,
 
 //
 void create_perfusion_territory(std::string out_dir,
-                       std::vector<NetPoint> &pts,
-                       lm::ExplicitSystem &hyd_cond,
-                       lm::EquationSystems &eq_sys,
-                       Model &model) {
+                                std::vector<NetPoint> &pts,
+                                lm::ExplicitSystem &hyd_cond,
+                                lm::EquationSystems &eq_sys,
+                                Model &model) {
 
   // initialize random number generator
   int seed = 0;

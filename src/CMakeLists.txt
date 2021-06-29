@@ -17,4 +17,4 @@ target_link_libraries(${ProjectLib} PUBLIC ${LIBMESH_LIBRARIES}
                                            ${MPI_CXX_LIBRARIES}
                                            ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(${ProjectLib} INTERFACE ./)
-target_link_libraries(${ProjectLib} PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(${ProjectLib} PRIVATE nlohmann_json::nlohmann_json fmt nanoflann)
