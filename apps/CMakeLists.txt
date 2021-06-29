@@ -82,6 +82,11 @@ add_executable(${ProjectName}PartPerfusionTest partioning_perfusion.cpp)
 target_link_libraries(${ProjectName}PartPerfusionTest ${ProjectLib})
 target_link_libraries(${ProjectName}PartPerfusionTest cxxopts nanoflann fmt)
 
+# project voxel data on mesh
+add_executable(${ProjectName}VoxelsToMesh voxels_to_mesh.cpp)
+target_link_libraries(${ProjectName}VoxelsToMesh ${ProjectLib})
+target_link_libraries(${ProjectName}VoxelsToMesh cxxopts nanoflann fmt)
+
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
                    ${ProjectName}ConvergenceStudy
@@ -95,7 +100,8 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}DarcyHetero
                    ${ProjectName}LegacyVTK
                    ${ProjectName}PartPerfusionTest
-                   ${ProjectName}LinearFlow)
+                   ${ProjectName}LinearFlow
+                   ${ProjectName}VoxelsToMesh)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
@@ -111,6 +117,10 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory
             $<TARGET_FILE_DIR:${TargetName}>/output_part_perfusion_test)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:${TargetName}>/output_voxels_to_mesh)
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
