@@ -69,6 +69,8 @@ int main(int argc, char *argv[]) {
   start->set_to_inflow(mc::heart_beat_inflow(4.));
   //start->set_to_inflow([](double t) { return 1.;});
 
+  graph->finalize_bcs();
+
   // partition graph
   // TODO: app crashes if not enabled -> fix this!
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);

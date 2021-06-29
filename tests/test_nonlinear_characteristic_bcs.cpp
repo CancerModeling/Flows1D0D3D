@@ -59,6 +59,8 @@ TEST_CASE("NonLinearCharacteristicBCs", "[NonLinearCharacteristicBCs]") {
   v0->set_to_nonlinear_characteristic_inflow(G0, A0, density, true, p_in, q_in);
   v1->set_to_nonlinear_characteristic_inflow(G0, A0, density, false, p_in, q_in);
 
+  graph->finalize_bcs();
+
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());

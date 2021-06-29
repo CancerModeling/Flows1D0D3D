@@ -50,6 +50,8 @@ int main(int argc, char *argv[]) {
 
   mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
 
+  graph->finalize_bcs();
+
   // const std::size_t N = 32;
   // auto v_prev = graph.create_vertex(lm::Point(0, 0, 0));
   // for (std::size_t k = 0; k < N; k += 1) {

@@ -35,9 +35,16 @@ public:
     PC pc;
     CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
     CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCHYPRE));
-    CHKERRABORT(PETSC_COMM_WORLD, PCHYPRESetType(pc, "pilut"));
+    CHKERRABORT(PETSC_COMM_WORLD, PCHYPRESetType(pc, "euclid"));
 
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(ksp->d_ksp));
+    // CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
+    // CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
+
+    // KSPSetType(ksp->d_ksp,KSPPREONLY);
+    // PCSetType(pc,PCLU);
+    // PCFactorSetMatSolverType(pc,MATSOLVERSUPERLU_DIST);
+
+    // CHKERRABORT(PETSC_COMM_WORLD, KSPSetUp(ksp->d_ksp));
 
     return ksp;
   }
@@ -61,6 +68,8 @@ protected:
   PetscKsp(PetscMat &mat) {
     CHKERRABORT(PETSC_COMM_WORLD, KSPCreate(PETSC_COMM_WORLD, &d_ksp));
     CHKERRABORT(PETSC_COMM_WORLD, KSPSetOperators(d_ksp, mat.get_mat(), mat.get_mat()));
+    // CHKERRABORT(PETSC_COMM_WORLD, PetscObjectSetName((PetscObject) d_ksp, "pqsolver_"));
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(d_ksp));
   }
 
 private:

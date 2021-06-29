@@ -41,6 +41,7 @@ target_link_libraries(${ProjectName}Abstract33VesselsGeometry cxxopts)
 
 add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
 target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})
+target_link_libraries(${ProjectName}CombinedGeometry cxxopts)
 
 add_executable(${ProjectName}Calibration calibration.cpp)
 target_link_libraries(${ProjectName}Calibration ${ProjectLib})

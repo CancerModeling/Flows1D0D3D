@@ -78,7 +78,8 @@ double default_inflow_function(double) {
 Vertex::Vertex(std::size_t id)
     : Primitive(id),
       p_flow_type(FlowType::Undefined),
-      p_inflow_value(default_inflow_function) {}
+      p_inflow_value(default_inflow_function),
+      d_bcs_finalized(false) {}
 
 const std::vector<std::size_t> &Vertex::get_edge_neighbors() const {
   return p_neighbors;
@@ -101,6 +102,8 @@ bool Vertex::is_bifurcation() const {
 void Vertex::set_to_inflow(std::function<double(double)> value) {
   if (!is_leaf())
     throw std::runtime_error("inflow bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
   p_flow_type = FlowType::Inflow;
   p_inflow_value = std::move(value);
 }
@@ -108,6 +111,8 @@ void Vertex::set_to_inflow(std::function<double(double)> value) {
 void Vertex::set_to_free_outflow() {
   if (!is_leaf())
     throw std::runtime_error("free outflow bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
   p_flow_type = FlowType::FreeOutflow;
   p_inflow_value = default_inflow_function;
 }
@@ -115,6 +120,8 @@ void Vertex::set_to_free_outflow() {
 void Vertex::set_to_windkessel_outflow(double r, double c) {
   if (!is_leaf())
     throw std::runtime_error("windkessel bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
   p_flow_type = FlowType::Windkessel;
   p_peripheral_vessel_data.resistance = r;
   p_peripheral_vessel_data.compliance = c;
@@ -125,11 +132,17 @@ void Vertex::set_to_windkessel_outflow(double r, double c) {
 void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances) {
   if (!is_leaf())
     throw std::runtime_error("tree bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
   p_flow_type = FlowType::VesselTree;
   p_vessel_tree_data.p_out = p;
   p_vessel_tree_data.resistances = resistances;
   p_vessel_tree_data.capacitances = capacitances;
 }
+
+bool Vertex::bc_finalized() const { return d_bcs_finalized; }
+
+void Vertex::finalize_bcs() { d_bcs_finalized = true; }
 
 const PeripheralVesselData &Vertex::get_peripheral_vessel_data() const {
   assert(is_windkessel_outflow());
@@ -176,6 +189,8 @@ double Vertex::get_inflow_value(double time) const {
 void Vertex::set_to_linear_characteristic_inflow(double C, double L, bool points_towards_vertex, double p, double q) {
   if (!is_leaf())
     throw std::runtime_error("linear characteristic inflow can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
   p_flow_type = FlowType::LinearCharacteristic;
   double sigma = points_towards_vertex ? +1 : -1;
   p_linear_characteristic_data.C = C;
@@ -188,6 +203,8 @@ void Vertex::set_to_linear_characteristic_inflow(double C, double L, bool points
 void Vertex::set_to_nonlinear_characteristic_inflow(double G0, double A0, double rho, bool points_towards_vertex, double p, double q) {
   if (!is_leaf())
     throw std::runtime_error("nonlinear characteristic inflow can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
   p_flow_type = FlowType::NonlinearCharacteristic;
   double sigma = points_towards_vertex ? +1 : -1;
   p_nonlinear_characteristic_data.G0 = G0;
@@ -520,6 +537,13 @@ std::shared_ptr<Vertex> GraphStorage::find_vertex_by_name(const std::string &nam
     throw std::runtime_error("vertex " + name + " not found in graph storage.");
 
   return pos->second;
+}
+
+void GraphStorage::finalize_bcs() {
+  for (auto it : p_vertices) {
+    auto &vertex = *it.second;
+    vertex.finalize_bcs();
+  }
 }
 
 } // namespace macrocirculation

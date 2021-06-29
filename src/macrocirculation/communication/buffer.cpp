@@ -48,14 +48,10 @@ BufferSystem::BufferSystem(MPI_Comm comm, std::size_t tag)
       d_receive_requests(d_num_processes) {}
 
 ReceiveBuffer &BufferSystem::get_receive_buffer(std::size_t from) {
-  // we do not communicate with ourselves.
-  assert(from != d_rank);
   return d_receive_buffers.at(from);
 }
 
 SendBuffer &BufferSystem::get_send_buffer(std::size_t to) {
-  // we do not communicate with ourselves.
-  assert(to != d_rank);
   return d_send_buffers.at(to);
 };
 
@@ -72,6 +68,7 @@ void BufferSystem::start_communication() {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+  // send the data in the send buffers:
   for (std::size_t recipient = 0; recipient < d_send_buffers.size(); recipient += 1) {
     if (rank == recipient)
       continue;
@@ -81,6 +78,7 @@ void BufferSystem::start_communication() {
       MPI_Isend(buffer.ptr(), buffer.size(), MPI_BYTE, recipient, d_tag, MPI_COMM_WORLD, &d_send_requests[recipient]));
   }
 
+  // resize the receive buffers, depending on how much data arrives:
   for (std::size_t sender = 0; sender < d_receive_buffers.size(); sender += 1) {
     if (rank == sender)
       continue;
@@ -95,6 +93,7 @@ void BufferSystem::start_communication() {
     buffer.get_buffer().resize(size);
   }
 
+  // initiate receiving:
   for (std::size_t sender = 0; sender < d_receive_buffers.size(); sender += 1) {
     if (rank == sender)
       continue;
@@ -102,6 +101,15 @@ void BufferSystem::start_communication() {
     auto &buffer = get_receive_buffer(sender);
     CHECK_MPI_SUCCESS(
       MPI_Irecv(buffer.ptr(), buffer.size(), MPI_BYTE, sender, d_tag, MPI_COMM_WORLD, &d_receive_requests[sender]));
+  }
+
+  // the data we send to ourselves is just copied:
+  {
+    auto &sbuf = get_send_buffer(rank);
+    auto &rbuf = get_receive_buffer(rank);
+    rbuf.get_buffer().resize(sbuf.get_buffer().size());
+    for (size_t k = 0; k < sbuf.size(); k += 1)
+      rbuf.get_buffer()[k] = sbuf.get_buffer()[k];
   }
 }
 

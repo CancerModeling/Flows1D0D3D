@@ -25,6 +25,11 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
       continue;
     }
 
+    if (vertex.is_nonlinear_characteristic_inflow() || vertex.is_linear_characteristic_inflow()) {
+      std::cout << "rank = " << mpi::rank(MPI_COMM_WORLD) << " found characteristic inflow " << vertex.get_name() << std::endl;
+      continue;
+    }
+
     // we do not touch the circle of willis
     if (vertex.get_name().rfind(name_prefix) != 0) {
       std::cout << "rank = " << mpi::rank(MPI_COMM_WORLD) << " ignoring node " << vertex.get_name() << " and keeps windkessel bc." << std::endl;

@@ -88,14 +88,16 @@ double run_scenario(std::size_t num_micro_edges_per_segment, double tau, bool us
   vessel->add_embedding_data(mc::EmbeddingData{{mc::Point(0, 0, 0), mc::Point(length, 0, 0)}});
   vessel->add_physical_data(mc::PhysicalData{0., G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0/M_PI)});
 
+  // set inflow boundary conditions
+  start->set_to_inflow([](auto) { return 0.; });
+  end->set_to_inflow([](auto) { return 0.; });
+
+  graph->finalize_bcs();
+
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   //mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
-
-  // set inflow boundary conditions
-  start->set_to_inflow([](auto) { return 0.; });
-  end->set_to_inflow([](auto) { return 0.; });
 
   // configure solver
   mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
@@ -162,14 +164,16 @@ void run_temporal_convergence_study(std::size_t num_micro_edges_per_segment, std
   vessel->add_embedding_data(mc::EmbeddingData{{mc::Point(0, 0, 0), mc::Point(length, 0, 0)}});
   vessel->add_physical_data(mc::PhysicalData{0, G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0/M_PI)});
 
+  // set inflow boundary conditions
+  start->set_to_inflow([](auto) { return 0.; });
+  end->set_to_inflow([](auto) { return 0.; });
+
+  graph->finalize_bcs();
+
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   //mc::naive_mesh_partitioner( *graph, MPI_COMM_WORLD );
-
-  // set inflow boundary conditions
-  start->set_to_inflow([](auto) { return 0.; });
-  end->set_to_inflow([](auto) { return 0.; });
 
   const double h = 20. / num_micro_edges_per_segment;
   const double tau_max = get_tau(h, K_CFL, c0);
