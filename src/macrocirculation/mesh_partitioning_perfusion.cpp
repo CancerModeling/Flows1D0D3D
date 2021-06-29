@@ -10,7 +10,7 @@
 #include "base_model.hpp"
 #include "random_dist.hpp"
 #include "tree_search.hpp"
-#include "vtk_io.hpp"
+#include "vtk_io_libmesh.hpp"
 
 #include <fmt/format.h>
 
