@@ -19,7 +19,7 @@
 #include "libmesh/libmesh.h"
 #include "macrocirculation/assembly_system.hpp"
 #include "macrocirculation/base_model.hpp"
-#include "macrocirculation/vtk_io.hpp"
+#include "macrocirculation/vtk_io_libmesh.hpp"
 
 #include <vtkSmartPointer.h>
 #include <vtkUnstructuredGrid.h>
