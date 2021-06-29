@@ -64,7 +64,7 @@ FlowData FlowIntegrator::get_free_outflow_data() const {
       auto &e = *d_graph->get_edge(v->get_edge_neighbors()[0]);
       double q = 0;
       if (e.rank() == mpi::rank(MPI_COMM_WORLD)) {
-        q = data.flows[v_id];
+        q = d_total_flows.at(v_id);
       }
       MPI_Bcast(&q, 1, MPI_DOUBLE, e.rank(), MPI_COMM_WORLD);
       data.flows[v_id] = q;
@@ -107,7 +107,7 @@ double get_total_flow(const std::vector<FlowData> &flows) {
   return sum;
 }
 
-RCREstimator::RCREstimator(std::vector<std::shared_ptr<GraphStorage>> graph_list, bool verbose)
+RCREstimator::RCREstimator(std::vector<std::shared_ptr<GraphStorage>> graph_list)
     : d_graph_list(std::move(graph_list)),
       d_total_C_edge(0),
       d_total_R(1.34),   // 1.34e8 Pa s / m^3   ([Pa s / m^-3] = 10^{-8} [kg/s cm])

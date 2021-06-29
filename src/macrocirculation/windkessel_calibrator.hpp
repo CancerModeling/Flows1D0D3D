@@ -65,7 +65,7 @@ struct RCRData {
 
 class RCREstimator {
 public:
-  RCREstimator(std::vector<std::shared_ptr<GraphStorage>> graph_list, bool verbose);
+  RCREstimator(std::vector<std::shared_ptr<GraphStorage>> graph_list);
 
   void reset();
 
