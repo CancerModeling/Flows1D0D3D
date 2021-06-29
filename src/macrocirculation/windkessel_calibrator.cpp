@@ -47,9 +47,11 @@ void FlowIntegrator::update_flow_abstract(const Solver &solver, double tau) {
   for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
     auto v = d_graph->get_vertex(v_id);
     if (v->is_leaf()) {
+      auto& edge = *d_graph->get_edge(v->get_edge_neighbors()[0]);
+      double sigma = edge.is_pointing_to(v_id) ? +1. : -1;
       double p, q;
       solver.get_1d_pq_values_at_vertex(*v, p, q);
-      d_total_flows[v_id] += q * tau;
+      d_total_flows[v_id] += sigma * q * tau;
     }
   }
 }
@@ -66,6 +68,7 @@ FlowData FlowIntegrator::get_free_outflow_data() const {
       if (e.rank() == mpi::rank(MPI_COMM_WORLD)) {
         q = d_total_flows.at(v_id);
       }
+      std::cout << v_id << " " << q << std::endl;
       MPI_Bcast(&q, 1, MPI_DOUBLE, e.rank(), MPI_COMM_WORLD);
       data.flows[v_id] = q;
       data.total_flow += q;

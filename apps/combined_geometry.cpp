@@ -9,6 +9,7 @@
 #include <cxxopts.hpp>
 #include <macrocirculation/graph_flow_and_concentration_writer.hpp>
 #include <macrocirculation/set_0d_tree_boundary_conditions.hpp>
+#include <macrocirculation/windkessel_calibrator.hpp>
 #include <memory>
 
 #include "petsc.h"
@@ -22,9 +23,9 @@
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/implicit_linear_flow_solver.hpp"
+#include "macrocirculation/nonlinear_linear_coupling.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/nonlinear_linear_coupling.hpp"
 
 namespace mc = macrocirculation;
 
@@ -32,10 +33,11 @@ constexpr std::size_t degree = 2;
 
 int main(int argc, char *argv[]) {
   cxxopts::Options options(argv[0], "Combined geometry with explicit implicit solver");
-  options.add_options()                                                                                                             //
-    ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                                //
-    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                                   //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10"))                                               //
+  options.add_options()                                                                              //
+    ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.))) //
+    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))    //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10"))     //
+    ("calibration", "starts a calibration run", cxxopts::value<bool>()->default_value("false"))      //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
@@ -55,15 +57,42 @@ int main(int argc, char *argv[]) {
 
     auto graph_li = std::make_shared<mc::GraphStorage>();
     graph_reader.append("data/meshes/coarse-network-geometry.json", *graph_li);
-    graph_reader.set_boundary_data("data/meshes/boundary-coarse-network-geometry.json", *graph_li);
+    graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-linear-part.json", *graph_li);
+    graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-nonlinear-part.json", *graph_nl);
     mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
-    mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
+    // mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
 
-    auto coupling = std::make_shared< mc::NonlinearLinearCoupling > (MPI_COMM_WORLD, graph_nl, graph_li);
+    auto coupling = std::make_shared<mc::NonlinearLinearCoupling>(MPI_COMM_WORLD, graph_nl, graph_li);
     coupling->add_coupled_vertices("cw_out_1_1", "bg_132");
     coupling->add_coupled_vertices("cw_out_1_2", "bg_141");
     coupling->add_coupled_vertices("cw_out_2_1", "bg_135");
     coupling->add_coupled_vertices("cw_out_2_2", "bg_119");
+
+    const bool calibration = args["calibration"].as<bool>();
+
+    if (calibration) {
+      for (auto v_id : graph_li->get_vertex_ids()) {
+        auto v = graph_li->get_vertex(v_id);
+        if (!v->is_leaf())
+          continue;
+        if (v->is_inflow() || v->is_nonlinear_characteristic_inflow() || v->is_linear_characteristic_inflow())
+          continue;
+        v->set_to_free_outflow();
+        std::cout << "setting  " << v->get_name() << " to free outflow." << std::endl;
+      }
+      for (auto v_id : graph_nl->get_vertex_ids()) {
+        auto v = graph_nl->get_vertex(v_id);
+        if (!v->is_leaf())
+          continue;
+        if (v->is_inflow() || v->is_nonlinear_characteristic_inflow() || v->is_linear_characteristic_inflow())
+          continue;
+        v->set_to_free_outflow();
+        std::cout << "setting  " << v->get_name() << " to free outflow." << std::endl;
+      }
+    }
+
+    mc::FlowIntegrator flow_integrator_nl(graph_nl);
+    mc::FlowIntegrator flow_integrator_li(graph_li);
 
     mc::CoupledExplicitImplicit1DSolver solver(MPI_COMM_WORLD, coupling, graph_nl, graph_li, degree, degree);
 
@@ -100,6 +129,11 @@ int main(int argc, char *argv[]) {
       solver.solve(tau, t);
       t += tau;
 
+      if (calibration) {
+        flow_integrator_li.update_flow(*solver_li, tau);
+        flow_integrator_nl.update_flow(*solver_nl, tau);
+      }
+
       if (it % output_interval == 0) {
         if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
           std::cout << "iter = " << it << ", t = " << t << std::endl;
@@ -125,8 +159,28 @@ int main(int argc, char *argv[]) {
     const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
     if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
       std::cout << "time = " << elapsed_ms * 1e-6 << " s" << std::endl;
-  }
 
+    if (calibration) {
+      auto flows_nl = flow_integrator_nl.get_free_outflow_data();
+      auto flows_li = flow_integrator_li.get_free_outflow_data();
+
+      std::cout << "nonlinear_flows" << std::endl;
+      for (auto& it: flows_nl.flows)
+        std::cout << it.first << " " << it.second << std::endl;
+
+      std::cout << "linear_flows" << std::endl;
+      for (auto& it: flows_li.flows)
+        std::cout << it.first << " " << it.second << std::endl;
+
+      mc::RCREstimator rcr_estimator({graph_nl, graph_li});
+      double total_flow = mc::get_total_flow({flows_nl, flows_li});
+      auto rcr_parameters_nl = rcr_estimator.estimate_parameters(flows_nl.flows, total_flow);
+      auto rcr_parameters_li = rcr_estimator.estimate_parameters(flows_li.flows, total_flow);
+
+      mc::parameters_to_json("data/meshes/boundary-combined-geometry-nonlinear-part.json", rcr_parameters_nl, graph_nl);
+      mc::parameters_to_json("data/meshes/boundary-combined-geometry-linear-part.json", rcr_parameters_li, graph_li);
+    }
+  }
 
   CHKERRQ(PetscFinalize());
 }
