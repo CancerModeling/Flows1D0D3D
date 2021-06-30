@@ -11,11 +11,14 @@
 #include <macrocirculation/rcr_estimator.hpp>
 #include <macrocirculation/set_0d_tree_boundary_conditions.hpp>
 #include <memory>
+#include <utility>
 
 #include "petsc.h"
 
+#include "../cmake-build-release/_deps/json-src/single_include/nlohmann/json.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/coupled_explicit_implicit_1d_solver.hpp"
+#include "macrocirculation/csv_vessel_tip_writer.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
@@ -123,6 +126,8 @@ int main(int argc, char *argv[]) {
     mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph_nl, dof_map_nl, dof_map_nl);
     mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution");
 
+    mc::CSVVesselTipWriter vessel_tip_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution", graph_li, dof_map_li);
+
     const auto begin_t = std::chrono::steady_clock::now();
     double t = 0;
     for (std::size_t it = 0; it < max_iter; it += 1) {
@@ -148,6 +153,8 @@ int main(int argc, char *argv[]) {
         pvd_writer.add_vertex_data("p", p_vertex_values);
         pvd_writer.add_vertex_data("q", q_vertex_values);
         pvd_writer.write(t);
+
+        vessel_tip_writer.write(t, solver_li->get_solution());
       }
 
       // break
@@ -165,11 +172,11 @@ int main(int argc, char *argv[]) {
       auto flows_li = flow_integrator_li.get_free_outflow_data();
 
       std::cout << "nonlinear_flows" << std::endl;
-      for (auto& it: flows_nl.flows)
+      for (auto &it : flows_nl.flows)
         std::cout << it.first << " " << it.second << std::endl;
 
       std::cout << "linear_flows" << std::endl;
-      for (auto& it: flows_li.flows)
+      for (auto &it : flows_li.flows)
         std::cout << it.first << " " << it.second << std::endl;
 
       mc::RCREstimator rcr_estimator({graph_nl, graph_li});
