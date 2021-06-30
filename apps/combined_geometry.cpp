@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <cxxopts.hpp>
+#include <macrocirculation/interpolate_to_vertices.hpp>
 #include <memory>
 #include <utility>
 
@@ -114,6 +115,11 @@ int main(int argc, char *argv[]) {
     std::vector<double> p_vertex_values;
     std::vector<double> q_vertex_values;
 
+    std::vector<double> vessel_ids_li;
+
+    // vessels ids do not change, thus we can precalculate them
+    mc::fill_with_vessel_id(MPI_COMM_WORLD, *graph_li, points, vessel_ids_li);
+
     auto dof_map_li = solver.get_implicit_dof_map();
     auto dof_map_nl = solver.get_explicit_dof_map();
     auto solver_li = solver.get_implicit_solver();
@@ -151,6 +157,7 @@ int main(int argc, char *argv[]) {
         pvd_writer.set_points(points);
         pvd_writer.add_vertex_data("p", p_vertex_values);
         pvd_writer.add_vertex_data("q", q_vertex_values);
+        pvd_writer.add_vertex_data("vessel_id", vessel_ids_li);
         pvd_writer.write(t);
 
         vessel_tip_writer.write(t, solver_li->get_solution());
