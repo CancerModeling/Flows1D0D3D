@@ -91,6 +91,14 @@ void CSVVesselTipWriter::write_meta_file() {
         vessel_obj["resistance"] = v->get_vessel_tree_data().resistances;
         vessel_obj["capacitances"] = v->get_vessel_tree_data().capacitances;
         vessel_obj["R1"] = calculate_R1(e->get_physical_data());
+        vessel_obj["furcation_number"] = v->get_vessel_tree_data().furcation_number;
+        vessel_obj["p_out"] = v->get_vessel_tree_data().p_out;
+      }
+
+      if (v->is_windkessel_outflow()) {
+        vessel_obj["R2"] = v->get_peripheral_vessel_data().resistance - calculate_R1(e->get_physical_data());
+        vessel_obj["p_out"] = v->get_peripheral_vessel_data().p_out;
+        vessel_obj["C"] = v->get_peripheral_vessel_data().compliance;
       }
 
       vertices_list.push_back(vessel_obj);

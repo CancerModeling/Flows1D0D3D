@@ -7,27 +7,26 @@
 
 #include <chrono>
 #include <cxxopts.hpp>
-#include <macrocirculation/graph_flow_and_concentration_writer.hpp>
-#include <macrocirculation/rcr_estimator.hpp>
-#include <macrocirculation/set_0d_tree_boundary_conditions.hpp>
 #include <memory>
 #include <utility>
 
 #include "petsc.h"
 
-#include "../cmake-build-release/_deps/json-src/single_include/nlohmann/json.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/coupled_explicit_implicit_1d_solver.hpp"
 #include "macrocirculation/csv_vessel_tip_writer.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
+#include "macrocirculation/graph_flow_and_concentration_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include "macrocirculation/nonlinear_linear_coupling.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
+#include "macrocirculation/rcr_estimator.hpp"
+#include "macrocirculation/set_0d_tree_boundary_conditions.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
 namespace mc = macrocirculation;
@@ -63,7 +62,7 @@ int main(int argc, char *argv[]) {
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-linear-part.json", *graph_li);
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-nonlinear-part.json", *graph_nl);
     mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
-    // mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
+    mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
 
     auto coupling = std::make_shared<mc::NonlinearLinearCoupling>(MPI_COMM_WORLD, graph_nl, graph_li);
     coupling->add_coupled_vertices("cw_out_1_1", "bg_132");
