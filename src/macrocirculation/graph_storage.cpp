@@ -129,7 +129,7 @@ void Vertex::set_to_windkessel_outflow(double r, double c) {
   p_peripheral_vessel_data.p_out = 5.0 * 1.333322;
 }
 
-void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances) {
+void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, size_t furcation_number ) {
   if (!is_leaf())
     throw std::runtime_error("tree bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
   if (d_bcs_finalized)
@@ -138,6 +138,7 @@ void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &res
   p_vessel_tree_data.p_out = p;
   p_vessel_tree_data.resistances = resistances;
   p_vessel_tree_data.capacitances = capacitances;
+  p_vessel_tree_data.furcation_number = furcation_number;
 }
 
 bool Vertex::bc_finalized() const { return d_bcs_finalized; }

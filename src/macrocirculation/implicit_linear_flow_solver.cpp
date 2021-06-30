@@ -617,12 +617,13 @@ void ImplicitLinearFlowSolver::assemble_matrix_0d_model(double tau) {
         const auto &data = vertex.get_vessel_tree_data();
         const auto &R = data.resistances;
         const auto &C_tilde2 = data.capacitances;
+        const auto n = static_cast< double >(data.furcation_number);
 
         for (size_t k = 1; k < R.size(); k += 1) {
           Eigen::MatrixXd mat_k_km1(1, 1);
-          mat_k_km1 << -tau / (2 * R[k - 1]) / C_tilde2[k];
+          mat_k_km1 << -tau / (n * R[k - 1]) / C_tilde2[k];
           Eigen::MatrixXd mat_k_k(1, 1);
-          mat_k_k << 1. + tau / (2 * R[k - 1] * C_tilde2[k]) + tau / (R[k] * C_tilde2[k]);
+          mat_k_k << 1. + tau / (n * R[k - 1] * C_tilde2[k]) + tau / (R[k] * C_tilde2[k]);
           Eigen::MatrixXd mat_km1_k(1, 1);
           mat_km1_k << -tau / (R[k - 1] * C_tilde2[k - 1]);
 
