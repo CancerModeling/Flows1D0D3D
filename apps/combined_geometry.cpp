@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-linear-part.json", *graph_li);
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-nonlinear-part.json", *graph_nl);
     mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
-    mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
+    // mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
 
     auto coupling = std::make_shared<mc::NonlinearLinearCoupling>(MPI_COMM_WORLD, graph_nl, graph_li);
     coupling->add_coupled_vertices("cw_out_1_1", "bg_132");
