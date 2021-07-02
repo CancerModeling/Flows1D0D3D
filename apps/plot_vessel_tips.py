@@ -39,17 +39,20 @@ def load_data(edge_id):
 
 data = load_data(args.vessel_by_edge_id)
 
-fig, axes = plt.subplots(1, len(args.dofs), squeeze=False)
+fig, axes = plt.subplots(1, len(args.dofs), squeeze=False, sharey=True)
 
 indices = list(range(data.shape[1]))
 
 for i,dof in enumerate(args.dofs):
     ax = axes[0,i]
-    ax.plot(t[start_index:], data[start_index:,dof], label='{}'.format(indices[dof]))
+    ax.plot(t[start_index:], data[start_index:,dof] / 1.3333, label='{}'.format(indices[dof]), linewidth=3)
     ax.legend()
-    ax.set_ylabel('$p_c$')
+    if i == 0:
+        ax.set_ylabel('$p_c$ [mmHg]')
     ax.set_xlabel('$t$')
     ax.grid(True)
-plt.tight_layout()
+#plt.tight_layout()
+#mng = plt.get_current_fig_manager()
+#mng.window.showMaximized()
 plt.show()
 

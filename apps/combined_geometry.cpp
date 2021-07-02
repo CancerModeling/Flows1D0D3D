@@ -65,6 +65,66 @@ int main(int argc, char *argv[]) {
     mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
     // mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
 
+    //
+    for (auto &v_id : graph_li->get_vertex_ids()) {
+      auto &vertex = *graph_li->get_vertex(v_id);
+
+      if (vertex.is_windkessel_outflow())
+      {
+        auto& edge = *graph_li->get_edge(vertex.get_edge_neighbors()[0]);
+        auto& data = vertex.get_peripheral_vessel_data();
+
+        std::cout << "rank " << mc::mpi::rank(MPI_COMM_WORLD) << " sets vertex " << vertex.get_name()
+                  << " (id = " << vertex.get_id() << ", neighbor-edge-id = " << edge.get_id() << ")" << std::endl;
+
+        const double R1 = mc::calculate_R1(edge.get_physical_data());
+        const double R2 = data.resistance - R1;
+        const double C = data.compliance;
+
+        const double p_cap = 5 * (133.333) * 1e-2;
+
+        std::vector<double> list_C;
+        std::vector<double> list_R;
+
+        /*
+        size_t num = 5;
+        for (size_t k =0; k<num; k+=1)
+        {
+          list_C.push_back(C/k);
+          list_R.push_back(R2/k);
+        }
+         */
+
+        // arterioles
+        list_C.push_back(C*0.25);
+        list_C.push_back(C*0.25);
+        list_C.push_back(C*0.5);
+        list_C.push_back(C*0.10);
+        list_C.push_back(C*0.15);
+        // capillaries
+        list_C.push_back(C*0.45);
+        // venules
+        list_C.push_back(C*0.15);
+        // veins
+        list_C.push_back(C*0.5);
+
+        // arterioles
+        list_R.push_back(R2*0.25);
+        list_R.push_back(R2*0.25);
+        list_R.push_back(R2*0.5);
+        list_R.push_back(R2*0.10);
+        list_R.push_back(R2*0.15);
+        // capillaries
+        list_R.push_back(R2*0.45);
+        // venules
+        list_R.push_back(R2*0.15);
+        // veins
+        list_R.push_back(R2*0.5);
+
+        vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 1);
+      }
+    }
+
     auto coupling = std::make_shared<mc::NonlinearLinearCoupling>(MPI_COMM_WORLD, graph_nl, graph_li);
     coupling->add_coupled_vertices("cw_out_1_1", "bg_132");
     coupling->add_coupled_vertices("cw_out_1_2", "bg_141");
