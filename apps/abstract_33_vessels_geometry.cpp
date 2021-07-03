@@ -73,7 +73,8 @@ int main(int argc, char *argv[]) {
   // set_0d_tree_boundary_conditions(graph, "bg_");
   graph->finalize_bcs();
 
-  mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
+  // mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
+  mc::flow_mesh_partitioner(MPI_COMM_WORLD, *graph, degree);
 
   auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map_flow->create(MPI_COMM_WORLD, *graph, 2, degree, false);

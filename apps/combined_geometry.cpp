@@ -56,13 +56,11 @@ int main(int argc, char *argv[]) {
 
     auto &v_in = *graph_nl->find_vertex_by_name("cw_in");
     v_in.set_to_inflow(mc::heart_beat_inflow(485.0));
-    mc::naive_mesh_partitioner(*graph_nl, MPI_COMM_WORLD);
 
     auto graph_li = std::make_shared<mc::GraphStorage>();
     graph_reader.append("data/meshes/coarse-network-geometry.json", *graph_li);
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-linear-part.json", *graph_li);
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-nonlinear-part.json", *graph_nl);
-    mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
     // mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
 
     //
@@ -130,6 +128,15 @@ int main(int argc, char *argv[]) {
     coupling->add_coupled_vertices("cw_out_1_2", "bg_141");
     coupling->add_coupled_vertices("cw_out_2_1", "bg_135");
     coupling->add_coupled_vertices("cw_out_2_2", "bg_119");
+
+    graph_nl->finalize_bcs();
+    graph_li->finalize_bcs();
+
+    // mc::naive_mesh_partitioner(*graph_nl, MPI_COMM_WORLD);
+    mc::flow_mesh_partitioner(PETSC_COMM_WORLD, *graph_nl, degree);
+
+    // mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
+    mc::flow_mesh_partitioner(PETSC_COMM_WORLD, *graph_li, degree);
 
     const bool calibration = args["calibration"].as<bool>();
 
