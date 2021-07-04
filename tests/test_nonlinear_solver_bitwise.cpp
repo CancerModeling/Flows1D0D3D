@@ -46,13 +46,15 @@ TEST_CASE("NonlinearSolverBitwise", "[NonlinearSolverBitwise]") {
 
   // configure solver
   mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
-  solver.set_tau(tau);
   solver.use_ssp_method();
 
+  double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    solver.solve();
+    solver.solve(tau, t);
 
-    if (solver.get_time() > t_end + 1e-12)
+    t += tau;
+
+    if (t > t_end + 1e-12)
       break;
   }
 

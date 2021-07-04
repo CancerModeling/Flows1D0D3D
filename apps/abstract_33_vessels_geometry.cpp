@@ -73,7 +73,8 @@ int main(int argc, char *argv[]) {
   // set_0d_tree_boundary_conditions(graph, "bg_");
   graph->finalize_bcs();
 
-  mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
+  // mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
+  mc::flow_mesh_partitioner(MPI_COMM_WORLD, *graph, degree);
 
   auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map_flow->create(MPI_COMM_WORLD, *graph, 2, degree, false);
@@ -91,7 +92,6 @@ int main(int argc, char *argv[]) {
 
   // configure solver
   mc::ExplicitNonlinearFlowSolver flow_solver(MPI_COMM_WORLD, graph, dof_map_flow, degree);
-  flow_solver.set_tau(tau);
   flow_solver.use_ssp_method();
 
   mc::Transport transport_solver(MPI_COMM_WORLD, graph, dof_map_flow, dof_map_transport);
@@ -131,12 +131,15 @@ int main(int argc, char *argv[]) {
   }
 
   const auto begin_t = std::chrono::steady_clock::now();
+  double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
     transport_solver.solve(it * tau, tau, flow_solver.get_solution());
-    flow_solver.solve();
+    flow_solver.solve(tau, t);
+
+    t += tau;
 
     if (it % output_interval == 0) {
-      std::cout << "iter = " << it << ", t = " << flow_solver.get_time() << std::endl;
+      std::cout << "iter = " << it << ", t = " << t << std::endl;
 
       csv_writer.write(it * tau, flow_solver.get_solution(), transport_solver.get_solution());
 
@@ -153,7 +156,7 @@ int main(int argc, char *argv[]) {
       pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
       pvd_writer.add_vertex_data("c", c_vertex_values);
       pvd_writer.add_vertex_data("vessel_id", vessel_ids);
-      pvd_writer.write(flow_solver.get_time());
+      pvd_writer.write(t);
 
       for (auto &v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
         auto &vertex = *graph->get_vertex(v_id);
@@ -194,7 +197,7 @@ int main(int argc, char *argv[]) {
     }
 
     // break
-    if (flow_solver.get_time() > t_end + 1e-12)
+    if (t > t_end + 1e-12)
       break;
   }
 

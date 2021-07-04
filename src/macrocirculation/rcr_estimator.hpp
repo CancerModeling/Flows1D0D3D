@@ -5,8 +5,8 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TUMORMODELS_WINDKESSEL_CALIBRATOR_HPP
-#define TUMORMODELS_WINDKESSEL_CALIBRATOR_HPP
+#ifndef TUMORMODELS_RCR_ESTIMATOR_HPP
+#define TUMORMODELS_RCR_ESTIMATOR_HPP
 
 #include <map>
 #include <memory>
@@ -96,4 +96,4 @@ void parameters_to_json(const std::string &filepath, const std::map<size_t, RCRD
 } // namespace macrocirculation
 
 
-#endif //TUMORMODELS_WINDKESSEL_CALIBRATOR_HPP
+#endif //TUMORMODELS_RCR_ESTIMATOR_HPP

@@ -8,17 +8,27 @@
 #ifndef TUMORMODELS_GRAPH_PARTITIONER_HPP
 #define TUMORMODELS_GRAPH_PARTITIONER_HPP
 
+#include <functional>
 #include <mpi.h>
 
 namespace macrocirculation {
 
 // forward declarations
 class GraphStorage;
+class Edge;
 
 /*! @brief Distributes a graph to several processors through the ids of the assigned primitives.
  *         This partitioning makes sense when the edge ids and the geometric position correlate.
  */
 void naive_mesh_partitioner(GraphStorage &graph, MPI_Comm comm = MPI_COMM_WORLD);
+
+/*! @brief Distributes a graph to several processors using a cost estimator function for the primitives.
+ */
+void priority_mesh_partitioner(MPI_Comm comm, GraphStorage &graph, const std::function<int (const Edge&)> & estimator);
+
+/*! @brief Distributes a graph to several processors using a cost estimator for the flow problem;
+ */
+void flow_mesh_partitioner(MPI_Comm comm, GraphStorage &graph, size_t degree);
 
 } // namespace macrocirculation
 

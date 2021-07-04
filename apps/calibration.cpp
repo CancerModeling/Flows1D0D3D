@@ -18,8 +18,8 @@
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
+#include "macrocirculation/rcr_estimator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/windkessel_calibrator.hpp"
 
 namespace mc = macrocirculation;
 
@@ -87,7 +87,6 @@ int main(int argc, char *argv[]) {
 
   // configure solver
   mc::ExplicitNonlinearFlowSolver flow_solver(MPI_COMM_WORLD, graph, dof_map_flow, degree);
-  flow_solver.set_tau(tau);
   flow_solver.use_ssp_method();
 
   std::vector<mc::Point> points;
@@ -99,19 +98,22 @@ int main(int argc, char *argv[]) {
   mc::FlowIntegrator flow_integrator(graph);
 
   const auto begin_t = std::chrono::steady_clock::now();
+  double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    flow_solver.solve();
+    flow_solver.solve(tau, t);
+
+    t += tau;
 
     // add total flows
     flow_integrator.update_flow(flow_solver, tau);
 
     if (it % output_interval == 0) {
       if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-        std::cout << "iter = " << it << ", t = " << flow_solver.get_time() << std::endl;
+        std::cout << "iter = " << it << ", t = " << t << std::endl;
     }
 
     // break
-    if (flow_solver.get_time() > t_end + 1e-12)
+    if (t > t_end + 1e-12)
       break;
   }
 

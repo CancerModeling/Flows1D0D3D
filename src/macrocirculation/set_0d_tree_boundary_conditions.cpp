@@ -58,7 +58,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
       r *= alpha;
     }
 
-    vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C);
+    vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 2);
   }
 }
 

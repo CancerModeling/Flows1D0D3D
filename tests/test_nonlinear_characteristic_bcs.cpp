@@ -68,12 +68,14 @@ TEST_CASE("NonLinearCharacteristicBCs", "[NonLinearCharacteristicBCs]") {
 
   mc::ExplicitNonlinearFlowSolver solver(PETSC_COMM_WORLD, graph, dof_map, degree);
   solver.use_ssp_method();
-  solver.set_tau(tau);
 
   const auto t_max_idx = static_cast<size_t>(std::ceil(t_end / tau));
 
-  for (size_t t_idx = 0; t_idx < t_max_idx; t_idx += 1)
-    solver.solve();
+  double t = 0;
+  for (size_t t_idx = 0; t_idx < t_max_idx; t_idx += 1) {
+    solver.solve(tau, t);
+    t += tau;
+  }
 
   double p, q;
   // at the left tip

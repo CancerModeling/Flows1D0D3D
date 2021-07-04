@@ -87,8 +87,6 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(MPI_Comm comm,
       d_degree(degree),
       d_right_hand_side_evaluator(std::make_shared<RightHandSideEvaluator>(d_comm, d_graph, d_dof_map, d_degree)),
       d_time_integrator(std::make_unique<TimeIntegrator>(create_explicit_euler(), d_dof_map->num_dof())),
-      d_tau(2.5e-4 / 4),
-      d_t_now(0),
       d_u_now(d_dof_map->num_dof()),
       d_u_prev(d_dof_map->num_dof()) {
   // set A constant to A0
@@ -99,19 +97,9 @@ ExplicitNonlinearFlowSolver::ExplicitNonlinearFlowSolver(MPI_Comm comm,
 // we need the destructor here, to use unique_ptrs with forward declared classes.
 ExplicitNonlinearFlowSolver::~ExplicitNonlinearFlowSolver() = default;
 
-void ExplicitNonlinearFlowSolver::solve() {
+void ExplicitNonlinearFlowSolver::solve(double tau, double t_prev) {
   d_u_prev = d_u_now;
-  d_t_now += d_tau;
-  const double t_prev = d_t_now - d_tau;
-  d_time_integrator->apply<degree>(d_u_prev, t_prev, d_tau, *d_right_hand_side_evaluator, d_u_now);
-}
-
-double ExplicitNonlinearFlowSolver::get_time() const {
-  return d_t_now;
-}
-
-void ExplicitNonlinearFlowSolver::set_tau(double tau) {
-  d_tau = tau;
+  d_time_integrator->apply<degree>(d_u_prev, t_prev, tau, *d_right_hand_side_evaluator, d_u_now);
 }
 
 void ExplicitNonlinearFlowSolver::use_explicit_euler_method() {

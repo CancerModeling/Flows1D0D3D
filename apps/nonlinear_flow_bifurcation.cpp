@@ -18,8 +18,8 @@
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
+#include "macrocirculation/rcr_estimator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/windkessel_calibrator.hpp"
 
 namespace mc = macrocirculation;
 
@@ -112,7 +112,6 @@ int main(int argc, char *argv[]) {
 
   // configure solver
   mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
-  solver.set_tau(tau);
   solver.use_ssp_method();
 
   std::vector<mc::Point> points;
@@ -127,8 +126,11 @@ int main(int argc, char *argv[]) {
   // mc::WindkesselCalibrator calibrator(graph, true);
 
   const auto begin_t = std::chrono::steady_clock::now();
+  double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    solver.solve();
+    solver.solve(tau, t);
+
+    t += tau;
 
     // calibrator.update_flow(solver, tau);
 
@@ -136,7 +138,7 @@ int main(int argc, char *argv[]) {
       std::cout << "iter " << it << std::endl;
 
       // save solution
-      csv_writer.write(solver.get_time(), solver.get_solution());
+      csv_writer.write(t, solver.get_solution());
 
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 0, solver.get_solution(), points, Q_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 1, solver.get_solution(), points, A_vertex_values);
@@ -148,40 +150,38 @@ int main(int argc, char *argv[]) {
       pvd_writer.add_vertex_data("A", A_vertex_values);
       pvd_writer.add_vertex_data("p_static", p_static_vertex_values);
       pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
-      pvd_writer.write(solver.get_time());
+      pvd_writer.write(t);
 
       // calibrator.estimate_parameters();
     }
 
     // break
-    if (solver.get_time() > t_end + 1e-12)
+    if (t > t_end + 1e-12)
       break;
   }
 
   for (auto e_id : graph->get_edge_ids()) {
-    auto& edge = *graph->get_edge(e_id);
-    double A,Q;
+    auto &edge = *graph->get_edge(e_id);
+    double A, Q;
     solver.evaluate_1d_AQ_values(edge, 0.5, A, Q);
     std::cout << std::scientific << std::setprecision(16) << e_id << " " << A << " " << Q << std::endl;
   }
 
-  const std::vector< double > edge_id_to_A {
+  const std::vector<double> edge_id_to_A{
     6.5155018925380483e+00,
     6.1024958654010675e+00,
-    1.7777985228282513e+00
-  };
+    1.7777985228282513e+00};
 
-  const std::vector< double > edge_id_to_Q {
+  const std::vector<double> edge_id_to_Q{
     4.1595860742808094e+02,
     3.1718725628944367e+02,
-    9.1211576554297366e+01
-  };
+    9.1211576554297366e+01};
 
   for (auto e_id : graph->get_active_edge_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
-    auto& edge = *graph->get_edge(e_id);
-    double A,Q;
+    auto &edge = *graph->get_edge(e_id);
+    double A, Q;
     solver.evaluate_1d_AQ_values(edge, 0.5, A, Q);
-    const double err_A =  std::abs(edge_id_to_A[e_id] - A);
+    const double err_A = std::abs(edge_id_to_A[e_id] - A);
     std::cout << std::scientific << std::setprecision(16) << e_id << " " << A << " " << Q << std::endl;
   }
 

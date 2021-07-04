@@ -81,7 +81,6 @@ int main(int argc, char *argv[]) {
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
   mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
-  solver.set_tau(tau);
   solver.use_ssp_method();
 
   std::vector<mc::Point> points;
@@ -100,13 +99,14 @@ int main(int argc, char *argv[]) {
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    solver.solve();
+    const double t = static_cast< double > (it) * tau;
+    solver.solve(tau, t);
 
     if (it % output_interval == 0) {
       if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-        std::cout << "iter = " << it << ", time = " << solver.get_time() << std::endl;
+        std::cout << "iter = " << it << ", time = " << t << std::endl;
 
-      csv_writer.write(solver.get_time(), solver.get_solution());
+      csv_writer.write(t+tau, solver.get_solution());
 
       // save solution
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 0, solver.get_solution(), points, Q_vertex_values);
@@ -119,11 +119,11 @@ int main(int argc, char *argv[]) {
       pvd_writer.add_vertex_data("A", A_vertex_values);
       pvd_writer.add_vertex_data("p_static", p_static_vertex_values);
       pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
-      pvd_writer.write(solver.get_time());
+      pvd_writer.write(t);
     }
 
     // break
-    if (solver.get_time() > t_end + 1e-12)
+    if (t+tau > t_end + 1e-12)
       break;
   }
 

@@ -6,11 +6,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "libmesh/libmesh.h"
+#include <chrono>
 #include <cmath>
+#include <cxxopts.hpp>
 #include <memory>
 #include <petsc.h>
 #include <utility>
-#include <cxxopts.hpp>
 
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
@@ -78,13 +79,13 @@ int main(int argc, char *argv[]) {
     graph->find_vertex_by_name("bg_135")->set_to_inflow(mc::heart_beat_inflow(0.035));
     graph->find_vertex_by_name("bg_141")->set_to_inflow(mc::heart_beat_inflow(0.035));
     graph->find_vertex_by_name("bg_119")->set_to_inflow(mc::heart_beat_inflow(0.035));
-
-    mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
-
     // mc::set_0d_tree_boundary_conditions(graph, "bg_");
     graph_reader.set_boundary_data("./data/meshes/boundary-combined-geometry-linear-part.json", *graph);
 
     graph->finalize_bcs();
+
+    // mc::naive_mesh_partitioner(*graph, PETSC_COMM_WORLD);
+    mc::flow_mesh_partitioner(PETSC_COMM_WORLD, *graph, degree);
 
     auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
     dof_map->create(PETSC_COMM_WORLD, *graph, 2, degree, true);
@@ -96,6 +97,7 @@ int main(int argc, char *argv[]) {
 
     double t = 0;
     const auto t_max_idx = static_cast<size_t>(std::ceil(t_end / tau));
+    const auto begin_t = std::chrono::steady_clock::now();
     for (size_t t_idx = 0; t_idx < t_max_idx; t_idx += 1) {
       t += tau;
       solver.solve(tau, t);
@@ -143,6 +145,10 @@ int main(int argc, char *argv[]) {
         std::cout << "iter = " << t_idx << ", t = " << t << std::endl;
       }
     }
+
+    const auto end_t = std::chrono::steady_clock::now();
+    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
+    std::cout << "time = " << elapsed_ms * 1e-6 << " s" << std::endl;
   }
 
   CHKERRQ(PetscFinalize());

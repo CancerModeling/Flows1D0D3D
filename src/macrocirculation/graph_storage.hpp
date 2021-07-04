@@ -94,6 +94,9 @@ struct VesselTreeData {
   std::vector<double> resistances;
   std::vector<double> capacitances;
   double p_out;
+
+  /*! @brief The number of furcations at each level. 2 gives a symmetric binary tree, 1 a line. */
+  size_t furcation_number;
 };
 
 struct LinearCharacteristicData {
@@ -225,7 +228,7 @@ public:
   /*! @brief Marks the given vertex as part of the free outflow boundary. */
   void set_to_windkessel_outflow(double r, double c);
 
-  void set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances);
+  void set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, size_t furcation_number);
 
   void set_to_linear_characteristic_inflow(double C, double L, bool points_towards_vertex, double p, double q);
 
