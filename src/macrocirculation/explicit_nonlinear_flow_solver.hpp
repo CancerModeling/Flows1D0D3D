@@ -61,11 +61,7 @@ public:
    *         This can be used inside a local dof map to get the dof indices for a single component. */
   static const size_t A_component = 1;
 
-  void solve();
-
-  double get_time() const;
-
-  void set_tau(double tau);
+  void solve(double tau, double t);
 
   /*! @brief Configures the explicit euler method as the time integrator. */
   void use_explicit_euler_method();
@@ -113,12 +109,6 @@ private:
 
   /*! @brief Explicit time integrator to move the solution forwards in time. */
   std::unique_ptr<TimeIntegrator> d_time_integrator;
-
-  /*! @brief Current time step size. */
-  double d_tau;
-
-  /*! @brief The current time. */
-  double d_t_now;
 
   /*! @brief The solution at the current time step. */
   std::vector<double> d_u_now;

@@ -50,7 +50,6 @@ CoupledExplicitImplicit1DSolver::CoupledExplicitImplicit1DSolver(
 }
 
 void CoupledExplicitImplicit1DSolver::setup(double tau) {
-  d_explicit_solver->set_tau(tau);
   d_implicit_solver->setup(tau);
   d_tau = tau;
   d_is_setup = true;
@@ -60,7 +59,7 @@ void CoupledExplicitImplicit1DSolver::solve(double tau, double t) {
   if (!d_is_setup || std::abs(tau - d_tau) > 1e-16)
     throw std::runtime_error("missing call to setup routines");
 
-  d_explicit_solver->solve();
+  d_explicit_solver->solve(d_tau, t);
   d_coupling->update_linear_solver(*d_explicit_solver, *d_implicit_solver);
   d_implicit_solver->solve(d_tau, t + d_tau);
   d_coupling->update_nonlinear_solver(*d_implicit_solver, *d_explicit_solver);
