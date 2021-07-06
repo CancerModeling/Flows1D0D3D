@@ -19,6 +19,8 @@
 #include "macrocirculation/nifti_reader.hpp"
 #include "macrocirculation/vtk_io_libmesh.hpp"
 
+#include "macrocirculation/vtk_reader.hpp"
+
 namespace mc = macrocirculation;
 
 namespace darcy3d {
@@ -131,9 +133,34 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // test vtu reading
-  mesh.read(out_dir + "output_0_0.vtu");
+  // test libmesh vtu reader
+  auto fname = out_dir + "output_0_0.vtu";
+  mesh.read(fname);
   mesh.print_info(lm::out);
+
+  // test custom vtu reader
+  auto reader = mc::VTKReader(fname);
+  reader.read();
+  auto p_fields = mc::read_vtu_point_fields(reader.d_d_p);
+  auto c_fields = mc::read_vtu_point_fields(reader.d_d_p);
+
+  log(fmt::format("\n\nPoint fields = {}\n", mc::print_str(p_fields)));
+  log(fmt::format("\nCell fields = {}\n", mc::print_str(c_fields)));
+
+  std::vector<double> p_k;
+  mc::read_point_array("k", p_k, reader.d_d_p);
+  log(fmt::format("Size of point k field = {}\n", p_k.size()));
+  std::vector<double> c_k;
+  mc::read_point_array("k", c_k, reader.d_d_p);
+  log(fmt::format("Size of cell k field = {}\n", c_k.size()));
+
+  if (p_k.size() == c_k.size()) {
+    std::vector<double> pc_k;
+    for (size_t i = 0; i < p_k.size(); i++)
+      pc_k.push_back(p_k[i] - c_k[i]);
+
+    log(fmt::format("max err = {}, min err = {}\n", mc::avg(pc_k), mc::std(pc_k)));
+  }
 
   return 0;
 }

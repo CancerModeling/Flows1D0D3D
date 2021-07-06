@@ -121,6 +121,37 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v) {
   return idx;
 }
 
+template<class T>
+inline T avg(const std::vector<T> &list) {
+
+  if (list.size() == 0)
+    return T(0);
+
+  T avg = 0.;
+  for (const auto &l : list)
+    avg += l;
+  avg = avg / (double(list.size()));
+
+  return avg;
+}
+
+template<class T>
+inline T std(const std::vector<T> &list) {
+
+  if (list.size() == 0)
+    return T(0);
+
+  // get mean
+  auto mean = avg(list);
+
+  T dev = 0.;
+  for (const auto &l : list)
+    dev += (l - mean) * (l - mean);
+  dev = dev / (T(list.size()));
+
+  return std::sqrt(dev);
+}
+
 } // namespace macrocirculation
 
 #endif // UTILS_H
