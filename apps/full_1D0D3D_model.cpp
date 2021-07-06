@@ -7,7 +7,6 @@
 
 #include <chrono>
 #include <cxxopts.hpp>
-#include <macrocirculation/interpolate_to_vertices.hpp>
 #include <memory>
 #include <utility>
 
@@ -25,9 +24,9 @@
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/implicit_linear_flow_solver.hpp"
+#include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/nonlinear_linear_coupling.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
-#include "macrocirculation/rcr_estimator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
 namespace mc = macrocirculation;
@@ -35,12 +34,11 @@ namespace mc = macrocirculation;
 constexpr std::size_t degree = 2;
 
 int main(int argc, char *argv[]) {
-  cxxopts::Options options(argv[0], "Combined geometry with explicit implicit solver");
-  options.add_options()                                                                              //
-    ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.))) //
-    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))    //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10"))     //
-    ("calibration", "starts a calibration run", cxxopts::value<bool>()->default_value("false"))      //
+  cxxopts::Options options(argv[0], "Fully coupled 1D-0D-3D solver.");
+  options.add_options()                                                                                               //
+    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.))) //
+    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                     //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10"))                      //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
@@ -61,7 +59,6 @@ int main(int argc, char *argv[]) {
     graph_reader.append("data/meshes/coarse-network-geometry.json", *graph_li);
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-linear-part.json", *graph_li);
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-nonlinear-part.json", *graph_nl);
-    // mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
 
     //
     mc::convert_rcr_to_partitioned_tree_bcs(graph_li);
@@ -80,32 +77,6 @@ int main(int argc, char *argv[]) {
 
     // mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
     mc::flow_mesh_partitioner(PETSC_COMM_WORLD, *graph_li, degree);
-
-    const bool calibration = args["calibration"].as<bool>();
-
-    if (calibration) {
-      for (auto v_id : graph_li->get_vertex_ids()) {
-        auto v = graph_li->get_vertex(v_id);
-        if (!v->is_leaf())
-          continue;
-        if (v->is_inflow() || v->is_nonlinear_characteristic_inflow() || v->is_linear_characteristic_inflow())
-          continue;
-        v->set_to_free_outflow();
-        std::cout << "setting  " << v->get_name() << " to free outflow." << std::endl;
-      }
-      for (auto v_id : graph_nl->get_vertex_ids()) {
-        auto v = graph_nl->get_vertex(v_id);
-        if (!v->is_leaf())
-          continue;
-        if (v->is_inflow() || v->is_nonlinear_characteristic_inflow() || v->is_linear_characteristic_inflow())
-          continue;
-        v->set_to_free_outflow();
-        std::cout << "setting  " << v->get_name() << " to free outflow." << std::endl;
-      }
-    }
-
-    mc::FlowIntegrator flow_integrator_nl(graph_nl);
-    mc::FlowIntegrator flow_integrator_li(graph_li);
 
     mc::CoupledExplicitImplicit1DSolver solver(MPI_COMM_WORLD, coupling, graph_nl, graph_li, degree, degree);
 
@@ -149,11 +120,6 @@ int main(int argc, char *argv[]) {
       solver.solve(tau, t);
       t += tau;
 
-      if (calibration) {
-        flow_integrator_li.update_flow(*solver_li, tau);
-        flow_integrator_nl.update_flow(*solver_nl, tau);
-      }
-
       if (it % output_interval == 0) {
         if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
           std::cout << "iter = " << it << ", t = " << t << std::endl;
@@ -173,6 +139,15 @@ int main(int argc, char *argv[]) {
         vessel_tip_writer.write(t, solver_li->get_solution());
       }
 
+      // Some condition to solve the 3D system
+      if (false) {
+        // TODO: Transfer 0D boundary values to 3D model.
+
+        // TODO: Solver 3D system
+
+        // TODO: Write 3D System
+      }
+
       // break
       if (t > t_end + 1e-12)
         break;
@@ -182,27 +157,6 @@ int main(int argc, char *argv[]) {
     const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
     if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
       std::cout << "time = " << elapsed_ms * 1e-6 << " s" << std::endl;
-
-    if (calibration) {
-      auto flows_nl = flow_integrator_nl.get_free_outflow_data();
-      auto flows_li = flow_integrator_li.get_free_outflow_data();
-
-      std::cout << "nonlinear_flows" << std::endl;
-      for (auto &it : flows_nl.flows)
-        std::cout << it.first << " " << it.second << std::endl;
-
-      std::cout << "linear_flows" << std::endl;
-      for (auto &it : flows_li.flows)
-        std::cout << it.first << " " << it.second << std::endl;
-
-      mc::RCREstimator rcr_estimator({graph_nl, graph_li});
-      double total_flow = mc::get_total_flow({flows_nl, flows_li});
-      auto rcr_parameters_nl = rcr_estimator.estimate_parameters(flows_nl.flows, total_flow);
-      auto rcr_parameters_li = rcr_estimator.estimate_parameters(flows_li.flows, total_flow);
-
-      mc::parameters_to_json("data/meshes/boundary-combined-geometry-nonlinear-part.json", rcr_parameters_nl, graph_nl);
-      mc::parameters_to_json("data/meshes/boundary-combined-geometry-linear-part.json", rcr_parameters_li, graph_li);
-    }
   }
 
   CHKERRQ(PetscFinalize());

@@ -9,6 +9,7 @@
 #include <cxxopts.hpp>
 #include <memory>
 
+#include "macrocirculation/0d_boundary_conditions.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
@@ -19,7 +20,6 @@
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
-#include "macrocirculation/set_0d_tree_boundary_conditions.hpp"
 #include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 #include "macrocirculation/write_0d_data_to_json.hpp"
