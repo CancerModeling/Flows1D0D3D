@@ -44,8 +44,16 @@ void interpolate_constant(MPI_Comm comm,
 /*! @brief Sets the given function to A=A0 and Q=0. WARNING: Assumes legendre basis! */
 void set_to_A0(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, std::vector<double> &result);
 
+/*! @brief An explicit solver for the nonlinear 1D flow equations. */
 class ExplicitNonlinearFlowSolver {
 public:
+  /*! @brief Constructs an explicit nonlinear solver for the 1D flow equations.
+   *
+   * @param comm The parallel communicator for the solver.
+   * @param graph The graph on which we solve the equations.
+   * @param dof_map The dof map for the flow problem.
+   * @param degree The degree of the finite element basis functions.
+   */
   explicit ExplicitNonlinearFlowSolver(MPI_Comm comm,
                                        std::shared_ptr<GraphStorage> graph,
                                        std::shared_ptr<DofMap> dof_map,

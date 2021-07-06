@@ -22,7 +22,11 @@ class DofMap;
 class Vertex;
 class Edge;
 
-/*! Class for calculating the currently upwinded values for the flow (Q, A). */
+/*! @brief Class for calculating the currently upwinded values for the flow (Q, A).
+ *
+ *  This is in a separate class from the right-hand-side evaluator, since the transport equation also needs these flows.
+ *  And since transport and flow can be decoupled it makes sense to keep them apart.
+ */
 class FlowUpwindEvaluator {
 public:
   FlowUpwindEvaluator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map);

@@ -26,7 +26,7 @@ struct FlowData {
   double total_flow;
 };
 
-/*@! @brief Integrates the flow over the vessel tips for a single graph. */
+/*! @brief Integrates the flow over the vessel tips for a single graph. */
 class FlowIntegrator {
 public:
   explicit FlowIntegrator(std::shared_ptr<GraphStorage> graph);
@@ -52,27 +52,45 @@ protected:
   void update_flow_abstract(const Solver &solver, double tau);
 };
 
+/*! @returns The total edge capacitance by summing over all ranks. */
 double get_total_edge_capacitance(const std::shared_ptr<GraphStorage> &graph);
 
+/*! @returns The total edge capacitance for a list of vessel networks by summing over all ranks. */
 double get_total_edge_capacitance(const std::vector<std::shared_ptr<GraphStorage>> &list);
 
+/*! @returns The total flow through all free-outflow boundaries. */
 double get_total_flow(const std::vector<FlowData> &flows);
 
+/*! @brief Simple data structure for the RCR system.
+ *         Note that R1 and R2 are implicitly known, since R1 is the resistance of the 1D edge,
+ *         while R2 = resistance - R1.
+ */
 struct RCRData {
   double resistance;
   double capacitance;
 };
 
+/*! @brief Estimates the quantities of the RCR-system for several coupled graphs from a list of total flows. */
 class RCREstimator {
 public:
+  /*! @brief Constructs the RCR-estimator from a list of vessel networks. */
   RCREstimator(std::vector<std::shared_ptr<GraphStorage>> graph_list);
 
+  /*! @brief Resets the total edge capacitance. */
   void reset();
 
+  /*! @brief Estimates the RCR-data on the vessel tips for a single graph from the total flows at the vessel tips and the total flow through the whole network.
+   *
+   * @param total_flows A list of total flows through the free-outflow vessel tips of a _single_ graph.
+   * @param total_flow The total flow through all free-outflow vessel tips for _all_ the graphs given in the graph_list of the constructor.
+   * @return Maps vertex ids of the vessel tips to RCRData for the surrogate systems.
+   */
   std::map<size_t, RCRData> estimate_parameters(const std::map<size_t, double> &total_flows, double total_flow);
 
+  /*! @brief Sets the total (known) capacitance of the whole body/network. */
   void set_total_C(double C);
 
+  /*! @brief Sets the total (known) resistance of the whole body/network. */
   void set_total_R(double R);
 
 protected:
