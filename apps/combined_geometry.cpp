@@ -84,40 +84,29 @@ int main(int argc, char *argv[]) {
         std::vector<double> list_C;
         std::vector<double> list_R;
 
-        /*
-        size_t num = 5;
-        for (size_t k =0; k<num; k+=1)
-        {
-          list_C.push_back(C/k);
-          list_R.push_back(R2/k);
-        }
-         */
-
         // arterioles
-        list_C.push_back(C*0.25);
-        list_C.push_back(C*0.25);
-        list_C.push_back(C*0.5);
         list_C.push_back(C*0.10);
-        list_C.push_back(C*0.15);
+        list_C.push_back(C*0.07);
+        list_C.push_back(C*0.05);
+        list_C.push_back(C*0.03);
         // capillaries
-        list_C.push_back(C*0.45);
-        // venules
         list_C.push_back(C*0.15);
-        // veins
-        list_C.push_back(C*0.5);
+        // venules
+        list_C.push_back(C*0.20);
+        // small veins
+        list_C.push_back(C*0.40);
 
-        // arterioles
-        list_R.push_back(R2*0.25);
-        list_R.push_back(R2*0.25);
-        list_R.push_back(R2*0.5);
+        // arterioles 60
         list_R.push_back(R2*0.10);
-        list_R.push_back(R2*0.15);
+        list_R.push_back(R2*0.10);
+        list_R.push_back(R2*0.20);
+        list_R.push_back(R2*0.25);
         // capillaries
-        list_R.push_back(R2*0.45);
-        // venules
         list_R.push_back(R2*0.15);
-        // veins
-        list_R.push_back(R2*0.5);
+        // venules
+        list_R.push_back(R2*0.10);
+        // small veins
+        list_R.push_back(R2*0.05);
 
         vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 1);
       }
