@@ -8,9 +8,10 @@
 #include <cmath>
 #include <iostream>
 
+#include "0d_boundary_conditions.hpp"
 #include "communication/mpi.hpp"
 #include "graph_storage.hpp"
-#include "set_0d_tree_boundary_conditions.hpp"
+#include "vessel_formulas.hpp"
 
 namespace macrocirculation {
 
@@ -59,6 +60,57 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     }
 
     vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 2);
+  }
+}
+
+void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &graph)
+{
+  for (auto &v_id : graph->get_vertex_ids()) {
+    auto &vertex = *graph->get_vertex(v_id);
+
+    if (vertex.is_windkessel_outflow())
+    {
+      auto& edge = *graph->get_edge(vertex.get_edge_neighbors()[0]);
+      auto& data = vertex.get_peripheral_vessel_data();
+
+      std::cout << "rank " << mpi::rank(MPI_COMM_WORLD) << " sets vertex " << vertex.get_name()
+                << " (id = " << vertex.get_id() << ", neighbor-edge-id = " << edge.get_id() << ")" << std::endl;
+
+      const double R1 = calculate_R1(edge.get_physical_data());
+      const double R2 = data.resistance - R1;
+      const double C = data.compliance;
+
+      const double p_cap = 5 * (133.333) * 1e-2;
+
+      std::vector<double> list_C;
+      std::vector<double> list_R;
+
+      // arterioles
+      list_C.push_back(C*0.10);
+      list_C.push_back(C*0.07);
+      list_C.push_back(C*0.05);
+      list_C.push_back(C*0.03);
+      // capillaries
+      list_C.push_back(C*0.15);
+      // venules
+      list_C.push_back(C*0.20);
+      // small veins
+      list_C.push_back(C*0.40);
+
+      // arterioles 60
+      list_R.push_back(R2*0.10);
+      list_R.push_back(R2*0.10);
+      list_R.push_back(R2*0.20);
+      list_R.push_back(R2*0.25);
+      // capillaries
+      list_R.push_back(R2*0.15);
+      // venules
+      list_R.push_back(R2*0.10);
+      // small veins
+      list_R.push_back(R2*0.05);
+
+      vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 1);
+    }
   }
 }
 

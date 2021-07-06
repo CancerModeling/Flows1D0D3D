@@ -13,6 +13,7 @@
 #include <petsc.h>
 #include <utility>
 
+#include "macrocirculation/0d_boundary_conditions.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
@@ -23,7 +24,6 @@
 #include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/petsc/petsc_ksp.hpp"
-#include "macrocirculation/set_0d_tree_boundary_conditions.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
 namespace lm = libMesh;

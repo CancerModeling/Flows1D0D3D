@@ -43,6 +43,10 @@ add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
 target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})
 target_link_libraries(${ProjectName}CombinedGeometry cxxopts)
 
+add_executable(${ProjectName}Full1D0D3DModel full_1D0D3D_model.cpp)
+target_link_libraries(${ProjectName}Full1D0D3DModel ${ProjectLib})
+target_link_libraries(${ProjectName}Full1D0D3DModel cxxopts)
+
 add_executable(${ProjectName}Calibration calibration.cpp)
 target_link_libraries(${ProjectName}Calibration ${ProjectLib})
 target_link_libraries(${ProjectName}Calibration cxxopts)
@@ -101,7 +105,8 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}DarcyHetero
                    ${ProjectName}LegacyVTK
                    ${ProjectName}PartPerfusionTest
-                   ${ProjectName}LinearFlow)
+                   ${ProjectName}LinearFlow
+                   ${ProjectName}Full1D0D3DModel)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
@@ -127,11 +132,6 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
             TARGET ${TargetName} PRE_BUILD
             COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessels.py $<TARGET_FILE_DIR:${TargetName}>/plot_vessels.py
             COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessels.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_windkessel.py $<TARGET_FILE_DIR:${TargetName}>/plot_windkessel.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_windkessel.py")
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD

@@ -39,6 +39,7 @@ void interpolate_to_vertices(const MPI_Comm comm,
                              std::vector<Point> &points,
                              std::vector<double> &interpolated);
 
+/*! @brief An implicit euler for the  linear flow equations. */
 class ImplicitLinearFlowSolver {
 public:
   ImplicitLinearFlowSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map, size_t degree);
@@ -53,18 +54,28 @@ public:
 
   const PetscVec &get_solution() const { return *u; }
 
+  /*! @brief Requests the Jacobi preconditioner for the linear solver, which yields (more) reproducible results for unit-testing. */
   void use_pc_jacobi();
 
+  /*! @brief Sets the initial constant value of p and q. */
   void set_initial_value(double p, double q);
 
+  /*! @brief Sets up the matrices for the given time step size tau. */
   void setup(double tau);
 
+  /*! @brief Solves the system. For the _next_ time step t.
+   *
+   * @param tau The current time step width.
+   * @param t The (future) time for the next time step. */
   void solve(double tau, double t);
 
+  /*! @brief Assembles the left-hand-side matrix for the given time step. */
   void assemble_matrix(double tau);
 
+  /*! @brief Assembles the right-hand-side vectors for the given time step at the given time. */
   void assemble_rhs(double tau, double t);
 
+  /*! @brief Assembles matrix and right-hand-side. */
   void assemble(double tau, double t);
 
   static double get_C(const Edge &e);
@@ -73,6 +84,7 @@ public:
 
   static double get_R(const Edge &e);
 
+  /*! @brief Returns the current p and q values at a given vertex. */
   void get_1d_pq_values_at_vertex(const Vertex &v, double &p, double &q) const;
 
   /*! @brief Evaluates p and q of the current solution on the edge e parametrized on [0, 1] at \f$ s \in [0,1] \f$. */

@@ -23,6 +23,7 @@ class GraphStorage;
 class DofMap;
 class Edge;
 
+/*! @brief A simple explicit euler solver for the transport equation. */
 class Transport {
 public:
   Transport(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map_flow, std::shared_ptr<DofMap> dof_map_transport);

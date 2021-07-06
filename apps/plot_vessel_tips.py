@@ -1,7 +1,6 @@
 import json
 import numpy as np
 import argparse
-import os
 from matplotlib import pyplot as plt
 plt.style.use('seaborn-pastel')
 
@@ -34,10 +33,10 @@ def load_data(edge_id):
     d = np.loadtxt(v['filepath'])
     if len(d.shape) == 1:
         d = d.reshape((len(d), 1))
-    return d
+    return d, v
 
 
-data = load_data(args.vessel_by_edge_id)
+data,vessel = load_data(args.vessel_by_edge_id)
 
 fig, axes = plt.subplots(1, len(args.dofs), squeeze=False, sharey=True)
 
@@ -51,8 +50,16 @@ for i,dof in enumerate(args.dofs):
         ax.set_ylabel('$p_c$ [mmHg]')
     ax.set_xlabel('$t$')
     ax.grid(True)
-#plt.tight_layout()
-#mng = plt.get_current_fig_manager()
-#mng.window.showMaximized()
 plt.show()
+
+
+# fig, axes = plt.subplots(1, 1, squeeze=False, sharey=True)
+# ax = axes[0,0]
+# p_A = data[start_index:,3] / 1.3333
+# p_C = data[start_index:,4] / 1.3333
+# p = p_C + vessel['R1'] / vessel['resistance'][0]  * (p_A - p_C)
+# ax.plot(t[start_index:], p, label='{}'.format(indices[dof]), linewidth=3)
+# ax.set_xlabel('$t$')
+# ax.grid(True)
+# plt.show()
 

@@ -8,7 +8,7 @@
 #include "libmesh/libmesh.h"
 #include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include <cmath>
-#include <macrocirculation/set_0d_tree_boundary_conditions.hpp>
+#include <macrocirculation/0d_boundary_conditions.hpp>
 #include <memory>
 #include <petsc.h>
 #include <utility>
