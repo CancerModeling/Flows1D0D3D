@@ -41,6 +41,7 @@ int main(int argc, char *argv[]) {
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10"))                      //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
+
   auto args = options.parse(argc, argv);
 
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));

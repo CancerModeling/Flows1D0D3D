@@ -72,15 +72,6 @@ int main(int argc, char *argv[]) {
     coupling->add_coupled_vertices("cw_out_2_1", "bg_135");
     coupling->add_coupled_vertices("cw_out_2_2", "bg_119");
 
-    graph_nl->finalize_bcs();
-    graph_li->finalize_bcs();
-
-    // mc::naive_mesh_partitioner(*graph_nl, MPI_COMM_WORLD);
-    mc::flow_mesh_partitioner(PETSC_COMM_WORLD, *graph_nl, degree);
-
-    // mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
-    mc::flow_mesh_partitioner(PETSC_COMM_WORLD, *graph_li, degree);
-
     const bool calibration = args["calibration"].as<bool>();
 
     if (calibration) {
@@ -103,6 +94,15 @@ int main(int argc, char *argv[]) {
         std::cout << "setting  " << v->get_name() << " to free outflow." << std::endl;
       }
     }
+
+    graph_nl->finalize_bcs();
+    graph_li->finalize_bcs();
+
+    // mc::naive_mesh_partitioner(*graph_nl, MPI_COMM_WORLD);
+    mc::flow_mesh_partitioner(PETSC_COMM_WORLD, *graph_nl, degree);
+
+    // mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
+    mc::flow_mesh_partitioner(PETSC_COMM_WORLD, *graph_li, degree);
 
     mc::FlowIntegrator flow_integrator_nl(graph_nl);
     mc::FlowIntegrator flow_integrator_li(graph_li);
