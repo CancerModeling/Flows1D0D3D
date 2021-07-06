@@ -28,10 +28,19 @@ public:
                  std::shared_ptr<DofMap> dof_map,
                  std::vector<std::string> component_names);
 
-  void write(double t, const std::vector<double> &data) const;
+  void add_data(
+    const std::shared_ptr< GraphStorage > & graph,
+    const std::shared_ptr< DofMap > & dof_map,
+    const std::vector< std::string >& component_names,
+    const PetscVec& u);
 
-  void write(double t, const PetscVec &data) const;
+  void add_data(
+    const std::shared_ptr< GraphStorage > & graph,
+    const std::shared_ptr< DofMap > & dof_map,
+    const std::vector< std::string >& component_names,
+    const std::vector< double >& u);
 
+  void write(double t) const;
 
 private:
   MPI_Comm d_comm;
@@ -44,8 +53,23 @@ private:
   std::string get_name(std::size_t component, std::size_t vessel) const;
   std::string get_name_times() const;
 
-  template< typename FunctionType >
-  void write_generic(double t, const FunctionType &data) const;
+  template < typename VectorType >
+  struct Data {
+    std::shared_ptr< GraphStorage > graph;
+    std::shared_ptr< DofMap > dof_map;
+    std::vector< std::string > component_names;
+    const VectorType& u;
+  };
+
+  std::vector< Data< PetscVec > > d_petsc_data;
+  std::vector< Data< std::vector< double > > > d_gmm_data;
+
+  template <typename VectorType >
+  void add_data_generic(
+    const std::shared_ptr< GraphStorage > & graph,
+    const std::shared_ptr< DofMap > & dof_map,
+    const std::vector< std::string >& component_names,
+    const VectorType& u);
 };
 
 } // namespace macrocirculation
