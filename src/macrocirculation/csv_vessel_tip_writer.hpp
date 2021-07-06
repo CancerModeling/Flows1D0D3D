@@ -12,6 +12,7 @@
 
 #include <string>
 #include <memory>
+#include <vector>
 
 namespace macrocirculation {
 
@@ -58,12 +59,19 @@ public:
     std::shared_ptr<GraphStorage> graph,
     std::shared_ptr<DofMap> dofmap);
 
-  /*!
+  /*! @brief Writes the dofs of a 0D-Model for a Petsc vector.
    *
    * @param t The current time step to write.
    * @param u Dof-vector from which the degrees of freedom
    */
   void write(double t, const PetscVec &u);
+
+  /*! @brief Writes the dofs of a 0D-Model for a gmm vector.
+   *
+   * @param t The current time step to write.
+   * @param u Dof-vector from which the degrees of freedom
+   */
+  void write(double t, const std::vector< double > &u);
 
 private:
   MPI_Comm d_comm;
@@ -86,6 +94,15 @@ private:
 
   /*! @brief Returns the json filepath for the meta file. */
   std::string get_meta_file_path() const;
+
+  /*!
+   * Generic function to write the data at the vessel tips for all kinds of vectors.
+   *
+   * @param t The current time step to write.
+   * @param u Dof-vector from which the degrees of freedom
+   */
+  template< typename VectorType >
+  void write_generic(double t, const VectorType& u);
 };
 
 }

@@ -29,7 +29,18 @@ CSVVesselTipWriter::CSVVesselTipWriter(
   reset_all_files();
 }
 
-void CSVVesselTipWriter::write(double t, const PetscVec &u) {
+void CSVVesselTipWriter::write(double t, const PetscVec &u)
+{
+  write_generic(t, u);
+}
+
+void CSVVesselTipWriter::write(double t, const std::vector< double > &u)
+{
+  write_generic(t, u);
+}
+
+template< typename VectorType >
+void CSVVesselTipWriter::write_generic(double t, const VectorType &u) {
   update_time(t);
   for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto v = *d_graph->get_vertex(v_id);

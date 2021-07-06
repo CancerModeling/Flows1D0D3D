@@ -9,6 +9,7 @@
 #include <cxxopts.hpp>
 #include <memory>
 
+#include "macrocirculation/csv_vessel_tip_writer.hpp"
 #include "macrocirculation/0d_boundary_conditions.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
@@ -22,7 +23,6 @@
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/write_0d_data_to_json.hpp"
 
 namespace mc = macrocirculation;
 
@@ -109,6 +109,7 @@ int main(int argc, char *argv[]) {
 
   mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "data", graph, dof_map_flow, dof_map_transport);
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "abstract_33_vessels");
+  mc::CSVVesselTipWriter vessel_tip_writer(MPI_COMM_WORLD, "output", "abstract_33_vessels_tips", graph, dof_map_flow);
 
   // output for 0D-Model:
   std::vector<double> list_t;
@@ -193,7 +194,7 @@ int main(int argc, char *argv[]) {
         }
       }
       list_t.push_back(it * tau);
-      mc::write_0d_data_to_json(args["output-directory"].as<std::string>() + "/windkessel_values.json", graph, list_t, list_0d);
+      vessel_tip_writer.write(t, flow_solver.get_solution());
     }
 
     // break
