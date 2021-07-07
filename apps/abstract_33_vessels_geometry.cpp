@@ -109,8 +109,8 @@ int main(int argc, char *argv[]) {
   mc::fill_with_vessel_id(MPI_COMM_WORLD, *graph, points, vessel_ids);
 
   mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "abstract_33_vessels", graph);
-  csv_writer.add_setup_data(dof_map_flow, flow_solver.A_component, "A");
-  csv_writer.add_setup_data(dof_map_flow, flow_solver.Q_component, "Q");
+  csv_writer.add_setup_data(dof_map_flow, flow_solver.A_component, "a");
+  csv_writer.add_setup_data(dof_map_flow, flow_solver.Q_component, "q");
   csv_writer.add_setup_data(dof_map_transport, 0, "c");
   csv_writer.setup();
 
@@ -148,8 +148,8 @@ int main(int argc, char *argv[]) {
     if (it % output_interval == 0) {
       std::cout << "iter = " << it << ", t = " << t << std::endl;
 
-      csv_writer.add_data("A", flow_solver.get_solution());
-      csv_writer.add_data("Q", flow_solver.get_solution());
+      csv_writer.add_data("a", flow_solver.get_solution());
+      csv_writer.add_data("q", flow_solver.get_solution());
       csv_writer.add_data("c", transport_solver.get_solution());
       csv_writer.write(t);
 

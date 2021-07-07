@@ -7,106 +7,122 @@ from matplotlib.animation import FuncAnimation
 plt.style.use('seaborn-pastel')
 
 
-def load_data(directory, vessel_id, t_start):
-    filename_data = os.path.join(directory, 'data_{}_vessel{:05d}.csv')
-    filename_times = os.path.join(directory, 'data_times.csv')
-    print(filename_times, directory)
-
-    data = {}
-    with open(filename_times, 'r') as file:
-        numeric_data = np.loadtxt(file)
-        data['t'] = numeric_data
-    start_index = int(sum(data['t'] < t_start)) or 0
-    data['t'] = data['t'][start_index:]
-    for component in ['Q', 'A', 'p', 'c']:
-        with open(filename_data.format(component, vessel_id), 'r') as file:
-            numeric_data = np.loadtxt(file, delimiter=',')
-            data['grid'] = numeric_data[0,:]
-            data[component] = numeric_data[1+start_index:,:]
-    data['c'] = data['c'] / data['A']
-    return data
-
-
 parser = argparse.ArgumentParser(description='Animator for the vessel data.')
 parser.add_argument('--vessels', type=int, nargs='+', help='A list of ids of the vessels to plot.', default=[0])
-parser.add_argument('--output-directory', type=str, default='output')
+parser.add_argument('--filepath', type=str, required=True)
 parser.add_argument('--t-start', type=float, default=0)
-parser.add_argument('--no-a', help='do not output A', action='store_true')
-parser.add_argument('--no-q', help='do not output Q', action='store_true')
-parser.add_argument('--no-c', help='do not output c', action='store_true')
 
 args = parser.parse_args()
 
-data_sets = [load_data(args.output_directory, index, args.t_start) for index in list(args.vessels) ]
+directory = os.path.dirname(args.filepath)
+
+with open(args.filepath) as f:
+    meta = json.loads(f.read())
+
+times = np.loadtxt(os.path.join(directory, meta['filepath_time']), delimiter=',')
+
+start_index = int(sum(times < args.t_start)) or 0
+
+
+def find_vessel(vessel_id):
+    for vessel in meta['vessels']:
+        if vessel['edge_id'] == vessel_id:
+            return vessel
+    raise 'vessel with id {} not found'.format(vessel_id)
+
+
+def load_vessel_component(vessel_id, component):
+    vessel = find_vessel(vessel_id)
+    data = np.loadtxt(os.path.join(directory, vessel['filepaths'][component]), delimiter=',')
+    data = data[start_index:, :]
+    return data
+    if component == 'c':
+        data_a = np.loadtxt(os.path.join(directory, vessel['filepaths']['a']), delimiter=',')
+        data_a = data_a[start_index:, :]
+        data /= data_a
+    return data
+
+
+def load_grid(vessel_id):
+    return find_vessel(vessel_id)['coordinates']
+
+
+def load_vessel(vessel_id):
+    vessel_info = find_vessel(vessel_id)
+    data = {}
+    data['q'] = load_vessel_component(vessel_id, 'q')
+    if 'a' in vessel_info['filepaths']:
+        data['a'] = load_vessel_component(vessel_id, 'a')
+    if 'p' in vessel_info['filepaths']:
+        data['p'] = load_vessel_component(vessel_id, 'p') / 1.333333
+    elif 'a' in vessel_info['filepaths']:
+        data['p'] = vessel_info['G0'] * (np.sqrt(data['a']/vessel_info['A0']) - 1) / 1.33332
+    if 'c' in vessel_info['filepaths']:
+        data['c'] = load_vessel_component(vessel_id, 'c')
+        data['c/a'] = data['c'] / data['a']
+    data['grid'] = load_grid(vessel_id)
+    return data
+
+
+data_sets = [load_vessel(index) for index in list(args.vessels) ]
 
 fig = plt.figure()
 fig.tight_layout()
-axes = fig.subplots(3, len(data_sets), sharey='row', sharex='col')
+axes = fig.subplots(3, len(data_sets), sharey='row', sharex='col', squeeze=False)
 
 lines = []
 t_index = 0 
 for dset_index in range(len(data_sets)):
-    if len(data_sets) < 2:
-        ax_Q = axes[0]
-        ax_A = axes[1]
-        ax_c = axes[2]
-    else:
-        ax_Q = axes[0, dset_index]
-        ax_A = axes[1, dset_index]
-        ax_c = axes[2, dset_index]
-    data_Q = data_sets[dset_index]['Q'][t_index]
-    data_A = data_sets[dset_index]['A'][t_index]
-    data_c = data_sets[dset_index]['c'][t_index]
-    print(data_c)
-    grid = data_sets[dset_index]['grid'] 
+    ax_Q = axes[0, dset_index]
+    ax_p = axes[1, dset_index]
+    ax_c = axes[2, dset_index]
+    data_Q = data_sets[dset_index]['q'][t_index]
+    data_p = data_sets[dset_index]['p'][t_index]
+    data_c = data_sets[dset_index]['c/a'][t_index]
+    grid = data_sets[dset_index]['grid']
     ax_Q.clear()
     l1, = ax_Q.plot(grid, data_Q, label='Q')
     ax_Q.legend()
     ax_Q.grid(True)
-    ax_A.clear()
-    l2, = ax_A.plot(grid, data_A, label='A')
-    ax_A.legend()
-    ax_A.grid(True)
+    ax_p.clear()
+    l2, = ax_p.plot(grid, data_p, label='p')
+    ax_p.legend()
+    ax_p.grid(True)
     ax_c.clear()
     l3, = ax_c.plot(grid, data_c, label='c/a')
     ax_c.legend()
     ax_c.grid(True)
     lines.append([l1, l2, l3])
-fig.suptitle('t={}'.format(data_sets[0]['t'][t_index]))
+fig.suptitle('t={}'.format(times[start_index+t_index]))
 
-for ax, vid in zip(axes if len(data_sets) < 2 else axes[0], args.vessels):
-    ax.set_title('vessel {}'.format(vid))
+for ax_id, vid in enumerate(args.vessels):
+    axes[0,vid].set_title('vessel {}'.format(vid))
 
 def animate(i):
-    t_index = i % len(data_sets[0]['t'])
+    t_index = i % len(times[start_index:])
     for dset_index in range(len(data_sets)):
-        if len(data_sets) < 2:
-            ax_Q = axes[0]
-            ax_A = axes[1]
-            ax_c = axes[2]
-        else:
-            ax_Q = axes[0, dset_index]
-            ax_A = axes[1, dset_index]
-            ax_c = axes[2, dset_index]
-        data_Q = data_sets[dset_index]['Q'][t_index]
-        data_A = data_sets[dset_index]['A'][t_index]
-        data_c = data_sets[dset_index]['c'][t_index]
+        ax_Q = axes[0, dset_index]
+        ax_p = axes[1, dset_index]
+        ax_c = axes[2, dset_index]
+        data_Q = data_sets[dset_index]['q'][t_index]
+        data_p = data_sets[dset_index]['p'][t_index]
+        data_c = data_sets[dset_index]['c/a'][t_index]
         lQ = lines[dset_index][0]
-        lA = lines[dset_index][1]
+        lp = lines[dset_index][1]
         lc = lines[dset_index][2]
         grid = data_sets[dset_index]['grid'] 
         lQ.set_ydata(data_Q)
-        lA.set_ydata(data_A)
+        lp.set_ydata(data_p)
         lc.set_ydata(data_c)
         ax_Q.relim()
-        ax_A.relim()
+        ax_p.relim()
         ax_c.set_ylim([0, 1])
         ax_Q.autoscale_view()
-        ax_A.autoscale_view()
+        ax_p.autoscale_view()
         ax_c.autoscale_view()
-    fig.suptitle('t={}'.format(data_sets[0]['t'][t_index]))
+    fig.suptitle('t={}'.format(times[start_index+t_index]))
 
-num_frames = len(data_sets[0]['t'])
+num_frames = len(times[start_index:])
 
 anim = FuncAnimation(fig, animate, interval=20)
 
