@@ -152,6 +152,41 @@ inline T std(const std::vector<T> &list) {
   return std::sqrt(dev);
 }
 
+template<class T>
+T max(const std::vector<T> &data, size_t *i = nullptr) {
+  auto max_i = std::max_element(data.begin(), data.end());
+
+  if (i != nullptr) *i = std::distance(data.begin(), max_i);
+  return data[std::distance(data.begin(), max_i)];
+}
+
+template<class T>
+T min(const std::vector<T> &data, size_t *i = nullptr) {
+  auto min_i = std::min_element(data.begin(), data.end());
+
+  if (i != nullptr) *i = std::distance(data.begin(), min_i);
+  return data[std::distance(data.begin(), min_i)];
+}
+
+template<class T>
+size_t add_unique(std::vector<T> &data, const T &i) {
+  for (size_t j=0; j<data.size(); j++)
+    if (data[j] == i)
+      return j;
+
+  data.push_back(i);
+  return data.size() - 1;
+}
+
+template<class T>
+size_t locate(std::vector<T> &data, const T &i) {
+  for (size_t j=0; j<data.size(); j++)
+    if (data[j] == i)
+      return j;
+
+  return -1;
+}
+
 } // namespace macrocirculation
 
 #endif // UTILS_H
