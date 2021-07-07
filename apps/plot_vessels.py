@@ -105,10 +105,14 @@ for idx, vessel_id in enumerate(args.vessels):
     end_index = min(min(array_sizes), end_index)
 
     t = t[start_index:end_index]
-    a = a[start_index:end_index]
-    q = q[start_index:end_index]
-    p = p[start_index:end_index]
-    c = c[start_index:end_index]
+    if not args.no_a and 'a' in vessel_info['filepaths']:
+        a = a[start_index:end_index]
+    if not args.no_q:
+        q = q[start_index:end_index]
+    if not args.no_p:
+        p = p[start_index:end_index]
+    if not args.no_c and 'c' in vessel_info['filepaths']:
+        c = c[start_index:end_index]
 
     row_idx = 0
     if not args.no_a and 'a' in vessel_info['filepaths']:

@@ -138,10 +138,15 @@ int main(int argc, char *argv[]) {
 
     solver_nl->use_ssp_method();
 
-    mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution", graph_nl);
-    csv_writer.add_setup_data(dof_map_nl, solver_nl->A_component, "a");
-    csv_writer.add_setup_data(dof_map_nl, solver_nl->Q_component, "q");
-    csv_writer.setup();
+    mc::GraphCSVWriter csv_writer_nl(MPI_COMM_WORLD, "output", "combined_geometry_solution_nl", graph_nl);
+    csv_writer_nl.add_setup_data(dof_map_nl, solver_nl->A_component, "a");
+    csv_writer_nl.add_setup_data(dof_map_nl, solver_nl->Q_component, "q");
+    csv_writer_nl.setup();
+
+    mc::GraphCSVWriter csv_writer_li(MPI_COMM_WORLD, "output", "combined_geometry_solution_li", graph_li);
+    csv_writer_li.add_setup_data(dof_map_li, solver_li->p_component, "p");
+    csv_writer_li.add_setup_data(dof_map_li, solver_li->q_component, "q");
+    csv_writer_li.setup();
 
     mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution");
 
@@ -163,9 +168,13 @@ int main(int argc, char *argv[]) {
           std::cout << "iter = " << it << ", t = " << t << std::endl;
 
         // save solution
-        csv_writer.add_data("a", solver_nl->get_solution());
-        csv_writer.add_data("q", solver_nl->get_solution());
-        csv_writer.write(t);
+        csv_writer_nl.add_data("a", solver_nl->get_solution());
+        csv_writer_nl.add_data("q", solver_nl->get_solution());
+        csv_writer_nl.write(t);
+
+        csv_writer_li.add_data("p", solver_li->get_solution());
+        csv_writer_li.add_data("q", solver_li->get_solution());
+        csv_writer_li.write(t);
 
         mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->p_component, u_li, points, p_vertex_values);
         mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->q_component, u_li, points, q_vertex_values);
