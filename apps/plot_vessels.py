@@ -50,7 +50,7 @@ if not args.no_c and 'c' in vessel_info['filepaths']:
 
 fig = plt.figure()
 fig.tight_layout()
-axes = fig.subplots(num_rows, len(args.vessels), sharey='row', sharex='col', squeeze=True)
+axes = fig.subplots(num_rows, len(args.vessels), sharey='row', sharex='col', squeeze=False)
 
 
 for idx, vessel_id in enumerate(args.vessels):

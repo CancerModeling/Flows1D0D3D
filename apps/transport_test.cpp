@@ -7,9 +7,9 @@
 
 #include <chrono>
 #include <cmath>
-#include <macrocirculation/graph_flow_and_concentration_writer.hpp>
 #include <memory>
 
+#include "macrocirculation/graph_csv_writer.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
@@ -98,7 +98,11 @@ int main(int argc, char *argv[]) {
 
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "transport_solution");
 
-  mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map_flow, dof_map_transport);
+  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "transport_solution", graph);
+  csv_writer.add_setup_data(dof_map_flow, solver.Q_component, "q");
+  csv_writer.add_setup_data(dof_map_flow, solver.A_component, "a");
+  csv_writer.add_setup_data(dof_map_transport, 0, "c");
+  csv_writer.setup();
 
   const auto begin_t = std::chrono::steady_clock::now();
   double t = 0;
@@ -117,7 +121,10 @@ int main(int argc, char *argv[]) {
       // save solution
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_transport, 0, transport.get_solution(), points, c_vertex_values);
 
-      csv_writer.write(t, solver.get_solution(), transport.get_solution());
+      csv_writer.add_data("q", solver.get_solution());
+      csv_writer.add_data("a", solver.get_solution());
+      csv_writer.add_data("c", transport.get_solution());
+      csv_writer.write(t);
 
       pvd_writer.set_points(points);
       pvd_writer.add_vertex_data("c", c_vertex_values);

@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <cxxopts.hpp>
+#include <macrocirculation/graph_csv_writer.hpp>
 #include <macrocirculation/interpolate_to_vertices.hpp>
 #include <memory>
 #include <utility>
@@ -20,7 +21,6 @@
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
-#include "macrocirculation/graph_flow_and_concentration_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
@@ -138,10 +138,14 @@ int main(int argc, char *argv[]) {
 
     solver_nl->use_ssp_method();
 
-    mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph_nl, dof_map_nl, dof_map_nl);
+    mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "combined_geometry_solution", graph_nl);
+    csv_writer.add_setup_data(dof_map_nl, solver_nl->A_component, "a");
+    csv_writer.add_setup_data(dof_map_nl, solver_nl->Q_component, "q");
+    csv_writer.setup();
+
     mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution");
 
-    mc::CSVVesselTipWriter vessel_tip_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution", graph_li, dof_map_li);
+    mc::CSVVesselTipWriter vessel_tip_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution_tips", graph_li, dof_map_li);
 
     const auto begin_t = std::chrono::steady_clock::now();
     double t = 0;
@@ -159,7 +163,9 @@ int main(int argc, char *argv[]) {
           std::cout << "iter = " << it << ", t = " << t << std::endl;
 
         // save solution
-        csv_writer.write(it * tau, solver_nl->get_solution(), solver_nl->get_solution());
+        csv_writer.add_data("a", solver_nl->get_solution());
+        csv_writer.add_data("q", solver_nl->get_solution());
+        csv_writer.write(t);
 
         mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->p_component, u_li, points, p_vertex_values);
         mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->q_component, u_li, points, q_vertex_values);

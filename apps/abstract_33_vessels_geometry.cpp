@@ -16,7 +16,6 @@
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/graph_csv_writer.hpp"
-#include "macrocirculation/graph_flow_and_concentration_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
