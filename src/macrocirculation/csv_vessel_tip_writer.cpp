@@ -68,8 +68,6 @@ void CSVVesselTipWriter::reset_all_files() {
 }
 
 void CSVVesselTipWriter::write_meta_file() {
-  std::ofstream f(get_meta_file_path(), std::ios::out);
-
   using json = nlohmann::json;
 
   json j;
@@ -87,7 +85,14 @@ void CSVVesselTipWriter::write_meta_file() {
         outflow_type += "windkessel";
       else
         outflow_type += "unknown";
-      auto num_dofs = d_dofmap->get_local_dof_map(*v).num_local_dof();
+
+      // get number of dofs:
+      std::cout << "a" << std::endl;
+      int num_dofs = mpi::rank(d_comm) == e->rank() ? static_cast< int > (d_dofmap->get_local_dof_map(*v).num_local_dof()) : 0;
+      std::cout << "b" << std::endl;
+      if (mpi::rank(d_comm) == 0 || mpi::rank(d_comm) == e->rank())
+        MPI_Send(&num_dofs, 1, MPI_INT, 0, 0, d_comm);
+      std::cout << "c" << std::endl;
 
       json vessel_obj = {
         {"vertex_id", v_id},
@@ -118,7 +123,11 @@ void CSVVesselTipWriter::write_meta_file() {
   j["vertices"] = vertices_list;
   j["times"] = json::array();
 
-  f << j.dump(1);
+  if (mpi::rank(d_comm) == 0)
+  {
+    std::ofstream f(get_meta_file_path(), std::ios::out);
+    f << j.dump(1);
+  }
 }
 
 void CSVVesselTipWriter::update_time(double t) {
