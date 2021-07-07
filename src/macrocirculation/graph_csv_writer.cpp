@@ -207,9 +207,11 @@ void GraphCSVWriter::write_meta_file() {
 
     json vessel_obj = {
       {"edge_id", edge->get_id()},
+      {"name", edge->get_name()},
       {"coordinates", coordinates},
       {"filepaths", filepath_obj},
-      {"A0", pdata.A0}};
+      {"A0", pdata.A0},
+      {"G0", pdata.G0}};
 
     vessel_list.push_back(vessel_obj);
   }

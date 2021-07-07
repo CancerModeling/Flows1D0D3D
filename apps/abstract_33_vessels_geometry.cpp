@@ -9,12 +9,13 @@
 #include <cxxopts.hpp>
 #include <memory>
 
-#include "macrocirculation/csv_vessel_tip_writer.hpp"
 #include "macrocirculation/0d_boundary_conditions.hpp"
 #include "macrocirculation/communication/mpi.hpp"
+#include "macrocirculation/csv_vessel_tip_writer.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
+#include "macrocirculation/graph_csv_writer.hpp"
 #include "macrocirculation/graph_flow_and_concentration_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
@@ -107,7 +108,12 @@ int main(int argc, char *argv[]) {
   // vessels ids do not change, thus we can precalculate them
   mc::fill_with_vessel_id(MPI_COMM_WORLD, *graph, points, vessel_ids);
 
-  mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "data", graph, dof_map_flow, dof_map_transport);
+  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "abstract_33_vessels", graph);
+  csv_writer.add_setup_data(dof_map_flow, flow_solver.A_component, "A");
+  csv_writer.add_setup_data(dof_map_flow, flow_solver.Q_component, "Q");
+  csv_writer.add_setup_data(dof_map_transport, 0, "c");
+  csv_writer.setup();
+
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "abstract_33_vessels");
   mc::CSVVesselTipWriter vessel_tip_writer(MPI_COMM_WORLD, "output", "abstract_33_vessels_tips", graph, dof_map_flow);
 
@@ -142,7 +148,10 @@ int main(int argc, char *argv[]) {
     if (it % output_interval == 0) {
       std::cout << "iter = " << it << ", t = " << t << std::endl;
 
-      csv_writer.write(it * tau, flow_solver.get_solution(), transport_solver.get_solution());
+      csv_writer.add_data("A", flow_solver.get_solution());
+      csv_writer.add_data("Q", flow_solver.get_solution());
+      csv_writer.add_data("c", transport_solver.get_solution());
+      csv_writer.write(t);
 
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, 0, flow_solver.get_solution(), points, Q_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, 1, flow_solver.get_solution(), points, A_vertex_values);
