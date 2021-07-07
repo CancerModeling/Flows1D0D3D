@@ -93,7 +93,7 @@ void CSVVesselTipWriter::write_meta_file() {
         {"vertex_id", v_id},
         {"name", v->get_name()},
         {"neighbor_edge_id", v->get_edge_neighbors()[0]},
-        {"filepath", get_file_path(v_id)},
+        {"filepath", get_file_name(v_id)},
         {"outflow_type", outflow_type},
         {"num_dofs", num_dofs},
       };
@@ -140,7 +140,11 @@ void CSVVesselTipWriter::update_time(double t) {
 }
 
 std::string CSVVesselTipWriter::get_file_path(size_t vertex_id) const {
-  return d_output_directory + "/" + d_filename + "_" + std::to_string(vertex_id) + ".csv";
+  return d_output_directory + "/" + get_file_name(vertex_id);
+}
+
+std::string CSVVesselTipWriter::get_file_name(size_t vertex_id) const {
+  return d_filename + "_" + std::to_string(vertex_id) + ".csv";
 }
 
 std::string CSVVesselTipWriter::get_meta_file_path() const {

@@ -92,6 +92,9 @@ private:
   /*! @brief Returns the csv filepath for a vertex with the given vertex_id. */
   std::string get_file_path(size_t vertex_id) const;
 
+  /*! @brief Returns the csv filename for a vertex with the given vertex_id. */
+  std::string get_file_name(size_t vertex_id) const;
+
   /*! @brief Returns the json filepath for the meta file. */
   std::string get_meta_file_path() const;
 
