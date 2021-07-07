@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
 
     solver_nl->use_ssp_method();
 
-    mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "combined_geometry_solution", graph_nl);
+    mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution", graph_nl);
     csv_writer.add_setup_data(dof_map_nl, solver_nl->A_component, "a");
     csv_writer.add_setup_data(dof_map_nl, solver_nl->Q_component, "q");
     csv_writer.setup();
