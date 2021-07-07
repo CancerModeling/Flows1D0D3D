@@ -120,7 +120,11 @@ int main(int argc, char *argv[]) {
   std::vector<double> p_total_vertex_values;
   std::vector<double> p_static_vertex_values;
 
-  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map, {"Q", "A"});
+  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph);
+  csv_writer.add_setup_data(dof_map, solver.A_component, "A");
+  csv_writer.add_setup_data(dof_map, solver.Q_component, "Q");
+  csv_writer.setup();
+
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "bifurcation_solution");
 
   // mc::WindkesselCalibrator calibrator(graph, true);
@@ -138,7 +142,9 @@ int main(int argc, char *argv[]) {
       std::cout << "iter " << it << std::endl;
 
       // save solution
-      csv_writer.write(t, solver.get_solution());
+      csv_writer.add_data("A", solver.get_solution());
+      csv_writer.add_data("Q", solver.get_solution());
+      csv_writer.write(t);
 
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 0, solver.get_solution(), points, Q_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 1, solver.get_solution(), points, A_vertex_values);

@@ -29,17 +29,15 @@ CSVVesselTipWriter::CSVVesselTipWriter(
   reset_all_files();
 }
 
-void CSVVesselTipWriter::write(double t, const PetscVec &u)
-{
+void CSVVesselTipWriter::write(double t, const PetscVec &u) {
   write_generic(t, u);
 }
 
-void CSVVesselTipWriter::write(double t, const std::vector< double > &u)
-{
+void CSVVesselTipWriter::write(double t, const std::vector<double> &u) {
   write_generic(t, u);
 }
 
-template< typename VectorType >
+template<typename VectorType>
 void CSVVesselTipWriter::write_generic(double t, const VectorType &u) {
   update_time(t);
   for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
@@ -68,8 +66,6 @@ void CSVVesselTipWriter::reset_all_files() {
 }
 
 void CSVVesselTipWriter::write_meta_file() {
-  std::ofstream f(get_meta_file_path(), std::ios::out);
-
   using json = nlohmann::json;
 
   json j;
@@ -87,13 +83,23 @@ void CSVVesselTipWriter::write_meta_file() {
         outflow_type += "windkessel";
       else
         outflow_type += "unknown";
-      auto num_dofs = d_dofmap->get_local_dof_map(*v).num_local_dof();
+
+      // get number of dofs:
+      int num_dofs = mpi::rank(d_comm) == e->rank() ? static_cast<int>(d_dofmap->get_local_dof_map(*v).num_local_dof()) : 0;
+      // only the master process has to know the number of dof.
+      if (e->rank() != 0)
+      {
+        if (mpi::rank(d_comm) == e->rank())
+          MPI_Send(&num_dofs, 1, MPI_INT, 0, 101, d_comm);
+        if (mpi::rank(d_comm) == 0)
+          MPI_Recv(&num_dofs, 1, MPI_INT, static_cast< int > (e->rank()), 101, d_comm, nullptr);
+      }
 
       json vessel_obj = {
         {"vertex_id", v_id},
         {"name", v->get_name()},
         {"neighbor_edge_id", v->get_edge_neighbors()[0]},
-        {"filepath", get_file_path(v_id)},
+        {"filepath", get_file_name(v_id)},
         {"outflow_type", outflow_type},
         {"num_dofs", num_dofs},
       };
@@ -118,7 +124,10 @@ void CSVVesselTipWriter::write_meta_file() {
   j["vertices"] = vertices_list;
   j["times"] = json::array();
 
-  f << j.dump(1);
+  if (mpi::rank(d_comm) == 0) {
+    std::ofstream f(get_meta_file_path(), std::ios::out);
+    f << j.dump(1);
+  }
 }
 
 void CSVVesselTipWriter::update_time(double t) {
@@ -140,7 +149,11 @@ void CSVVesselTipWriter::update_time(double t) {
 }
 
 std::string CSVVesselTipWriter::get_file_path(size_t vertex_id) const {
-  return d_output_directory + "/" + d_filename + "_" + std::to_string(vertex_id) + ".csv";
+  return d_output_directory + "/" + get_file_name(vertex_id);
+}
+
+std::string CSVVesselTipWriter::get_file_name(size_t vertex_id) const {
+  return d_filename + "_" + std::to_string(vertex_id) + ".csv";
 }
 
 std::string CSVVesselTipWriter::get_meta_file_path() const {

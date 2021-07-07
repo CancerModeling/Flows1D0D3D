@@ -1,3 +1,4 @@
+import os
 import json
 import numpy as np
 import argparse
@@ -11,6 +12,8 @@ parser.add_argument('--t-start', type=float, help='Start point when to plot', de
 parser.add_argument('--dofs', type=int, nargs='+',  help='A list of dofs to observer.', default=[-1])
 
 args = parser.parse_args()
+
+directory_name = os.path.dirname(args.filepath)
 
 with open(args.filepath) as f:
     metainfo = json.loads(f.read())
@@ -30,7 +33,7 @@ def find_vessel_by_edge_id(edge_id):
 def load_data(edge_id):
     v = find_vessel_by_edge_id(edge_id)
     print(v)
-    d = np.loadtxt(v['filepath'])
+    d = np.loadtxt(os.path.join(directory_name, v['filepath']))
     if len(d.shape) == 1:
         d = d.reshape((len(d), 1))
     return d, v
@@ -43,7 +46,7 @@ fig, axes = plt.subplots(1, len(args.dofs), squeeze=False, sharey=True)
 indices = list(range(data.shape[1]))
 
 for i,dof in enumerate(args.dofs):
-    ax = axes[0,i]
+    ax = axes[0, i]
     ax.plot(t[start_index:], data[start_index:,dof] / 1.3333, label='{}'.format(indices[dof]), linewidth=3)
     ax.legend()
     if i == 0:
