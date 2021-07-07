@@ -94,7 +94,11 @@ int main(int argc, char *argv[]) {
   std::vector<double> p_static_vertex_values;
   p_static_vertex_values.reserve(graph->num_edges() * 2);
 
-  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map, {"Q", "A"});
+  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph);
+  csv_writer.add_setup_data(dof_map, solver.A_component, "A");
+  csv_writer.add_setup_data(dof_map, solver.Q_component, "Q");
+  csv_writer.setup();
+
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "line_solution");
 
   const auto begin_t = std::chrono::steady_clock::now();
@@ -106,7 +110,9 @@ int main(int argc, char *argv[]) {
       if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
         std::cout << "iter = " << it << ", time = " << t << std::endl;
 
-      csv_writer.write(t+tau, solver.get_solution());
+      csv_writer.add_data("A", solver.get_solution());
+      csv_writer.add_data("Q", solver.get_solution());
+      csv_writer.write(t+tau);
 
       // save solution
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 0, solver.get_solution(), points, Q_vertex_values);

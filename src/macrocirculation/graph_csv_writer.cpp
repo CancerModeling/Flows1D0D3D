@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <utility>
 
 #include "communication/mpi.hpp"
@@ -23,11 +24,11 @@ namespace macrocirculation {
 GraphCSVWriter::GraphCSVWriter(MPI_Comm comm,
                                std::string foldername,
                                std::string datasetname,
-                               const std::shared_ptr<GraphStorage> &graph)
+                               std::shared_ptr<GraphStorage> graph)
     : d_comm(comm),
       d_foldername(std::move(foldername)),
       d_datasetname(std::move(datasetname)),
-      d_graph(graph),
+      d_graph(std::move(graph)),
       is_setup(false) {}
 
 void GraphCSVWriter::add_setup_data(
@@ -43,6 +44,7 @@ void GraphCSVWriter::add_setup_data(
 void GraphCSVWriter::setup() {
   is_setup = true;
   clear_files();
+  write_meta_file();
 }
 
 void GraphCSVWriter::add_data(const std::string &name, const PetscVec &u) {
@@ -64,7 +66,7 @@ void GraphCSVWriter::add_data(const std::string &name, const std::vector<double>
 void GraphCSVWriter::write(double t) {
   // add time step
   time_steps.push_back(t);
-  write_meta_file();
+  write_times();
 
   // write the added data to disk
   for (auto &data_it : d_data_map) {
@@ -83,6 +85,18 @@ void GraphCSVWriter::write(double t) {
   reset_data();
 }
 
+void GraphCSVWriter::write_times() {
+  if (mpi::rank(d_comm) == 0) {
+    std::ofstream f(get_time_csv_file_path(), std::ios::out);
+
+    for (size_t k = 0; k < time_steps.size(); k += 1) {
+      if (k != 0)
+        f << ", ";
+      f << time_steps[k];
+    }
+  }
+}
+
 void GraphCSVWriter::reset_data() {
   petsc_data.clear();
   gmm_data.clear();
@@ -94,7 +108,11 @@ void GraphCSVWriter::clear_files() {
     auto name = data_it.first;
 
     for (auto eid : d_graph->get_active_edge_ids(mpi::rank(d_comm)))
-      std::ofstream(get_csv_file_name(name, eid), std::ios::out);
+      std::ofstream(get_csv_file_path(name, eid), std::ios::out);
+  }
+
+  if (mpi::rank(d_comm) == 0) {
+    std::ofstream(get_time_csv_file_path(), std::ios::out);
   }
 }
 
@@ -118,7 +136,7 @@ void GraphCSVWriter::write_generic(const Data &data, const VectorType &v) const 
 
     // append line to csv file
     {
-      std::fstream filecsv(get_csv_file_name(data.component_name, eid), std::ios::app);
+      std::fstream filecsv(get_csv_file_path(data.component_name, eid), std::ios::app);
 
       for (std::size_t micro_edge = 0; micro_edge < local_dof_map.num_micro_edges(); micro_edge += 1) {
         if (micro_edge > 0)
@@ -141,9 +159,20 @@ std::string GraphCSVWriter::get_meta_file_name() const {
 
 std::string GraphCSVWriter::get_csv_file_name(const std::string &component_name, size_t edge_id) const {
   std::stringstream name;
-  name << d_foldername << "/" << d_datasetname << "_" << component_name << "_vessel" << std::setfill('0') << std::setw(5) << edge_id
-       << ".csv";
+  name << d_datasetname << "_" << component_name << "_vessel" << std::setfill('0') << std::setw(5) << edge_id << ".csv";
   return name.str();
+}
+
+std::string GraphCSVWriter::get_csv_file_path(const std::string &component_name, size_t edge_id) const {
+  return d_foldername + "/" + get_csv_file_name(component_name, edge_id);
+}
+
+std::string GraphCSVWriter::get_time_csv_file_name() const {
+  return d_datasetname  + "_time.csv";
+}
+
+std::string GraphCSVWriter::get_time_csv_file_path() const {
+  return d_foldername + "/" + get_time_csv_file_name();
 }
 
 void GraphCSVWriter::write_meta_file() {
@@ -151,7 +180,14 @@ void GraphCSVWriter::write_meta_file() {
   if (mpi::rank(d_comm) != 0)
     return;
 
-  for (auto eid : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
+  std::ofstream f(get_meta_file_name(), std::ios::out);
+
+  using json = nlohmann::json;
+
+  json j;
+
+  auto vessel_list = json::array();
+  for (auto eid : d_graph->get_edge_ids()) {
     const auto edge = d_graph->get_edge(eid);
     const double length = edge->has_physical_data() ? edge->get_physical_data().length : 1.;
     const auto h = length / static_cast<double>(edge->num_micro_edges());
@@ -161,146 +197,27 @@ void GraphCSVWriter::write_meta_file() {
       coordinates.push_back(h * micro_edge);
       coordinates.push_back(h * (micro_edge + 1));
     }
-  }
-}
 
-/*
-GraphCSVWriter::GraphCSVWriter(MPI_Comm comm,
-                               std::string foldername,
-                               std::string datasetname,
-                               std::shared_ptr<GraphStorage> graph,
-                               std::shared_ptr<DofMap> dof_map,
-                               std::vector<std::string> component_names)
-    : d_comm(comm),
-      d_foldername(std::move(foldername)),
-      d_datasetname(std::move(datasetname)),
-      d_graph(std::move(graph)),
-      d_dof_map(std::move(dof_map)),
-      d_component_names(std::move(component_names)) {
-  for (auto eid : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
-    const auto &edge = d_graph->get_edge(eid);
-    const auto &local_dof_map = d_dof_map->get_local_dof_map(*edge);
-    const double length = edge->has_physical_data() ? edge->get_physical_data().length : 1.;
-    const auto h = length / local_dof_map.num_micro_edges();
+    auto &pdata = edge->get_physical_data();
 
-    for (std::size_t component = 0; component < d_component_names.size(); component += 1) {
-      std::fstream filecsv;
-      filecsv.open(get_name(component, eid), std::ios::out);
-      for (std::size_t micro_edge = 0; micro_edge < local_dof_map.num_micro_edges(); micro_edge += 1) {
-        if (micro_edge > 0)
-          filecsv << ",";
-        filecsv << h * micro_edge << "," << h * (micro_edge + 1);
-      }
-      filecsv << std::endl;
+    json filepath_obj;
+    for (auto d : d_data_map) {
+      filepath_obj[d.first] = get_csv_file_name(d.first, eid);
     }
 
-    {
-      std::fstream filecsv;
-      std::stringstream name;
-      name << d_foldername << "/" << d_datasetname << "_"
-           << "p"
-           << "_vessel" << std::setfill('0') << std::setw(5) << eid << ".csv";
-      filecsv.open(name.str(), std::ios::out);
-      for (std::size_t micro_edge = 0; micro_edge < local_dof_map.num_micro_edges(); micro_edge += 1) {
-        if (micro_edge > 0)
-          filecsv << ",";
-        filecsv << h * micro_edge << "," << h * (micro_edge + 1);
-      }
-      filecsv << std::endl;
-    }
+    json vessel_obj = {
+      {"edge_id", edge->get_id()},
+      {"coordinates", coordinates},
+      {"filepaths", filepath_obj},
+      {"A0", pdata.A0}};
+
+    vessel_list.push_back(vessel_obj);
   }
 
-  if (mpi::rank(d_comm) == 0) {
-    std::fstream filecsv;
-    filecsv.open(get_name_times(), std::ios::out);
-    filecsv << "";
-  }
+  j["vessels"] = vessel_list;
+  j["filepath_time"] = get_time_csv_file_name();
+
+  f << j.dump(1);
 }
-
-std::string GraphCSVWriter::get_name(std::size_t component, std::size_t vessel) const {
-  std::stringstream name;
-  name << d_foldername << "/" << d_datasetname << "_" << d_component_names.at(component) << "_vessel" << std::setfill('0') << std::setw(5) << vessel
-       << ".csv";
-  return name.str();
-}
-
-std::string GraphCSVWriter::get_name_times() const {
-  return d_foldername + "/" + d_datasetname + "_times.csv";
-}
-
-void GraphCSVWriter::write(double t, const std::vector<double> &data) const {
-  write_generic(t, data);
-}
-
-void GraphCSVWriter::write(double t, const PetscVec &data) const {
-  write_generic(t, data);
-}
-
-template<typename FunctionType>
-void GraphCSVWriter::write_generic(double time, const FunctionType &data) const {
-  // write time step information
-  if (mpi::rank(d_comm) == 0) {
-    std::fstream filecsv;
-    filecsv.open(get_name_times(), std::ios::app);
-    filecsv << time << std::endl;
-  }
-
-  // write vessel data
-  for (auto eid : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
-    const auto &edge = d_graph->get_edge(eid);
-    const auto &local_dof_map = d_dof_map->get_local_dof_map(*edge);
-    const double length = edge->has_physical_data() ? edge->get_physical_data().length : 1.;
-    const auto h = length / local_dof_map.num_micro_edges();
-
-    FETypeNetwork fe(create_midpoint_rule(), local_dof_map.num_basis_functions() - 1);
-    fe.reinit(h);
-
-    std::vector<std::size_t> dof_indices(local_dof_map.num_basis_functions(), 0);
-    std::vector<double> local_data(local_dof_map.num_basis_functions(), 0);
-
-    for (std::size_t component = 0; component < d_component_names.size(); component += 1) {
-      std::fstream filecsv;
-      filecsv.open(get_name(component, eid), std::ios::app);
-      for (std::size_t micro_edge = 0; micro_edge < local_dof_map.num_micro_edges(); micro_edge += 1) {
-        if (micro_edge > 0)
-          filecsv << ",";
-
-        local_dof_map.dof_indices(micro_edge, component, dof_indices);
-        extract_dof(dof_indices, data, local_data);
-        auto boundary_values = fe.evaluate_dof_at_boundary_points(local_data);
-
-        filecsv << boundary_values.left << "," << boundary_values.right;
-      }
-      filecsv << std::endl;
-    }
-
-    // TODO: make the pressure calculation clearer
-    if (edge->has_physical_data() && d_component_names[0] == "Q" && d_component_names[0] == "A") {
-      const auto A0 = edge->get_physical_data().A0;
-      const auto G0 = edge->get_physical_data().G0;
-
-      const auto pressure = [=](auto A) { return G0 * (std::sqrt(A / A0) - 1.0) / 1.33332; };
-
-      std::fstream filecsv;
-      std::stringstream name;
-      name << d_foldername << "/" << d_datasetname << "_"
-           << "p"
-           << "_vessel" << std::setfill('0') << std::setw(5) << eid << ".csv";
-      filecsv.open(name.str(), std::ios::app);
-      for (std::size_t micro_edge = 0; micro_edge < local_dof_map.num_micro_edges(); micro_edge += 1) {
-        if (micro_edge > 0)
-          filecsv << ",";
-
-        local_dof_map.dof_indices(micro_edge, 1, dof_indices);
-        extract_dof(dof_indices, data, local_data);
-        auto boundary_values_A = fe.evaluate_dof_at_boundary_points(local_data);
-
-        filecsv << pressure(boundary_values_A.left) << "," << pressure(boundary_values_A.right);
-      }
-      filecsv << std::endl;
-    }
-  }
-}
- */
 
 } // namespace macrocirculation

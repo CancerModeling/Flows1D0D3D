@@ -25,7 +25,7 @@ public:
   GraphCSVWriter(MPI_Comm comm,
                  std::string foldername,
                  std::string datasetname,
-                 const std::shared_ptr<GraphStorage> &graph);
+                 std::shared_ptr<GraphStorage> graph);
 
   void add_setup_data(
     const std::shared_ptr<DofMap> &dof_map,
@@ -68,8 +68,15 @@ private:
 
   void write_meta_file();
 
+  void write_times();
+
   std::string get_meta_file_name() const;
+
   std::string get_csv_file_name(const std::string &component_name, size_t edge_id) const;
+  std::string get_csv_file_path(const std::string &component_name, size_t edge_id) const;
+
+  std::string get_time_csv_file_name() const;
+  std::string get_time_csv_file_path() const;
 
   template<typename VectorType>
   void write_generic(const Data &data, const VectorType &v) const;
