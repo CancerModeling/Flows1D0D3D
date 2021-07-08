@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <cxxopts.hpp>
 #include <fmt/format.h>
+#include <macrocirculation/vtk_writer.hpp>
 #include <memory>
 
 #include "macrocirculation/random_dist.hpp"
@@ -175,6 +176,7 @@ public:
   }
 
   void assemble() override;
+  void assemble_1d();
   Model *d_model_p;
 };
 
@@ -192,6 +194,7 @@ public:
   }
 
   void assemble() override;
+  void assemble_1d();
   Model *d_model_p;
 };
 
@@ -328,6 +331,24 @@ void set_perfusion_pts(std::string out_dir,
   }
 }
 
+// output perfusion points
+void output_perfusion_pts(std::string out_file,
+                          std::vector<lm::Point> &pts,
+                          std::vector<double> &radii,
+                          std::vector<double> &ball_r,
+                          std::vector<double> &pres,
+                          Model &model) {
+
+  // output vascular domain elements
+  auto vtu_writer = mc::VTKWriter(out_file);
+
+  mc::add_points(pts, vtu_writer.d_d_p);
+  mc::add_array("Radius", radii, vtu_writer.d_d_p);
+  mc::add_array("Ball_Radius", ball_r, vtu_writer.d_d_p);
+  mc::add_array("pv", pres, vtu_writer.d_d_p);
+  vtu_writer.write();
+}
+
 } // namespace darcy3d
 
 int main(int argc, char *argv[]) {
@@ -338,16 +359,16 @@ int main(int argc, char *argv[]) {
 
   cxxopts::Options options(argv[0], "Darcy's flow in 3D tissue domain");
   options.add_options()("input-file", "path to the input file",
-                        cxxopts::value<std::string>()->default_value(""))                                               //
-    ("final-time", "final simulation time", cxxopts::value<double>()->default_value("1."))                              //
-    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                    //
-    ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.1"))                                          //
-    ("hyd-cond", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                               //
-    ("permeability", "permeability for mass exchange", cxxopts::value<double>()->default_value("0.1"))                               //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value(""))                                    //
-    ("num-points", "number of perfusion points", cxxopts::value<int>()->default_value("10"))                            //
-    ("gamma", "value of coefficient for perfusion area estimation", cxxopts::value<double>()->default_value("3"))       //
-    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_darcy3d/")) //
+                        cxxopts::value<std::string>()->default_value(""))                                                              //
+    ("final-time", "final simulation time", cxxopts::value<double>()->default_value("5."))                                             //
+    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                                   //
+    ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                         //
+    ("hyd-cond", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                                              //
+    ("permeability", "permeability for mass exchange", cxxopts::value<double>()->default_value("0.1"))                                 //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value(""))                                                   //
+    ("num-points", "number of perfusion points", cxxopts::value<int>()->default_value("10"))                                           //
+    ("gamma", "value of coefficient for perfusion area estimation", cxxopts::value<double>()->default_value("3"))                      //
+    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_darcy_flow_reg_outlets/")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
@@ -441,8 +462,8 @@ int main(int argc, char *argv[]) {
 
   // instead of point source, we have volume source supported over a ball.
   // radius of ball is proportional to the outlet radius and varies from [ball_r_min, ball_r_max]
-  double ball_r_min = 0.01 * l;
-  double ball_r_max = 0.1 * l;
+  double ball_r_min = 4 * input.d_h;
+  double ball_r_max = 10. * input.d_h;
   auto &ball_r = model.ball_r;
   for (size_t i = 0; i < radii.size(); i++) {
     ball_r.push_back(ball_r_min + (ball_r_max - ball_r_min) * (radii[i] - model.min_r) / (model.max_r - model.min_r));
@@ -544,12 +565,19 @@ int main(int argc, char *argv[]) {
     log("pres1 solve time = " + std::to_string(mc::time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 
     solve_clock = std::chrono::steady_clock::now();
-    model.d_p2.solve();
-    log("pres2 solve time = " + std::to_string(mc::time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+    //model.d_p2.solve();
+    //log("pres2 solve time = " + std::to_string(mc::time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 
     if (model.d_step % 20 == 0) {
       log("writing to file\n");
       mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step / 20) + ".pvtu", eq_sys);
+
+      darcy3d::output_perfusion_pts(out_dir + "perfusion_output_" + std::to_string(model.d_step / 20) + ".vtu",
+        pts,
+        radii,
+        ball_r,
+        out_pres,
+        model);
     }
   } while (model.d_time < input.d_T);
 
@@ -562,6 +590,9 @@ int main(int argc, char *argv[]) {
 
 // define assembly functions
 void darcy3d::Pres1::assemble() {
+
+  assemble_1d();
+
   auto &eq_sys = d_model_p->get_system();
   const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
   const auto &xc = eq_sys.parameters.get<lm::Point>("center");
@@ -595,8 +626,8 @@ void darcy3d::Pres1::assemble() {
 
     double rhs = 0.;
     auto x = elem->centroid();
-    if ((x - source_xc).norm() < 0.15 * l)
-      rhs = std::sin(t / 0.1) * std::exp(-t / 10.);
+    //if ((x - source_xc).norm() < 0.15 * l)
+    //  rhs = std::sin(t / 0.1) * std::exp(-t / 10.);
 
     for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
       double lhs = d_JxW[qp] * elem_K;
@@ -630,24 +661,6 @@ void darcy3d::Pres1::assemble() {
         }
     }
 
-    // outlet source
-    for (size_t I = 0; I < pts.size(); I++) {
-      auto &I_out_fn = out_fns[I];
-      auto locate_elem = mc::locate(out_elems[I], elem->id());
-      if (locate_elem == -1)
-        continue;
-
-      for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
-
-        for (unsigned int i = 0; i < d_phi.size(); i++) {
-          if (mc::locate(out_nodes[I], elem->node_id(i)) != -1) {
-            double w = (*I_out_fn)((pts[I] - lm::Point(elem->node_ref(i))).norm());
-            d_Fe(i) += d_JxW[qp] * d_phi[i][qp] * w;
-          }
-        }
-      } // loop over quad points
-    }
-
     d_dof_map_sys.heterogenously_constrain_element_matrix_and_vector(d_Ke, d_Fe,
                                                                      d_dof_indices_sys);
     d_sys.matrix->add_matrix(d_Ke, d_dof_indices_sys);
@@ -657,6 +670,52 @@ void darcy3d::Pres1::assemble() {
   // finish
   d_sys.matrix->close();
   d_sys.rhs->close();
+}
+
+void darcy3d::Pres1::assemble_1d() {
+  auto &eq_sys = d_model_p->get_system();
+  const auto &input = eq_sys.parameters.get<darcy3d::InputDeck *>("input_deck");
+  auto &out_fns = d_model_p->out_fns;
+  auto &pts = d_model_p->pts;
+  auto &ball_r = d_model_p->ball_r;
+  auto &out_pres = d_model_p->out_pres;
+  auto &out_elems = d_model_p->out_elems;
+  auto &out_nodes = d_model_p->out_nodes;
+  auto &out_coeff = d_model_p->out_coeff;
+
+  for (size_t I = 0; I < pts.size(); I++) {
+    auto &out_fn_I = out_fns[I];
+    const auto &pI = out_pres[I];
+    const auto &RI = ball_r[I];
+    const auto &xI = pts[I];
+
+    // loop over elements
+    for (const auto &elem_id : out_elems[I]) {
+
+      const auto &elem = d_mesh.elem_ptr(elem_id);
+
+      // init dof map
+      init_dof(elem);
+
+      // init fe
+      init_fe(elem);
+
+      for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
+        auto dx = (d_qpoints[qp] - xI).norm() / RI;
+        for (unsigned int i = 0; i < d_phi.size(); i++) {
+          d_Fe(i) += d_JxW[qp] * input->d_Lp * pI * (*out_fn_I)(dx) *d_phi[i][qp];
+
+          for (unsigned int j = 0; j < d_phi.size(); j++)
+            d_Ke(i, j) += d_JxW[qp] * input->d_Lp * (*out_fn_I)(dx) *d_phi[i][qp] * d_phi[j][qp];
+        }
+      } // loop over quad points
+
+      d_dof_map_sys.heterogenously_constrain_element_matrix_and_vector(d_Ke, d_Fe,
+                                                                       d_dof_indices_sys);
+      d_sys.matrix->add_matrix(d_Ke, d_dof_indices_sys);
+      d_sys.rhs->add_vector(d_Fe, d_dof_indices_sys);
+    } // elem loop
+  }   // outlet loop
 }
 
 // define assembly functions
