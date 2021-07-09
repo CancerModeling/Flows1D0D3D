@@ -331,6 +331,25 @@ void set_perfusion_pts(std::string out_dir,
   }
 }
 
+void estimate_flow_rate(const std::vector<double> &radii,
+                                          double gamma,
+                                          std::vector<double> &flow) {
+  flow.clear();
+  for (size_t i = 0; i < radii.size(); i++)
+    flow.push_back(std::pow(radii[i], gamma));
+}
+
+void estimate_vol_fraction(const std::vector<double> &radii,
+                                             const std::vector<double> &flow,
+                                             std::vector<double> &vol) {
+  vol.clear();
+
+  double flow_sum = 0.;
+  for (auto q : flow) flow_sum += q;
+  for (int i = 0; i < flow.size(); i++)
+    vol.push_back(flow[i] / flow_sum);
+}
+
 // output perfusion points
 void output_perfusion_pts(std::string out_file,
                           std::vector<lm::Point> &pts,
@@ -451,7 +470,7 @@ int main(int argc, char *argv[]) {
   auto &radii = model.radii;
   auto &out_pres = model.out_pres;
 
-  set_perfusion_pts(out_dir, num_perf_points, pts, radii, hyd_cond, eq_sys, model);
+  darcy3d::set_perfusion_pts(out_dir, num_perf_points, pts, radii, hyd_cond, eq_sys, model);
   model.max_r = mc::max(radii);
   model.min_r = mc::min(radii);
 
