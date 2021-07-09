@@ -8,26 +8,22 @@
 #include <chrono>
 #include <cxxopts.hpp>
 #include <macrocirculation/graph_csv_writer.hpp>
-#include <memory>
 #include <utility>
 
 #include "petsc.h"
 
-#include "macrocirculation/0d_boundary_conditions.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/coupled_explicit_implicit_1d_solver.hpp"
 #include "macrocirculation/csv_vessel_tip_writer.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
-#include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
-#include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/implicit_linear_flow_solver.hpp"
-#include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/nonlinear_linear_coupling.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
+#include "macrocirculation/heart_to_breast_1d_solver.hpp"
 
 namespace mc = macrocirculation;
 
@@ -47,40 +43,6 @@ int main(int argc, char *argv[]) {
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
 
   {
-    // create_for_node the ascending aorta
-    auto graph_nl = std::make_shared<mc::GraphStorage>();
-
-    mc::EmbeddedGraphReader graph_reader;
-    graph_reader.append("data/meshes/network-33-vessels-extended.json", *graph_nl);
-
-    auto &v_in = *graph_nl->find_vertex_by_name("cw_in");
-    v_in.set_to_inflow(mc::heart_beat_inflow(485.0));
-
-    auto graph_li = std::make_shared<mc::GraphStorage>();
-    graph_reader.append("data/meshes/coarse-network-geometry.json", *graph_li);
-    graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-linear-part.json", *graph_li);
-    graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-nonlinear-part.json", *graph_nl);
-
-    //
-    mc::convert_rcr_to_partitioned_tree_bcs(graph_li);
-
-    auto coupling = std::make_shared<mc::NonlinearLinearCoupling>(MPI_COMM_WORLD, graph_nl, graph_li);
-    coupling->add_coupled_vertices("cw_out_1_1", "bg_132");
-    coupling->add_coupled_vertices("cw_out_1_2", "bg_141");
-    coupling->add_coupled_vertices("cw_out_2_1", "bg_135");
-    coupling->add_coupled_vertices("cw_out_2_2", "bg_119");
-
-    graph_nl->finalize_bcs();
-    graph_li->finalize_bcs();
-
-    // mc::naive_mesh_partitioner(*graph_nl, MPI_COMM_WORLD);
-    mc::flow_mesh_partitioner(PETSC_COMM_WORLD, *graph_nl, degree);
-
-    // mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
-    mc::flow_mesh_partitioner(PETSC_COMM_WORLD, *graph_li, degree);
-
-    mc::CoupledExplicitImplicit1DSolver solver(MPI_COMM_WORLD, coupling, graph_nl, graph_li, degree, degree);
-
     const double t_end = args["t-end"].as<double>();
     const std::size_t max_iter = 160000000;
 
@@ -90,69 +52,19 @@ int main(int argc, char *argv[]) {
     // const double tau_out = tau;
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
-    // configure solver
-    solver.setup(tau);
-
-    std::vector<mc::Point> points;
-    std::vector<double> p_vertex_values;
-    std::vector<double> q_vertex_values;
-
-    std::vector<double> vessel_ids_li;
-
-    // vessels ids do not change, thus we can precalculate them
-    mc::fill_with_vessel_id(MPI_COMM_WORLD, *graph_li, points, vessel_ids_li);
-
-    auto dof_map_li = solver.get_implicit_dof_map();
-    auto dof_map_nl = solver.get_explicit_dof_map();
-    auto solver_li = solver.get_implicit_solver();
-    auto solver_nl = solver.get_explicit_solver();
-    const auto &u_li = solver_li->get_solution();
-
-    solver_nl->use_ssp_method();
-
-    mc::GraphCSVWriter csv_writer_nl(MPI_COMM_WORLD, "output", "combined_geometry_solution_nl", graph_nl);
-    csv_writer_nl.add_setup_data(dof_map_nl, solver_nl->A_component, "a");
-    csv_writer_nl.add_setup_data(dof_map_nl, solver_nl->Q_component, "q");
-    csv_writer_nl.setup();
-
-    mc::GraphCSVWriter csv_writer_li(MPI_COMM_WORLD, "output", "combined_geometry_solution_li", graph_li);
-    csv_writer_li.add_setup_data(dof_map_li, solver_li->p_component, "p");
-    csv_writer_li.add_setup_data(dof_map_li, solver_li->q_component, "q");
-    csv_writer_li.setup();
-
-    mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution");
-
-    mc::CSVVesselTipWriter vessel_tip_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution_tips", graph_li, dof_map_li);
+    mc::HeartToBreast1DSolver solver(MPI_COMM_WORLD);
+    solver.setup(degree, tau);
 
     const auto begin_t = std::chrono::steady_clock::now();
     double t = 0;
     for (std::size_t it = 0; it < max_iter; it += 1) {
-      solver.solve(tau, t);
-      t += tau;
+      solver.solve();
 
       if (it % output_interval == 0) {
         if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-          std::cout << "iter = " << it << ", t = " << t << std::endl;
+          std::cout << "iter = " << it << ", t = " << solver.get_time() << std::endl;
 
-        // save solution
-        csv_writer_nl.add_data("a", solver_nl->get_solution());
-        csv_writer_nl.add_data("q", solver_nl->get_solution());
-        csv_writer_nl.write(t);
-
-        csv_writer_li.add_data("p", solver_li->get_solution());
-        csv_writer_li.add_data("q", solver_li->get_solution());
-        csv_writer_li.write(t);
-
-        mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->p_component, u_li, points, p_vertex_values);
-        mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->q_component, u_li, points, q_vertex_values);
-
-        pvd_writer.set_points(points);
-        pvd_writer.add_vertex_data("p", p_vertex_values);
-        pvd_writer.add_vertex_data("q", q_vertex_values);
-        pvd_writer.add_vertex_data("vessel_id", vessel_ids_li);
-        pvd_writer.write(t);
-
-        vessel_tip_writer.write(t, solver_li->get_solution());
+        solver.write_output();
       }
 
       // Some condition to solve the 3D system
