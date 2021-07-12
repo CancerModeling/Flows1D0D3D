@@ -8,6 +8,7 @@
 #include "heart_to_breast_1d_solver.hpp"
 
 #include "0d_boundary_conditions.hpp"
+#include "communication/mpi.hpp"
 #include "coupled_explicit_implicit_1d_solver.hpp"
 #include "csv_vessel_tip_writer.hpp"
 #include "dof_map.hpp"
@@ -149,7 +150,62 @@ void HeartToBreast1DSolver::solve(){
   t += d_tau;
 }
 
-double HeartToBreast1DSolver::get_time() { return t; }
+double HeartToBreast1DSolver::get_time() const { return t; }
 
+std::vector< VesselTipCouplingData > HeartToBreast1DSolver::get_coupling_data()
+{
+  std::vector< VesselTipCouplingData > output_data;
+
+  for (auto v_id: graph_li->get_vertex_ids())
+  {
+    auto& v  = *graph_li->get_vertex(v_id);
+
+    if (v.is_vessel_tree_outflow())
+    {
+      auto& e  = *graph_li->get_edge(v.get_edge_neighbors()[0]);
+
+      if (!e.has_embedding_data())
+        throw std::runtime_error("cannot determine coupling data for an unembedded graph");
+
+      if (v.get_vessel_tree_data().resistances.size() != 7)
+        throw std::runtime_error("unexpected number of resistors");
+
+      Point p = e.is_pointing_to(v_id) ? e.get_embedding_data().points.back() : e.get_embedding_data().points.front();
+
+      auto& data = v.get_vessel_tree_data();
+
+      double p_cap;
+      double p_ven;
+
+      if (e.rank() == mpi::rank(d_comm))
+      {
+        // extract dof
+        auto local_dof_map = solver->get_implicit_dof_map()->get_local_dof_map(v);
+        const auto& dof_indices = local_dof_map.dof_indices();
+        std::vector< double > values(dof_indices.size(), 0);
+        extract_dof(dof_indices, solver->get_implicit_solver()->get_solution(), values);
+
+        double R1 = calculate_R1(e.get_physical_data());
+
+        double p_art_avg = values[3];
+        double p_cap_avg = values[4];
+        double p_ven_avg = values[5];
+
+        p_cap = p_cap_avg + R1/(data.resistances[3]);
+        p_ven = p_ven_avg;
+      }
+
+      double buf[] = {p_cap, p_ven};
+      MPI_Bcast(&buf, 2, MPI_DOUBLE, static_cast< int > ( e.rank() ), d_comm);
+
+      p_cap = buf[0];
+      p_ven = buf[1];
+
+      output_data.push_back({p, p_cap, p_ven});
+    }
+  }
+
+  return output_data;
+}
 
 } // namespace macrocirculation

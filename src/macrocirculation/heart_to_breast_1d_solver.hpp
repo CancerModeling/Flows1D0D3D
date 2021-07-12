@@ -27,6 +27,13 @@ class GraphCSVWriter;
 class GraphPVDWriter;
 class CSVVesselTipWriter;
 
+struct VesselTipCouplingData
+{
+  Point p;
+  double p_cap;
+  double p_ven;
+};
+
 class HeartToBreast1DSolver {
 public:
   explicit HeartToBreast1DSolver(MPI_Comm comm);
@@ -37,7 +44,9 @@ public:
 
   void write_output();
 
-  double get_time();
+  double get_time() const;
+
+  std::vector< VesselTipCouplingData > get_coupling_data();
 private:
   MPI_Comm d_comm;
 
