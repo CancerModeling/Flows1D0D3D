@@ -137,6 +137,8 @@ ImplicitLinearFlowSolver::ImplicitLinearFlowSolver(MPI_Comm comm, std::shared_pt
   rhs->zero();
 }
 
+const DofMap &ImplicitLinearFlowSolver::get_dof_map() const { return *d_dof_map; }
+
 void ImplicitLinearFlowSolver::setup(double tau) {
   d_tau = tau;
   assemble_matrix(tau);
