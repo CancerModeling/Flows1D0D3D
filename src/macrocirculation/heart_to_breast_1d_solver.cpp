@@ -21,6 +21,7 @@
 #include "implicit_linear_flow_solver.hpp"
 #include "interpolate_to_vertices.hpp"
 #include "nonlinear_linear_coupling.hpp"
+#include "tip_vertex_dof_integrator.hpp"
 #include "vessel_formulas.hpp"
 
 namespace macrocirculation {
@@ -34,8 +35,45 @@ HeartToBreast1DSolver::HeartToBreast1DSolver(MPI_Comm comm)
       coupling{std::make_shared<NonlinearLinearCoupling>(d_comm, graph_nl, graph_li)},
       d_tau(NAN),
       t(0),
-      solver{nullptr}
-{}
+      solver{nullptr},
+      d_integrator_running(false) {}
+
+void HeartToBreast1DSolver::start_0d_pressure_integrator() {
+  integrator->reset();
+  d_integrator_running = true;
+}
+
+std::vector<VesselTipCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integrator() {
+  d_integrator_running = false;
+
+  auto values = integrator->get_integral_value({last_arterial_tip_index,
+                                                first_vene_tip_index});
+
+  std::vector<VesselTipCouplingData> results;
+
+  for (auto v_id : graph_li->get_vertex_ids()) {
+    auto &v = *graph_li->get_vertex(v_id);
+
+    if (v.is_vessel_tree_outflow()) {
+      auto &e = *graph_li->get_edge(v.get_edge_neighbors()[0]);
+
+      if (!e.has_embedding_data())
+        throw std::runtime_error("cannot determine coupling data for an unembedded graph");
+
+      if (v.get_vessel_tree_data().resistances.size() != 7)
+        throw std::runtime_error("unexpected number of resistors");
+
+      Point p = e.is_pointing_to(v_id) ? e.get_embedding_data().points.back() : e.get_embedding_data().points.front();
+
+      auto p_art = values[v_id][0];
+      auto p_ven = values[v_id][1];
+
+      results.push_back({p, p_art, p_ven});
+    }
+  }
+
+  return results;
+}
 
 void HeartToBreast1DSolver::setup_graphs() {
   EmbeddedGraphReader graph_reader;
@@ -82,36 +120,37 @@ void HeartToBreast1DSolver::setup_solver(size_t degree, double tau) {
   solver = std::make_shared<CoupledExplicitImplicit1DSolver>(d_comm, coupling, graph_nl, graph_li, d_degree, d_degree);
   solver->setup(tau);
   solver->get_explicit_solver()->use_ssp_method();
+
+  auto dof_map_li = solver->get_implicit_dof_map();
+  integrator = std::make_shared<TipVertexDofIntegrator>(d_comm, graph_li, dof_map_li);
 }
 
-void HeartToBreast1DSolver::setup_output()
-{
+void HeartToBreast1DSolver::setup_output() {
   if (solver == nullptr)
     throw std::runtime_error("solver must be initialized before output");
 
   auto dof_map_li = solver->get_implicit_dof_map();
   auto dof_map_nl = solver->get_explicit_dof_map();
 
-  csv_writer_nl = std::make_shared< GraphCSVWriter >(d_comm, output_folder_name, filename_csv_nl, graph_nl);
+  csv_writer_nl = std::make_shared<GraphCSVWriter>(d_comm, output_folder_name, filename_csv_nl, graph_nl);
   csv_writer_nl->add_setup_data(dof_map_nl, get_solver_nl().A_component, "a");
   csv_writer_nl->add_setup_data(dof_map_nl, get_solver_nl().Q_component, "q");
   csv_writer_nl->setup();
 
-  csv_writer_li = std::make_shared< GraphCSVWriter >(d_comm, output_folder_name, filename_csv_li, graph_li);
+  csv_writer_li = std::make_shared<GraphCSVWriter>(d_comm, output_folder_name, filename_csv_li, graph_li);
   csv_writer_li->add_setup_data(dof_map_li, get_solver_li().p_component, "p");
   csv_writer_li->add_setup_data(dof_map_li, get_solver_li().q_component, "q");
   csv_writer_li->setup();
 
-  graph_pvd_writer = std::make_shared<GraphPVDWriter >(d_comm, output_folder_name, filename_pvd);
+  graph_pvd_writer = std::make_shared<GraphPVDWriter>(d_comm, output_folder_name, filename_pvd);
 
-  vessel_tip_writer = std::make_shared< CSVVesselTipWriter >( d_comm, output_folder_name, filename_csv_tips, graph_li, dof_map_li);
+  vessel_tip_writer = std::make_shared<CSVVesselTipWriter>(d_comm, output_folder_name, filename_csv_tips, graph_li, dof_map_li);
 
   // vessels ids do not change, thus we can precalculate them
   fill_with_vessel_id(d_comm, *graph_li, points, vessel_ids_li);
 }
 
-void HeartToBreast1DSolver::write_output()
-{
+void HeartToBreast1DSolver::write_output() {
   if (solver == nullptr)
     throw std::runtime_error("solver must be initialized before output");
 
@@ -138,74 +177,19 @@ void HeartToBreast1DSolver::write_output()
   vessel_tip_writer->write(t, get_solver_li().get_solution());
 }
 
-void HeartToBreast1DSolver::setup(size_t degree, double tau)
-{
+void HeartToBreast1DSolver::setup(size_t degree, double tau) {
   setup_graphs();
   setup_solver(degree, tau);
   setup_output();
 }
 
-void HeartToBreast1DSolver::solve(){
+void HeartToBreast1DSolver::solve() {
+  if (d_integrator_running)
+    integrator->update_vertex_dof(get_solver_li().get_solution(), d_tau);
   solver->solve(d_tau, t);
   t += d_tau;
 }
 
 double HeartToBreast1DSolver::get_time() const { return t; }
-
-std::vector< VesselTipCouplingData > HeartToBreast1DSolver::get_coupling_data()
-{
-  std::vector< VesselTipCouplingData > output_data;
-
-  for (auto v_id: graph_li->get_vertex_ids())
-  {
-    auto& v  = *graph_li->get_vertex(v_id);
-
-    if (v.is_vessel_tree_outflow())
-    {
-      auto& e  = *graph_li->get_edge(v.get_edge_neighbors()[0]);
-
-      if (!e.has_embedding_data())
-        throw std::runtime_error("cannot determine coupling data for an unembedded graph");
-
-      if (v.get_vessel_tree_data().resistances.size() != 7)
-        throw std::runtime_error("unexpected number of resistors");
-
-      Point p = e.is_pointing_to(v_id) ? e.get_embedding_data().points.back() : e.get_embedding_data().points.front();
-
-      auto& data = v.get_vessel_tree_data();
-
-      double p_cap;
-      double p_ven;
-
-      if (e.rank() == mpi::rank(d_comm))
-      {
-        // extract dof
-        auto local_dof_map = solver->get_implicit_dof_map()->get_local_dof_map(v);
-        const auto& dof_indices = local_dof_map.dof_indices();
-        std::vector< double > values(dof_indices.size(), 0);
-        extract_dof(dof_indices, solver->get_implicit_solver()->get_solution(), values);
-
-        double R1 = calculate_R1(e.get_physical_data());
-
-        double p_art_avg = values[3];
-        double p_cap_avg = values[4];
-        double p_ven_avg = values[5];
-
-        p_cap = p_cap_avg + R1/(data.resistances[3]);
-        p_ven = p_ven_avg;
-      }
-
-      double buf[] = {p_cap, p_ven};
-      MPI_Bcast(&buf, 2, MPI_DOUBLE, static_cast< int > ( e.rank() ), d_comm);
-
-      p_cap = buf[0];
-      p_ven = buf[1];
-
-      output_data.push_back({p, p_cap, p_ven});
-    }
-  }
-
-  return output_data;
-}
 
 } // namespace macrocirculation

@@ -19,11 +19,11 @@
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
+#include "macrocirculation/heart_to_breast_1d_solver.hpp"
 #include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include "macrocirculation/nonlinear_linear_coupling.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/heart_to_breast_1d_solver.hpp"
 
 namespace mc = macrocirculation;
 
@@ -55,25 +55,51 @@ int main(int argc, char *argv[]) {
     mc::HeartToBreast1DSolver solver(MPI_COMM_WORLD);
     solver.setup(degree, tau);
 
+    // we average the pressure between the 9th and 10th heart beat:
+    double t_start_pressure_averaging = static_cast<size_t>(std::floor(9. / tau));
+    double t_stop_pressure_averaging = static_cast<size_t>(std::floor(10. / tau));
+
     const auto begin_t = std::chrono::steady_clock::now();
     double t = 0;
     for (std::size_t it = 0; it < max_iter; it += 1) {
       solver.solve();
+
+      if (it == t_start_pressure_averaging) {
+        std::cout << "start integrating 0D pressures" << std::endl;
+        solver.start_0d_pressure_integrator();
+      }
+
+      if (it == t_stop_pressure_averaging) {
+        std::cout << "stop integrating 0D pressures" << std::endl;
+        auto data = solver.stop_0d_pressure_integrator();
+
+        for (auto &d : data) {
+
+          // just return the values for now:
+          std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD)
+                    << ", x = " << d.p.x
+                    << ", y = " << d.p.y
+                    << ", z = " << d.p.z
+                    << ", p_art = " << d.p_art
+                    << ", p_ven = " << d.p_ven
+                    << std::endl;
+        }
+
+        // Some condition to solve the 3D system
+        {
+          // TODO: Transfer 0D boundary values to 3D model.
+
+          // TODO: Solver 3D system
+
+          // TODO: Write 3D System
+        }
+      }
 
       if (it % output_interval == 0) {
         if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
           std::cout << "iter = " << it << ", t = " << solver.get_time() << std::endl;
 
         solver.write_output();
-      }
-
-      // Some condition to solve the 3D system
-      if (false) {
-        // TODO: Transfer 0D boundary values to 3D model.
-
-        // TODO: Solver 3D system
-
-        // TODO: Write 3D System
       }
 
       // break

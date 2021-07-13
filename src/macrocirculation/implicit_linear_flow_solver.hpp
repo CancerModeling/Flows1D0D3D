@@ -52,6 +52,8 @@ public:
    *         This can be used inside a local dof map to get the dof indices for a single component. */
   static const size_t q_component = 1;
 
+  const DofMap &get_dof_map() const;
+
   const PetscVec &get_solution() const { return *u; }
 
   /*! @brief Requests the Jacobi preconditioner for the linear solver, which yields (more) reproducible results for unit-testing. */
