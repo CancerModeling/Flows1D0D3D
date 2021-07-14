@@ -60,7 +60,6 @@ int main(int argc, char *argv[]) {
     double t_stop_pressure_averaging = static_cast<size_t>(std::floor(10. / tau));
 
     const auto begin_t = std::chrono::steady_clock::now();
-    double t = 0;
     for (std::size_t it = 0; it < max_iter; it += 1) {
       solver.solve();
 
@@ -103,7 +102,7 @@ int main(int argc, char *argv[]) {
       }
 
       // break
-      if (t > t_end + 1e-12)
+      if (solver.get_time() > t_end + 1e-12)
         break;
     }
 
