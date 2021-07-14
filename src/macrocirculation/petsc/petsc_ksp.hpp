@@ -33,17 +33,19 @@ public:
     std::shared_ptr<PetscKsp> ksp(new PetscKsp(mat));
 
     PC pc;
+    /*
     CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
     CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCHYPRE));
     CHKERRABORT(PETSC_COMM_WORLD, PCHYPRESetType(pc, "euclid"));
-
-    // CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
-    // CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
-
-    // KSPSetType(ksp->d_ksp,KSPPREONLY);
-    // PCSetType(pc,PCLU);
-    // PCFactorSetMatSolverType(pc,MATSOLVERSUPERLU_DIST);
-
+    */
+        
+    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
+    CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
+/*
+    KSPSetType(ksp->d_ksp,KSPPREONLY);
+    PCSetType(pc,PCLU);
+    PCFactorSetMatSolverType(pc,MATSOLVERSUPERLU_DIST);
+*/
     // CHKERRABORT(PETSC_COMM_WORLD, KSPSetUp(ksp->d_ksp));
 
     return ksp;

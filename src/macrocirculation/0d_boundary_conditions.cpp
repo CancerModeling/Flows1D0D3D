@@ -86,26 +86,30 @@ void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &gr
       std::vector<double> list_R;
 
       // arterioles
-      list_C.push_back(C*0.10);
       list_C.push_back(C*0.07);
+      list_C.push_back(C*0.06);
       list_C.push_back(C*0.05);
-      list_C.push_back(C*0.03);
+      list_C.push_back(C*0.04);
+      list_C.push_back(C*0.02);
+      list_C.push_back(C*0.02);
       // capillaries
-      list_C.push_back(C*0.15);
+      list_C.push_back(C*0.14);
       // venules
       list_C.push_back(C*0.20);
       // small veins
       list_C.push_back(C*0.40);
 
       // arterioles 60
-      list_R.push_back(R2*0.10);
-      list_R.push_back(R2*0.10);
-      list_R.push_back(R2*0.20);
-      list_R.push_back(R2*0.25);
-      // capillaries
+      list_R.push_back(R2*0.05);
       list_R.push_back(R2*0.15);
-      // venules
+      list_R.push_back(R2*0.15);
+      list_R.push_back(R2*0.20);
+      list_R.push_back(R2*0.20);
+      list_R.push_back(R2*0.05);
+      // capillaries
       list_R.push_back(R2*0.10);
+      // venules
+      list_R.push_back(R2*0.05);
       // small veins
       list_R.push_back(R2*0.05);
 
