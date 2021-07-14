@@ -32,6 +32,8 @@ struct VesselTipCouplingData {
   Point p;
   double p_art;
   double p_ven;
+  double R2_art;
+  double R2_cap;
 };
 
 class HeartToBreast1DSolver {
@@ -81,6 +83,7 @@ private:
   std::shared_ptr<TipVertexDofIntegrator> integrator;
 
   size_t last_arterial_tip_index{3};
+  size_t capillary_tip_index{4};
   size_t first_vene_tip_index{5};
 
   std::shared_ptr<GraphCSVWriter> csv_writer_nl;

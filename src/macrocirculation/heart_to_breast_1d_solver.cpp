@@ -46,8 +46,7 @@ void HeartToBreast1DSolver::start_0d_pressure_integrator() {
 std::vector<VesselTipCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integrator() {
   d_integrator_running = false;
 
-  auto values = integrator->get_integral_value({last_arterial_tip_index,
-                                                first_vene_tip_index});
+  auto values = integrator->get_integral_value({last_arterial_tip_index, first_vene_tip_index});
 
   std::vector<VesselTipCouplingData> results;
 
@@ -56,6 +55,8 @@ std::vector<VesselTipCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integ
 
     if (v.is_vessel_tree_outflow()) {
       auto &e = *graph_li->get_edge(v.get_edge_neighbors()[0]);
+
+      auto& R = v.get_vessel_tree_data().resistances;
 
       if (!e.has_embedding_data())
         throw std::runtime_error("cannot determine coupling data for an unembedded graph");
@@ -68,7 +69,10 @@ std::vector<VesselTipCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integ
       auto p_art = values[v_id][0];
       auto p_ven = values[v_id][1];
 
-      results.push_back({p, p_art, p_ven});
+      auto R2_art = R[last_arterial_tip_index];
+      auto R2_cap = R[capillary_tip_index];
+
+      results.push_back({p, p_art, p_ven, R2_art, R2_cap});
     }
   }
 
