@@ -75,13 +75,8 @@ int main(int argc, char *argv[]) {
         for (auto &d : data) {
 
           // just return the values for now:
-          std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD)
-                    << ", x = " << d.p.x
-                    << ", y = " << d.p.y
-                    << ", z = " << d.p.z
-                    << ", p_art = " << d.p_art
-                    << ", p_ven = " << d.p_ven
-                    << std::endl;
+          if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
+            std::cout << d.p.x << ", " << d.p.y << ", " << d.p.z << ", " << d.p_art << ", " << d.p_ven << ", " << d.R2_art << ", " << d.R2_cap << std::endl;
         }
 
         // Some condition to solve the 3D system
