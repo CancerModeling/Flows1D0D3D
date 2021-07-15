@@ -29,10 +29,19 @@ class CSVVesselTipWriter;
 class TipVertexDofIntegrator;
 
 struct VesselTipCouplingData {
+  /*! @brief Coordinates of the vessel tip. */
   Point p;
+
+  /*! @brief Pressure value in the arterioles in [Ba]. */
   double p_art;
+
+  /*! @brief Pressure value in the venules in [Ba]. */
   double p_ven;
+
+  /*! @brief Second resistance of the arteriole compartment in [cm^{-4} g s^{-1}]. */
   double R2_art;
+
+  /*! @brief Second resistance of the capillary compartment in [cm^{-4} g s^{-1}]. */
   double R2_cap;
 };
 
@@ -50,6 +59,7 @@ public:
 
   void start_0d_pressure_integrator();
 
+  /*! @brief Returns the pressures at the vessil tip in CGS units. */
   std::vector<VesselTipCouplingData> stop_0d_pressure_integrator();
 
 private:

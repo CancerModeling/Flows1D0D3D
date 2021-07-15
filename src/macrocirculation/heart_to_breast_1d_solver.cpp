@@ -48,6 +48,8 @@ std::vector<VesselTipCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integ
 
   auto values = integrator->get_integral_value({last_arterial_tip_index, first_vene_tip_index});
 
+  double time_interval = integrator->get_integration_time();
+
   std::vector<VesselTipCouplingData> results;
 
   for (auto v_id : graph_li->get_vertex_ids()) {
@@ -66,12 +68,15 @@ std::vector<VesselTipCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integ
 
       Point p = e.is_pointing_to(v_id) ? e.get_embedding_data().points.back() : e.get_embedding_data().points.front();
 
-      auto p_art = values[v_id][0];
-      auto p_ven = values[v_id][1];
+      // 1e3 since we have to convert kg -> g:
+      auto p_art = values[v_id][0] * 1e3 / time_interval;
+      auto p_ven = values[v_id][1] * 1e3 / time_interval;
 
       auto R1 = calculate_R1(e.get_physical_data());
-      auto R2_art = R[last_arterial_tip_index] - R1;
-      auto R2_cap = R[capillary_tip_index] - R1;
+
+      // 1e3 since we have to convert kg -> g:
+      auto R2_art = (R[last_arterial_tip_index] - R1) * 1e3;
+      auto R2_cap = (R[capillary_tip_index] - R1) * 1e3;
 
       results.push_back({p, p_art, p_ven, R2_art, R2_cap});
     }
