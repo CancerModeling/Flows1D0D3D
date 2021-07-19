@@ -63,20 +63,20 @@ std::vector<VesselTipCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integ
       if (!e.has_embedding_data())
         throw std::runtime_error("cannot determine coupling data for an unembedded graph");
 
-      if (v.get_vessel_tree_data().resistances.size() != 7)
-        throw std::runtime_error("unexpected number of resistors");
-
       Point p = e.is_pointing_to(v_id) ? e.get_embedding_data().points.back() : e.get_embedding_data().points.front();
 
       // 1e3 since we have to convert kg -> g:
       auto p_art = values[v_id][0] * 1e3 / time_interval;
       auto p_ven = values[v_id][1] * 1e3 / time_interval;
 
-      auto R1 = calculate_R1(e.get_physical_data());
+      // 1e3 since we have to convert kg -> g:
+      // auto R1 = calculate_R1(e.get_physical_data());
+      // auto R2_art = (R[last_arterial_tip_index] - R1) * 1e3;
+      // auto R2_cap = (R[capillary_tip_index] - R1) * 1e3;
 
       // 1e3 since we have to convert kg -> g:
-      auto R2_art = (R[last_arterial_tip_index] - R1) * 1e3;
-      auto R2_cap = (R[capillary_tip_index] - R1) * 1e3;
+      auto R2_art = (R[last_arterial_tip_index]) * 1e3;
+      auto R2_cap = (R[capillary_tip_index]) * 1e3;
 
       results.push_back({p, p_art, p_ven, R2_art, R2_cap});
     }
@@ -156,8 +156,9 @@ void HeartToBreast1DSolver::setup_output() {
 
   vessel_tip_writer = std::make_shared<CSVVesselTipWriter>(d_comm, output_folder_name, filename_csv_tips, graph_li, dof_map_li);
 
-  // vessels ids do not change, thus we can precalculate them
+  // vessels ids and radii do not change, thus we can precalculate them
   fill_with_vessel_id(d_comm, *graph_li, points, vessel_ids_li);
+  fill_with_radius(d_comm, *graph_li, points, vessel_radii_li);
 }
 
 void HeartToBreast1DSolver::write_output() {
@@ -182,6 +183,7 @@ void HeartToBreast1DSolver::write_output() {
   graph_pvd_writer->add_vertex_data("p", p_vertex_values);
   graph_pvd_writer->add_vertex_data("q", q_vertex_values);
   graph_pvd_writer->add_vertex_data("vessel_id", vessel_ids_li);
+  graph_pvd_writer->add_vertex_data("r", vessel_radii_li);
   graph_pvd_writer->write(t);
 
   vessel_tip_writer->write(t, get_solver_li().get_solution());

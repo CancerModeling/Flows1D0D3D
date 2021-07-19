@@ -92,9 +92,9 @@ private:
 
   std::shared_ptr<TipVertexDofIntegrator> integrator;
 
-  size_t last_arterial_tip_index{3};
-  size_t capillary_tip_index{4};
-  size_t first_vene_tip_index{5};
+  size_t last_arterial_tip_index{7};
+  size_t capillary_tip_index{8};
+  size_t first_vene_tip_index{9};
 
   std::shared_ptr<GraphCSVWriter> csv_writer_nl;
   std::shared_ptr<GraphCSVWriter> csv_writer_li;
@@ -106,6 +106,7 @@ private:
   std::vector<double> q_vertex_values;
 
   std::vector<double> vessel_ids_li;
+  std::vector<double> vessel_radii_li;
 
   bool d_integrator_running;
 
