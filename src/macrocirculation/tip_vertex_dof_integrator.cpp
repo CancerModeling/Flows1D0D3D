@@ -72,7 +72,7 @@ std::map<size_t, std::vector<double>> TipVertexDofIntegrator::get_integral_value
       auto &e = *d_graph->get_edge(v->get_edge_neighbors()[0]);
       if (e.rank() == mpi::rank(MPI_COMM_WORLD)) {
         for (size_t k = 0; k < vertex_dof_numbers.size(); k += 1)
-          data.at(v_id).at(k) = d_quantities.at(v_id)[k];
+          data.at(v_id).at(k) = d_quantities.at(v_id)[vertex_dof_numbers[k]];
       }
       MPI_Bcast(&data[v_id].front(), vertex_dof_numbers.size(), MPI_DOUBLE, e.rank(), d_comm);
     }
