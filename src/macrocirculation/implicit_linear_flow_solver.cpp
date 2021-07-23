@@ -781,12 +781,10 @@ void ImplicitLinearFlowSolver::assemble_rhs_rcl_model(double tau) {
 
       const auto &dof_indices_ptilde = local_dof_map_vertex.dof_indices();
 
-      const double R0 = calculate_R1(edge.get_physical_data());
-      const auto R1 = vertex.get_rcl_data().resistances.back();
       const auto L_tilde = vertex.get_rcl_data().inductances.back();
       const auto p_out = vertex.get_rcl_data().p_out;
 
-      std::vector<double> value{-tau * p_out * R1 / (L_tilde)};
+      std::vector<double> value{-tau * p_out / (L_tilde)};
 
       rhs->add({dof_indices_ptilde.back()}, value);
     }

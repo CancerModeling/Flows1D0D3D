@@ -219,6 +219,7 @@ void Vertex::set_to_vessel_rcl_outflow(double p, const std::vector<double> &resi
   p_rcl_data.resistances = resistances;
   p_rcl_data.capacitances = capacitances;
   p_rcl_data.inductances = inductances;
+  p_rcl_data.p_out = p;
 }
 
 void Vertex::set_to_nonlinear_characteristic_inflow(double G0, double A0, double rho, bool points_towards_vertex, double p, double q) {
