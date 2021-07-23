@@ -57,7 +57,8 @@ void assemble_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_m
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
     auto &vertex = *graph.get_vertex(v_id);
 
-    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow()) {
+    // TODO: automatically set dofs on the vertex to 1.
+    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow() || vertex.is_rcl_outflow()) {
       auto &vertex_dof_map = dof_map.get_local_dof_map(vertex);
       auto &indices = vertex_dof_map.dof_indices();
       for (auto i : indices)
@@ -554,6 +555,114 @@ void ImplicitLinearFlowSolver::assemble_matrix_nfurcations(double tau) {
   }
 }
 
+void ImplicitLinearFlowSolver::assemble_matrix_rcl_model(double tau) {
+  for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+    auto &vertex = *d_graph->get_vertex(v_idx);
+
+    if (vertex.is_rcl_outflow()) {
+      auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
+      auto &local_dof_map_edge = d_dof_map->get_local_dof_map(neighbor_edge);
+      auto &local_dof_map_vertex = d_dof_map->get_local_dof_map(vertex);
+
+      std::vector<size_t> dof_indices_p(local_dof_map_edge.num_basis_functions());
+      std::vector<size_t> dof_indices_q(local_dof_map_edge.num_basis_functions());
+
+      auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
+      const auto L = get_L(neighbor_edge);
+      const auto C = get_C(neighbor_edge);
+      const double sigma = neighbor_edge.is_pointing_to(v_idx) ? +1 : -1;
+
+      local_dof_map_edge.dof_indices(micro_edge_idx, p_component, dof_indices_p);
+      local_dof_map_edge.dof_indices(micro_edge_idx, q_component, dof_indices_q);
+
+      const auto &dof_indices_pqtilde = local_dof_map_vertex.dof_indices();
+      std::vector<size_t> dof_indices_ptil;
+      std::vector<size_t> dof_indices_qtil;
+      for (size_t k = 0; k < dof_indices_pqtilde.size() / 2; k += 1) {
+        dof_indices_ptil.push_back(dof_indices_pqtilde[k]);
+        dof_indices_qtil.push_back(dof_indices_pqtilde[dof_indices_pqtilde.size() / 2 + k]);
+      }
+
+      auto E = neighbor_edge.is_pointing_to(v_idx)
+                 ? create_boundary(local_dof_map_edge, BoundaryPointType::Right, BoundaryPointType::Right)
+                 : create_boundary(local_dof_map_edge, BoundaryPointType::Left, BoundaryPointType::Left);
+      auto e = neighbor_edge.is_pointing_to(v_idx)
+                 ? create_boundary(local_dof_map_edge, BoundaryPointType::Right)
+                 : create_boundary(local_dof_map_edge, BoundaryPointType::Left);
+
+      auto &data = vertex.get_rcl_data();
+
+      const double R0 = calculate_R1(neighbor_edge.get_physical_data());
+      const auto R1 = data.resistances[0];
+      const auto C_tilde = data.capacitances[0];
+
+      const double alpha = sigma / (std::sqrt(C / L) + 1. / R0);
+
+      Eigen::MatrixXd u_qp = (+sigma * tau / L) * alpha * (sigma * std::sqrt(C / L)) * E;
+      Eigen::MatrixXd u_qq = (+sigma * tau / L) * alpha * E;
+      Eigen::MatrixXd u_q_ptilde = (+sigma * tau / L) * alpha * sigma / R0 * e;
+
+      Eigen::MatrixXd u_pp = (+sigma * tau / C) * sigma * (1. / R0 * alpha * sigma * std::sqrt(C / L)) * E;
+      Eigen::MatrixXd u_pq = (+sigma * tau / C) * sigma * (1. / R0 * alpha) * E;
+      Eigen::MatrixXd u_p_ptilde = (+sigma * tau / C) * sigma * (1. / R0 * (alpha * sigma / R0 - 1)) * e;
+
+      Eigen::MatrixXd u_p0tilde_p = -tau / (R0 * C_tilde) * alpha * sigma * std::sqrt(C / L) * e.transpose();
+      Eigen::MatrixXd u_p0tilde_q = -tau / (R0 * C_tilde) * alpha * e.transpose();
+
+      A->add(dof_indices_q, dof_indices_q, u_qq);
+      A->add(dof_indices_q, dof_indices_p, u_qp);
+      A->add(dof_indices_q, {dof_indices_ptil[0]}, u_q_ptilde);
+
+      A->add(dof_indices_p, dof_indices_q, u_pq);
+      A->add(dof_indices_p, dof_indices_p, u_pp);
+      A->add(dof_indices_p, {dof_indices_ptil[0]}, u_p_ptilde);
+
+      // beginning
+      A->add({dof_indices_ptil[0]}, dof_indices_q, u_p0tilde_q);
+      A->add({dof_indices_ptil[0]}, dof_indices_p, u_p0tilde_p);
+
+
+      // new
+      Eigen::MatrixXd mat_pp(dof_indices_ptil.size(), dof_indices_ptil.size());
+      Eigen::MatrixXd mat_pq(dof_indices_ptil.size(), dof_indices_qtil.size());
+      Eigen::MatrixXd mat_qp(dof_indices_qtil.size(), dof_indices_ptil.size());
+      Eigen::MatrixXd mat_qq(dof_indices_qtil.size(), dof_indices_qtil.size());
+      mat_pp.setZero();
+      mat_pq.setZero();
+      mat_qp.setZero();
+      mat_qq.setZero();
+
+      assert(dof_indices_ptil.size() == dof_indices_qtil.size());
+      auto id = Eigen::MatrixXd::Identity(dof_indices_ptil.size(), dof_indices_ptil.size());
+
+      mat_pp(0, 0) = -1. / (R0 * data.capacitances[0]);
+
+      for (size_t k = 0; k < dof_indices_ptil.size(); k += 1)
+        mat_pq(k, k) = -1. / data.capacitances[k];
+      for (size_t k = 1; k < dof_indices_ptil.size(); k += 1)
+        mat_pq(k, k - 1) = +1. / data.capacitances[k];
+
+      for (size_t k = 0; k < dof_indices_ptil.size(); k += 1)
+        mat_qq(k, k) = -data.resistances[k] / data.inductances[k];
+
+      for (size_t k = 0; k < dof_indices_ptil.size(); k += 1)
+        mat_qp(k, k) = +1. / data.inductances[k];
+      for (size_t k = 0; k < dof_indices_ptil.size() - 1; k += 1)
+        mat_qp(k, k + 1) = -1. / data.inductances[k];
+
+      Eigen::MatrixXd imp_euler_mat_pp = id - tau * mat_pp;
+      Eigen::MatrixXd imp_euler_mat_pq = - tau * mat_pq;
+      Eigen::MatrixXd imp_euler_mat_qq = id - tau * mat_qq;
+      Eigen::MatrixXd imp_euler_mat_qp = - tau * mat_qp;
+
+      A->add(dof_indices_ptil, dof_indices_ptil, imp_euler_mat_pp);
+      A->add(dof_indices_ptil, dof_indices_qtil, imp_euler_mat_pq);
+      A->add(dof_indices_qtil, dof_indices_ptil, imp_euler_mat_qp);
+      A->add(dof_indices_qtil, dof_indices_qtil, imp_euler_mat_qq);
+    }
+  }
+}
+
 void ImplicitLinearFlowSolver::assemble_matrix_0d_model(double tau) {
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *d_graph->get_vertex(v_idx);
@@ -619,7 +728,7 @@ void ImplicitLinearFlowSolver::assemble_matrix_0d_model(double tau) {
         const auto &data = vertex.get_vessel_tree_data();
         const auto &R = data.resistances;
         const auto &C_tilde2 = data.capacitances;
-        const auto n = static_cast< double >(data.furcation_number);
+        const auto n = static_cast<double>(data.furcation_number);
 
         for (size_t k = 1; k < R.size(); k += 1) {
           Eigen::MatrixXd mat_k_km1(1, 1);
@@ -655,6 +764,29 @@ void ImplicitLinearFlowSolver::assemble_rhs_0d_model(double tau) {
       const auto p_out = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().p_out : vertex.get_vessel_tree_data().p_out;
 
       std::vector<double> value{tau * p_out / (R1 * C_tilde)};
+
+      rhs->add({dof_indices_ptilde.back()}, value);
+    }
+  }
+}
+
+void ImplicitLinearFlowSolver::assemble_rhs_rcl_model(double tau) {
+  for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+    auto &vertex = *d_graph->get_vertex(v_idx);
+
+    if (vertex.is_rcl_outflow()) {
+      auto &edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
+
+      auto &local_dof_map_vertex = d_dof_map->get_local_dof_map(vertex);
+
+      const auto &dof_indices_ptilde = local_dof_map_vertex.dof_indices();
+
+      const double R0 = calculate_R1(edge.get_physical_data());
+      const auto R1 = vertex.get_rcl_data().resistances.back();
+      const auto L_tilde = vertex.get_rcl_data().inductances.back();
+      const auto p_out = vertex.get_rcl_data().p_out;
+
+      std::vector<double> value{-tau * p_out * R1 / (L_tilde)};
 
       rhs->add({dof_indices_ptilde.back()}, value);
     }
@@ -812,6 +944,7 @@ void ImplicitLinearFlowSolver::assemble_matrix(double tau) {
   assemble_matrix_nfurcations(tau);
   assemble_matrix_0d_model(tau);
   assemble_matrix_characteristic(tau);
+  assemble_matrix_rcl_model(tau);
   A->assemble();
 }
 
@@ -825,6 +958,7 @@ void ImplicitLinearFlowSolver::assemble_rhs(double tau, double t) {
   assemble_rhs_inflow(tau, t);
   assemble_rhs_0d_model(tau);
   assemble_rhs_characteristic(tau);
+  assemble_rhs_rcl_model(tau);
   rhs->assemble();
 }
 

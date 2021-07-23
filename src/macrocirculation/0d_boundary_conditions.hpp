@@ -31,6 +31,8 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
  */
 void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &graph);
 
+void convert_rcr_to_rcl_chain_bcs(const std::shared_ptr<GraphStorage> &graph);
+
 } // namespace macrocirculation
 
 #endif //TUMORMODELS_SET_0D_TREE_BOUNDARY_CONDITIONS_H

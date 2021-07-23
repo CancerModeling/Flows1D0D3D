@@ -63,15 +63,13 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
   }
 }
 
-void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &graph)
-{
+void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &graph) {
   for (auto &v_id : graph->get_vertex_ids()) {
     auto &vertex = *graph->get_vertex(v_id);
 
-    if (vertex.is_windkessel_outflow())
-    {
-      auto& edge = *graph->get_edge(vertex.get_edge_neighbors()[0]);
-      auto& data = vertex.get_peripheral_vessel_data();
+    if (vertex.is_windkessel_outflow()) {
+      auto &edge = *graph->get_edge(vertex.get_edge_neighbors()[0]);
+      auto &data = vertex.get_peripheral_vessel_data();
 
       std::cout << "rank " << mpi::rank(MPI_COMM_WORLD) << " sets vertex " << vertex.get_name()
                 << " (id = " << vertex.get_id() << ", neighbor-edge-id = " << edge.get_id() << ")" << std::endl;
@@ -86,38 +84,115 @@ void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &gr
       std::vector<double> list_R;
 
       // arterioles
-      list_C.push_back(C*0.08);
-      list_C.push_back(C*0.09);
-      list_C.push_back(C*0.10);
-      list_C.push_back(C*0.10);
-      list_C.push_back(C*0.11);
-      list_C.push_back(C*0.12);
-      list_C.push_back(C*0.48);
-      list_C.push_back(C*0.68);
+      list_C.push_back(C * 0.08);
+      list_C.push_back(C * 0.09);
+      list_C.push_back(C * 0.10);
+      list_C.push_back(C * 0.10);
+      list_C.push_back(C * 0.11);
+      list_C.push_back(C * 0.12);
+      list_C.push_back(C * 0.48);
+      list_C.push_back(C * 0.68);
       // capillaries
-      list_C.push_back(C*0.14);
+      list_C.push_back(C * 0.14);
       // venules
-      list_C.push_back(C*0.20);
+      list_C.push_back(C * 0.20);
       // small veins
-      list_C.push_back(C*0.40);
+      list_C.push_back(C * 0.40);
 
       // arterioles 60
-      list_R.push_back(R2*0.10);
-      list_R.push_back(R2*0.20);
-      list_R.push_back(R2*0.15);
-      list_R.push_back(R2*0.15);
-      list_R.push_back(R2*0.15);
-      list_R.push_back(R2*0.10);
-      list_R.push_back(R2*0.10);
-      list_R.push_back(R2*0.05);
+      list_R.push_back(R2 * 0.10);
+      list_R.push_back(R2 * 0.20);
+      list_R.push_back(R2 * 0.15);
+      list_R.push_back(R2 * 0.15);
+      list_R.push_back(R2 * 0.15);
+      list_R.push_back(R2 * 0.10);
+      list_R.push_back(R2 * 0.10);
+      list_R.push_back(R2 * 0.05);
       // capillaries
-      list_R.push_back(R2*0.05);
+      list_R.push_back(R2 * 0.05);
       // venules
-      list_R.push_back(R2*0.025);
+      list_R.push_back(R2 * 0.025);
       // small veins
-      list_R.push_back(R2*0.025);
+      list_R.push_back(R2 * 0.025);
 
       vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 1);
+    }
+  }
+}
+
+void convert_rcr_to_rcl_chain_bcs(const std::shared_ptr<GraphStorage> &graph) {
+  for (auto &v_id : graph->get_vertex_ids()) {
+    auto &vertex = *graph->get_vertex(v_id);
+
+    if (vertex.is_windkessel_outflow()) {
+      auto &edge = *graph->get_edge(vertex.get_edge_neighbors()[0]);
+      auto &data = vertex.get_peripheral_vessel_data();
+
+      std::cout << "rank " << mpi::rank(MPI_COMM_WORLD) << " sets vertex " << vertex.get_name()
+                << " (id = " << vertex.get_id() << ", neighbor-edge-id = " << edge.get_id() << ")" << std::endl;
+
+      const double R1 = calculate_R1(edge.get_physical_data());
+      const double R2 = data.resistance - R1;
+      const double C = data.compliance;
+
+      const double p_cap = 5 * (133.333) * 1e-2;
+
+      std::vector<double> list_C;
+      std::vector<double> list_R;
+      std::vector<double> list_L;
+
+      // arterioles
+      list_C.push_back(C * 0.03125);
+      list_C.push_back(C * 0.03125);
+      list_C.push_back(C * 0.03125);
+      list_C.push_back(C * 0.03125);
+      list_C.push_back(C * 0.03125);
+      list_C.push_back(C * 0.03125);
+      list_C.push_back(C * 0.03125);
+      list_C.push_back(C * 0.03125);
+      // capillaries
+      list_C.push_back(C * 0.15);
+      // venules
+      list_C.push_back(C * 0.20);
+      // small veins
+      list_C.push_back(C * 0.40);
+
+      // arterioles 60
+      list_R.push_back(R2 * 0.10);
+      list_R.push_back(R2 * 0.20);
+      list_R.push_back(R2 * 0.15);
+      list_R.push_back(R2 * 0.15);
+      list_R.push_back(R2 * 0.15);
+      list_R.push_back(R2 * 0.10);
+      list_R.push_back(R2 * 0.10);
+      list_R.push_back(R2 * 0.05);
+      // capillaries
+      list_R.push_back(R2 * 0.05);
+      // venules
+      list_R.push_back(R2 * 0.025);
+      // small veins
+      list_R.push_back(R2 * 0.025);
+
+      // arterioles 60
+      const double L_art = 0.003 * 1.333;
+      list_L.push_back(L_art * 0.125);
+      list_L.push_back(L_art * 0.125);
+      list_L.push_back(L_art * 0.125);
+      list_L.push_back(L_art * 0.125);
+      list_L.push_back(L_art * 0.125);
+      list_L.push_back(L_art * 0.125);
+      list_L.push_back(L_art * 0.125);
+      list_L.push_back(L_art * 0.125);
+      // capillaries
+      const double L_cap = 0.001 * 1.333;
+      list_L.push_back(L_cap);
+      // venules
+      const double L_ven = 0.0005 * 1.333;
+      list_L.push_back(L_ven);
+      // small veins
+      list_L.push_back(L_ven);
+
+      vertex.set_to_vessel_rcl_outflow(p_cap, list_R, list_C, list_L);
     }
   }
 }

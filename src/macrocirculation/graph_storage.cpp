@@ -129,7 +129,7 @@ void Vertex::set_to_windkessel_outflow(double r, double c) {
   p_peripheral_vessel_data.p_out = 5.0 * 1.333322;
 }
 
-void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, size_t furcation_number ) {
+void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, size_t furcation_number) {
   if (!is_leaf())
     throw std::runtime_error("tree bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
   if (d_bcs_finalized)
@@ -153,6 +153,15 @@ const PeripheralVesselData &Vertex::get_peripheral_vessel_data() const {
 const VesselTreeData &Vertex::get_vessel_tree_data() const {
   assert(is_vessel_tree_outflow());
   return p_vessel_tree_data;
+}
+
+const RCLModel &Vertex::get_rcl_data() const {
+  assert(is_rcl_outflow());
+  return p_rcl_data;
+}
+
+bool Vertex::is_rcl_outflow() const {
+  return p_flow_type == FlowType::RCLModel;
 }
 
 const LinearCharacteristicData &Vertex::get_linear_characteristic_data() const {
@@ -199,6 +208,17 @@ void Vertex::set_to_linear_characteristic_inflow(double C, double L, bool points
   p_linear_characteristic_data.points_towards_vertex = points_towards_vertex;
   p_linear_characteristic_data.p = p;
   p_linear_characteristic_data.q = sigma * q;
+}
+
+void Vertex::set_to_vessel_rcl_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, const std::vector<double> &inductances) {
+  if (!is_leaf())
+    throw std::runtime_error("rcl outflow can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
+  p_flow_type = FlowType::RCLModel;
+  p_rcl_data.resistances = resistances;
+  p_rcl_data.capacitances = capacitances;
+  p_rcl_data.inductances = inductances;
 }
 
 void Vertex::set_to_nonlinear_characteristic_inflow(double G0, double A0, double rho, bool points_towards_vertex, double p, double q) {
