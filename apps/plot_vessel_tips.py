@@ -72,7 +72,7 @@ for i,dof in enumerate(args.dofs):
         ax.plot(t[start_index:], data[start_index:,dof+num_p_dof], label='{}'.format(indices[dof]), linewidth=3)
         ax.legend()
         if i == 0:
-            ax.set_ylabel('$q_c$ [cm^3 s^{-1}]')
+            ax.set_ylabel('$q_c [cm^3 s^{-1}]$')
         ax.set_xlabel('$t$')
         ax.grid(True)
 
