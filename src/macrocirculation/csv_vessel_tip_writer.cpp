@@ -43,7 +43,7 @@ void CSVVesselTipWriter::write_generic(double t, const VectorType &u) {
   for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto v = *d_graph->get_vertex(v_id);
 
-    if (v.is_vessel_tree_outflow() || v.is_windkessel_outflow()) {
+    if (v.is_vessel_tree_outflow() || v.is_windkessel_outflow() || v.is_rcl_outflow()) {
       std::ofstream f(get_file_path(v_id), std::ios::app);
       auto local_dof_map = d_dofmap->get_local_dof_map(v);
       const auto &dofs = local_dof_map.dof_indices();
@@ -75,12 +75,14 @@ void CSVVesselTipWriter::write_meta_file() {
     auto v = d_graph->get_vertex(v_id);
     auto e = d_graph->get_edge(v->get_edge_neighbors()[0]);
 
-    if (v->is_vessel_tree_outflow() || v->is_windkessel_outflow()) {
+    if (v->is_vessel_tree_outflow() || v->is_windkessel_outflow() || v->is_rcl_outflow()) {
       std::string outflow_type;
       if (v->is_vessel_tree_outflow())
         outflow_type += "vessel_tree";
       else if (v->is_windkessel_outflow())
         outflow_type += "windkessel";
+      else if (v->is_rcl_outflow())
+        outflow_type += "rcl";
       else
         outflow_type += "unknown";
 
@@ -116,6 +118,12 @@ void CSVVesselTipWriter::write_meta_file() {
         vessel_obj["R2"] = v->get_peripheral_vessel_data().resistance - calculate_R1(e->get_physical_data());
         vessel_obj["p_out"] = v->get_peripheral_vessel_data().p_out;
         vessel_obj["C"] = v->get_peripheral_vessel_data().compliance;
+      }
+
+      if (v->is_rcl_outflow()) {
+        vessel_obj["R"] = v->get_rcl_data().resistances;
+        vessel_obj["C"] = v->get_rcl_data().capacitances;
+        vessel_obj["L"] = v->get_rcl_data().inductances;
       }
 
       vertices_list.push_back(vessel_obj);
