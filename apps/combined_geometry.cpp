@@ -44,6 +44,10 @@ int main(int argc, char *argv[]) {
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
+  if (args.count("help")) {
+    std::cout << options.help() << std::endl;
+    exit(0);
+  }
 
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
 
@@ -65,10 +69,12 @@ int main(int argc, char *argv[]) {
 
     //
     mc::convert_rcr_to_partitioned_tree_bcs(graph_li);
+    // mc::convert_rcr_to_rcl_chain_bcs(graph_li);
 
     auto coupling = std::make_shared<mc::NonlinearLinearCoupling>(MPI_COMM_WORLD, graph_nl, graph_li);
-    coupling->add_coupled_vertices("cw_out_1_1", "bg_132");
-    coupling->add_coupled_vertices("cw_out_1_2", "bg_141");
+    coupling->add_coupled_vertices("cw_out_1_1", "bg_141");
+    coupling->add_coupled_vertices("cw_out_1_2", "bg_139");
+    coupling->add_coupled_vertices("cw_out_1_3", "bg_132");
     coupling->add_coupled_vertices("cw_out_2_1", "bg_135");
     coupling->add_coupled_vertices("cw_out_2_2", "bg_119");
 
