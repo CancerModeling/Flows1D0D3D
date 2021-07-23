@@ -69,7 +69,6 @@ for i,dof in enumerate(args.dofs):
 
     if vessel['outflow_type'] == 'rcl':
         ax = axes[1, i]
-        print(data[start_index:,dof+num_p_dof])
         ax.plot(t[start_index:], data[start_index:,dof+num_p_dof], label='{}'.format(indices[dof]), linewidth=3)
         ax.legend()
         if i == 0:
