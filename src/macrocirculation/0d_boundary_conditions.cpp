@@ -40,24 +40,40 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     std::cout << "rank = " << mpi::rank(MPI_COMM_WORLD) << " sets " << vertex.get_name() << " to tree bc" << std::endl;
     auto &edge = *graph->get_edge(vertex.get_edge_neighbors()[0]);
     auto &param = edge.get_physical_data();
-    const double E = param.elastic_modulus;
+    // const double E = param.elastic_modulus;
+    const double E = param.elastic_modulus * 4;
     const double r_0 = param.radius;
-    const double r_cap = 5e-4;
+    const double r_cap = 7.5e-4;
+    //const double h_0 = 1e-4;
     const double h_0 = 1e-4;
     const double p_cap = 30 * (133.333) * 1e-2;
-    const int N = static_cast<int>(std::ceil(3 * std::log(r_0 / r_cap) / std::log(2.)));
-    const auto alpha = 1. / std::pow(2, 1 / 3.);
+    const double gamma = 2.5;
+    // floor ?
+    const int N = static_cast<int>(std::ceil(gamma * std::log(r_0 / r_cap) / std::log(2)));
+    const auto alpha = 1. / std::pow(2, 1 / gamma);
+    const auto beta = 3./4.;
     std::vector<double> list_C;
     std::vector<double> list_R;
     double r = r_0 * alpha;
-    double l = 0.2; // 2mm is the average vessel length
+    //double l = 0.2; // 2mm is the average vessel length
+    //double l = 3 * beta; // 2mm is the average vessel length
+    std::cout << "vessel start" << std::endl;
     for (size_t k = 0; k < N; k += 1) {
+      //const double l = std::exp(1.0 + 0.2*0.2/2.) * r;
+      const double l = 280 * r;
+      std::cout << " l = " << l << " r = " << r << std::endl;
       const double C = 3 * std::pow(r, 3) * M_PI * l / (2 * E * h_0);
-      const double R = 2 * (param.gamma + 2) * param.viscosity * l / (std::pow(r, 2));
+      const double viscosity = viscosity_bloodplasma(r);
+      // const double viscosity = param.viscosity;
+      double R = 2 * (param.gamma + 2) * viscosity * l / (std::pow(r, 2));
+      // R *= 1.15; // muscles?
+      R *= 2; // muscles?
       list_C.push_back(C);
       list_R.push_back(R);
       r *= alpha;
+      // l *= beta;
     }
+    std::cout << "vessel stop" << std::endl;
 
     vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 2);
   }
@@ -174,7 +190,7 @@ void convert_rcr_to_rcl_chain_bcs(const std::shared_ptr<GraphStorage> &graph) {
       list_R.push_back(R2 * 0.025);
 
       // arterioles 60
-      const double L_art = 0.003 * 1.333;
+      const double L_art = 1e-8 * 1.333;
       list_L.push_back(L_art * 0.125);
       list_L.push_back(L_art * 0.125);
       list_L.push_back(L_art * 0.125);
@@ -184,13 +200,14 @@ void convert_rcr_to_rcl_chain_bcs(const std::shared_ptr<GraphStorage> &graph) {
       list_L.push_back(L_art * 0.125);
       list_L.push_back(L_art * 0.125);
       // capillaries
-      const double L_cap = 0.001 * 1.333;
+      const double L_cap = 1e-8  * 1.333;
       list_L.push_back(L_cap);
       // venules
-      const double L_ven = 0.0005 * 1.333;
+      const double L_ven = 5e-8 * 1.333;
       list_L.push_back(L_ven);
       // small veins
       list_L.push_back(L_ven);
+      std::cout << " L " << L_ven << std::endl;
 
       vertex.set_to_vessel_rcl_outflow(p_cap, list_R, list_C, list_L);
     }
