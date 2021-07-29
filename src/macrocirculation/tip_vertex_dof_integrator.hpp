@@ -33,6 +33,9 @@ public:
   /*! @brief Adds the flow contributions of the current time step to the total amount */
   void update_vertex_dof(const PetscVec &vec, double tau);
 
+  /*! @brief Time interval over which the integrator was applied. */
+  double get_integration_time() const;
+
   /*! @brief Returns a data structure containing the integrated vertex dof values specified in the given vector. */
   std::map<size_t, std::vector< double > > get_integral_value(const std::vector< size_t >& vertex_dof_numbers) const;
 
@@ -42,6 +45,8 @@ protected:
   std::shared_ptr<GraphStorage> d_graph;
 
   std::shared_ptr<DofMap> d_dof_map;
+
+  double d_total_integration_time;
 
   /*! @brief Map vertex ids to vectors containing the average quantity. */
   std::map< size_t, std::vector< double > > d_quantities;

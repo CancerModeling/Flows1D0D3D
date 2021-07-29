@@ -41,9 +41,22 @@ def load_data(edge_id):
 
 data,vessel = load_data(args.vessel_by_edge_id)
 
-fig, axes = plt.subplots(1, len(args.dofs), squeeze=False, sharey=True)
+if vessel['outflow_type'] == 'rcl':
+    num_plot_rows = 2
+else:
+    num_plot_rows = 1
+
+fig, axes = plt.subplots(num_plot_rows, len(args.dofs), squeeze=False, sharey='row')
 
 indices = list(range(data.shape[1]))
+
+num_dofs = vessel['num_dofs']
+if vessel['outflow_type'] == 'rcl':
+    num_p_dof = int(num_dofs / 2)
+    num_q_dof = int(num_dofs / 2)
+else:
+    num_p_dof = num_dofs
+    num_q_dof = 0
 
 for i,dof in enumerate(args.dofs):
     ax = axes[0, i]
@@ -53,6 +66,16 @@ for i,dof in enumerate(args.dofs):
         ax.set_ylabel('$p_c$ [mmHg]')
     ax.set_xlabel('$t$')
     ax.grid(True)
+
+    if vessel['outflow_type'] == 'rcl':
+        ax = axes[1, i]
+        ax.plot(t[start_index:], data[start_index:,dof+num_p_dof], label='{}'.format(indices[dof]), linewidth=3)
+        ax.legend()
+        if i == 0:
+            ax.set_ylabel('$q_c [cm^3 s^{-1}]$')
+        ax.set_xlabel('$t$')
+        ax.grid(True)
+
 plt.show()
 
 

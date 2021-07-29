@@ -152,6 +152,10 @@ void DofMap::create(MPI_Comm comm,
         add_local_dof_map(*vertex, vertex->get_vessel_tree_data().resistances.size());
         if (callingRank)
           d_num_owned_dofs += get_local_dof_map(*vertex).num_local_dof();
+      } else if (vertex->is_rcl_outflow()) {
+        add_local_dof_map(*vertex, 2 * vertex->get_rcl_data().resistances.size());
+        if (callingRank)
+          d_num_owned_dofs += get_local_dof_map(*vertex).num_local_dof();
       }
     }
   }

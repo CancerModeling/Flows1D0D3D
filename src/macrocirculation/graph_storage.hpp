@@ -99,6 +99,14 @@ struct VesselTreeData {
   size_t furcation_number;
 };
 
+struct RCLModel {
+  std::vector<double> resistances;
+  std::vector<double> capacitances;
+  std::vector<double> inductances;
+
+  double p_out;
+};
+
 struct LinearCharacteristicData {
   double C;
   double L;
@@ -199,6 +207,7 @@ enum class FlowType {
   VesselTree,
   LinearCharacteristic,
   NonlinearCharacteristic,
+  RCLModel
 };
 
 class Vertex : public Primitive {
@@ -230,6 +239,8 @@ public:
 
   void set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, size_t furcation_number);
 
+  void set_to_vessel_rcl_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, const std::vector<double> &inductances);
+
   void set_to_linear_characteristic_inflow(double C, double L, bool points_towards_vertex, double p, double q);
 
   void update_linear_characteristic_inflow(double p, double q);
@@ -252,6 +263,8 @@ public:
 
   const NonlinearCharacteristicData &get_nonlinear_characteristic_data() const;
 
+  const RCLModel& get_rcl_data() const;
+
   bool is_free_outflow() const;
 
   bool is_windkessel_outflow() const;
@@ -261,6 +274,8 @@ public:
   bool is_linear_characteristic_inflow() const;
 
   bool is_nonlinear_characteristic_inflow() const;
+
+  bool is_rcl_outflow() const;
 
 private:
   std::function<double(double)> p_inflow_value;
@@ -274,6 +289,8 @@ private:
   LinearCharacteristicData p_linear_characteristic_data;
 
   NonlinearCharacteristicData p_nonlinear_characteristic_data;
+
+  RCLModel p_rcl_data;
 
   std::vector<std::size_t> p_neighbors;
 

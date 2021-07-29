@@ -2,163 +2,158 @@
     "vertices": [
         {
             "name": "bg_124",
-            "peripheral_compliance": 2.0349852854146166e-05,
-            "peripheral_resistance": 62226.49389625162
+            "peripheral_compliance": 2.0383520067566836e-05,
+            "peripheral_resistance": 62123.715149323594
         },
         {
             "name": "bg_128",
-            "peripheral_compliance": 1.629734135714203e-05,
-            "peripheral_resistance": 77699.78959563308
+            "peripheral_compliance": 1.6323698524277516e-05,
+            "peripheral_resistance": 77574.33111955182
         },
         {
             "name": "bg_41",
-            "peripheral_compliance": 1.502894519187353e-05,
-            "peripheral_resistance": 84257.4098349138
+            "peripheral_compliance": 1.5054736795905886e-05,
+            "peripheral_resistance": 84113.0609976796
         },
         {
             "name": "bg_125",
-            "peripheral_compliance": 7.11716002524242e-06,
-            "peripheral_resistance": 177922.09110473288
+            "peripheral_compliance": 7.129249699315589e-06,
+            "peripheral_resistance": 177620.373507132
         },
         {
             "name": "bg_145",
-            "peripheral_compliance": 3.8473047512909325e-06,
-            "peripheral_resistance": 329139.5083774552
+            "peripheral_compliance": 3.907187957913708e-06,
+            "peripheral_resistance": 324094.97778402246
         },
         {
             "name": "bg_140",
-            "peripheral_compliance": 3.782270061760506e-06,
-            "peripheral_resistance": 334798.9365488961
+            "peripheral_compliance": 3.840886978507912e-06,
+            "peripheral_resistance": 329689.4705581701
         },
         {
             "name": "bg_143",
-            "peripheral_compliance": 3.14424659328506e-06,
-            "peripheral_resistance": 402735.5860454744
+            "peripheral_compliance": 3.193079401772869e-06,
+            "peripheral_resistance": 396576.4188998761
         },
         {
             "name": "bg_110",
-            "peripheral_compliance": 1.6698324490822625e-06,
-            "peripheral_resistance": 758339.5538361358
+            "peripheral_compliance": 1.7029032682873623e-06,
+            "peripheral_resistance": 743612.4047677598
         },
         {
             "name": "bg_114",
-            "peripheral_compliance": 2.362473646956886e-06,
-            "peripheral_resistance": 536005.9766377807
+            "peripheral_compliance": 2.409514065181453e-06,
+            "peripheral_resistance": 525541.6487152491
         },
         {
             "name": "bg_117",
-            "peripheral_compliance": 1.572726359565443e-05,
-            "peripheral_resistance": 80516.2313657688
+            "peripheral_compliance": 1.573149718182807e-05,
+            "peripheral_resistance": 80494.56321810138
         },
         {
             "name": "bg_122",
-            "peripheral_compliance": 1.5909754000006104e-05,
-            "peripheral_resistance": 79592.68222611482
+            "peripheral_compliance": 1.592044260861643e-05,
+            "peripheral_resistance": 79539.24558182187
         },
         {
             "name": "bg_133",
-            "peripheral_compliance": 7.1145713670822e-06,
-            "peripheral_resistance": 177986.82859196267
+            "peripheral_compliance": 7.2214696096082954e-06,
+            "peripheral_resistance": 175352.11845705315
         },
         {
             "name": "bg_136",
-            "peripheral_compliance": 9.784498812155031e-06,
-            "peripheral_resistance": 129418.9941384686
+            "peripheral_compliance": 9.953159158651247e-06,
+            "peripheral_resistance": 127225.936432191
         },
         {
             "name": "bg_138",
-            "peripheral_compliance": 2.739636699346338e-06,
-            "peripheral_resistance": 462214.5683477948
+            "peripheral_compliance": 2.7774688713321758e-06,
+            "peripheral_resistance": 455918.69903142407
         },
         {
             "name": "bg_144",
-            "peripheral_compliance": 7.989797162865455e-06,
-            "peripheral_resistance": 158489.6297872974
+            "peripheral_compliance": 8.127231749072071e-06,
+            "peripheral_resistance": 155809.50974636883
         },
         {
             "name": "bg_116",
-            "peripheral_compliance": 2.6585363530642166e-06,
-            "peripheral_resistance": 476314.71841963474
+            "peripheral_compliance": 2.670791022539065e-06,
+            "peripheral_resistance": 474129.19383494044
         },
         {
             "name": "bg_23",
-            "peripheral_compliance": 4.050835258488296e-06,
-            "peripheral_resistance": 312602.1952545923
+            "peripheral_compliance": 4.079420104823961e-06,
+            "peripheral_resistance": 310411.76487820636
         },
         {
             "name": "bg_121",
-            "peripheral_compliance": 3.39679978695874e-06,
-            "peripheral_resistance": 372792.0613042379
+            "peripheral_compliance": 3.43064625708014e-06,
+            "peripheral_resistance": 369114.1258894483
         },
         {
             "name": "bg_127",
-            "peripheral_compliance": 7.89124522128425e-06,
-            "peripheral_resistance": 160468.97022065456
+            "peripheral_compliance": 7.987924068004439e-06,
+            "peripheral_resistance": 158526.7941504598
         },
         {
             "name": "bg_131",
-            "peripheral_compliance": 1.330613553775303e-05,
-            "peripheral_resistance": 95166.62375979238
+            "peripheral_compliance": 1.3678826713167809e-05,
+            "peripheral_resistance": 92573.72879788367
         },
         {
             "name": "bg_134",
-            "peripheral_compliance": 7.598327170562625e-06,
-            "peripheral_resistance": 166655.10262890937
+            "peripheral_compliance": 7.737294440163663e-06,
+            "peripheral_resistance": 163661.85935031547
         },
         {
             "name": "bg_137",
-            "peripheral_compliance": 1.1063059081849788e-05,
-            "peripheral_resistance": 114462.01137040429
-        },
-        {
-            "name": "bg_139",
-            "peripheral_compliance": 0.00010073009543828776,
-            "peripheral_resistance": 12571.218054627408
+            "peripheral_compliance": 1.1227931435976272e-05,
+            "peripheral_resistance": 112781.23683233358
         },
         {
             "name": "bg_142",
-            "peripheral_compliance": 1.3613546243517842e-05,
-            "peripheral_resistance": 93017.6437326975
+            "peripheral_compliance": 1.3845616255710233e-05,
+            "peripheral_resistance": 91458.55056439208
         },
         {
             "name": "bg_123",
-            "peripheral_compliance": 1.4894444250660967e-06,
-            "peripheral_resistance": 850182.7749376757
+            "peripheral_compliance": 1.5150888911459945e-06,
+            "peripheral_resistance": 835792.5411625385
         },
         {
             "name": "bg_126",
-            "peripheral_compliance": 8.315674328593152e-06,
-            "peripheral_resistance": 152278.69014350616
+            "peripheral_compliance": 8.417659319382626e-06,
+            "peripheral_resistance": 150433.74248970166
         },
         {
             "name": "bg_129",
-            "peripheral_compliance": 6.900828421182766e-06,
-            "peripheral_resistance": 183499.70715560956
+            "peripheral_compliance": 7.653061878792137e-06,
+            "peripheral_resistance": 165463.18512426558
         },
         {
             "name": "bg_130",
-            "peripheral_compliance": 7.161615597730659e-06,
-            "peripheral_resistance": 176817.6436081552
+            "peripheral_compliance": 8.635343696575782e-06,
+            "peripheral_resistance": 146641.5279938627
         },
         {
             "name": "bg_2",
-            "peripheral_compliance": 3.3853720837027336e-06,
-            "peripheral_resistance": 374050.4627287928
+            "peripheral_compliance": 3.4398097221909686e-06,
+            "peripheral_resistance": 368130.8260305399
         },
         {
             "name": "bg_120",
-            "peripheral_compliance": 8.041554160584472e-07,
-            "peripheral_resistance": 1574695.5987996585
+            "peripheral_compliance": 8.169077715724061e-07,
+            "peripheral_resistance": 1550113.7808747184
         },
         {
             "name": "bg_118",
-            "peripheral_compliance": 7.000581060674151e-07,
-            "peripheral_resistance": 1808849.8418104188
+            "peripheral_compliance": 7.111034197294464e-07,
+            "peripheral_resistance": 1780753.627791345
         },
         {
             "name": "bg_115",
-            "peripheral_compliance": 8.009099866563585e-07,
-            "peripheral_resistance": 1581076.5448245914
+            "peripheral_compliance": 8.138822549622402e-07,
+            "peripheral_resistance": 1555876.156160688
         }
     ]
 }

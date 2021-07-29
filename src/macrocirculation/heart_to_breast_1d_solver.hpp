@@ -29,9 +29,20 @@ class CSVVesselTipWriter;
 class TipVertexDofIntegrator;
 
 struct VesselTipCouplingData {
+  /*! @brief Coordinates of the vessel tip. */
   Point p;
+
+  /*! @brief Pressure value in the arterioles in [Ba]. */
   double p_art;
+
+  /*! @brief Pressure value in the venules in [Ba]. */
   double p_ven;
+
+  /*! @brief Second resistance of the arteriole compartment in [cm^{-4} g s^{-1}]. */
+  double R2_art;
+
+  /*! @brief Second resistance of the capillary compartment in [cm^{-4} g s^{-1}]. */
+  double R2_cap;
 };
 
 class HeartToBreast1DSolver {
@@ -48,6 +59,7 @@ public:
 
   void start_0d_pressure_integrator();
 
+  /*! @brief Returns the pressures at the vessil tip in CGS units. */
   std::vector<VesselTipCouplingData> stop_0d_pressure_integrator();
 
 private:
@@ -80,8 +92,9 @@ private:
 
   std::shared_ptr<TipVertexDofIntegrator> integrator;
 
-  size_t last_arterial_tip_index{3};
-  size_t first_vene_tip_index{5};
+  size_t last_arterial_tip_index{7};
+  size_t capillary_tip_index{8};
+  size_t first_vene_tip_index{9};
 
   std::shared_ptr<GraphCSVWriter> csv_writer_nl;
   std::shared_ptr<GraphCSVWriter> csv_writer_li;
@@ -93,6 +106,7 @@ private:
   std::vector<double> q_vertex_values;
 
   std::vector<double> vessel_ids_li;
+  std::vector<double> vessel_radii_li;
 
   bool d_integrator_running;
 
