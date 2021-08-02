@@ -17,6 +17,7 @@
 #include "petsc/petsc_mat.hpp"
 #include "petsc/petsc_vec.hpp"
 #include "vessel_formulas.hpp"
+#include "petsc_assembly_blocks.hpp"
 
 namespace macrocirculation {
 
@@ -150,65 +151,6 @@ void ImplicitLinearFlowSolver::solve(double tau, double t) {
     throw std::runtime_error("changing time step size not supported");
   assemble_rhs(tau, t);
   linear_solver->solve(*rhs, *u);
-}
-
-Eigen::MatrixXd ImplicitLinearFlowSolver::create_mass(const FETypeNetwork &fe, const LocalEdgeDofMap &local_dof_map) {
-  const auto &phi = fe.get_phi();
-  const auto &JxW = fe.get_JxW();
-
-  // TODO: This matrix is diagonal -> directly assemble it
-  Eigen::MatrixXd m_loc(local_dof_map.num_basis_functions(), local_dof_map.num_basis_functions());
-  for (int j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
-    for (int i = 0; i < local_dof_map.num_basis_functions(); i += 1) {
-      m_loc(j, i) = 0;
-      for (int qp = 0; qp < phi[i].size(); qp += 1)
-        m_loc(j, i) += phi[i][qp] * phi[j][qp] * JxW[qp];
-    }
-  }
-  return m_loc;
-}
-
-Eigen::MatrixXd ImplicitLinearFlowSolver::create_phi_grad_psi(const FETypeNetwork &fe, const LocalEdgeDofMap &local_dof_map) {
-  const auto &phi = fe.get_phi();
-  const auto &dphi = fe.get_dphi();
-  const auto &JxW = fe.get_JxW();
-
-  Eigen::MatrixXd k_loc(local_dof_map.num_basis_functions(), local_dof_map.num_basis_functions());
-  for (int j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
-    for (int i = 0; i < local_dof_map.num_basis_functions(); i += 1) {
-      k_loc(j, i) = 0;
-      for (int qp = 0; qp < phi[i].size(); qp += 1)
-        k_loc(j, i) += phi[i][qp] * dphi[j][qp] * JxW[qp];
-    }
-  }
-  return k_loc;
-}
-
-enum class BoundaryPointType { Left,
-                               Right };
-
-Eigen::MatrixXd ImplicitLinearFlowSolver::create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row, BoundaryPointType col) {
-  Eigen::MatrixXd u_loc(local_dof_map.num_basis_functions(), local_dof_map.num_basis_functions());
-  const auto left = [](size_t i) -> double { return std::pow(-1., i); };
-  const auto right = [](size_t i) -> double { return 1.; };
-  const auto phi = (col == BoundaryPointType::Left) ? left : right;
-  const auto psi = (row == BoundaryPointType::Left) ? left : right;
-  for (int j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
-    for (int i = 0; i < local_dof_map.num_basis_functions(); i += 1) {
-      u_loc(j, i) = psi(j) * phi(i);
-    }
-  }
-  return u_loc;
-}
-
-Eigen::MatrixXd ImplicitLinearFlowSolver::create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType type) {
-  Eigen::VectorXd u_loc(local_dof_map.num_basis_functions());
-  const auto left = [](size_t i) -> double { return std::pow(-1., i); };
-  const auto right = [](size_t i) -> double { return 1.; };
-  const auto phi = (type == BoundaryPointType::Left) ? left : right;
-  for (int j = 0; j < local_dof_map.num_basis_functions(); j += 1)
-    u_loc(j) = phi(j);
-  return u_loc;
 }
 
 double ImplicitLinearFlowSolver::get_C(const Edge &e) {

@@ -93,17 +93,6 @@ public:
   void evaluate_1d_pq_values(const Edge &e, double s, double &p, double &q) const;
 
 private:
-  static Eigen::MatrixXd create_mass(const FETypeNetwork &fe, const LocalEdgeDofMap &local_dof_map);
-
-  static Eigen::MatrixXd create_phi_grad_psi(const FETypeNetwork &fe, const LocalEdgeDofMap &local_dof_map);
-
-  enum class BoundaryPointType { Left,
-                                 Right };
-
-  static Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row, BoundaryPointType col);
-
-  static Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row);
-
   void assemble_matrix_cells(double tau);
 
   void assemble_matrix_inner_boundaries(double tau);
