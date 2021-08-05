@@ -14,6 +14,7 @@ namespace macrocirculation {
 
 class GraphStorage;
 
+/*! @brief Reads the json meshes and appends them to graphs. */
 class EmbeddedGraphReader {
 public:
   EmbeddedGraphReader()

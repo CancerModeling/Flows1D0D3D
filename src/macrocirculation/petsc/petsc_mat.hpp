@@ -10,7 +10,7 @@
 
 #include "gmm.h"
 #include <Eigen/Dense>
-#include <petsc.h>
+#include "petsc.h"
 #include <vector>
 
 namespace macrocirculation {

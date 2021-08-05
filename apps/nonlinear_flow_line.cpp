@@ -71,6 +71,8 @@ int main(int argc, char *argv[]) {
   // set inflow boundary conditions
   start->set_to_inflow(mc::heart_beat_inflow(4.));
 
+  graph->finalize_bcs();
+
   // partition graph
   // TODO: app crashes if not enabled -> fix this!
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
@@ -78,8 +80,7 @@ int main(int argc, char *argv[]) {
   // configure solver
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
-  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
-  solver.set_tau(tau);
+  mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
   solver.use_ssp_method();
 
   std::vector<mc::Point> points;
@@ -93,18 +94,25 @@ int main(int argc, char *argv[]) {
   std::vector<double> p_static_vertex_values;
   p_static_vertex_values.reserve(graph->num_edges() * 2);
 
-  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map, {"Q", "A"});
+  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph);
+  csv_writer.add_setup_data(dof_map, solver.A_component, "A");
+  csv_writer.add_setup_data(dof_map, solver.Q_component, "Q");
+  csv_writer.setup();
+
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "line_solution");
 
   const auto begin_t = std::chrono::steady_clock::now();
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    solver.solve();
+    const double t = static_cast< double > (it) * tau;
+    solver.solve(tau, t);
 
     if (it % output_interval == 0) {
       if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-        std::cout << "iter = " << it << ", time = " << solver.get_time() << std::endl;
+        std::cout << "iter = " << it << ", time = " << t << std::endl;
 
-      csv_writer.write(solver.get_time(), solver.get_solution());
+      csv_writer.add_data("A", solver.get_solution());
+      csv_writer.add_data("Q", solver.get_solution());
+      csv_writer.write(t+tau);
 
       // save solution
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 0, solver.get_solution(), points, Q_vertex_values);
@@ -117,11 +125,11 @@ int main(int argc, char *argv[]) {
       pvd_writer.add_vertex_data("A", A_vertex_values);
       pvd_writer.add_vertex_data("p_static", p_static_vertex_values);
       pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
-      pvd_writer.write(solver.get_time());
+      pvd_writer.write(t);
     }
 
     // break
-    if (solver.get_time() > t_end + 1e-12)
+    if (t+tau > t_end + 1e-12)
       break;
   }
 

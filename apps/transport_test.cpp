@@ -7,9 +7,9 @@
 
 #include <chrono>
 #include <cmath>
-#include <macrocirculation/graph_flow_and_concentration_writer.hpp>
 #include <memory>
 
+#include "macrocirculation/graph_csv_writer.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
   const std::size_t num_macro_edges = 4;
   const std::size_t num_edges_per_segment = 11;
 
-  const mc::PhysicalData physical_data = mc::PhysicalData::set_from_data(400000, 1, 1.028e-2, 9, 1., 1./num_macro_edges);
+  const mc::PhysicalData physical_data = mc::PhysicalData::set_from_data(400000, 1, 1.028e-2, 9, 1., 1. / num_macro_edges);
 
   std::cout << mc::calculate_c0(physical_data.G0, physical_data.rho, physical_data.A0) << std::endl;
 
@@ -56,8 +56,8 @@ int main(int argc, char *argv[]) {
     auto vessel = graph->connect(*previous_vertex, *next_vertex, num_edges_per_segment);
     vessel->add_embedding_data(mc::EmbeddingData{
       {mc::convex_combination(start_point, end_point, static_cast<double>(macro_edge_index) / num_macro_edges),
-        mc::convex_combination(
-          start_point, end_point, static_cast<double>(macro_edge_index + 1) / num_macro_edges)}});
+       mc::convex_combination(
+         start_point, end_point, static_cast<double>(macro_edge_index + 1) / num_macro_edges)}});
     vessel->add_physical_data(physical_data);
     previous_vertex = next_vertex;
   }
@@ -69,6 +69,8 @@ int main(int argc, char *argv[]) {
   start->set_to_inflow(mc::heart_beat_inflow(4.));
   //start->set_to_inflow([](double t) { return 1.;});
 
+  graph->finalize_bcs();
+
   // partition graph
   // TODO: app crashes if not enabled -> fix this!
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
@@ -79,13 +81,12 @@ int main(int argc, char *argv[]) {
   auto dof_map_transport = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, false);
 
-  mc::Transport transport(MPI_COMM_WORLD, graph,  dof_map_flow, dof_map_transport);
+  mc::Transport transport(MPI_COMM_WORLD, graph, dof_map_flow, dof_map_transport);
 
-  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map_flow);
-  solver.set_tau(tau);
+  mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map_flow, degree);
   solver.use_ssp_method();
 
-  std::vector< double > u_prev(dof_map_flow->num_dof(), 0);
+  std::vector<double> u_prev(dof_map_flow->num_dof(), 0);
 
   interpolate_constant(MPI_COMM_WORLD, *graph, *dof_map_flow, 1., 0, u_prev);
   interpolate_constant(MPI_COMM_WORLD, *graph, *dof_map_flow, 1., 1, u_prev);
@@ -97,13 +98,20 @@ int main(int argc, char *argv[]) {
 
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "transport_solution");
 
-  mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map_flow, dof_map_transport);
+  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "transport_solution", graph);
+  csv_writer.add_setup_data(dof_map_flow, solver.Q_component, "q");
+  csv_writer.add_setup_data(dof_map_flow, solver.A_component, "a");
+  csv_writer.add_setup_data(dof_map_transport, 0, "c");
+  csv_writer.setup();
 
   const auto begin_t = std::chrono::steady_clock::now();
+  double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
 
-    transport.solve(it*tau, tau, solver.get_solution());
-    solver.solve();
+    transport.solve(t, tau, solver.get_solution());
+    solver.solve(tau, t);
+
+    t += tau;
 
     if (it % output_interval == 0) {
       std::cout << "iter " << it << std::endl;
@@ -113,15 +121,18 @@ int main(int argc, char *argv[]) {
       // save solution
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_transport, 0, transport.get_solution(), points, c_vertex_values);
 
-      csv_writer.write(solver.get_time(), solver.get_solution(), transport.get_solution());
+      csv_writer.add_data("q", solver.get_solution());
+      csv_writer.add_data("a", solver.get_solution());
+      csv_writer.add_data("c", transport.get_solution());
+      csv_writer.write(t);
 
       pvd_writer.set_points(points);
       pvd_writer.add_vertex_data("c", c_vertex_values);
-      pvd_writer.write(it*tau);
+      pvd_writer.write(t);
     }
 
     // break
-    if (it*tau > t_end + 1e-12)
+    if (t > t_end + 1e-12)
       break;
   }
 

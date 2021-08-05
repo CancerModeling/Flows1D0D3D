@@ -9,20 +9,20 @@
 #include <cxxopts.hpp>
 #include <memory>
 
+#include "macrocirculation/0d_boundary_conditions.hpp"
 #include "macrocirculation/communication/mpi.hpp"
+#include "macrocirculation/csv_vessel_tip_writer.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
-#include "macrocirculation/graph_flow_and_concentration_writer.hpp"
+#include "macrocirculation/graph_csv_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
-#include "macrocirculation/set_0d_tree_boundary_conditions.hpp"
 #include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/write_0d_data_to_json.hpp"
 
 namespace mc = macrocirculation;
 
@@ -70,9 +70,11 @@ int main(int argc, char *argv[]) {
 
   graph->find_vertex_by_name(args["inlet-name"].as<std::string>())->set_to_inflow(mc::heart_beat_inflow(args["heart-amplitude"].as<double>()));
 
-  set_0d_tree_boundary_conditions(graph, "bg_");
+  // set_0d_tree_boundary_conditions(graph, "bg_");
+  graph->finalize_bcs();
 
-  mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
+  // mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
+  mc::flow_mesh_partitioner(MPI_COMM_WORLD, *graph, degree);
 
   auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map_flow->create(MPI_COMM_WORLD, *graph, 2, degree, false);
@@ -89,8 +91,7 @@ int main(int argc, char *argv[]) {
   std::cout << "tau = " << tau << ", tau_out = " << tau_out << ", output_interval = " << output_interval << std::endl;
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver<degree> flow_solver(MPI_COMM_WORLD, graph, dof_map_flow);
-  flow_solver.set_tau(tau);
+  mc::ExplicitNonlinearFlowSolver flow_solver(MPI_COMM_WORLD, graph, dof_map_flow, degree);
   flow_solver.use_ssp_method();
 
   mc::Transport transport_solver(MPI_COMM_WORLD, graph, dof_map_flow, dof_map_transport);
@@ -106,8 +107,14 @@ int main(int argc, char *argv[]) {
   // vessels ids do not change, thus we can precalculate them
   mc::fill_with_vessel_id(MPI_COMM_WORLD, *graph, points, vessel_ids);
 
-  mc::GraphFlowAndConcentrationWriter csv_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "data", graph, dof_map_flow, dof_map_transport);
+  mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "abstract_33_vessels", graph);
+  csv_writer.add_setup_data(dof_map_flow, flow_solver.A_component, "a");
+  csv_writer.add_setup_data(dof_map_flow, flow_solver.Q_component, "q");
+  csv_writer.add_setup_data(dof_map_transport, 0, "c");
+  csv_writer.setup();
+
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "abstract_33_vessels");
+  mc::CSVVesselTipWriter vessel_tip_writer(MPI_COMM_WORLD, "output", "abstract_33_vessels_tips", graph, dof_map_flow);
 
   // output for 0D-Model:
   std::vector<double> list_t;
@@ -130,14 +137,20 @@ int main(int argc, char *argv[]) {
   }
 
   const auto begin_t = std::chrono::steady_clock::now();
+  double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
     transport_solver.solve(it * tau, tau, flow_solver.get_solution());
-    flow_solver.solve();
+    flow_solver.solve(tau, t);
+
+    t += tau;
 
     if (it % output_interval == 0) {
-      std::cout << "iter = " << it << ", t = " << flow_solver.get_time() << std::endl;
+      std::cout << "iter = " << it << ", t = " << t << std::endl;
 
-      csv_writer.write(it * tau, flow_solver.get_solution(), transport_solver.get_solution());
+      csv_writer.add_data("a", flow_solver.get_solution());
+      csv_writer.add_data("q", flow_solver.get_solution());
+      csv_writer.add_data("c", transport_solver.get_solution());
+      csv_writer.write(t);
 
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, 0, flow_solver.get_solution(), points, Q_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, 1, flow_solver.get_solution(), points, A_vertex_values);
@@ -152,7 +165,7 @@ int main(int argc, char *argv[]) {
       pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
       pvd_writer.add_vertex_data("c", c_vertex_values);
       pvd_writer.add_vertex_data("vessel_id", vessel_ids);
-      pvd_writer.write(flow_solver.get_time());
+      pvd_writer.write(t);
 
       for (auto &v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
         auto &vertex = *graph->get_vertex(v_id);
@@ -189,11 +202,11 @@ int main(int argc, char *argv[]) {
         }
       }
       list_t.push_back(it * tau);
-      mc::write_0d_data_to_json(args["output-directory"].as<std::string>() + "/windkessel_values.json", graph, list_t, list_0d);
+      vessel_tip_writer.write(t, flow_solver.get_solution());
     }
 
     // break
-    if (flow_solver.get_time() > t_end + 1e-12)
+    if (t > t_end + 1e-12)
       break;
   }
 

@@ -8,6 +8,7 @@
 #ifndef TUMORMODELS_GRAPH_CSV_WRITER_HPP
 #define TUMORMODELS_GRAPH_CSV_WRITER_HPP
 
+#include <map>
 #include <memory>
 #include <mpi.h>
 #include <string>
@@ -24,28 +25,61 @@ public:
   GraphCSVWriter(MPI_Comm comm,
                  std::string foldername,
                  std::string datasetname,
-                 std::shared_ptr<GraphStorage> graph,
-                 std::shared_ptr<DofMap> dof_map,
-                 std::vector<std::string> component_names);
+                 std::shared_ptr<GraphStorage> graph);
 
-  void write(double t, const std::vector<double> &data) const;
+  void add_setup_data(
+    const std::shared_ptr<DofMap> &dof_map,
+    size_t component_idx,
+    const std::string &component_name);
 
-  void write(double t, const PetscVec &data) const;
+  void setup();
 
+  void add_data(const std::string &name, const PetscVec &u);
+  void add_data(const std::string &name, const std::vector<double> &u);
+
+  void write(double t);
 
 private:
   MPI_Comm d_comm;
   std::string d_foldername;
   std::string d_datasetname;
+
   std::shared_ptr<GraphStorage> d_graph;
-  std::shared_ptr<DofMap> d_dof_map;
-  std::vector<std::string> d_component_names;
 
-  std::string get_name(std::size_t component, std::size_t vessel) const;
-  std::string get_name_times() const;
+  bool is_setup;
 
-  template< typename FunctionType >
-  void write_generic(double t, const FunctionType &data) const;
+  std::vector<double> time_steps;
+
+  struct Data {
+    std::shared_ptr<DofMap> dof_map;
+    size_t component_idx;
+    std::string component_name;
+  };
+
+  std::map<std::string, Data> d_data_map;
+
+  std::map<std::string, std::reference_wrapper<const PetscVec>> petsc_data;
+  std::map<std::string, std::reference_wrapper<const std::vector<double>>> gmm_data;
+
+private:
+  void reset_data();
+
+  void clear_files();
+
+  void write_meta_file();
+
+  void write_times();
+
+  std::string get_meta_file_name() const;
+
+  std::string get_csv_file_name(const std::string &component_name, size_t edge_id) const;
+  std::string get_csv_file_path(const std::string &component_name, size_t edge_id) const;
+
+  std::string get_time_csv_file_name() const;
+  std::string get_time_csv_file_path() const;
+
+  template<typename VectorType>
+  void write_generic(const Data &data, const VectorType &v) const;
 };
 
 } // namespace macrocirculation

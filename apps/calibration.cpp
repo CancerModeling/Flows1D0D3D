@@ -18,8 +18,8 @@
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
+#include "macrocirculation/rcr_estimator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/windkessel_calibrator.hpp"
 
 namespace mc = macrocirculation;
 
@@ -69,6 +69,8 @@ int main(int argc, char *argv[]) {
       v->set_to_free_outflow();
   }
 
+  graph->finalize_bcs();
+
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
   auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
@@ -84,8 +86,7 @@ int main(int argc, char *argv[]) {
   std::cout << "tau = " << tau << ", tau_out = " << tau_out << ", output_interval = " << output_interval << std::endl;
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver<degree> flow_solver(MPI_COMM_WORLD, graph, dof_map_flow);
-  flow_solver.set_tau(tau);
+  mc::ExplicitNonlinearFlowSolver flow_solver(MPI_COMM_WORLD, graph, dof_map_flow, degree);
   flow_solver.use_ssp_method();
 
   std::vector<mc::Point> points;
@@ -94,29 +95,33 @@ int main(int argc, char *argv[]) {
   std::vector<double> p_total_vertex_values;
   std::vector<double> p_static_vertex_values;
 
-  mc::WindkesselCalibrator calibrator(graph, args["verbose"].as<bool>());
+  mc::FlowIntegrator flow_integrator(graph);
 
   const auto begin_t = std::chrono::steady_clock::now();
+  double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    flow_solver.solve();
+    flow_solver.solve(tau, t);
+
+    t += tau;
 
     // add total flows
-    calibrator.update_flow(flow_solver, tau);
+    flow_integrator.update_flow(flow_solver, tau);
 
     if (it % output_interval == 0) {
       if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-        std::cout << "iter = " << it << ", t = " << flow_solver.get_time() << std::endl;
-
-      // double estimate parameters
-      calibrator.estimate_parameters_local();
+        std::cout << "iter = " << it << ", t = " << t << std::endl;
     }
 
     // break
-    if (flow_solver.get_time() > t_end + 1e-12)
+    if (t > t_end + 1e-12)
       break;
   }
 
-  mc::parameters_to_json(args["output-file"].as<std::string>(), calibrator.estimate_parameters(), graph);
+  auto flows = flow_integrator.get_free_outflow_data();
+  mc::RCREstimator rcr_estimator({graph});
+  auto rcr_parameters = rcr_estimator.estimate_parameters(flows.flows, flows.total_flow);
+
+  mc::parameters_to_json(args["output-file"].as<std::string>(), rcr_parameters, graph);
 
   const auto end_t = std::chrono::steady_clock::now();
   const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();

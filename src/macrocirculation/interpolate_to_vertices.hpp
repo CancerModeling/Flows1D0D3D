@@ -10,12 +10,14 @@
 
 #include <mpi.h>
 #include <vector>
+#include <functional>
 
 namespace macrocirculation {
 
 class GraphStorage;
 class DofMap;
 class Point;
+class Edge;
 
 void linear_interpolate_points(const Point &left,
                                const Point &right,
@@ -33,6 +35,10 @@ void interpolate_to_vertices(MPI_Comm comm,
 void add_discontinuous_points( const std::vector< Point >& embedded_points, std::vector< Point >& points );
 
 void fill_with_vessel_id(const MPI_Comm comm, const GraphStorage &graph, std::vector<Point> &points, std::vector<double> &interpolated);
+
+void fill_with_radius(const MPI_Comm comm, const GraphStorage &graph, std::vector<Point> &points, std::vector<double> &interpolated);
+
+void fill_with_edge_parameter(const MPI_Comm comm, const GraphStorage &graph, std::function< double(const Edge&)> extractor, std::vector<Point> &points, std::vector<double> &interpolated);
 
 } // namespace macrocirculation
 

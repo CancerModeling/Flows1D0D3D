@@ -51,8 +51,7 @@ PhysicalData PhysicalData::set_from_data(double elastic_modulus, double wall_thi
 
   const double A0 = std::pow(radius, 2) * M_PI;
 
-  // const double G0 = calculate_G0(d_wall_width, d_elastic_modulus, d_poisson_ratio, A0);
-  const double G0 = 4.0 / 3.0 * std::sqrt(M_PI) * E * wall_thickness / std::sqrt(A0);
+  const double G0 = calculate_G0(wall_thickness, E, A0);
 
   // the viscosity
   const double viscosity = viscosity_bloodplasma(radius);
@@ -79,7 +78,8 @@ double default_inflow_function(double) {
 Vertex::Vertex(std::size_t id)
     : Primitive(id),
       p_flow_type(FlowType::Undefined),
-      p_inflow_value(default_inflow_function) {}
+      p_inflow_value(default_inflow_function),
+      d_bcs_finalized(false) {}
 
 const std::vector<std::size_t> &Vertex::get_edge_neighbors() const {
   return p_neighbors;
@@ -100,16 +100,28 @@ bool Vertex::is_bifurcation() const {
 }
 
 void Vertex::set_to_inflow(std::function<double(double)> value) {
+  if (!is_leaf())
+    throw std::runtime_error("inflow bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
   p_flow_type = FlowType::Inflow;
   p_inflow_value = std::move(value);
 }
 
 void Vertex::set_to_free_outflow() {
+  if (!is_leaf())
+    throw std::runtime_error("free outflow bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
   p_flow_type = FlowType::FreeOutflow;
   p_inflow_value = default_inflow_function;
 }
 
 void Vertex::set_to_windkessel_outflow(double r, double c) {
+  if (!is_leaf())
+    throw std::runtime_error("windkessel bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
   p_flow_type = FlowType::Windkessel;
   p_peripheral_vessel_data.resistance = r;
   p_peripheral_vessel_data.compliance = c;
@@ -117,16 +129,50 @@ void Vertex::set_to_windkessel_outflow(double r, double c) {
   p_peripheral_vessel_data.p_out = 5.0 * 1.333322;
 }
 
-void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances) {
+void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, size_t furcation_number) {
+  if (!is_leaf())
+    throw std::runtime_error("tree bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
   p_flow_type = FlowType::VesselTree;
   p_vessel_tree_data.p_out = p;
   p_vessel_tree_data.resistances = resistances;
   p_vessel_tree_data.capacitances = capacitances;
+  p_vessel_tree_data.furcation_number = furcation_number;
 }
 
-const PeripheralVesselData &Vertex::get_peripheral_vessel_data() const { return p_peripheral_vessel_data; }
+bool Vertex::bc_finalized() const { return d_bcs_finalized; }
 
-const VesselTreeData &Vertex::get_vessel_tree_data() const { return p_vessel_tree_data; }
+void Vertex::finalize_bcs() { d_bcs_finalized = true; }
+
+const PeripheralVesselData &Vertex::get_peripheral_vessel_data() const {
+  assert(is_windkessel_outflow());
+  return p_peripheral_vessel_data;
+}
+
+const VesselTreeData &Vertex::get_vessel_tree_data() const {
+  assert(is_vessel_tree_outflow());
+  return p_vessel_tree_data;
+}
+
+const RCLModel &Vertex::get_rcl_data() const {
+  assert(is_rcl_outflow());
+  return p_rcl_data;
+}
+
+bool Vertex::is_rcl_outflow() const {
+  return p_flow_type == FlowType::RCLModel;
+}
+
+const LinearCharacteristicData &Vertex::get_linear_characteristic_data() const {
+  assert(is_linear_characteristic());
+  return p_linear_characteristic_data;
+}
+
+const NonlinearCharacteristicData &Vertex::get_nonlinear_characteristic_data() const {
+  assert(is_nonlinear_characteristic());
+  return p_nonlinear_characteristic_data;
+}
 
 bool Vertex::is_free_outflow() const { return p_flow_type == FlowType::FreeOutflow; }
 
@@ -138,8 +184,71 @@ bool Vertex::is_inflow() const {
   return p_flow_type == FlowType::Inflow;
 }
 
+bool Vertex::is_linear_characteristic_inflow() const {
+  return p_flow_type == FlowType::LinearCharacteristic;
+}
+
+bool Vertex::is_nonlinear_characteristic_inflow() const {
+  return p_flow_type == FlowType::NonlinearCharacteristic;
+}
+
 double Vertex::get_inflow_value(double time) const {
   return p_inflow_value(time);
+}
+
+void Vertex::set_to_linear_characteristic_inflow(double C, double L, bool points_towards_vertex, double p, double q) {
+  if (!is_leaf())
+    throw std::runtime_error("linear characteristic inflow can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
+  p_flow_type = FlowType::LinearCharacteristic;
+  double sigma = points_towards_vertex ? +1 : -1;
+  p_linear_characteristic_data.C = C;
+  p_linear_characteristic_data.L = L;
+  p_linear_characteristic_data.points_towards_vertex = points_towards_vertex;
+  p_linear_characteristic_data.p = p;
+  p_linear_characteristic_data.q = sigma * q;
+}
+
+void Vertex::set_to_vessel_rcl_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, const std::vector<double> &inductances) {
+  if (!is_leaf())
+    throw std::runtime_error("rcl outflow can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
+  p_flow_type = FlowType::RCLModel;
+  p_rcl_data.resistances = resistances;
+  p_rcl_data.capacitances = capacitances;
+  p_rcl_data.inductances = inductances;
+  p_rcl_data.p_out = p;
+}
+
+void Vertex::set_to_nonlinear_characteristic_inflow(double G0, double A0, double rho, bool points_towards_vertex, double p, double q) {
+  if (!is_leaf())
+    throw std::runtime_error("nonlinear characteristic inflow can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
+  p_flow_type = FlowType::NonlinearCharacteristic;
+  double sigma = points_towards_vertex ? +1 : -1;
+  p_nonlinear_characteristic_data.G0 = G0;
+  p_nonlinear_characteristic_data.A0 = A0;
+  p_nonlinear_characteristic_data.rho = rho;
+  p_nonlinear_characteristic_data.points_towards_vertex = points_towards_vertex;
+  p_nonlinear_characteristic_data.p = p;
+  p_nonlinear_characteristic_data.q = sigma * q;
+}
+
+void Vertex::update_linear_characteristic_inflow(double p, double q) {
+  assert(flow_type == FlowType::LinearCharacteristic);
+  double sigma = p_linear_characteristic_data.points_towards_vertex ? +1 : -1;
+  p_linear_characteristic_data.p = p;
+  p_linear_characteristic_data.q = sigma * q;
+}
+
+void Vertex::update_nonlinear_characteristic_inflow(double p, double q) {
+  assert(flow_type == FlowType::NonlinearCharacteristic);
+  double sigma = p_nonlinear_characteristic_data.points_towards_vertex ? +1 : -1;
+  p_nonlinear_characteristic_data.p = p;
+  p_nonlinear_characteristic_data.q = sigma * q;
 }
 
 bool Edge::is_pointing_to(std::size_t vertex_id) const {
@@ -450,6 +559,13 @@ std::shared_ptr<Vertex> GraphStorage::find_vertex_by_name(const std::string &nam
     throw std::runtime_error("vertex " + name + " not found in graph storage.");
 
   return pos->second;
+}
+
+void GraphStorage::finalize_bcs() {
+  for (auto it : p_vertices) {
+    auto &vertex = *it.second;
+    vertex.finalize_bcs();
+  }
 }
 
 } // namespace macrocirculation

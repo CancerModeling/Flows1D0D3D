@@ -29,7 +29,7 @@ public:
         d_A0(A0) {}
 
   void operator()(double t,
-                  const mc::Edge&,
+                  const mc::Edge &,
                   const std::vector<double> &ps,
                   const std::vector<double> &Q,
                   const std::vector<double> &A,
@@ -86,20 +86,21 @@ double run_scenario(std::size_t num_micro_edges_per_segment, double tau, bool us
   auto end = graph->create_vertex();
   auto vessel = graph->connect(*start, *end, num_micro_edges_per_segment);
   vessel->add_embedding_data(mc::EmbeddingData{{mc::Point(0, 0, 0), mc::Point(length, 0, 0)}});
-  vessel->add_physical_data(mc::PhysicalData{0., G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0/M_PI)});
+  vessel->add_physical_data(mc::PhysicalData{0., G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0 / M_PI)});
+
+  // set inflow boundary conditions
+  start->set_to_inflow([](auto) { return 0.; });
+  end->set_to_inflow([](auto) { return 0.; });
+
+  graph->finalize_bcs();
 
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   //mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
-  // set inflow boundary conditions
-  start->set_to_inflow([](auto) { return 0.; });
-  end->set_to_inflow([](auto) { return 0.; });
-
   // configure solver
-  mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
-  solver.set_tau(tau);
+  mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
   if (use_ssp)
     solver.use_ssp_method();
   else
@@ -112,8 +113,10 @@ double run_scenario(std::size_t num_micro_edges_per_segment, double tau, bool us
 
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "spatial_convergence_study");
 
+  double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    solver.solve();
+    solver.solve(tau, t);
+    t += tau;
 
     mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 0, solver.get_solution(), points, Q_vertex_values);
     mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, 1, solver.get_solution(), points, A_vertex_values);
@@ -121,10 +124,10 @@ double run_scenario(std::size_t num_micro_edges_per_segment, double tau, bool us
     pvd_writer.set_points(points);
     pvd_writer.add_vertex_data("Q", Q_vertex_values);
     pvd_writer.add_vertex_data("A", A_vertex_values);
-    pvd_writer.write(solver.get_time());
+    pvd_writer.write(t);
 
     // break
-    if (solver.get_time() >= t_end - 1e-12)
+    if (t >= t_end - 1e-12)
       break;
   }
 
@@ -133,9 +136,9 @@ double run_scenario(std::size_t num_micro_edges_per_segment, double tau, bool us
                                        solver.get_dof_map(),
                                        1,
                                        solver.get_solution(),
-                                       [&solver](const std::vector<double> &p, std::vector<double> &out) {
+                                       [&solver, &t](const std::vector<double> &p, std::vector<double> &out) {
                                          for (std::size_t qp = 0; qp < p.size(); qp += 1)
-                                           out[qp] = get_analytic_solution_A(solver.get_time(), p[qp], length);
+                                           out[qp] = get_analytic_solution_A(t, p[qp], length);
                                        });
   const double error_Q = mc::errornorm(MPI_COMM_WORLD,
                                        *graph,
@@ -160,16 +163,18 @@ void run_temporal_convergence_study(std::size_t num_micro_edges_per_segment, std
   auto end = graph->create_vertex();
   auto vessel = graph->connect(*start, *end, num_micro_edges_per_segment);
   vessel->add_embedding_data(mc::EmbeddingData{{mc::Point(0, 0, 0), mc::Point(length, 0, 0)}});
-  vessel->add_physical_data(mc::PhysicalData{0, G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0/M_PI)});
+  vessel->add_physical_data(mc::PhysicalData{0, G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0 / M_PI)});
+
+  // set inflow boundary conditions
+  start->set_to_inflow([](auto) { return 0.; });
+  end->set_to_inflow([](auto) { return 0.; });
+
+  graph->finalize_bcs();
 
   auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
   //mc::naive_mesh_partitioner( *graph, MPI_COMM_WORLD );
-
-  // set inflow boundary conditions
-  start->set_to_inflow([](auto) { return 0.; });
-  end->set_to_inflow([](auto) { return 0.; });
 
   const double h = 20. / num_micro_edges_per_segment;
   const double tau_max = get_tau(h, K_CFL, c0);
@@ -179,13 +184,15 @@ void run_temporal_convergence_study(std::size_t num_micro_edges_per_segment, std
   // get reference solution for smallest time step.
   std::vector<double> reference_solution;
   {
-    mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
+    mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
     solver.get_rhs_evaluator().set_rhs_S(test_S(length, c0, A0));
-    solver.set_tau(tau_min);
     solver.use_ssp_method();
+
+    double t = 0;
     for (std::size_t it = 0; it < max_iter; it += 1) {
-      solver.solve();
-      if (solver.get_time() >= t_end - 1e-12)
+      solver.solve(tau_min, t);
+      t += tau_min;
+      if (t >= t_end - 1e-12)
         break;
     }
     reference_solution = solver.get_solution();
@@ -205,13 +212,17 @@ void run_temporal_convergence_study(std::size_t num_micro_edges_per_segment, std
     const auto begin_t = std::chrono::steady_clock::now();
 
     const double tau = tau_max / (1 << m);
-    mc::ExplicitNonlinearFlowSolver<degree> solver(MPI_COMM_WORLD, graph, dof_map);
+
+    mc::ExplicitNonlinearFlowSolver solver(MPI_COMM_WORLD, graph, dof_map, degree);
     solver.get_rhs_evaluator().set_rhs_S(test_S(length, c0, A0));
-    solver.set_tau(tau);
     solver.use_ssp_method();
+
+    double t = 0;
     for (std::size_t it = 0; it < max_iter; it += 1) {
-      solver.solve();
-      if (solver.get_time() >= t_end - 1e-12)
+      solver.solve(tau, t);
+      t += tau;
+
+      if (t >= t_end - 1e-12)
         break;
     }
 
@@ -243,7 +254,7 @@ void run_spatial_convergence_study(std::size_t max_m) {
     const std::size_t num_edges_per_segment = 1 << (3 + m);
     const double error = run_scenario<degree>(num_edges_per_segment, tau, true);
     const double h = 20. / num_edges_per_segment;
-    const double rate = error/previous_error;
+    const double rate = error / previous_error;
     f << h << ", " << error << std::endl;
 
     const auto end = std::chrono::steady_clock::now();

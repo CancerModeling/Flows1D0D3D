@@ -108,17 +108,33 @@ public:
   /*! @brief Updates the shape function values on the given edge. */
   void reinit(double length);
 
+  /*! @returns Returns a list of basis functions evaluated at the quadrature points.
+   *           The list is structured by phi[ <shape-function-index> ][ <quadrature-point-index> ],
+   *           which is the same as in libmesh.
+   */
   const std::vector<std::vector<double>> &get_phi() const { return d_phi; };
 
+  /*! @returns Returns a list of basis functions evaluated at the boundary poitns.
+   *           The list is structured by phi[ <shape-function-index> ][ <boundary-index> ],
+   *           where the left boundary has index 0 and the right boundary an index of 1.
+   */
   const std::vector<std::vector<double>> &get_phi_boundary() const { return d_phi_boundary; };
 
+  /*! @returns Returns a list of derivative of basis functions evaluated at the quadrature points.
+   *           The list is structured by dphi[ <shape-function-index> ][ <quadrature-point-index> ],
+   *           which is the same as in libmesh.
+   */
   const std::vector<std::vector<double>> &get_dphi() const { return d_dphi; };
 
+  /*! @returns Returns a list of quadrature weights at each quadrature point. */
   const std::vector<double> &get_JxW() const { return d_JxW; };
 
   /*! @brief Evaluates the function with the given dof values at the quadratures points. */
   void evaluate_dof_at_quadrature_points(const std::vector<double> &dof_values,
                                          std::vector<double> &quadrature_point_values) const;
+
+  /*! @brief Evaluates the finite element basis functions on the interval \f$[-1,+1]\f$ at \f$s\in[-1,+1]\f$. */
+  static double evaluate_dof(const std::vector<double> &dof_values, double s);
 
   /*! @brief Evaluates the function with the given dof values at the quadratures points. */
   EdgeBoundaryValues evaluate_dof_at_boundary_points(const std::vector<double> &dof_values) const;
@@ -126,8 +142,10 @@ public:
   /*! @brief Returns the dof values for the linear function with value v0 at the left and v1 at the right. */
   void interpolate_linear_function(double v0, double v1, std::vector<double> &dof_values) const;
 
+  /*! @returns The number of quadrature point for which this finite-element was constructed. */
   std::size_t num_quad_points() const;
 
+  /*! @returns The degree of the legendre basis. */
   std::size_t get_degree() const;
 
 private:

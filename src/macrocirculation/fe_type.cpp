@@ -41,6 +41,9 @@ FETypeNetwork::FETypeNetwork(QuadratureFormula qf, std::size_t degree)
       d_dphi[3][qp] = NAN;
     }
 
+    if (d_degree > 3)
+      throw std::runtime_error("degree 3 not supported yet");
+
     d_JxW[qp] = NAN;
   }
 
@@ -63,6 +66,9 @@ FETypeNetwork::FETypeNetwork(QuadratureFormula qf, std::size_t degree)
       d_phi_boundary[0][3] = legendre<3>(-1.);
       d_phi_boundary[1][3] = legendre<3>(+1.);
     }
+
+    if (d_degree > 3)
+      throw std::runtime_error("degree 3 not supported yet");
   }
 }
 
@@ -76,6 +82,9 @@ void FETypeNetwork::reinit(double length) {
 
     if (d_degree > 2)
       d_dphi[3][qp] = diff_legendre<3>(d_qf.ref_points[qp]) * 2. / length;
+
+    if (d_degree > 3)
+      throw std::runtime_error("degree 3 not supported yet");
 
     d_JxW[qp] = d_qf.ref_weights[qp] * length / 2.;
   }
@@ -92,6 +101,26 @@ void FETypeNetwork::evaluate_dof_at_quadrature_points(const std::vector<double> 
       quadrature_point_values[qp] += d_phi[i][qp] * dof_values[i];
     }
   }
+}
+
+double FETypeNetwork::evaluate_dof(const std::vector<double> &dof_values, double s) {
+  const size_t degree =  dof_values.size() - 1;
+
+  double value = legendre<0>(s) * dof_values[0];
+
+  if (degree > 0)
+    value += legendre<1>(s) * dof_values[1];
+
+  if (degree > 1)
+    value += legendre<2>(s) * dof_values[2];
+
+  if (degree > 2)
+    value += legendre<3>(s) * dof_values[3];
+
+  if (degree > 3)
+    throw std::runtime_error("degree 3 not implemented yet");
+
+  return value;
 }
 
 std::size_t FETypeNetwork::num_quad_points() const {
@@ -123,6 +152,9 @@ EdgeBoundaryValues FETypeNetwork::evaluate_dof_at_boundary_points(const std::vec
     values.right += legendre<3>(+1) * dof_values[3];
   }
 
+  if (d_degree > 3)
+    throw std::runtime_error("degree 3 not supported yet");
+
   return values;
 }
 
@@ -144,6 +176,9 @@ void FETypeNetwork::interpolate_linear_function(double v0, double v1, std::vecto
 
   if (d_degree > 2)
     dof_values[3] = 0;
+
+  if (d_degree > 3)
+    throw std::runtime_error("degree 3 not supported yet");
 }
 
 QuadraturePointMapper::QuadraturePointMapper(const QuadratureFormula &qf)

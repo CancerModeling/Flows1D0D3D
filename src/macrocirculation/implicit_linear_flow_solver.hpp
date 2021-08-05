@@ -25,6 +25,7 @@ class FETypeNetwork;
 class Point;
 class LocalEdgeDofMap;
 class Edge;
+class Vertex;
 
 void assemble_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, PetscVec &mass_vec);
 
@@ -38,24 +39,58 @@ void interpolate_to_vertices(const MPI_Comm comm,
                              std::vector<Point> &points,
                              std::vector<double> &interpolated);
 
-class LinearFlowSolver {
+/*! @brief An implicit euler for the  linear flow equations. */
+class ImplicitLinearFlowSolver {
 public:
-  LinearFlowSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map, size_t degree);
+  ImplicitLinearFlowSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map, size_t degree);
 
-  const size_t p_component = 0;
-  const size_t q_component = 1;
+  /*! @brief The component index of the pressure p inside the dof map.
+   *         This can be used inside a local dof map to get the dof indices for a single component. */
+  static const size_t p_component = 0;
+
+  /*! @brief The component index of the flow q inside the dof map.
+   *         This can be used inside a local dof map to get the dof indices for a single component. */
+  static const size_t q_component = 1;
+
+  const DofMap &get_dof_map() const;
 
   const PetscVec &get_solution() const { return *u; }
 
+  /*! @brief Requests the Jacobi preconditioner for the linear solver, which yields (more) reproducible results for unit-testing. */
+  void use_pc_jacobi();
+
+  /*! @brief Sets the initial constant value of p and q. */
+  void set_initial_value(double p, double q);
+
+  /*! @brief Sets up the matrices for the given time step size tau. */
   void setup(double tau);
 
+  /*! @brief Solves the system. For the _next_ time step t.
+   *
+   * @param tau The current time step width.
+   * @param t The (future) time for the next time step. */
   void solve(double tau, double t);
 
+  /*! @brief Assembles the left-hand-side matrix for the given time step. */
   void assemble_matrix(double tau);
 
+  /*! @brief Assembles the right-hand-side vectors for the given time step at the given time. */
   void assemble_rhs(double tau, double t);
 
+  /*! @brief Assembles matrix and right-hand-side. */
   void assemble(double tau, double t);
+
+  static double get_C(const Edge &e);
+
+  static double get_L(const Edge &e);
+
+  static double get_R(const Edge &e);
+
+  /*! @brief Returns the current p and q values at a given vertex. */
+  void get_1d_pq_values_at_vertex(const Vertex &v, double &p, double &q) const;
+
+  /*! @brief Evaluates p and q of the current solution on the edge e parametrized on [0, 1] at \f$ s \in [0,1] \f$. */
+  void evaluate_1d_pq_values(const Edge &e, double s, double &p, double &q) const;
 
 private:
   static Eigen::MatrixXd create_mass(const FETypeNetwork &fe, const LocalEdgeDofMap &local_dof_map);
@@ -68,12 +103,6 @@ private:
   static Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row, BoundaryPointType col);
 
   static Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row);
-
-  static double get_C(const Edge &e);
-
-  static double get_L(const Edge &e);
-
-  static double get_R(const Edge &e);
 
   void assemble_matrix_cells(double tau);
 
@@ -91,7 +120,15 @@ private:
 
   void assemble_matrix_0d_model(double tau);
 
+  void assemble_matrix_rcl_model(double tau);
+
   void assemble_rhs_0d_model(double tau);
+
+  void assemble_rhs_rcl_model(double tau);
+
+  void assemble_matrix_characteristic(double tau);
+
+  void assemble_rhs_characteristic(double tau);
 
 private:
   MPI_Comm d_comm;

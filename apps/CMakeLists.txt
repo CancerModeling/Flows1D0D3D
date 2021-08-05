@@ -41,6 +41,11 @@ target_link_libraries(${ProjectName}Abstract33VesselsGeometry cxxopts)
 
 add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
 target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})
+target_link_libraries(${ProjectName}CombinedGeometry cxxopts)
+
+add_executable(${ProjectName}Full1D0D3DModel full_1D0D3D_model.cpp)
+target_link_libraries(${ProjectName}Full1D0D3DModel ${ProjectLib})
+target_link_libraries(${ProjectName}Full1D0D3DModel cxxopts)
 
 add_executable(${ProjectName}Calibration calibration.cpp)
 target_link_libraries(${ProjectName}Calibration ${ProjectLib})
@@ -54,6 +59,11 @@ add_executable(${ProjectName}LinearFlowBreastGeometry linear_flow_breast_geometr
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${ProjectLib})
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${LIBMESH_LIBRARIES}) # libmesh for eigen
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry cxxopts)
+
+add_executable(${ProjectName}ExplicitImplicitScheme explicit_implicit_scheme.cpp)
+target_link_libraries(${ProjectName}ExplicitImplicitScheme ${ProjectLib})
+target_link_libraries(${ProjectName}ExplicitImplicitScheme ${LIBMESH_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}ExplicitImplicitScheme cxxopts)
 
 add_executable(${ProjectName}Transport transport_test.cpp)
 target_link_libraries(${ProjectName}Transport ${ProjectLib})
@@ -107,7 +117,8 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}PartPerfusionTest
                    ${ProjectName}LinearFlow
                    ${ProjectName}VoxelsToMesh
-                   ${ProjectName}DarcyRegOutlets)
+                   ${ProjectName}DarcyRegOutlets
+                   ${ProjectName}Full1D0D3DModel)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
@@ -144,8 +155,8 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_windkessel.py $<TARGET_FILE_DIR:${TargetName}>/plot_windkessel.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_windkessel.py")
+            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessel_tips.py $<TARGET_FILE_DIR:${TargetName}>/plot_vessel_tips.py
+            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessel_tips.py")
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD

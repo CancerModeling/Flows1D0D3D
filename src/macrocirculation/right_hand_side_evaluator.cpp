@@ -304,6 +304,8 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
       // we copy the resistances vector:
       std::vector<double> R{vtd.resistances};
 
+      const auto n = static_cast< double >(vtd.furcation_number);
+
       // std::cout << "vid " << vertex->get_id() << " Q_out = " << Q_out << std::endl;
 
       // first
@@ -311,13 +313,14 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
 
       // std::cout << rhs[vertex_dofs[0]] << std::endl;
 
+
       // middle
       for (size_t k = 1; k < p_c.size() - 1; k += 1)
-        rhs[vertex_dofs[k]] = 1. / C[k] * ((p_c[k - 1] - p_c[k]) / (2 * R[k - 1]) - (p_c[k] - p_c[k + 1]) / R[k]);
+        rhs[vertex_dofs[k]] = 1. / C[k] * ((p_c[k - 1] - p_c[k]) / (n * R[k - 1]) - (p_c[k] - p_c[k + 1]) / R[k]);
 
       //last
       const size_t k_last = p_c.size() - 1;
-      rhs[vertex_dofs[k_last]] = 1. / C[k_last] * ((p_c[k_last - 1] - p_c[k_last]) / (2 * R[k_last - 1]) - (p_c[k_last] - p_out) / (R[k_last]));
+      rhs[vertex_dofs[k_last]] = 1. / C[k_last] * ((p_c[k_last - 1] - p_c[k_last]) / (n * R[k_last - 1]) - (p_c[k_last] - p_out) / (R[k_last]));
     }
   }
 }

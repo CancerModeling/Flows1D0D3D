@@ -137,12 +137,23 @@ void DofMap::create(MPI_Comm comm,
 
     for (const auto &v_id : graph.get_active_vertex_ids(rank)) {
       const auto vertex = graph.get_vertex(v_id);
+
+      if (!vertex->bc_finalized())
+        throw std::runtime_error(
+          "Boundary conditions have to be finalized before distributing the dof on primitives.\n"
+          "Please call GraphStorage::finalize_bcs() before.");
+
+
       if (vertex->is_windkessel_outflow()) {
         add_local_dof_map(*vertex, 1);
         if (callingRank)
           d_num_owned_dofs += get_local_dof_map(*vertex).num_local_dof();
       } else if (vertex->is_vessel_tree_outflow()) {
         add_local_dof_map(*vertex, vertex->get_vessel_tree_data().resistances.size());
+        if (callingRank)
+          d_num_owned_dofs += get_local_dof_map(*vertex).num_local_dof();
+      } else if (vertex->is_rcl_outflow()) {
+        add_local_dof_map(*vertex, 2 * vertex->get_rcl_data().resistances.size());
         if (callingRank)
           d_num_owned_dofs += get_local_dof_map(*vertex).num_local_dof();
       }

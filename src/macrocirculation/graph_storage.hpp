@@ -91,9 +91,37 @@ struct PeripheralVesselData {
 };
 
 struct VesselTreeData {
-  std::vector< double > resistances;
-  std::vector< double > capacitances;
+  std::vector<double> resistances;
+  std::vector<double> capacitances;
   double p_out;
+
+  /*! @brief The number of furcations at each level. 2 gives a symmetric binary tree, 1 a line. */
+  size_t furcation_number;
+};
+
+struct RCLModel {
+  std::vector<double> resistances;
+  std::vector<double> capacitances;
+  std::vector<double> inductances;
+
+  double p_out;
+};
+
+struct LinearCharacteristicData {
+  double C;
+  double L;
+  bool points_towards_vertex;
+  double p;
+  double q;
+};
+
+struct NonlinearCharacteristicData {
+  double G0;
+  double A0;
+  double rho;
+  bool points_towards_vertex;
+  double p;
+  double q;
 };
 
 class MicroEdge {
@@ -176,7 +204,10 @@ enum class FlowType {
   Inflow,
   FreeOutflow,
   Windkessel,
-  VesselTree
+  VesselTree,
+  LinearCharacteristic,
+  NonlinearCharacteristic,
+  RCLModel
 };
 
 class Vertex : public Primitive {
@@ -186,8 +217,16 @@ public:
   const std::vector<std::size_t> &get_edge_neighbors() const;
 
   bool is_leaf() const;
+
   bool is_unconnected() const;
+
   bool is_bifurcation() const;
+
+  /*! @brief Returns true if the boundary conditions on this vertex have been finalized and are not allowed to change anymore. */
+  bool bc_finalized() const;
+
+  /*! @brief Finalizes the boundary conditions on this vertex. After this, they cannot be changed anymore! */
+  void finalize_bcs();
 
   /*! @brief Marks the given vertex as part of the inflow boundary, where the given time dependent function provides the boundary values. */
   void set_to_inflow(std::function<double(double)> inflow_value);
@@ -198,7 +237,17 @@ public:
   /*! @brief Marks the given vertex as part of the free outflow boundary. */
   void set_to_windkessel_outflow(double r, double c);
 
-  void set_to_vessel_tree_outflow(double p, const std::vector<double>& resistances, const std::vector<double>& capacitances);
+  void set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, size_t furcation_number);
+
+  void set_to_vessel_rcl_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, const std::vector<double> &inductances);
+
+  void set_to_linear_characteristic_inflow(double C, double L, bool points_towards_vertex, double p, double q);
+
+  void update_linear_characteristic_inflow(double p, double q);
+
+  void set_to_nonlinear_characteristic_inflow(double G0, double A0, double rh0, bool points_towards_vertex, double p, double q);
+
+  void update_nonlinear_characteristic_inflow(double p, double q);
 
   /*! @brief Returns whether the given vertex is part of the inflow boundary. */
   bool is_inflow() const;
@@ -210,11 +259,23 @@ public:
 
   const VesselTreeData &get_vessel_tree_data() const;
 
+  const LinearCharacteristicData &get_linear_characteristic_data() const;
+
+  const NonlinearCharacteristicData &get_nonlinear_characteristic_data() const;
+
+  const RCLModel& get_rcl_data() const;
+
   bool is_free_outflow() const;
 
   bool is_windkessel_outflow() const;
 
   bool is_vessel_tree_outflow() const;
+
+  bool is_linear_characteristic_inflow() const;
+
+  bool is_nonlinear_characteristic_inflow() const;
+
+  bool is_rcl_outflow() const;
 
 private:
   std::function<double(double)> p_inflow_value;
@@ -225,7 +286,15 @@ private:
 
   VesselTreeData p_vessel_tree_data;
 
+  LinearCharacteristicData p_linear_characteristic_data;
+
+  NonlinearCharacteristicData p_nonlinear_characteristic_data;
+
+  RCLModel p_rcl_data;
+
   std::vector<std::size_t> p_neighbors;
+
+  bool d_bcs_finalized;
 
   friend GraphStorage;
 };
@@ -326,6 +395,9 @@ public:
 
   size_t num_vertices() const;
   size_t num_edges() const;
+
+  /*! @brief Finalizes all the boundary conditions on the vertices. */
+  void finalize_bcs();
 
   /*! @brief Returns all the edge ids assigned to the given rank. */
   std::vector<std::size_t> get_active_edge_ids(int rank) const;

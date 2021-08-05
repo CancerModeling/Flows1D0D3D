@@ -46,6 +46,8 @@ int main(int argc, char *argv[]) {
     inflow_vertices[0]->set_to_inflow(mc::heart_beat_inflow(4.85 / 8.));
   }
 
+  graph->finalize_bcs();
+
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
   auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
@@ -63,8 +65,7 @@ int main(int argc, char *argv[]) {
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
   // configure solver
-  mc::ExplicitNonlinearFlowSolver<degree> flow_solver(MPI_COMM_WORLD, graph, dof_map_flow);
-  flow_solver.set_tau(tau);
+  mc::ExplicitNonlinearFlowSolver flow_solver(MPI_COMM_WORLD, graph, dof_map_flow, degree);
   flow_solver.use_ssp_method();
 
   mc::Transport transport_solver(MPI_COMM_WORLD, graph, dof_map_flow, dof_map_transport);
@@ -84,9 +85,11 @@ int main(int argc, char *argv[]) {
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "breast_geometry_solution");
 
   const auto begin_t = std::chrono::steady_clock::now();
+  double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
-    transport_solver.solve(it * tau, tau, flow_solver.get_solution());
-    flow_solver.solve();
+    transport_solver.solve(t, tau, flow_solver.get_solution());
+    flow_solver.solve(tau, t);
+    t += tau;
 
     if (it % output_interval == 0) {
       std::cout << "iter " << it << std::endl;
@@ -107,11 +110,11 @@ int main(int argc, char *argv[]) {
       pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
       pvd_writer.add_vertex_data("c", c_vertex_values);
       pvd_writer.add_vertex_data("vessel_id", vessel_ids);
-      pvd_writer.write(flow_solver.get_time());
+      pvd_writer.write(t);
     }
 
     // break
-    if (flow_solver.get_time() > t_end + 1e-12)
+    if (t > t_end + 1e-12)
       break;
   }
 
