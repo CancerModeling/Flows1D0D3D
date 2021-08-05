@@ -14,7 +14,7 @@
 #include "libmesh/libmesh.h"
 #include "macrocirculation/assembly_system.hpp"
 #include "macrocirculation/base_model.hpp"
-#include "macrocirculation/vtk_io.hpp"
+#include "macrocirculation/vtk_io_libmesh.hpp"
 #include "macrocirculation/nifti_reader.hpp"
 
 #include <vtkSmartPointer.h>
@@ -333,6 +333,12 @@ int main(int argc, char *argv[]) {
   // write
   log("writing to file\n");
   mc::VTKIO(mesh).write_equation_systems(out_dir + "output_0.pvtu", eq_sys);
+  {
+    auto temp_fname = out_dir + "output_0.e";
+    lm::ExodusII_IO exo(mesh);
+    exo.write_equation_systems(temp_fname.c_str(), eq_sys);
+    exo.write_timestep(temp_fname.c_str(), eq_sys, 1, 0.);
+  }
   //return 0;
 
   // time stepping

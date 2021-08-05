@@ -121,6 +121,72 @@ std::vector<size_t> sort_indexes(const std::vector<T> &v) {
   return idx;
 }
 
+template<class T>
+inline T avg(const std::vector<T> &list) {
+
+  if (list.size() == 0)
+    return T(0);
+
+  T avg = 0.;
+  for (const auto &l : list)
+    avg += l;
+  avg = avg / (double(list.size()));
+
+  return avg;
+}
+
+template<class T>
+inline T std(const std::vector<T> &list) {
+
+  if (list.size() == 0)
+    return T(0);
+
+  // get mean
+  auto mean = avg(list);
+
+  T dev = 0.;
+  for (const auto &l : list)
+    dev += (l - mean) * (l - mean);
+  dev = dev / (T(list.size()));
+
+  return std::sqrt(dev);
+}
+
+template<class T>
+T max(const std::vector<T> &data, size_t *i = nullptr) {
+  auto max_i = std::max_element(data.begin(), data.end());
+
+  if (i != nullptr) *i = std::distance(data.begin(), max_i);
+  return data[std::distance(data.begin(), max_i)];
+}
+
+template<class T>
+T min(const std::vector<T> &data, size_t *i = nullptr) {
+  auto min_i = std::min_element(data.begin(), data.end());
+
+  if (i != nullptr) *i = std::distance(data.begin(), min_i);
+  return data[std::distance(data.begin(), min_i)];
+}
+
+template<class T>
+size_t add_unique(std::vector<T> &data, const T &i) {
+  for (size_t j=0; j<data.size(); j++)
+    if (data[j] == i)
+      return j;
+
+  data.push_back(i);
+  return data.size() - 1;
+}
+
+template<class T>
+size_t locate(std::vector<T> &data, const T &i) {
+  for (size_t j=0; j<data.size(); j++)
+    if (data[j] == i)
+      return j;
+
+  return -1;
+}
+
 } // namespace macrocirculation
 
 #endif // UTILS_H

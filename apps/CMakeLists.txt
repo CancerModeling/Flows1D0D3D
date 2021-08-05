@@ -92,6 +92,16 @@ add_executable(${ProjectName}PartPerfusionTest partioning_perfusion.cpp)
 target_link_libraries(${ProjectName}PartPerfusionTest ${ProjectLib})
 target_link_libraries(${ProjectName}PartPerfusionTest cxxopts nanoflann fmt)
 
+# project voxel data on mesh
+add_executable(${ProjectName}VoxelsToMesh voxels_to_mesh.cpp)
+target_link_libraries(${ProjectName}VoxelsToMesh ${ProjectLib})
+target_link_libraries(${ProjectName}VoxelsToMesh cxxopts nanoflann fmt)
+
+# darcy's flow with regularized outlets
+add_executable(${ProjectName}DarcyRegOutlets darcy_flow_regularized_outlets.cpp)
+target_link_libraries(${ProjectName}DarcyRegOutlets ${ProjectLib})
+target_link_libraries(${ProjectName}DarcyRegOutlets cxxopts nanoflann fmt)
+
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
                    ${ProjectName}ConvergenceStudy
@@ -106,6 +116,8 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}LegacyVTK
                    ${ProjectName}PartPerfusionTest
                    ${ProjectName}LinearFlow
+                   ${ProjectName}VoxelsToMesh
+                   ${ProjectName}DarcyRegOutlets
                    ${ProjectName}Full1D0D3DModel)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
@@ -122,6 +134,14 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory
             $<TARGET_FILE_DIR:${TargetName}>/output_part_perfusion_test)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:${TargetName}>/output_voxels_to_mesh)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:${TargetName}>/output_darcy_flow_reg_outlets)
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
