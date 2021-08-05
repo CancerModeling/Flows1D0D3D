@@ -21,7 +21,6 @@
 #include "libmesh/libmesh.h"
 #include "macrocirculation/assembly_system.hpp"
 #include "macrocirculation/base_model.hpp"
-#include "macrocirculation/mesh_partitioning_perfusion.hpp"
 #include "macrocirculation/vtk_io_libmesh.hpp"
 
 namespace mc = macrocirculation;
@@ -68,10 +67,16 @@ struct InputDeck {
 
 class BaseOutletRadial {
 public:
-  BaseOutletRadial(int type, double r) : d_type(type), d_r(r), d_c(1.) {}
+  BaseOutletRadial(int type, lm::Point x, double r) : d_type(type), d_x(x), d_r(r), d_c(1.) {}
+
+  /* @brief set the normalizing constant */
+  void set_normalize_const(double c) {d_c = c; }
 
   /* @brief type of radial function. 0 - const, 1 - linear, 2 - quadratic */
   int d_type;
+
+  /* @brief outlet point */
+  lm::Point d_x;
 
   /* @brief radius of ball on which this function is supported */
   double d_r;
@@ -79,7 +84,7 @@ public:
   /* @brief normalizing constant */
   double d_c;
 
-  virtual double operator()(double r) {
+  virtual double operator()(const lm::Point &x) const {
     std::cerr << "Error: Function should be defined by inheriting class.\n";
     exit(EXIT_FAILURE);
   }
@@ -88,12 +93,13 @@ public:
 // f(r) = 1, r = [0,1]
 class ConstOutletRadial : public BaseOutletRadial {
 public:
-  ConstOutletRadial(double r) : BaseOutletRadial(0, r) {
-    d_c = 3. / (4. * M_PI * std::pow(d_r, 3)); // normalizing constant
+  ConstOutletRadial(lm::Point x, double r) : BaseOutletRadial(0, x, r) {
+    //d_c = 3. / (4. * M_PI * std::pow(d_r, 3)); // normalizing constant
   }
 
-  double operator()(double r) override {
-    if (r < d_r - 1.e-10) return d_c;
+  double operator()(const lm::Point &x) const override {
+    double r = (x - d_x).norm() / d_r;
+    if (r <= 1. - 1.e-10) return d_c;
     else
       return 0.;
   }
@@ -102,12 +108,13 @@ public:
 // f(r) = 1 - r, r = [0,1]
 class LinearOutletRadial : public BaseOutletRadial {
 public:
-  LinearOutletRadial(double r) : BaseOutletRadial(0, r) {
-    d_c = 12. / (4. * M_PI * std::pow(d_r, 3)); // normalizing constant
+  LinearOutletRadial(lm::Point x, double r) : BaseOutletRadial(0, x, r) {
+    //d_c = 12. / (4. * M_PI * std::pow(d_r, 3)); // normalizing constant
   }
 
-  double operator()(double r) override {
-    if (r < d_r - 1.e-10) return d_c * (1. - r / d_r);
+  double operator()(const lm::Point &x) const override {
+    double r = (x - d_x).norm() / d_r;
+    if (r <= 1. - 1.e-10) return d_c * (1. - r);
     else
       return 0.;
   }
@@ -116,16 +123,17 @@ public:
 // f(r) = exp[-r^2/(2*\sigma^2)], r = [0,1]
 class GaussianOutletRadial : public BaseOutletRadial {
 public:
-  GaussianOutletRadial(double r, double sigma) : BaseOutletRadial(0, r), d_sigma(sigma) {
-    double m2 = 0.5 * d_sigma * d_sigma * (d_sigma * std::sqrt(M_PI * 2.) * std::erf(1. / (d_sigma * std::sqrt(2))) - 2. * std::exp(-1. / (2. * d_sigma * d_sigma)));
-    d_c = 1. / (4. * M_PI * std::pow(d_r, 3) * m2); // normalizing constant
+  GaussianOutletRadial(lm::Point x, double r, double sigma) : BaseOutletRadial(0, x, r), d_sigma(sigma) {
+    //double m2 = 0.5 * d_sigma * d_sigma * (d_sigma * std::sqrt(M_PI * 2.) * std::erf(1. / (d_sigma * std::sqrt(2))) - 2. * std::exp(-1. / (2. * d_sigma * d_sigma)));
+    //d_c = 1. / (4. * M_PI * std::pow(d_r, 3) * m2); // normalizing constant
   }
 
   /* @brief std of gaussian */
   double d_sigma;
 
-  double operator()(double r) override {
-    if (r < d_r - 1.e-10) return d_c * std::exp(-std::pow(r / d_r, 2) / (2. * d_sigma * d_sigma));
+  double operator()(const lm::Point &x) const override {
+    double r = (x - d_x).norm() / d_r;
+    if (r <= 1. - 1.e-10) return d_c * std::exp(-std::pow(r, 2) / (2. * d_sigma * d_sigma));
     else
       return 0.;
   }
@@ -238,8 +246,8 @@ public:
   double min_r;
   std::vector<std::unique_ptr<darcy3d::BaseOutletRadial>> out_fns;
   std::vector<std::vector<lm::dof_id_type>> out_elems;
-  std::vector<std::vector<lm::dof_id_type>> out_nodes;
-  std::vector<std::vector<double>> out_coeff;
+  std::vector<double> out_coeff_a;
+  std::vector<double> out_coeff_b;
 };
 
 //
@@ -267,7 +275,6 @@ void set_perfusion_pts(std::string out_dir,
                        int num_pts,
                        std::vector<lm::Point> &pts,
                        std::vector<double> &radii,
-                       lm::ExplicitSystem &hyd_cond,
                        lm::EquationSystems &eq_sys,
                        Model &model) {
 
@@ -368,6 +375,269 @@ void output_perfusion_pts(std::string out_file,
   vtu_writer.write();
 }
 
+void create_outlets(std::string out_dir,
+                    int num_perf_points,
+                    lm::EquationSystems &eq_sys,
+                    Model &model) {
+
+  const auto &mesh = model.get_mesh();
+  auto &pres = model.d_p1;
+
+  //
+  //  Step 1: setup perfusion outlets and its properties
+  //
+  // create outlet point data
+  auto &pts = model.pts;
+  auto &radii = model.radii;
+  auto &out_pres = model.out_pres;
+
+  darcy3d::set_perfusion_pts(out_dir, num_perf_points, pts, radii, eq_sys, model);
+  model.max_r = mc::max(radii);
+  model.min_r = mc::min(radii);
+
+  // random pressure between 10 and 1000
+  out_pres.resize(num_perf_points);
+  mc::DistributionSample<UniformDistribution> uni_dist(10., 1000., 0);
+  for (size_t i = 0; i < num_perf_points; i++)
+    out_pres[i] = uni_dist();
+
+  // instead of point source, we have volume source supported over a ball.
+  // radius of ball is proportional to the outlet radius and varies from [ball_r_min, ball_r_max]
+  double ball_r_min = 4 * model.d_input.d_h;
+  double ball_r_max = 10. * model.d_input.d_h;
+  auto &ball_r = model.ball_r;
+  for (size_t i = 0; i < radii.size(); i++) {
+    ball_r.push_back(ball_r_min + (ball_r_max - ball_r_min) * (radii[i] - model.min_r) / (model.max_r - model.min_r));
+  }
+
+  //
+  //  Step 2: setup perfusion outlet element list and weight function
+  //
+  // create outlet functions (we choose linear \phi(r) = 1 - r
+  auto &out_fns = model.out_fns;
+  for (size_t i = 0; i < num_perf_points; i++)
+    out_fns.push_back(std::make_unique<darcy3d::LinearOutletRadial>(pts[i], ball_r[i]));
+
+  // for each outlet, create a list of elements and node affected by outlet source and also create coefficients
+  auto &out_elems = model.out_elems;
+  out_elems.resize(num_perf_points);
+  for (size_t I = 0; I < num_perf_points; I++) {
+    auto &I_out_fn = out_fns[I];
+    std::vector<lm::dof_id_type> I_elems;
+    for (const auto &elem : mesh.active_local_element_ptr_range()) {
+      // check if element is inside the ball
+      bool any_node_inside_ball = false;
+      for (const auto &node : elem->node_index_range()) {
+        const lm::Point nodei = elem->node_ref(node);
+        auto dx = pts[I] - nodei;
+        if (dx.norm() < ball_r[I] - 1.e-10) {
+          any_node_inside_ball = true;
+          break;
+        }
+      }
+
+      if (any_node_inside_ball)
+        mc::add_unique(I_elems, elem->id());
+    } // loop over elems
+
+    out_elems[I] = I_elems;
+  } // loop over outlets
+
+  // compute coefficients now
+  std::vector<double> local_out_normal_const(num_perf_points, 0.);
+  for (size_t I=0; I<num_perf_points; I++) {
+    auto &out_fn_I = out_fns[I];
+    double c = 0.;
+    // loop over elements
+    for (const auto &elem_id : out_elems[I]) {
+      const auto &elem = mesh.elem_ptr(elem_id);
+      // init dof map
+      pres.init_dof(elem);
+      // init fe
+      pres.init_fe(elem);
+      // loop over quad points
+      for (unsigned int qp = 0; qp < pres.d_qrule.n_points(); qp++) {
+        c += pres.d_JxW[qp] * (*out_fn_I)(pres.d_qpoints[qp]);
+      } // quad point loop
+    } // elem loop
+    local_out_normal_const[I] = c;
+  } // outlet loop
+
+  // we now need to communicate among all processors to compute the total coefficients at processor 0
+  const auto &comm = model.get_comm();
+  std::vector<double> recv_c = local_out_normal_const;
+  comm->gather(0, recv_c);
+
+  // this is temporary for storing normalizing constants
+  std::vector<double> out_normal_c;
+
+  // in rank 0, compute coefficients
+  if (comm->rank() == 0) {
+    // resize of appropriate size
+    out_normal_c.resize(num_perf_points);
+    // compute
+    for (int i = 0; i < comm->size(); i++) {
+      for (size_t I = 0; I < num_perf_points; I++)
+        out_normal_c[I] += recv_c[i*num_perf_points + I];
+    }
+  }
+  else
+    // in rank other than 0, get coefficients
+    out_normal_c.resize(0);
+
+  // do allgather (since rank/= 0 has no data and only rank =0 has data, this should work)
+  comm->allgather(out_normal_c);
+
+  // last thing is to set the normalizing constant
+  for (size_t I = 0; I < num_perf_points; I++) {
+    auto &out_fn_I = out_fns[I];
+    (*out_fn_I).d_c += out_normal_c[I];
+  }
+
+  //
+  // step 3: compute coefficients that we need to exchange with the network system
+  //
+  std::vector<double> local_out_coeff_a(num_perf_points, 0.);
+  std::vector<double> local_out_coeff_b(num_perf_points, 0.);
+  for (size_t I=0; I<num_perf_points; I++) {
+    auto &out_fn_I = out_fns[I];
+    double a = 0.;
+    double b = 0.;
+    // loop over elements
+    for (const auto &elem_id : out_elems[I]) {
+      const auto &elem = mesh.elem_ptr(elem_id);
+      // init dof map
+      pres.init_dof(elem);
+      // init fe
+      pres.init_fe(elem);
+      // loop over quad points
+      for (unsigned int qp = 0; qp < pres.d_qrule.n_points(); qp++) {
+        a += pres.d_JxW[qp] * (*out_fn_I)(pres.d_qpoints[qp]) * model.d_input.d_Lp;
+
+        // get pressure at quad point
+        double p_qp = 0.;
+        for (unsigned int l = 0; l < pres.d_phi.size(); l++) {
+          p_qp += pres.d_phi[l][qp] * pres.get_current_sol(l);
+        }
+
+        b += pres.d_JxW[qp] * (*out_fn_I)(pres.d_qpoints[qp]) * model.d_input.d_Lp * p_qp;
+      } // quad point loop
+    } // elem loop
+
+    local_out_coeff_a[I] = a;
+    local_out_coeff_b[I] = b;
+  } // outlet loop
+
+  std::vector<double> recv_a = local_out_coeff_a;
+  std::vector<double> recv_b = local_out_coeff_b;
+  comm->gather(0, recv_a);
+  comm->gather(0, recv_b);
+
+  // in rank 0, compute coefficients
+  if (comm->rank() == 0) {
+    // resize of appropriate size
+    model.out_coeff_a.resize(num_perf_points);
+    model.out_coeff_b.resize(num_perf_points);
+    // compute
+    for (int i = 0; i < comm->size(); i++) {
+      for (size_t I = 0; I < num_perf_points; I++) {
+        model.out_coeff_a[I] += recv_a[i*num_perf_points + I];
+        model.out_coeff_b[I] += recv_b[i*num_perf_points + I];
+      }
+    }
+  }
+  else {
+    // in rank other than 0, get coefficients
+    model.out_coeff_a.resize(0);
+    model.out_coeff_b.resize(0);
+  }
+
+  // do allgather (since rank/= 0 has no data and only rank =0 has data, this should work)
+  comm->allgather(model.out_coeff_a);
+  comm->allgather(model.out_coeff_b);
+
+  // at this point, all processors must have
+  // 1. same d_c for outlet weight function
+  // 2. same values of coefficients a and b
+
+  // to verify, store the values in file
+  std::ofstream of;
+  of.open(fmt::format("{}outlet_coefficients_t_{:5.3f}_proc_{}.txt", out_dir, model.d_time, comm->rank()));
+  of << "c, a, b\n";
+  for (size_t I = 0; I < num_perf_points; I++) {
+    auto &out_fn_I = out_fns[I];
+    of << (*out_fn_I).d_c << ", " << model.out_coeff_a[I] << ", " << model.out_coeff_b[I] << "\n";
+  }
+  of.close();
+}
+
+void update_out_coeff_b(std::string out_dir, Model &model) {
+  const auto &mesh = model.get_mesh();
+  auto &pres = model.d_p1;
+  const auto &input = model.d_input;
+  int num_perf_points = model.pts.size();
+  std::vector<double> local_out_coeff_b(num_perf_points, 0.);
+  for (size_t I=0; I<num_perf_points; I++) {
+    auto &out_fn_I = model.out_fns[I];
+    double b = 0.;
+    // loop over elements
+    for (const auto &elem_id : model.out_elems[I]) {
+      const auto &elem = mesh.elem_ptr(elem_id);
+      // init dof map
+      pres.init_dof(elem);
+      // init fe
+      pres.init_fe(elem);
+      // loop over quad points
+      for (unsigned int qp = 0; qp < pres.d_qrule.n_points(); qp++) {
+        // get pressure at quad point
+        double p_qp = 0.;
+        for (unsigned int l = 0; l < pres.d_phi.size(); l++) {
+          p_qp += pres.d_phi[l][qp] * pres.get_current_sol(l);
+        }
+
+        b += pres.d_JxW[qp] * (*out_fn_I)(pres.d_qpoints[qp]) * model.d_input.d_Lp * p_qp;
+      } // quad point loop
+    } // elem loop
+
+    local_out_coeff_b[I] = b;
+  } // outlet loop
+
+  // we now need to communicate among all processors to compute the total coefficients at processor 0
+  const auto &comm = model.get_comm();
+  std::vector<double> recv_b = local_out_coeff_b;
+  comm->gather(0, recv_b);
+  // in rank 0, compute coefficients
+  if (comm->rank() == 0) {
+    // resize of appropriate size
+    model.out_coeff_b.resize(num_perf_points);
+    for (size_t i=0; i<num_perf_points; i++)
+      model.out_coeff_b[i] = 0.;
+    // compute
+    for (int i = 0; i < comm->size(); i++) {
+      for (size_t I = 0; I < num_perf_points; I++) {
+        model.out_coeff_b[I] += recv_b[i*num_perf_points + I];
+      }
+    }
+  }
+  else {
+    // in rank other than 0, get coefficients
+    model.out_coeff_b.resize(0);
+  }
+
+  // do allgather (since rank/= 0 has no data and only rank =0 has data, this should work)
+  comm->allgather(model.out_coeff_b);
+
+  // to verify, store the values in file
+  std::ofstream of;
+  of.open(fmt::format("{}outlet_coefficients_t_{:5.3f}_proc_{}.txt", out_dir, model.d_time, comm->rank()));
+  of << "c, a, b\n";
+  for (size_t I = 0; I < num_perf_points; I++) {
+    auto &out_fn_I = model.out_fns[I];
+    of << (*out_fn_I).d_c << ", " << model.out_coeff_a[I] << ", " << model.out_coeff_b[I] << "\n";
+  }
+  of.close();
+}
+
 } // namespace darcy3d
 
 int main(int argc, char *argv[]) {
@@ -407,7 +677,7 @@ int main(int argc, char *argv[]) {
   auto filename = args["input-file"].as<std::string>();
   auto out_dir = args["output-directory"].as<std::string>();
   double gamma = args["gamma"].as<double>();
-  double num_perf_points = args["num-points"].as<int>();
+  int num_perf_points = args["num-points"].as<int>();
 
   // read input parameters
   auto input = darcy3d::InputDeck(filename);
@@ -465,108 +735,8 @@ int main(int argc, char *argv[]) {
   eq_sys.parameters.set<double>("length") = l;
   darcy3d::create_heterogeneous_conductivity(mesh, hyd_cond, eq_sys);
 
-  // create outlet point data
-  auto &pts = model.pts;
-  auto &radii = model.radii;
-  auto &out_pres = model.out_pres;
-
-  darcy3d::set_perfusion_pts(out_dir, num_perf_points, pts, radii, hyd_cond, eq_sys, model);
-  model.max_r = mc::max(radii);
-  model.min_r = mc::min(radii);
-
-  out_pres.resize(num_perf_points);
-  mc::DistributionSample<UniformDistribution> uni_dist(10., 1000.);
-  for (size_t i = 0; i < num_perf_points; i++)
-    out_pres[i] = uni_dist();
-
-  // instead of point source, we have volume source supported over a ball.
-  // radius of ball is proportional to the outlet radius and varies from [ball_r_min, ball_r_max]
-  double ball_r_min = 4 * input.d_h;
-  double ball_r_max = 10. * input.d_h;
-  auto &ball_r = model.ball_r;
-  for (size_t i = 0; i < radii.size(); i++) {
-    ball_r.push_back(ball_r_min + (ball_r_max - ball_r_min) * (radii[i] - model.min_r) / (model.max_r - model.min_r));
-  }
-
-  // create outlet functions
-  auto &out_fns = model.out_fns;
-  for (size_t i = 0; i < num_perf_points; i++)
-    out_fns.push_back(std::make_unique<darcy3d::LinearOutletRadial>(ball_r[i]));
-
-  // for each outlet, create a list of elements and node affected by outlet source and also create coefficients
-  auto &out_elems = model.out_elems;
-  auto &out_nodes = model.out_nodes;
-  auto &out_coeff = model.out_coeff;
-
-  out_elems.resize(num_perf_points);
-  out_nodes.resize(num_perf_points);
-  out_coeff.resize(num_perf_points);
-
-  for (size_t I = 0; I < num_perf_points; I++) {
-
-    auto &I_out_fn = out_fns[I];
-
-    std::vector<lm::dof_id_type> I_elems;
-    std::vector<lm::dof_id_type> I_nodes;
-    std::vector<std::vector<lm::dof_id_type>> I_nodes_elems;
-
-    for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-      // check if element is inside the ball
-      bool any_node_inside_ball = false;
-      bool any_node_outside_ball = false;
-      for (const auto &node : elem->node_index_range()) {
-        const lm::Point nodei = elem->node_ref(node);
-        auto dx = pts[I] - nodei;
-        if (dx.norm() < ball_r[I] - 1.e-10)
-          any_node_inside_ball = true;
-        else
-          any_node_outside_ball = true;
-      }
-
-      if (any_node_inside_ball) {
-        mc::add_unique(I_elems, elem->id());
-        for (const auto &node : elem->node_index_range()) {
-          mc::add_unique(I_nodes, elem->node_ref(node).id());
-        }
-      }
-    } // loop over elems
-
-    // compute coefficients
-    auto I_coeff = std::vector<double>(I_nodes.size(), 0.);
-    std::vector<unsigned int> dof_indices;
-    for (const auto &elem : mesh.active_local_element_ptr_range()) {
-
-      if (mc::locate(I_elems, elem->id()) == -1)
-        continue;
-
-      // init dof map
-      model.d_p1.init_dof(elem);
-
-      // init fe
-      model.d_p1.init_fe(elem);
-
-      for (unsigned int qp = 0; qp < model.d_p1.d_qrule.n_points(); qp++) {
-
-        // compute coefficients
-        for (unsigned int i = 0; i < model.d_p1.d_phi.size(); i++) {
-
-          auto node_id = elem->node_id(i);
-          auto loc_node = mc::locate(I_nodes, node_id);
-
-          if (loc_node != -1) {
-            auto dx = pts[I] - lm::Point(elem->node_ref(i));
-            double out_fn_val = (*I_out_fn)(dx.norm());
-            I_coeff[loc_node] += model.d_p1.d_JxW[qp] * model.d_p1.d_phi[i][qp] * out_fn_val;
-          }
-        }
-      } // loop over quad points
-    }   // loop over elems
-
-    out_nodes[I] = I_nodes;
-    out_elems[I] = I_elems;
-    out_coeff[I] = I_coeff;
-  } // loop over outlets
+  // create outlets
+  create_outlets(out_dir, num_perf_points, eq_sys, model);
 
   // time stepping
   do {
@@ -575,9 +745,9 @@ int main(int argc, char *argv[]) {
     model.d_time += model.d_dt;
 
     // change pressure
-    mc::DistributionSample<UniformDistribution> uni_dist(10., 1000.);
+    mc::DistributionSample<UniformDistribution> uni_dist(10., 1000., model.d_step);
     for (size_t i = 0; i < num_perf_points; i++)
-      out_pres[i] = uni_dist();
+      model.out_pres[i] = uni_dist();
 
     auto solve_clock = std::chrono::steady_clock::now();
     model.d_p1.solve();
@@ -592,11 +762,14 @@ int main(int argc, char *argv[]) {
       mc::VTKIO(mesh).write_equation_systems(out_dir + "output_" + std::to_string(model.d_step / 20) + ".pvtu", eq_sys);
 
       darcy3d::output_perfusion_pts(out_dir + "perfusion_output_" + std::to_string(model.d_step / 20) + ".vtu",
-        pts,
-        radii,
-        ball_r,
-        out_pres,
-        model);
+                                    model.pts,
+                                    model.radii,
+                                    model.ball_r,
+                                    model.out_pres,
+                                    model);
+
+      // also update the weights
+      darcy3d::update_out_coeff_b(out_dir, model);
     }
   } while (model.d_time < input.d_T);
 
@@ -625,8 +798,6 @@ void darcy3d::Pres1::assemble() {
   auto &ball_r = d_model_p->ball_r;
   auto &out_pres = d_model_p->out_pres;
   auto &out_elems = d_model_p->out_elems;
-  auto &out_nodes = d_model_p->out_nodes;
-  auto &out_coeff = d_model_p->out_coeff;
 
   lm::Point source_xc = xc + lm::Point(0.1 * l, 0., 0.2 * l);
 
@@ -699,8 +870,6 @@ void darcy3d::Pres1::assemble_1d() {
   auto &ball_r = d_model_p->ball_r;
   auto &out_pres = d_model_p->out_pres;
   auto &out_elems = d_model_p->out_elems;
-  auto &out_nodes = d_model_p->out_nodes;
-  auto &out_coeff = d_model_p->out_coeff;
 
   for (size_t I = 0; I < pts.size(); I++) {
     auto &out_fn_I = out_fns[I];
@@ -720,12 +889,11 @@ void darcy3d::Pres1::assemble_1d() {
       init_fe(elem);
 
       for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
-        auto dx = (d_qpoints[qp] - xI).norm() / RI;
         for (unsigned int i = 0; i < d_phi.size(); i++) {
-          d_Fe(i) += d_JxW[qp] * input->d_Lp * pI * (*out_fn_I)(dx) *d_phi[i][qp];
+          d_Fe(i) += d_JxW[qp] * input->d_Lp * pI * (*out_fn_I)(d_qpoints[qp]) *d_phi[i][qp];
 
           for (unsigned int j = 0; j < d_phi.size(); j++)
-            d_Ke(i, j) += d_JxW[qp] * input->d_Lp * (*out_fn_I)(dx) *d_phi[i][qp] * d_phi[j][qp];
+            d_Ke(i, j) += d_JxW[qp] * input->d_Lp * (*out_fn_I)(d_qpoints[qp]) *d_phi[i][qp] * d_phi[j][qp];
         }
       } // loop over quad points
 
@@ -753,8 +921,6 @@ void darcy3d::Pres2::assemble() {
   auto &ball_r = d_model_p->ball_r;
   auto &out_pres = d_model_p->out_pres;
   auto &out_elems = d_model_p->out_elems;
-  auto &out_nodes = d_model_p->out_nodes;
-  auto &out_coeff = d_model_p->out_coeff;
 
   lm::Point source_xc = xc + lm::Point(0.1 * l, 0., 0.2 * l);
 
