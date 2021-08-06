@@ -25,23 +25,27 @@ class PetscMat;
 class PetscKsp;
 class Vertex;
 class Edge;
-class FETypeNetwork;
+class QuadratureFormula;
 
 class UpwindProvider {
 public:
   virtual ~UpwindProvider() = default;
 
+  virtual void init()
+
   /*! @brief Returns Q and A evaluated at the quadrature points of a micro-edge. */
-  virtual void get_values_at_qp(const Edge &edge,
+  virtual void get_values_at_qp(double t,
+                                const Edge &edge,
                                 size_t micro_edge,
-                                const FETypeNetwork &fe,
+                                const QuadratureFormula &fe,
                                 std::vector<double> &v_qp) = 0;
 
   /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
-  virtual void get_upwinded_values(const Edge &edge,
+  virtual void get_upwinded_values(double t,
+                                   const Edge &edge,
                                    std::vector<double> &v_qp) = 0;
 
-  virtual void get_upwinded_values(const Vertex &v, std::vector<double> &A, std::vector<double> &Q) = 0;
+  virtual void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) = 0;
 };
 
 
@@ -62,20 +66,20 @@ public:
 
 private:
   /*! @brief Assembles the left-hand-side matrix for the given time step. */
-  void assemble_matrix(double tau);
+  void assemble_matrix(double tau, double t);
 
   /*! @brief Assembles the right-hand-side vectors for the given time step at the given time. */
   void assemble_rhs(double tau, double t);
 
-  void assemble_matrix_cells(double tau);
+  void assemble_matrix_cells(double tau, double t);
 
-  void assemble_rhs_cells();
+  void assemble_rhs_cells(double tau, double t);
 
   void assemble_rhs_inflow(double tau, double t);
 
-  void assemble_matrix_outflow(double tau);
+  void assemble_matrix_outflow(double tau, double t);
 
-  void assemble_matrix_inner_boundaries(double tau);
+  void assemble_matrix_inner_boundaries(double tau, double t);
 
 private:
   MPI_Comm d_comm;

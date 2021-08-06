@@ -18,8 +18,6 @@
 
 namespace macrocirculation {
 
-constexpr std::size_t degree = 2;
-
 // forward declarations
 class GraphStorage;
 class DofMap;
@@ -98,6 +96,8 @@ public:
 
   /*! @brief Evaluates p and q of the current solution on the edge e parametrized on [0, 1] at \f$ s \in [0,1] \f$. */
   void evaluate_1d_pq_values(const Edge& e, double s, double& p, double& q) const;
+
+  size_t get_degree() const;
 
 private:
   /*! @brief The mpi communicator. */

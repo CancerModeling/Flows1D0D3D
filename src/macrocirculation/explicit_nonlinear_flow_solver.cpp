@@ -99,7 +99,7 @@ ExplicitNonlinearFlowSolver::~ExplicitNonlinearFlowSolver() = default;
 
 void ExplicitNonlinearFlowSolver::solve(double tau, double t_prev) {
   d_u_prev = d_u_now;
-  d_time_integrator->apply<degree>(d_u_prev, t_prev, tau, *d_right_hand_side_evaluator, d_u_now);
+  d_time_integrator->apply(d_u_prev, t_prev, tau, *d_right_hand_side_evaluator, d_u_now);
 }
 
 void ExplicitNonlinearFlowSolver::use_explicit_euler_method() {
@@ -121,6 +121,8 @@ DofMap &ExplicitNonlinearFlowSolver::get_dof_map() {
 std::vector<double> &ExplicitNonlinearFlowSolver::get_solution() {
   return d_u_now;
 }
+
+size_t ExplicitNonlinearFlowSolver::get_degree() const { return d_degree; }
 
 double ExplicitNonlinearFlowSolver::get_flow_at_vessel_tip(const Vertex &v) const {
   if (!v.is_leaf())

@@ -158,6 +158,8 @@ EdgeBoundaryValues FETypeNetwork::evaluate_dof_at_boundary_points(const std::vec
   return values;
 }
 
+QuadratureFormula FETypeNetwork::get_quadrature_formula() const { return d_qf; };
+
 void FETypeNetwork::interpolate_linear_function(double v0, double v1, std::vector<double> &dof_values) const {
   assert(dof_values.size() == d_degree + 1);
 
