@@ -23,54 +23,14 @@
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/petsc/petsc_vec.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
+#include "macrocirculation/right_hand_side_evaluator.hpp"
 #include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/right_hand_side_evaluator.hpp"
 
 
 namespace mc = macrocirculation;
 
 constexpr std::size_t degree = 2;
-
-class ConstantUpwindProvider : public mc::UpwindProvider {
-public:
-  ConstantUpwindProvider(double speed)
-      : d_speed(speed) {}
-
-  ~ConstantUpwindProvider() override = default;
-
-  void get_values_at_qp(double t,
-                        const mc::Edge &edge,
-                        size_t micro_edge,
-                        const mc::QuadratureFormula &qf,
-                        std::vector<double> &v_qp) override {
-    assert(qf.size() == v_qp.size());
-
-    for (size_t k = 0; k < qf.size(); k += 1)
-      v_qp[k] = d_speed;
-  }
-
-  /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
-  void get_upwinded_values(double t, const mc::Edge &edge,
-                           std::vector<double> &v_qp) override {
-    assert(v_qp.size() == edge.num_micro_vertices());
-
-    for (size_t k = 0; k < edge.num_micro_vertices(); k += 1)
-      v_qp[k] = d_speed;
-  }
-
-  void get_upwinded_values(double t, const mc::Vertex &v, std::vector<double> &A, std::vector<double> &Q) override {
-    assert(v.get_edge_neighbors().size() == 1);
-    assert(A.size() == 1);
-    assert(Q.size() == 1);
-
-    A[0] = 1.;
-    Q[0] = d_speed;
-  }
-
-private:
-  double d_speed;
-};
 
 class UpwindProviderNonlinearFlow : public mc::UpwindProvider {
 public:
@@ -80,20 +40,24 @@ public:
 
   ~UpwindProviderNonlinearFlow() override = default;
 
+  void init(double t, const std::vector<double> &u) override {
+    d_evaluator->init(t, u);
+  }
+
   void get_values_at_qp(double t,
                         const mc::Edge &edge,
                         size_t micro_edge,
                         const mc::QuadratureFormula &qf,
-                        std::vector<double> &v_qp) override {
+                        std::vector<double> &v_qp) const override {
     assert(v_qp.size() == qf.size());
 
     mc::FETypeNetwork fe(qf, d_solver->get_degree());
-    auto& ldof_map = d_solver->get_dof_map().get_local_dof_map(edge);
-    std::vector< size_t > dof_indices(ldof_map.num_basis_functions());
-    std::vector< double > dof_values(ldof_map.num_basis_functions());
+    auto &ldof_map = d_solver->get_dof_map().get_local_dof_map(edge);
+    std::vector<size_t> dof_indices(ldof_map.num_basis_functions());
+    std::vector<double> dof_values(ldof_map.num_basis_functions());
 
-    std::vector< double > values_A(qf.size());
-    std::vector< double > values_Q(qf.size());
+    std::vector<double> values_A(qf.size());
+    std::vector<double> values_Q(qf.size());
 
     ldof_map.dof_indices(micro_edge, d_solver->A_component, dof_indices);
     mc::extract_dof(dof_indices, d_solver->get_solution(), dof_values);
@@ -108,7 +72,7 @@ public:
   }
 
   /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
-  void get_upwinded_values(double t, const mc::Edge &edge, std::vector<double> &v_qp) override {
+  void get_upwinded_values(double t, const mc::Edge &edge, std::vector<double> &v_qp) const override {
     std::vector<double> Q_up(v_qp.size());
     std::vector<double> A_up(v_qp.size());
     d_evaluator->get_fluxes_on_macro_edge(t, edge, d_solver->get_solution(), Q_up, A_up);
@@ -116,7 +80,7 @@ public:
       v_qp[k] = Q_up[k] / A_up[k];
   }
 
-  void get_upwinded_values(double t, const mc::Vertex &v, std::vector<double> &A, std::vector<double> &Q) override {
+  void get_upwinded_values(double t, const mc::Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override  {
     d_evaluator->get_fluxes_on_nfurcation(t, v, Q, A);
   }
 
@@ -129,7 +93,7 @@ int main(int argc, char *argv[]) {
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
 
   {
-    const double t_end = 2.;
+    const double t_end = 10.;
     const std::size_t max_iter = 1600000;
     // const std::size_t max_iter = 1;
 
@@ -138,10 +102,10 @@ int main(int argc, char *argv[]) {
     // const double tau_out = tau;
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
-    const std::size_t num_micro_edges = 20;
+    const std::size_t num_micro_edges = 40;
 
     // vessel parameters
-    const double vessel_length = 21.1 * 4;
+    const double vessel_length = 40.5;
     const double radius = 0.403;
     const double wall_thickness = 0.067;
     const double elastic_modulus = 400000.0;
@@ -177,14 +141,14 @@ int main(int argc, char *argv[]) {
     auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
     dof_map_flow->create(MPI_COMM_WORLD, *graph, 2, degree, false);
 
-    auto flow_solver = std::make_shared< mc::ExplicitNonlinearFlowSolver > (MPI_COMM_WORLD, graph, dof_map_flow, degree);
+    auto flow_solver = std::make_shared<mc::ExplicitNonlinearFlowSolver>(MPI_COMM_WORLD, graph, dof_map_flow, degree);
     flow_solver->use_ssp_method();
 
-    auto upwind_evaluator = std::make_shared< mc::FlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
-    auto upwind_provider = std::make_shared<UpwindProviderNonlinearFlow>(upwind_evaluator, flow_solver);
-    // auto upwind_provider = std::make_shared<ConstantUpwindProvider>(vessel_length);
+    auto upwind_evaluator = std::make_shared<mc::FlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
+    auto variable_upwind_provider = std::make_shared<UpwindProviderNonlinearFlow>(upwind_evaluator, flow_solver);
+    auto constant_upwind_provider = std::make_shared<mc::ConstantUpwindProvider>(vessel_length);
 
-    mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, upwind_provider, degree);
+    mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
 
     mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "transport_solution");
 
@@ -193,7 +157,8 @@ int main(int argc, char *argv[]) {
     for (std::size_t it = 0; it < max_iter; it += 1) {
 
       flow_solver->solve(tau, t);
-      transport_solver.solve(tau, t);
+      variable_upwind_provider->init(t+tau, flow_solver->get_solution());
+      transport_solver.solve(tau, t+tau);
 
       t += tau;
 

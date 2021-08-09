@@ -20,6 +20,45 @@
 
 namespace macrocirculation {
 
+ConstantUpwindProvider::ConstantUpwindProvider(double speed)
+    : d_speed(speed) {}
+
+ConstantUpwindProvider::~ConstantUpwindProvider() = default;
+
+void ConstantUpwindProvider::get_values_at_qp(double t,
+                                              const Edge &edge,
+                                              size_t micro_edge,
+                                              const QuadratureFormula &qf,
+                                              std::vector<double> &v_qp) const {
+  assert(qf.size() == v_qp.size());
+
+  std::uniform_real_distribution<double> distribution(0.5, 1.);
+
+  for (size_t k = 0; k < qf.size(); k += 1)
+    v_qp[k] = d_speed;
+}
+
+/*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
+void ConstantUpwindProvider::get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const {
+  assert(v_qp.size() == edge.num_micro_vertices());
+
+  std::uniform_real_distribution<double> distribution(0.5, 1.);
+
+  for (size_t k = 0; k < edge.num_micro_vertices(); k += 1)
+    v_qp[k] = d_speed;
+}
+
+void ConstantUpwindProvider::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
+  assert(v.get_edge_neighbors().size() == 1);
+  assert(A.size() == 1);
+  assert(Q.size() == 1);
+
+  std::uniform_real_distribution<double> distribution(0.5, 1.);
+
+  A[0] = 1.;
+  Q[0] = d_speed;
+}
+
 ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
                                                  std::shared_ptr<GraphStorage> graph,
                                                  std::shared_ptr<DofMap> dof_map,
@@ -38,6 +77,9 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
   assemble_mass(d_comm, *d_graph, *d_dof_map, *mass);
   u->zero();
   rhs->zero();
+  // initialize zero pattern of matrix with velocity 1 vector:
+  // otherwise in some vessels the velocity might be zero and thus the sparsity pattern would change
+  sparsity_pattern();
 }
 
 void ImplicitTransportSolver::solve(double tau, double t) {
@@ -45,27 +87,43 @@ void ImplicitTransportSolver::solve(double tau, double t) {
   linear_solver->solve(*rhs, *u);
 }
 
-void ImplicitTransportSolver::assemble_rhs_cells(double tau, double t) {
+void ImplicitTransportSolver::assemble_rhs_cells(double tau, double t, const UpwindProvider &upwind_provider) {
   CHKERRABORT(PETSC_COMM_WORLD, VecPointwiseMult(rhs->get_vec(), u->get_vec(), mass->get_vec()));
 }
 
 void ImplicitTransportSolver::assemble(double tau, double t) {
-  assemble_matrix(tau, t);
-  assemble_rhs(tau, t);
+  assemble_matrix(tau, t, *d_upwind_provider);
+  assemble_rhs(tau, t, *d_upwind_provider);
 }
 
-void ImplicitTransportSolver::assemble_matrix(double tau, double t) {
+void ImplicitTransportSolver::sparsity_pattern()
+{
+  ConstantUpwindProvider upwind_provider_plus(1.);
+  ConstantUpwindProvider upwind_provider_minus(-0.5);
+  const double tau = 1e-3;
+  const double t = 1.;
   A->zero();
-  assemble_matrix_cells(tau, t);
-  assemble_matrix_inner_boundaries(tau, t);
-  assemble_matrix_outflow(tau, t);
+  assemble_matrix_cells(tau, t, upwind_provider_plus);
+  assemble_matrix_cells(tau, t, upwind_provider_minus);
+  assemble_matrix_inner_boundaries(tau, t, upwind_provider_plus);
+  assemble_matrix_inner_boundaries(tau, t, upwind_provider_minus);
+  assemble_matrix_outflow(tau, t, upwind_provider_plus);
+  assemble_matrix_outflow(tau, t, upwind_provider_minus);
   A->assemble();
 }
 
-void ImplicitTransportSolver::assemble_rhs(double tau, double t) {
+void ImplicitTransportSolver::assemble_matrix(double tau, double t, const UpwindProvider &upwind_provider) {
+  A->zero();
+  assemble_matrix_cells(tau, t, upwind_provider);
+  assemble_matrix_inner_boundaries(tau, t, upwind_provider);
+  assemble_matrix_outflow(tau, t, upwind_provider);
+  A->assemble();
+}
+
+void ImplicitTransportSolver::assemble_rhs(double tau, double t, const UpwindProvider &upwind_provider) {
   rhs->zero();
-  assemble_rhs_cells(tau, t);
-  assemble_rhs_inflow(tau, t);
+  assemble_rhs_cells(tau, t, upwind_provider);
+  assemble_rhs_inflow(tau, t, upwind_provider);
   rhs->assemble();
 }
 
@@ -87,7 +145,7 @@ Eigen::MatrixXd create_QA_phi_grad_psi(const FETypeNetwork &fe,
   return k_loc;
 }
 
-void ImplicitTransportSolver::assemble_matrix_cells(double tau, double t) {
+void ImplicitTransportSolver::assemble_matrix_cells(double tau, double t, const UpwindProvider &upwind_provider) {
   for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
     const auto macro_edge = d_graph->get_edge(e_id);
 
@@ -108,7 +166,7 @@ void ImplicitTransportSolver::assemble_matrix_cells(double tau, double t) {
     for (const auto &edge : macro_edge->micro_edges()) {
       local_dof_map.dof_indices(edge, 0, dof_indices_gamma);
 
-      d_upwind_provider->get_values_at_qp(t, *macro_edge, edge.get_local_id(), fe.get_quadrature_formula(), v_qp);
+      upwind_provider.get_values_at_qp(t, *macro_edge, edge.get_local_id(), fe.get_quadrature_formula(), v_qp);
 
       auto k_loc{create_QA_phi_grad_psi(fe, local_dof_map, v_qp)};
 
@@ -118,7 +176,7 @@ void ImplicitTransportSolver::assemble_matrix_cells(double tau, double t) {
   }
 }
 
-void ImplicitTransportSolver::assemble_matrix_inner_boundaries(double tau, double t) {
+void ImplicitTransportSolver::assemble_matrix_inner_boundaries(double tau, double t, const UpwindProvider &upwind_provider) {
   std::vector<double> v_up;
 
   for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
@@ -144,7 +202,7 @@ void ImplicitTransportSolver::assemble_matrix_inner_boundaries(double tau, doubl
       local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
       local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
 
-      d_upwind_provider->get_upwinded_values(t, *macro_edge, v_up);
+      upwind_provider.get_upwinded_values(t, *macro_edge, v_up);
 
       const double v = v_up[micro_vertex_id];
 
@@ -165,7 +223,7 @@ void ImplicitTransportSolver::assemble_matrix_inner_boundaries(double tau, doubl
   }
 }
 
-void ImplicitTransportSolver::assemble_rhs_inflow(double tau, double t) {
+void ImplicitTransportSolver::assemble_rhs_inflow(double tau, double t, const UpwindProvider &upwind_provider) {
   std::vector<double> Q_up(1);
   std::vector<double> A_up(1);
 
@@ -182,7 +240,7 @@ void ImplicitTransportSolver::assemble_rhs_inflow(double tau, double t) {
     auto micro_edge_idx = neighbor_edge.is_pointing_to(v_id) ? neighbor_edge.num_micro_edges() - 1 : 0;
     const double sigma = neighbor_edge.is_pointing_to(v_id) ? +1 : -1;
 
-    d_upwind_provider->get_upwinded_values(t, vertex, A_up, Q_up);
+    upwind_provider.get_upwinded_values(t, vertex, A_up, Q_up);
 
     const double v_up = Q_up[0] / A_up[0];
 
@@ -198,7 +256,7 @@ void ImplicitTransportSolver::assemble_rhs_inflow(double tau, double t) {
   }
 }
 
-void ImplicitTransportSolver::assemble_matrix_outflow(double tau, double t) {
+void ImplicitTransportSolver::assemble_matrix_outflow(double tau, double t, const UpwindProvider &upwind_provider) {
   std::vector<double> Q_up(1);
   std::vector<double> A_up(1);
 
@@ -223,7 +281,7 @@ void ImplicitTransportSolver::assemble_matrix_outflow(double tau, double t) {
                      ? create_boundary(local_dof_map, BoundaryPointType::Right, BoundaryPointType::Right)
                      : create_boundary(local_dof_map, BoundaryPointType::Left, BoundaryPointType::Left);
 
-    d_upwind_provider->get_upwinded_values(t, vertex, A_up, Q_up);
+    upwind_provider.get_upwinded_values(t, vertex, A_up, Q_up);
 
     const double v_up = Q_up[0] / A_up[0];
 
