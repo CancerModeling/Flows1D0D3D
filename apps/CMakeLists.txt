@@ -49,7 +49,7 @@ target_link_libraries(${ProjectName}Full1D0D3DModel cxxopts)
 
 add_executable(${ProjectName}Full1D0D3DModelPKJ full_1D0D3D_model_pkj.cpp)
 target_link_libraries(${ProjectName}Full1D0D3DModelPKJ ${ProjectLib})
-target_link_libraries(${ProjectName}Full1D0D3DModelPKJ cxxopts)
+target_link_libraries(${ProjectName}Full1D0D3DModelPKJ cxxopts fmt)
 
 add_executable(${ProjectName}Calibration calibration.cpp)
 target_link_libraries(${ProjectName}Calibration ${ProjectLib})
