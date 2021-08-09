@@ -43,14 +43,14 @@ void HeartToBreast1DSolver::start_0d_pressure_integrator() {
   d_integrator_running = true;
 }
 
-std::vector<VesselTipCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integrator() {
+std::vector<VesselTipAverageCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integrator() {
   d_integrator_running = false;
 
   auto values = integrator->get_integral_value({last_arterial_tip_index, first_vene_tip_index});
 
   double time_interval = integrator->get_integration_time();
 
-  std::vector<VesselTipCouplingData> results;
+  std::vector<VesselTipAverageCouplingData> results;
 
   for (auto v_id : graph_li->get_vertex_ids()) {
     auto &v = *graph_li->get_vertex(v_id);
@@ -85,38 +85,36 @@ std::vector<VesselTipCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integ
   return results;
 }
 
-std::map<size_t, std::vector<double>> get_vessel_tip_dof_values(MPI_Comm comm,
-                                                                const GraphStorage &graph,
-                                                                const DofMap &dof_map,
-                                                                const PetscVec &u,
-                                                                const std::vector<size_t> &vertex_dof_numbers) {
-  std::map<size_t, std::vector<double>> data;
+std::map<size_t, double> get_vessel_tip_dof_values(MPI_Comm comm,
+                                                   const GraphStorage &graph,
+                                                   const DofMap &dof_map,
+                                                   const PetscVec &u) {
+  std::map<size_t, double> data;
   std::vector<double> vertex_dof_values;
   for (auto v_id : graph.get_vertex_ids()) {
     auto v = graph.get_vertex(v_id);
     if (v->is_vessel_tree_outflow()) {
-      data[v_id] = std::vector<double>(vertex_dof_numbers.size(), 0);
+      data[v_id] = 0;
       auto &e = *graph.get_edge(v->get_edge_neighbors()[0]);
       if (e.rank() == mpi::rank(comm)) {
         auto local_dof_map = dof_map.get_local_dof_map(*v);
         const auto &dof_indices = local_dof_map.dof_indices();
         vertex_dof_values.resize(dof_indices.size());
         extract_dof(dof_indices, u, vertex_dof_values);
-        for (size_t k = 0; k < vertex_dof_numbers.size(); k += 1)
-          data.at(v_id).at(k) = vertex_dof_values[vertex_dof_numbers[k]];
+        data.at(v_id) = vertex_dof_values.back();
       }
-      MPI_Bcast(&data[v_id].front(), vertex_dof_numbers.size(), MPI_DOUBLE, e.rank(), comm);
+      MPI_Bcast(&data[v_id], 1, MPI_DOUBLE, e.rank(), comm);
     }
   }
   return data;
 }
 
-std::vector<VesselTipCouplingData> HeartToBreast1DSolver::get_vessel_tip_pressures() {
-  auto& dof_map = *solver->get_implicit_dof_map();
-  auto& u = solver->get_implicit_solver()->get_solution();
-  auto values = get_vessel_tip_dof_values(d_comm, *graph_li, dof_map, u, {last_arterial_tip_index, first_vene_tip_index});
+std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_pressures() {
+  auto &dof_map = *solver->get_implicit_dof_map();
+  auto &u = solver->get_implicit_solver()->get_solution();
+  auto values = get_vessel_tip_dof_values(d_comm, *graph_li, dof_map, u);
 
-  std::vector<VesselTipCouplingData> results;
+  std::vector<VesselTipCurrentCouplingData> results;
 
   for (auto v_id : graph_li->get_vertex_ids()) {
     auto &v = *graph_li->get_vertex(v_id);
@@ -132,26 +130,23 @@ std::vector<VesselTipCouplingData> HeartToBreast1DSolver::get_vessel_tip_pressur
       Point p = e.is_pointing_to(v_id) ? e.get_embedding_data().points.back() : e.get_embedding_data().points.front();
 
       // 1e3 since we have to convert kg -> g:
-      auto p_art = values[v_id][0] * 1e3;
-      auto p_ven = values[v_id][1] * 1e3;
+      auto p_out = values[v_id] * 1e3;
 
       // 1e3 since we have to convert kg -> g:
-      auto R2_art = (R[last_arterial_tip_index]) * 1e3;
-      auto R2_cap = (R[capillary_tip_index]) * 1e3;
+      auto R2 = R.back() * 1e3;
 
-      results.push_back({p, v.get_id(), p_art, p_ven, R2_art, R2_cap});
+      results.push_back({p, v.get_id(), p_out, R2});
     }
   }
 
   return results;
 }
 
-void HeartToBreast1DSolver::update_vessel_tip_pressures(const std::map<size_t, double> &pressures_at_outlets)
-{
+void HeartToBreast1DSolver::update_vessel_tip_pressures(const std::map<size_t, double> &pressures_at_outlets) {
   for (auto v_id : graph_li->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &v = *graph_li->get_vertex(v_id);
     if (v.is_vessel_tree_outflow())
-      v.update_vessel_tip_pressures( pressures_at_outlets.at(v_id) );
+      v.update_vessel_tip_pressures(pressures_at_outlets.at(v_id));
   }
 }
 

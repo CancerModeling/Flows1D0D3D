@@ -28,7 +28,7 @@ class GraphPVDWriter;
 class CSVVesselTipWriter;
 class TipVertexDofIntegrator;
 
-struct VesselTipCouplingData {
+struct VesselTipAverageCouplingData {
   /*! @brief Coordinates of the vessel tip. */
   Point p;
 
@@ -46,6 +46,20 @@ struct VesselTipCouplingData {
 
   /*! @brief Second resistance of the capillary compartment in [cm^{-4} g s^{-1}]. */
   double R2_cap;
+};
+
+struct VesselTipCurrentCouplingData {
+  /*! @brief Coordinates of the vessel tip. */
+  Point p;
+
+  /*! @brief Vertex id at the vessel tip. */
+  size_t vertex_id;
+
+  /*! @brief Pressure value in the arterioles in [Ba]. */
+  double pressure;
+
+  /*! @brief Second resistance of the arteriole compartment in [cm^{-4} g s^{-1}]. */
+  double R2;
 };
 
 /*! @brief Denotes Different boundary conditions. */
@@ -71,10 +85,10 @@ public:
   void start_0d_pressure_integrator();
 
   /*! @brief Returns the *averaged* pressures at the vessel tips in CGS units. */
-  std::vector<VesselTipCouplingData> stop_0d_pressure_integrator();
+  std::vector<VesselTipAverageCouplingData> stop_0d_pressure_integrator();
 
   /*! @brief Returns the *current* pressures at the vessel tips in CGS units. */
-  std::vector<VesselTipCouplingData> get_vessel_tip_pressures();
+  std::vector<VesselTipCurrentCouplingData> get_vessel_tip_pressures();
 
   /*! @brief Updates the boundary pressures at the vessel outlets in the linearized regime.
    *         The keys of the given map are the vertex ids of the boundary values, while the values correspond to the pressure values.
