@@ -96,6 +96,9 @@ public:
    */
   void update_vessel_tip_pressures(const std::map<size_t, double> &pressures_at_outlets);
 
+  /*! @brief Set output folder name. */
+  void set_output_folder(std::string output_dir);
+
 private:
   MPI_Comm d_comm;
 
