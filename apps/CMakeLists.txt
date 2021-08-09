@@ -47,6 +47,10 @@ add_executable(${ProjectName}Full1D0D3DModel full_1D0D3D_model.cpp)
 target_link_libraries(${ProjectName}Full1D0D3DModel ${ProjectLib})
 target_link_libraries(${ProjectName}Full1D0D3DModel cxxopts)
 
+add_executable(${ProjectName}Full1D0D3DModelPKJ full_1D0D3D_model_pkj.cpp)
+target_link_libraries(${ProjectName}Full1D0D3DModelPKJ ${ProjectLib})
+target_link_libraries(${ProjectName}Full1D0D3DModelPKJ cxxopts)
+
 add_executable(${ProjectName}Calibration calibration.cpp)
 target_link_libraries(${ProjectName}Calibration ${ProjectLib})
 target_link_libraries(${ProjectName}Calibration cxxopts)
@@ -118,7 +122,8 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}LinearFlow
                    ${ProjectName}VoxelsToMesh
                    ${ProjectName}DarcyRegOutlets
-                   ${ProjectName}Full1D0D3DModel)
+                   ${ProjectName}Full1D0D3DModel
+                   ${ProjectName}Full1D0D3DModelPKJ)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
@@ -142,6 +147,10 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory
             $<TARGET_FILE_DIR:${TargetName}>/output_darcy_flow_reg_outlets)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:${TargetName}>/output_full_1d0d3d_pkj)
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
