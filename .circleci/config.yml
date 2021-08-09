@@ -98,6 +98,6 @@ workflows:
       - deploy:
           filters:
             branches:
-              ignore: gh-pages
+              only: main
           requires:
             - build
