@@ -135,7 +135,9 @@ std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_
       // 1e3 since we have to convert kg -> g:
       auto R2 = R.back() * 1e3;
 
-      results.push_back({p, v.get_id(), p_out, R2});
+      auto radius = calculate_edge_tree_parameters(e).radii.back();
+
+      results.push_back({p, v.get_id(), p_out, R2, radius});
     }
   }
 
@@ -146,7 +148,8 @@ void HeartToBreast1DSolver::update_vessel_tip_pressures(const std::map<size_t, d
   for (auto v_id : graph_li->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &v = *graph_li->get_vertex(v_id);
     if (v.is_vessel_tree_outflow())
-      v.update_vessel_tip_pressures(pressures_at_outlets.at(v_id));
+      // convert [Ba] to [kg / cm / s^2]
+      v.update_vessel_tip_pressures(pressures_at_outlets.at(v_id)*1e-3);
   }
 }
 

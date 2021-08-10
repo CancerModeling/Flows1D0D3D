@@ -15,6 +15,37 @@
 
 namespace macrocirculation {
 
+EdgeTreeParameters calculate_edge_tree_parameters(const Edge& edge)
+{
+  auto &param = edge.get_physical_data();
+  const double E = param.elastic_modulus * 4;
+  const double r_0 = param.radius;
+  const double r_cap = 7.5e-4;
+  const double h_0 = 1e-4;
+  const double gamma = 2.5;
+  // floor ?
+  const int N = static_cast<int>(std::ceil(gamma * std::log(r_0 / r_cap) / std::log(2)));
+  const auto alpha = 1. / std::pow(2, 1 / gamma);
+  std::vector<double> list_C;
+  std::vector<double> list_R;
+  std::vector<double> list_radii;
+  std::vector<double> list_lengths;
+  double r = r_0 * alpha;
+  for (size_t k = 0; k < N; k += 1) {
+    const double l = 280 * r;
+    const double C = 3 * std::pow(r, 3) * M_PI * l / (2 * E * h_0);
+    const double viscosity = viscosity_bloodplasma(r);
+    double R = 2 * (param.gamma + 2) * viscosity * l / (std::pow(r, 2));
+    R *= 2; // muscles?
+    list_C.push_back(C);
+    list_R.push_back(R);
+    list_radii.push_back(r);
+    list_lengths.push_back(l);
+    r *= alpha;
+  }
+  return { list_lengths, list_radii, list_R, list_C };
+}
+
 void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph, const std::string &name_prefix) {
   for (auto &v_id : graph->get_vertex_ids()) {
     auto &vertex = *graph->get_vertex(v_id);
@@ -36,6 +67,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
       std::cout << "rank = " << mpi::rank(MPI_COMM_WORLD) << " ignoring node " << vertex.get_name() << " and keeps windkessel bc." << std::endl;
       continue;
     }
+
 
     std::cout << "rank = " << mpi::rank(MPI_COMM_WORLD) << " sets " << vertex.get_name() << " to tree bc" << std::endl;
     auto &edge = *graph->get_edge(vertex.get_edge_neighbors()[0]);
