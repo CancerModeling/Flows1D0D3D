@@ -30,7 +30,7 @@
 
 namespace mc = macrocirculation;
 
-constexpr std::size_t degree = 2;
+constexpr std::size_t degree = 3;
 
 class UpwindProviderNonlinearFlow : public mc::UpwindProvider {
 public:
@@ -93,11 +93,11 @@ int main(int argc, char *argv[]) {
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
 
   {
-    const double t_end = 10.;
+    const double t_end = 20.;
     const std::size_t max_iter = 1600000;
     // const std::size_t max_iter = 1;
 
-    const double tau = 1e-4;
+    const double tau = 5e-5;
     const double tau_out = 1e-2;
     // const double tau_out = tau;
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
@@ -105,28 +105,45 @@ int main(int argc, char *argv[]) {
     const std::size_t num_micro_edges = 40;
 
     // vessel parameters
-    const double vessel_length = 40.5;
+    //const double vessel_length = 20.5;
+    const double vessel_length = 20.5;
     const double radius = 0.403;
     const double wall_thickness = 0.067;
     const double elastic_modulus = 400000.0;
     const double density = 1.028e-3;
 
-    auto physical_data = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 9., radius, vessel_length);
-
-    std::cout << mc::calculate_c0(physical_data.G0, physical_data.rho, physical_data.A0) << std::endl;
+    auto physical_data_short = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 9., radius, vessel_length / 2.);
+    auto physical_data_long = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 9., radius, vessel_length / 2.);
 
     // create_for_node the geometry of the ascending aorta
     auto graph = std::make_shared<mc::GraphStorage>();
     auto v0 = graph->create_vertex();
     auto v1 = graph->create_vertex();
+    auto v2 = graph->create_vertex();
+    auto v3 = graph->create_vertex();
+    auto v4 = graph->create_vertex();
 
-    auto edge_0 = graph->connect(*v0, *v1, num_micro_edges);
-    edge_0->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1., 0, 0)}});
-    edge_0->add_physical_data(physical_data);
+    auto edge_0 = graph->connect(*v0, *v1, 32);
+    edge_0->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
+    edge_0->add_physical_data(physical_data_short);
+
+    auto edge_1 = graph->connect(*v1, *v2, 32);
+    edge_1->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1., 0, 0)}});
+    edge_1->add_physical_data(physical_data_long);
+
+    auto edge_2 = graph->connect(*v1, *v3, 32);
+    edge_2->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(0.5, 0.5, 0)}});
+    edge_2->add_physical_data(physical_data_long);
+
+    auto edge_3 = graph->connect(*v1, *v4, 32);
+    edge_3->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(0.5, -0.5, 0)}});
+    edge_3->add_physical_data(physical_data_long);
 
     // v0->set_to_inflow([](double t) { return 1.; });
-    v0->set_to_inflow(mc::heart_beat_inflow(4.));
-    v1->set_to_free_outflow();
+    v0->set_to_inflow(mc::heart_beat_inflow(10., 1., 0.7));
+    v2->set_to_free_outflow();
+    v3->set_to_free_outflow();
+    v4->set_to_free_outflow();
 
     graph->finalize_bcs();
 
@@ -146,8 +163,9 @@ int main(int argc, char *argv[]) {
 
     auto upwind_evaluator = std::make_shared<mc::FlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
     auto variable_upwind_provider = std::make_shared<UpwindProviderNonlinearFlow>(upwind_evaluator, flow_solver);
-    auto constant_upwind_provider = std::make_shared<mc::ConstantUpwindProvider>(vessel_length);
+    // auto constant_upwind_provider = std::make_shared<mc::ConstantUpwindProvider>(vessel_length);
 
+    //mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
     mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
 
     mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "transport_solution");
@@ -157,6 +175,7 @@ int main(int argc, char *argv[]) {
     for (std::size_t it = 0; it < max_iter; it += 1) {
 
       flow_solver->solve(tau, t);
+      // constant_upwind_provider->init(t+tau, flow_solver->get_solution());
       variable_upwind_provider->init(t+tau, flow_solver->get_solution());
       transport_solver.solve(tau, t+tau);
 

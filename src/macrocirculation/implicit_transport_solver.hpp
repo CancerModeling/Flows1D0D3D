@@ -109,6 +109,8 @@ private:
 
   void assemble_matrix_inner_boundaries(double tau, double t, const UpwindProvider& upwind_provider);
 
+  void assemble_matrix_nfurcations(double tau, double t, const UpwindProvider& upwind_provider);
+
   /*! @brief Assembles the matrix with different upwindings, so that the sparsity pattern does not change,
    *         when the velocity field changes.  */
   void sparsity_pattern();

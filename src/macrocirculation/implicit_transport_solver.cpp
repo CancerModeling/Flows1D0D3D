@@ -49,14 +49,14 @@ void ConstantUpwindProvider::get_upwinded_values(double t, const Edge &edge, std
 }
 
 void ConstantUpwindProvider::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
-  assert(v.get_edge_neighbors().size() == 1);
-  assert(A.size() == 1);
-  assert(Q.size() == 1);
+  assert(v.get_edge_neighbors().size() == A.size());
+  assert(v.get_edge_neighbors().size() == Q.size());
 
-  std::uniform_real_distribution<double> distribution(0.5, 1.);
-
-  A[0] = 1.;
-  Q[0] = d_speed;
+  for (size_t k = 0; k < A.size(); k+= 1)
+  {
+    A[k] = 1.;
+    Q[k] = d_speed;
+  }
 }
 
 ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
@@ -96,8 +96,7 @@ void ImplicitTransportSolver::assemble(double tau, double t) {
   assemble_rhs(tau, t, *d_upwind_provider);
 }
 
-void ImplicitTransportSolver::sparsity_pattern()
-{
+void ImplicitTransportSolver::sparsity_pattern() {
   ConstantUpwindProvider upwind_provider_plus(1.);
   ConstantUpwindProvider upwind_provider_minus(-0.5);
   const double tau = 1e-3;
@@ -107,6 +106,8 @@ void ImplicitTransportSolver::sparsity_pattern()
   assemble_matrix_cells(tau, t, upwind_provider_minus);
   assemble_matrix_inner_boundaries(tau, t, upwind_provider_plus);
   assemble_matrix_inner_boundaries(tau, t, upwind_provider_minus);
+  assemble_matrix_nfurcations(tau, t, upwind_provider_plus);
+  assemble_matrix_nfurcations(tau, t, upwind_provider_minus);
   assemble_matrix_outflow(tau, t, upwind_provider_plus);
   assemble_matrix_outflow(tau, t, upwind_provider_minus);
   A->assemble();
@@ -116,8 +117,12 @@ void ImplicitTransportSolver::assemble_matrix(double tau, double t, const Upwind
   A->zero();
   assemble_matrix_cells(tau, t, upwind_provider);
   assemble_matrix_inner_boundaries(tau, t, upwind_provider);
+  assemble_matrix_nfurcations(tau, t, upwind_provider);
   assemble_matrix_outflow(tau, t, upwind_provider);
   A->assemble();
+  // std::cout << std::endl;
+  // std::cout << *A << std::endl;
+  // std::cout << std::endl;
 }
 
 void ImplicitTransportSolver::assemble_rhs(double tau, double t, const UpwindProvider &upwind_provider) {
@@ -288,6 +293,88 @@ void ImplicitTransportSolver::assemble_matrix_outflow(double tau, double t, cons
     Eigen::MatrixXd mat = sigma * tau * v_up * pattern;
 
     A->add(dof_indices, dof_indices, mat);
+  }
+}
+
+void ImplicitTransportSolver::assemble_matrix_nfurcations(double tau, double t, const UpwindProvider &upwind_provider) {
+  for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+    auto &vertex = *d_graph->get_vertex(v_idx);
+
+    if (!vertex.is_bifurcation())
+      continue;
+
+    const auto num_edges = vertex.get_edge_neighbors().size();
+
+    // collect edges:
+    std::vector<Edge *> edges;
+    for (auto e_id : vertex.get_edge_neighbors())
+      edges.push_back(d_graph->get_edge(e_id).get());
+
+    // collect normals
+    std::vector<double> sigma;
+    for (auto edge : edges)
+      sigma.push_back(edge->is_pointing_to(v_idx) ? +1. : -1.);
+
+    // get upwinded values
+    std::vector<double> A_up(num_edges);
+    std::vector<double> Q_up(num_edges);
+    upwind_provider.get_upwinded_values(t, vertex, A_up, Q_up);
+
+    // divide into inflow and outflow edges
+    std::vector<size_t> inflows;
+    std::vector<size_t> outflows;
+    for (size_t k = 0; k < num_edges; k += 1) {
+      // if the flux is very small (mainly at the beginning), we have a bias to make it an inflow
+      if (Q_up[k] / A_up[k] * sigma[k] >= 0 || std::abs(Q_up[k]) < 1e-14)
+        inflows.push_back(k);
+      else
+        outflows.push_back(k);
+    }
+
+    // get total inflow flux
+    double Q_in = 0;
+    for (auto k : inflows)
+      Q_in += Q_up[k] * sigma[k];
+
+    // create patterns
+    auto &l_dof_map = d_dof_map->get_local_dof_map(*edges[0]);
+
+    using BPT = BoundaryPointType;
+
+    // assemble the inflow edges
+    for (auto i : inflows) {
+      auto &edge = *edges[i];
+      auto &local_dof_map_i = d_dof_map->get_local_dof_map(edge);
+      auto micro_edge_id_i = edge.is_pointing_to(v_idx) ? local_dof_map_i.num_micro_edges() - 1 : 0;
+      auto boundary_typ = edge.is_pointing_to(v_idx) ? BPT::Right : BPT::Left;
+      std::vector<size_t> dof_indices_i(local_dof_map_i.num_basis_functions());
+      local_dof_map_i.dof_indices(micro_edge_id_i, 0, dof_indices_i);
+      auto pattern = create_boundary(local_dof_map_i, boundary_typ, boundary_typ);
+      Eigen::MatrixXd mat = tau * Q_up[i] / A_up[i] * sigma[i] * pattern;
+      A->add(dof_indices_i, dof_indices_i, mat);
+    }
+
+    // assemble the outflow edges
+    for (auto i : outflows) {
+      auto &edge_i = *edges[i];
+      auto &local_dof_map_i = d_dof_map->get_local_dof_map(edge_i);
+      auto micro_edge_id_i = edge_i.is_pointing_to(v_idx) ? local_dof_map_i.num_micro_edges() - 1 : 0;
+      auto boundary_type_i = edge_i.is_pointing_to(v_idx) ? BPT::Right : BPT::Left;
+      std::vector<size_t> dof_indices_i(local_dof_map_i.num_basis_functions());
+      local_dof_map_i.dof_indices(micro_edge_id_i, 0, dof_indices_i);
+
+      for (auto j : inflows) {
+        auto &edge_j = *edges[j];
+        auto &local_dof_map_j = d_dof_map->get_local_dof_map(edge_j);
+        auto micro_edge_id_j = edge_j.is_pointing_to(v_idx) ? local_dof_map_j.num_micro_edges() - 1 : 0;
+        auto boundary_type_j = edge_j.is_pointing_to(v_idx) ? BPT::Right : BPT::Left;
+        std::vector<size_t> dof_indices_j(local_dof_map_j.num_basis_functions());
+        local_dof_map_j.dof_indices(micro_edge_id_j, 0, dof_indices_j);
+        auto pattern = create_boundary(local_dof_map_i, boundary_type_i, boundary_type_j);
+        Eigen::MatrixXd mat = tau * Q_up[i] * sigma[i] / Q_in * Q_up[j] * sigma[j] / A_up[j] * pattern;
+        A->add(dof_indices_i, dof_indices_j, mat);
+      }
+    }
   }
 }
 
