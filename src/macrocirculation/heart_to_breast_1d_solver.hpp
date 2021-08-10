@@ -93,6 +93,7 @@ public:
   /*! @brief Updates the boundary pressures at the vessel outlets in the linearized regime.
    *         The keys of the given map are the vertex ids of the boundary values, while the values correspond to the pressure values.
    *         On one processor all the keys for the owned outlets have to be present in the map, otherwise an exception is thrown.
+   *         The pressure unit has to be [Ba].
    */
   void update_vessel_tip_pressures(const std::map<size_t, double> &pressures_at_outlets);
 

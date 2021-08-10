@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
           for (auto &d : data) {
             // TODO: Replace this with something more meaningful.
             //       Note that 50 mmHg is much too much and just here to see the change from 30 mmHg which are the default.
-            new_tip_pressures[d.vertex_id] = 50 * 1.3333;
+            new_tip_pressures[d.vertex_id] = 50 * 1333.3;
           }
           solver.update_vessel_tip_pressures(new_tip_pressures);
         }
