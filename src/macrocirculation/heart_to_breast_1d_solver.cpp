@@ -135,7 +135,9 @@ std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_
       // 1e3 since we have to convert kg -> g:
       auto R2 = R.back() * 1e3;
 
-      results.push_back({p, v.get_id(), p_out, R2});
+      auto radius = calculate_edge_tree_parameters(e).radii.back();
+
+      results.push_back({p, v.get_id(), p_out, R2, radius});
     }
   }
 

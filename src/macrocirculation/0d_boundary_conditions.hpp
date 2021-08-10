@@ -10,11 +10,21 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace macrocirculation {
 
 // forward declarations:
 class GraphStorage;
+class Edge;
+
+struct EdgeTreeParameters
+{
+  std::vector< double > lengths;
+  std::vector< double > radii;
+  std::vector< double > R;
+  std::vector< double > C;
+};
 
 /*! @brief Sets the boundary conditions using a tree estimate. */
 void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph, const std::string &name_prefix);
@@ -32,6 +42,8 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
 void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &graph);
 
 void convert_rcr_to_rcl_chain_bcs(const std::shared_ptr<GraphStorage> &graph);
+
+EdgeTreeParameters calculate_edge_tree_parameters(const Edge& edge);
 
 } // namespace macrocirculation
 

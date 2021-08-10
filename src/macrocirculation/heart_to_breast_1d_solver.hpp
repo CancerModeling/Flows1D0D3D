@@ -60,6 +60,9 @@ struct VesselTipCurrentCouplingData {
 
   /*! @brief Second resistance of the arteriole compartment in [cm^{-4} g s^{-1}]. */
   double R2;
+
+  /*! @brief The radius of the last vessel tree segment in [cm]. */
+  double radius;
 };
 
 /*! @brief Denotes Different boundary conditions. */

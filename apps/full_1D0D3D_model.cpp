@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
         for (auto &d : data) {
           // just return the values for now:
           if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-            std::cout << d.p.x << ", " << d.p.y << ", " << d.p.z << ", " << d.pressure << ", " << d.R2 << std::endl;
+            std::cout << d.p.x << ", " << d.p.y << ", " << d.p.z << ", " << d.pressure << ", " << d.R2 << ", " << d.radius << std::endl;
         }
 
         // Some condition to solve the 3D system
