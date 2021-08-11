@@ -14,10 +14,6 @@ SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/macrocirculation/)
 # Create executable
 # ****************************************************************************
 
-# advection solver:
-add_executable(${ProjectName}AdvectionImplicit advection_implicit.cpp)
-target_link_libraries(${ProjectName}AdvectionImplicit ${ProjectLib})
-
 # nonlinear flow solver line:
 add_executable(${ProjectName}NonlinearFlowLine nonlinear_flow_line.cpp)
 target_link_libraries(${ProjectName}NonlinearFlowLine ${ProjectLib})
@@ -100,7 +96,6 @@ target_link_libraries(${ProjectName}PartPerfusionTest cxxopts nanoflann fmt)
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
                    ${ProjectName}ConvergenceStudy
-                   ${ProjectName}AdvectionImplicit
                    ${ProjectName}BreastGeometry
                    ${ProjectName}Abstract33VesselsGeometry
                    ${ProjectName}CombinedGeometry
