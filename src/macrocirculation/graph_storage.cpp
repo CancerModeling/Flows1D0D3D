@@ -517,6 +517,22 @@ bool GraphStorage::edge_is_neighbor_of_rank(const Edge &e, int rank) const {
   return false;
 }
 
+bool GraphStorage::edge_is_connected_to_rank(const Edge &e, int rank) const {
+  for (auto v_id : e.get_vertex_neighbors()) {
+    auto vertex = get_vertex(v_id);
+
+    for (auto& con: vertex->get_inter_graph_connections() )
+    {
+      auto& connected_graph = con.get_graph();
+      auto& connected_vertex = con.get_vertex();
+
+      if ( connected_graph.vertex_is_neighbor_of_rank(connected_vertex, rank) )
+        return true;
+    }
+  }
+  return false;
+}
+
 bool GraphStorage::vertex_is_neighbor_of_rank(const Vertex &v, int rank) const {
   for (const auto &e_id : v.get_edge_neighbors()) {
     auto neighbor_edge = get_edge(e_id);
@@ -535,7 +551,7 @@ std::vector<std::size_t> GraphStorage::get_ghost_edge_ids(int main_rank, int gho
     if (ghost_rank_edge->rank() != ghost_rank)
       continue;
 
-    if (edge_is_neighbor_of_rank(*ghost_rank_edge, main_rank))
+    if (edge_is_neighbor_of_rank(*ghost_rank_edge, main_rank) || edge_is_connected_to_rank(*ghost_rank_edge, main_rank))
       ghost_edge_ids.push_back(ghost_rank_edge->get_id());
   }
   return ghost_edge_ids;

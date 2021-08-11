@@ -462,6 +462,9 @@ private:
   /*! @brief Returns true if the given vertex has a neighbor edge, which is assigned to the given rank. */
   bool vertex_is_neighbor_of_rank(const Vertex &e, int rank) const;
 
+  /*! @brief Returns true if the given edge has a neighbor edge on a connected graph, which is assigned to the given rank. */
+  bool edge_is_connected_to_rank(const Edge &e, int rank) const;
+
   std::map<std::size_t, std::shared_ptr<Edge>> p_edges;
   std::map<std::size_t, std::shared_ptr<Vertex>> p_vertices;
 
