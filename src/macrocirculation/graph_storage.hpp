@@ -290,9 +290,12 @@ public:
 
   bool is_rcl_outflow() const;
 
-  void set_inter_graph_connection(std::shared_ptr<GraphStorage> graph, Vertex &v);
+  void add_inter_graph_connection(std::shared_ptr<GraphStorage> graph, Vertex &v);
 
-  const std::vector< InterGraphConnection >& get_inter_graph_connections() const;
+  const std::vector<InterGraphConnection> &get_inter_graph_connections() const;
+
+  /*! @brief Establishes a symmetric inter graph connections between vertex v1 on graph g1 with vertex v2 on graph g2. */
+  static void connect(const std::shared_ptr<GraphStorage> &g1, Vertex &v1, const std::shared_ptr<GraphStorage> &g2, Vertex &v2);
 
 private:
   std::function<double(double)> p_inflow_value;
@@ -309,7 +312,7 @@ private:
 
   RCLModel p_rcl_data;
 
-  std::vector< InterGraphConnection > d_inter_graph_connections;
+  std::vector<InterGraphConnection> d_inter_graph_connections;
 
   std::vector<std::size_t> p_neighbors;
 

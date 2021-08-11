@@ -265,12 +265,17 @@ void Vertex::update_nonlinear_characteristic_inflow(double p, double q) {
   p_nonlinear_characteristic_data.q = sigma * q;
 }
 
-void Vertex::set_inter_graph_connection(std::shared_ptr<GraphStorage> graph, Vertex &v) {
+void Vertex::add_inter_graph_connection(std::shared_ptr<GraphStorage> graph, Vertex &v) {
   d_inter_graph_connections.emplace_back(graph, v);
 }
 
 const std::vector<InterGraphConnection> &Vertex::get_inter_graph_connections() const {
   return d_inter_graph_connections;
+}
+
+void Vertex::connect(const std::shared_ptr<GraphStorage> &g1, Vertex &v1, const std::shared_ptr<GraphStorage> &g2, Vertex &v2) {
+  v1.add_inter_graph_connection(g2, v2);
+  v2.add_inter_graph_connection(g1, v1);
 }
 
 bool Edge::is_pointing_to(std::size_t vertex_id) const {
