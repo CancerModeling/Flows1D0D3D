@@ -5,7 +5,7 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "transport.hpp"
+#include "explicit_transport_solver.hpp"
 
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
@@ -28,7 +28,7 @@ double current_inflow(double t) {
     return 1.;
 }
 
-Transport::Transport(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map_flow, std::shared_ptr<DofMap> dof_map_transport)
+ExplicitTransportSolver::ExplicitTransportSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map_flow, std::shared_ptr<DofMap> dof_map_transport)
     : d_comm(comm),
       d_graph(std::move(graph)),
       d_dof_map_flow(std::move(dof_map_flow)),
@@ -44,7 +44,7 @@ Transport::Transport(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::sh
   assemble_inverse_mass(d_comm, *d_graph, *d_dof_map_transport, d_inverse_mass);
 }
 
-void Transport::evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev, const std::vector<double> &gamma_prev) {
+void ExplicitTransportSolver::evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev, const std::vector<double> &gamma_prev) {
   std::vector<std::size_t> dof_indices(4, 0);
   std::vector<double> local_dofs(4, 0);
 
@@ -71,9 +71,9 @@ void Transport::evaluate_macro_edge_boundary_values(const std::vector<double> &u
   }
 }
 
-std::vector<double> &Transport::get_solution() { return d_solution; }
+std::vector<double> &ExplicitTransportSolver::get_solution() { return d_solution; }
 
-void Transport::solve(double t, double dt, const std::vector<double> &u_prev) {
+void ExplicitTransportSolver::solve(double t, double dt, const std::vector<double> &u_prev) {
   //std::cout << "u_prev = " << u_prev << std::endl;
   //std::cout << "solution = " << d_solution << std::endl;
   d_flow_upwind_evaluator.init(t, u_prev);
@@ -93,7 +93,7 @@ void Transport::solve(double t, double dt, const std::vector<double> &u_prev) {
   //std::cout << "solution = " << d_solution << std::endl;
 }
 
-void Transport::calculate_fluxes_on_macro_edge(const double t,
+void ExplicitTransportSolver::calculate_fluxes_on_macro_edge(const double t,
                                                const Edge &edge,
                                                const std::vector<double> &u_prev,
                                                const std::vector<double> &gamma_prev,
@@ -154,7 +154,7 @@ void Transport::calculate_fluxes_on_macro_edge(const double t,
   gamma_fluxes_edge[local_dof_map_transport.num_micro_vertices() - 1] = d_gamma_flux_r[edge.get_id()];
 }
 
-void Transport::assemble_rhs(double t, const std::vector<double> &u_prev, const std::vector<double> &gamma_prev, std::vector<double> &rhs) {
+void ExplicitTransportSolver::assemble_rhs(double t, const std::vector<double> &u_prev, const std::vector<double> &gamma_prev, std::vector<double> &rhs) {
   // first zero rhs
   for (std::size_t idx = 0; idx < rhs.size(); idx += 1)
     rhs[idx] = 0;
@@ -239,7 +239,7 @@ void Transport::assemble_rhs(double t, const std::vector<double> &u_prev, const 
   }
 }
 
-void Transport::calculate_fluxes_at_nfurcations(double t, const std::vector<double> &u_prev) {
+void ExplicitTransportSolver::calculate_fluxes_at_nfurcations(double t, const std::vector<double> &u_prev) {
   std::vector<double> Q_up_values(0, 0);
   std::vector<double> A_up_values(0, 0);
 
@@ -330,7 +330,7 @@ void Transport::calculate_fluxes_at_nfurcations(double t, const std::vector<doub
   }
 }
 
-void Transport::apply_inverse_mass() {
+void ExplicitTransportSolver::apply_inverse_mass() {
   for (std::size_t i = 0; i < d_dof_map_transport->num_dof(); i += 1)
     d_rhs[i] = d_inverse_mass[i] * d_rhs[i];
 }

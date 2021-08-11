@@ -15,13 +15,13 @@
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
+#include "macrocirculation/explicit_transport_solver.hpp"
 #include "macrocirculation/graph_csv_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
-#include "macrocirculation/transport.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
 namespace mc = macrocirculation;
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
   mc::ExplicitNonlinearFlowSolver flow_solver(MPI_COMM_WORLD, graph, dof_map_flow, degree);
   flow_solver.use_ssp_method();
 
-  mc::Transport transport_solver(MPI_COMM_WORLD, graph, dof_map_flow, dof_map_transport);
+  mc::ExplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_flow, dof_map_transport);
 
   std::vector<mc::Point> points;
   std::vector<double> Q_vertex_values;

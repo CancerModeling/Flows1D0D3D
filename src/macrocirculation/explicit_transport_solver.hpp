@@ -24,9 +24,9 @@ class DofMap;
 class Edge;
 
 /*! @brief A simple explicit euler solver for the transport equation. */
-class Transport {
+class ExplicitTransportSolver {
 public:
-  Transport(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map_flow, std::shared_ptr<DofMap> dof_map_transport);
+  ExplicitTransportSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map_flow, std::shared_ptr<DofMap> dof_map_transport);
 
   void evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev, const std::vector<double> &gamma_prev);
 
