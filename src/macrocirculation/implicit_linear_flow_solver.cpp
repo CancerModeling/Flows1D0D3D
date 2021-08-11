@@ -16,8 +16,8 @@
 #include "petsc/petsc_ksp.hpp"
 #include "petsc/petsc_mat.hpp"
 #include "petsc/petsc_vec.hpp"
-#include "vessel_formulas.hpp"
 #include "petsc_assembly_blocks.hpp"
+#include "vessel_formulas.hpp"
 
 namespace macrocirculation {
 
@@ -122,6 +122,8 @@ void interpolate_to_vertices(const MPI_Comm comm,
     }
   }
 }
+
+size_t ImplicitLinearFlowSolver::get_degree() const { return degree; }
 
 ImplicitLinearFlowSolver::ImplicitLinearFlowSolver(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map, size_t degree)
     : d_comm(comm),
@@ -593,9 +595,9 @@ void ImplicitLinearFlowSolver::assemble_matrix_rcl_model(double tau) {
         mat_qp(k, k + 1) = -1. / data.inductances[k];
 
       Eigen::MatrixXd imp_euler_mat_pp = id - tau * mat_pp;
-      Eigen::MatrixXd imp_euler_mat_pq = - tau * mat_pq;
+      Eigen::MatrixXd imp_euler_mat_pq = -tau * mat_pq;
       Eigen::MatrixXd imp_euler_mat_qq = id - tau * mat_qq;
-      Eigen::MatrixXd imp_euler_mat_qp = - tau * mat_qp;
+      Eigen::MatrixXd imp_euler_mat_qp = -tau * mat_qp;
 
       A->add(dof_indices_ptil, dof_indices_ptil, imp_euler_mat_pp);
       A->add(dof_indices_ptil, dof_indices_qtil, imp_euler_mat_pq);

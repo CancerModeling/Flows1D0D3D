@@ -80,13 +80,59 @@ public:
       v_qp[k] = Q_up[k] / A_up[k];
   }
 
-  void get_upwinded_values(double t, const mc::Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override  {
+  void get_upwinded_values(double t, const mc::Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override {
     d_evaluator->get_fluxes_on_nfurcation(t, v, Q, A);
   }
 
 private:
   std::shared_ptr<mc::FlowUpwindEvaluator> d_evaluator;
   std::shared_ptr<mc::ExplicitNonlinearFlowSolver> d_solver;
+};
+
+class UpwindProviderLinearizedFlow : public mc::UpwindProvider {
+public:
+  explicit UpwindProviderLinearizedFlow(std::shared_ptr<mc::ImplicitLinearFlowSolver> solver)
+      : d_solver(std::move(solver)) {}
+
+  ~UpwindProviderLinearizedFlow() override = default;
+
+  void init(double t, const std::vector<double> &u) override {}
+
+  void get_values_at_qp(double t,
+                        const mc::Edge &edge,
+                        size_t micro_edge,
+                        const mc::QuadratureFormula &qf,
+                        std::vector<double> &v_qp) const override {
+    assert(v_qp.size() == qf.size());
+
+    mc::FETypeNetwork fe(qf, d_solver->get_degree());
+    auto &ldof_map = d_solver->get_dof_map().get_local_dof_map(edge);
+    std::vector<size_t> dof_indices(ldof_map.num_basis_functions());
+    std::vector<double> dof_values(ldof_map.num_basis_functions());
+
+    std::vector<double> values_q(qf.size());
+
+    ldof_map.dof_indices(micro_edge, d_solver->q_component, dof_indices);
+    mc::extract_dof(dof_indices, d_solver->get_solution(), dof_values);
+    fe.evaluate_dof_at_quadrature_points(dof_values, values_q);
+
+    auto &param = edge.get_physical_data();
+
+    for (size_t k = 0; k < qf.size(); k += 1)
+      v_qp[k] = values_q[k] / param.A0;
+  }
+
+  /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
+  void get_upwinded_values(double t, const mc::Edge &edge, std::vector<double> &v_qp) const override {
+    throw std::runtime_error("not implemented yet");
+  }
+
+  void get_upwinded_values(double t, const mc::Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override {
+    throw std::runtime_error("not implemented yet");
+  }
+
+private:
+  std::shared_ptr<mc::ImplicitLinearFlowSolver> d_solver;
 };
 
 int main(int argc, char *argv[]) {
@@ -176,8 +222,8 @@ int main(int argc, char *argv[]) {
 
       flow_solver->solve(tau, t);
       // constant_upwind_provider->init(t+tau, flow_solver->get_solution());
-      variable_upwind_provider->init(t+tau, flow_solver->get_solution());
-      transport_solver.solve(tau, t+tau);
+      variable_upwind_provider->init(t + tau, flow_solver->get_solution());
+      transport_solver.solve(tau, t + tau);
 
       t += tau;
 
