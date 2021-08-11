@@ -124,6 +124,19 @@ struct NonlinearCharacteristicData {
   double q;
 };
 
+/*! @brief Connects a vertex in one graph weakly to a vertex of a different disjoint graph. */
+class InterGraphConnection {
+public:
+  InterGraphConnection(const std::shared_ptr<GraphStorage> &graph, const Vertex &vertex);
+
+  const GraphStorage &get_graph() const;
+  const Vertex &get_vertex() const;
+
+private:
+  std::weak_ptr<GraphStorage> d_graph;
+  size_t d_vertex_id;
+};
+
 class MicroEdge {
 public:
   MicroEdge(std::size_t local_id, std::size_t global_id)
@@ -263,7 +276,7 @@ public:
 
   const NonlinearCharacteristicData &get_nonlinear_characteristic_data() const;
 
-  const RCLModel& get_rcl_data() const;
+  const RCLModel &get_rcl_data() const;
 
   bool is_free_outflow() const;
 
@@ -276,6 +289,10 @@ public:
   bool is_nonlinear_characteristic_inflow() const;
 
   bool is_rcl_outflow() const;
+
+  void set_inter_graph_connection(std::shared_ptr<GraphStorage> graph, Vertex &v);
+
+  const std::vector< InterGraphConnection >& get_inter_graph_connections() const;
 
 private:
   std::function<double(double)> p_inflow_value;
@@ -291,6 +308,8 @@ private:
   NonlinearCharacteristicData p_nonlinear_characteristic_data;
 
   RCLModel p_rcl_data;
+
+  std::vector< InterGraphConnection > d_inter_graph_connections;
 
   std::vector<std::size_t> p_neighbors;
 

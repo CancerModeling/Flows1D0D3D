@@ -63,6 +63,20 @@ double PhysicalData::get_c0() const {
   return std::pow(G0 / (2.0 * rho), 0.5);
 }
 
+InterGraphConnection::InterGraphConnection(const std::shared_ptr<GraphStorage> &graph, const Vertex &vertex)
+    : d_graph(graph),
+      d_vertex_id(vertex.get_id()) {}
+
+const GraphStorage &InterGraphConnection::get_graph() const {
+  auto graph = d_graph.lock();
+  return *graph;
+}
+
+const Vertex &InterGraphConnection::get_vertex() const {
+  return *get_graph().get_vertex(d_vertex_id);
+}
+
+
 const std::string &Primitive::get_name() const {
   return p_name;
 }
@@ -249,6 +263,14 @@ void Vertex::update_nonlinear_characteristic_inflow(double p, double q) {
   double sigma = p_nonlinear_characteristic_data.points_towards_vertex ? +1 : -1;
   p_nonlinear_characteristic_data.p = p;
   p_nonlinear_characteristic_data.q = sigma * q;
+}
+
+void Vertex::set_inter_graph_connection(std::shared_ptr<GraphStorage> graph, Vertex &v) {
+  d_inter_graph_connections.emplace_back(graph, v);
+}
+
+const std::vector<InterGraphConnection> &Vertex::get_inter_graph_connections() const {
+  return d_inter_graph_connections;
 }
 
 bool Edge::is_pointing_to(std::size_t vertex_id) const {
