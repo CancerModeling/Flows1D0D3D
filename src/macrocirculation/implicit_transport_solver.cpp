@@ -11,7 +11,9 @@
 
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
+#include "explicit_nonlinear_flow_solver.hpp"
 #include "fe_type.hpp"
+#include "flow_upwind_evaluator.hpp"
 #include "graph_storage.hpp"
 #include "implicit_linear_flow_solver.hpp"
 #include "petsc/petsc_ksp.hpp"
@@ -52,11 +54,58 @@ void ConstantUpwindProvider::get_upwinded_values(double t, const Vertex &v, std:
   assert(v.get_edge_neighbors().size() == A.size());
   assert(v.get_edge_neighbors().size() == Q.size());
 
-  for (size_t k = 0; k < A.size(); k+= 1)
-  {
+  for (size_t k = 0; k < A.size(); k += 1) {
     A[k] = 1.;
     Q[k] = d_speed;
   }
+}
+
+UpwindProviderNonlinearFlow::UpwindProviderNonlinearFlow(std::shared_ptr<FlowUpwindEvaluator> evaluator, std::shared_ptr<ExplicitNonlinearFlowSolver> solver)
+    : d_evaluator(std::move(evaluator)),
+      d_solver(std::move(solver)) {}
+
+void UpwindProviderNonlinearFlow::init(double t, const std::vector<double> &u) {
+  d_evaluator->init(t, u);
+}
+
+void UpwindProviderNonlinearFlow::get_values_at_qp(double t,
+                                                   const Edge &edge,
+                                                   size_t micro_edge,
+                                                   const QuadratureFormula &qf,
+                                                   std::vector<double> &v_qp) const {
+  assert(v_qp.size() == qf.size());
+
+  FETypeNetwork fe(qf, d_solver->get_degree());
+  auto &ldof_map = d_solver->get_dof_map().get_local_dof_map(edge);
+  std::vector<size_t> dof_indices(ldof_map.num_basis_functions());
+  std::vector<double> dof_values(ldof_map.num_basis_functions());
+
+  std::vector<double> values_A(qf.size());
+  std::vector<double> values_Q(qf.size());
+
+  ldof_map.dof_indices(micro_edge, d_solver->A_component, dof_indices);
+  extract_dof(dof_indices, d_solver->get_solution(), dof_values);
+  fe.evaluate_dof_at_quadrature_points(dof_values, values_A);
+
+  ldof_map.dof_indices(micro_edge, d_solver->Q_component, dof_indices);
+  extract_dof(dof_indices, d_solver->get_solution(), dof_values);
+  fe.evaluate_dof_at_quadrature_points(dof_values, values_Q);
+
+  for (size_t k = 0; k < qf.size(); k += 1)
+    v_qp[k] = values_Q[k] / values_A[k];
+}
+
+/*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
+void UpwindProviderNonlinearFlow::get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const {
+  std::vector<double> Q_up(v_qp.size());
+  std::vector<double> A_up(v_qp.size());
+  d_evaluator->get_fluxes_on_macro_edge(t, edge, d_solver->get_solution(), Q_up, A_up);
+  for (size_t k = 0; k < v_qp.size(); k += 1)
+    v_qp[k] = Q_up[k] / A_up[k];
+}
+
+void UpwindProviderNonlinearFlow::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
+  d_evaluator->get_fluxes_on_nfurcation(t, v, Q, A);
 }
 
 ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,

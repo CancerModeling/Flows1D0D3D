@@ -32,63 +32,6 @@ namespace mc = macrocirculation;
 
 constexpr std::size_t degree = 3;
 
-class UpwindProviderNonlinearFlow : public mc::UpwindProvider {
-public:
-  explicit UpwindProviderNonlinearFlow(std::shared_ptr<mc::FlowUpwindEvaluator> evaluator, std::shared_ptr<mc::ExplicitNonlinearFlowSolver> solver)
-      : d_evaluator(std::move(evaluator)),
-        d_solver(std::move(solver)) {}
-
-  ~UpwindProviderNonlinearFlow() override = default;
-
-  void init(double t, const std::vector<double> &u) override {
-    d_evaluator->init(t, u);
-  }
-
-  void get_values_at_qp(double t,
-                        const mc::Edge &edge,
-                        size_t micro_edge,
-                        const mc::QuadratureFormula &qf,
-                        std::vector<double> &v_qp) const override {
-    assert(v_qp.size() == qf.size());
-
-    mc::FETypeNetwork fe(qf, d_solver->get_degree());
-    auto &ldof_map = d_solver->get_dof_map().get_local_dof_map(edge);
-    std::vector<size_t> dof_indices(ldof_map.num_basis_functions());
-    std::vector<double> dof_values(ldof_map.num_basis_functions());
-
-    std::vector<double> values_A(qf.size());
-    std::vector<double> values_Q(qf.size());
-
-    ldof_map.dof_indices(micro_edge, d_solver->A_component, dof_indices);
-    mc::extract_dof(dof_indices, d_solver->get_solution(), dof_values);
-    fe.evaluate_dof_at_quadrature_points(dof_values, values_A);
-
-    ldof_map.dof_indices(micro_edge, d_solver->Q_component, dof_indices);
-    mc::extract_dof(dof_indices, d_solver->get_solution(), dof_values);
-    fe.evaluate_dof_at_quadrature_points(dof_values, values_Q);
-
-    for (size_t k = 0; k < qf.size(); k += 1)
-      v_qp[k] = values_Q[k] / values_A[k];
-  }
-
-  /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
-  void get_upwinded_values(double t, const mc::Edge &edge, std::vector<double> &v_qp) const override {
-    std::vector<double> Q_up(v_qp.size());
-    std::vector<double> A_up(v_qp.size());
-    d_evaluator->get_fluxes_on_macro_edge(t, edge, d_solver->get_solution(), Q_up, A_up);
-    for (size_t k = 0; k < v_qp.size(); k += 1)
-      v_qp[k] = Q_up[k] / A_up[k];
-  }
-
-  void get_upwinded_values(double t, const mc::Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override {
-    d_evaluator->get_fluxes_on_nfurcation(t, v, Q, A);
-  }
-
-private:
-  std::shared_ptr<mc::FlowUpwindEvaluator> d_evaluator;
-  std::shared_ptr<mc::ExplicitNonlinearFlowSolver> d_solver;
-};
-
 class UpwindProviderLinearizedFlow : public mc::UpwindProvider {
 public:
   explicit UpwindProviderLinearizedFlow(std::shared_ptr<mc::ImplicitLinearFlowSolver> solver)
@@ -208,7 +151,7 @@ int main(int argc, char *argv[]) {
     flow_solver->use_ssp_method();
 
     auto upwind_evaluator = std::make_shared<mc::FlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
-    auto variable_upwind_provider = std::make_shared<UpwindProviderNonlinearFlow>(upwind_evaluator, flow_solver);
+    auto variable_upwind_provider = std::make_shared<mc::UpwindProviderNonlinearFlow>(upwind_evaluator, flow_solver);
     // auto constant_upwind_provider = std::make_shared<mc::ConstantUpwindProvider>(vessel_length);
 
     //mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);

@@ -27,6 +27,8 @@ class PetscKsp;
 class Vertex;
 class Edge;
 class QuadratureFormula;
+class FlowUpwindEvaluator;
+class ExplicitNonlinearFlowSolver;
 
 class UpwindProvider {
 public:
@@ -69,6 +71,30 @@ public:
 
 private:
   double d_speed;
+};
+
+class UpwindProviderNonlinearFlow : public UpwindProvider {
+public:
+  explicit UpwindProviderNonlinearFlow(std::shared_ptr<FlowUpwindEvaluator> evaluator, std::shared_ptr<ExplicitNonlinearFlowSolver> solver);
+
+  ~UpwindProviderNonlinearFlow() override = default;
+
+  void init(double t, const std::vector<double> &u) override;
+
+  void get_values_at_qp(double t,
+                        const Edge &edge,
+                        size_t micro_edge,
+                        const QuadratureFormula &qf,
+                        std::vector<double> &v_qp) const override;
+
+  /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
+  void get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const override;
+
+  void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
+
+private:
+  std::shared_ptr<FlowUpwindEvaluator> d_evaluator;
+  std::shared_ptr<ExplicitNonlinearFlowSolver> d_solver;
 };
 
 
