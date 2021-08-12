@@ -123,6 +123,9 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
       A(std::make_shared<PetscMat>("A", *d_dof_map)),
       mass(std::make_shared<PetscVec>("mass", *d_dof_map)),
       linear_solver(PetscKsp::create_with_pc_ilu(*A)) {
+  // TODO: preallocate the nonzeros properly!
+  MatSetOption(A->get_mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+
   assemble_mass(d_comm, *d_graph, *d_dof_map, *mass);
   u->zero();
   rhs->zero();
@@ -147,7 +150,7 @@ void ImplicitTransportSolver::assemble(double tau, double t) {
 
 void ImplicitTransportSolver::sparsity_pattern() {
   ConstantUpwindProvider upwind_provider_plus(1.);
-  ConstantUpwindProvider upwind_provider_minus(-0.5);
+  ConstantUpwindProvider upwind_provider_minus(-42.);
   const double tau = 1e-3;
   const double t = 1.;
   A->zero();
@@ -169,9 +172,6 @@ void ImplicitTransportSolver::assemble_matrix(double tau, double t, const Upwind
   assemble_matrix_nfurcations(tau, t, upwind_provider);
   assemble_matrix_outflow(tau, t, upwind_provider);
   A->assemble();
-  // std::cout << std::endl;
-  // std::cout << *A << std::endl;
-  // std::cout << std::endl;
 }
 
 void ImplicitTransportSolver::assemble_rhs(double tau, double t, const UpwindProvider &upwind_provider) {
@@ -286,9 +286,6 @@ void ImplicitTransportSolver::assemble_rhs_inflow(double tau, double t, const Up
     if (!vertex.is_inflow())
       continue;
 
-    // TODO: generalize this to allow different functions
-    const auto c_in = inflow_function(t);
-
     auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
     auto &local_dof_map = d_dof_map->get_local_dof_map(neighbor_edge);
     auto micro_edge_idx = neighbor_edge.is_pointing_to(v_id) ? neighbor_edge.num_micro_edges() - 1 : 0;
@@ -297,6 +294,9 @@ void ImplicitTransportSolver::assemble_rhs_inflow(double tau, double t, const Up
     upwind_provider.get_upwinded_values(t, vertex, A_up, Q_up);
 
     const double v_up = Q_up[0] / A_up[0];
+
+    // TODO: generalize this to allow different functions
+    const auto c_in = A_up[0] * inflow_function(t);
 
     std::vector<size_t> dof_indices(local_dof_map.num_basis_functions());
     local_dof_map.dof_indices(micro_edge_idx, 0, dof_indices);
@@ -393,6 +393,11 @@ void ImplicitTransportSolver::assemble_matrix_nfurcations(double tau, double t, 
     // assemble the inflow edges
     for (auto i : inflows) {
       auto &edge = *edges[i];
+
+      // we only assemble rows which belong to us:
+      if (edge.rank() != mpi::rank(d_comm))
+        continue;
+
       auto &local_dof_map_i = d_dof_map->get_local_dof_map(edge);
       auto micro_edge_id_i = edge.is_pointing_to(v_idx) ? local_dof_map_i.num_micro_edges() - 1 : 0;
       auto boundary_typ = edge.is_pointing_to(v_idx) ? BPT::Right : BPT::Left;
@@ -406,6 +411,11 @@ void ImplicitTransportSolver::assemble_matrix_nfurcations(double tau, double t, 
     // assemble the outflow edges
     for (auto i : outflows) {
       auto &edge_i = *edges[i];
+
+      // we only assemble rows which belong to us:
+      if (edge_i.rank() != mpi::rank(d_comm))
+        continue;
+
       auto &local_dof_map_i = d_dof_map->get_local_dof_map(edge_i);
       auto micro_edge_id_i = edge_i.is_pointing_to(v_idx) ? local_dof_map_i.num_micro_edges() - 1 : 0;
       auto boundary_type_i = edge_i.is_pointing_to(v_idx) ? BPT::Right : BPT::Left;
