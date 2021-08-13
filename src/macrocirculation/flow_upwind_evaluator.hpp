@@ -12,7 +12,7 @@
 #include <memory>
 #include <vector>
 
-#include "communicator.hpp"
+#include "edge_boundary_evaluator.hpp"
 
 namespace macrocirculation {
 
@@ -48,8 +48,6 @@ public:
   void get_fluxes_on_nfurcation(double t, const Vertex &v, std::vector<double> &Q_up, std::vector<double> &A_up) const;
 
 private:
-  void evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev);
-
   /*! @brief Calculates the fluxes at nfurcations for the given time step at the macro edge boundaries.
    *
    * @param u_prev  The solution for which we calculate the fluxes.
@@ -71,17 +69,11 @@ private:
   /*! @brief The dof map for our domain */
   std::shared_ptr<DofMap> d_dof_map;
 
-  Communicator d_edge_boundary_communicator;
+  /*! @brief Stores the values of the A-component at the macro-edge boundaries. */
+  EdgeBoundaryEvaluator d_A_boundary_evaluator;
 
-  /*! @brief Contains the values of Q at the left and right boundary point of the given macro-edge.
-    *         For the 2i-th edge the left boundary value is at 2*i, while the right entry is at 2*i+1.
-    */
-  std::vector<double> d_Q_macro_edge_boundary_value;
-
-  /*! @brief Contains the values of A at the left and right boundary point of the given macro-edge.
-    *         For the 2i-th edge the left boundary value is at 2*i, while the right entry is at 2*i+1.
-    */
-  std::vector<double> d_A_macro_edge_boundary_value;
+  /*! @brief Stores the values of the Q-component at the macro-edge boundaries. */
+  EdgeBoundaryEvaluator d_Q_boundary_evaluator;
 
   /*! @brief Contains the flux-values of Q at the left boundary point of the given macro-edge.
     *         The ith vector entry corresponds to the ith macro-edge id.

@@ -106,9 +106,44 @@ public:
 
   Mat &get_mat() { return d_mat; }
 
+  size_t first_dof() const {
+    PetscInt start = 0;
+    PetscInt end = 0;
+    CHKERRABORT(PETSC_COMM_WORLD, MatGetOwnershipRange(d_mat, &start, &end));
+    return start;
+  }
+
+  size_t last_dof() const {
+    PetscInt start = 0;
+    PetscInt end = 0;
+    CHKERRABORT(PETSC_COMM_WORLD, MatGetOwnershipRange(d_mat, &start, &end));
+    return end;
+  }
+
+  double get(size_t i, size_t j) const {
+    double value;
+    PetscInt ii = i; PetscInt jj = j;
+    CHKERRABORT(PETSC_COMM_WORLD, MatGetValues(d_mat, 1, &ii, 1, &jj, &value));
+    return value;
+  }
+
 private:
   Mat d_mat{};
 };
+
+template< typename Stream >
+inline Stream& operator<<(Stream& out, const PetscMat& m)
+{
+  auto ldof = m.last_dof();
+  for (size_t k = m.first_dof(); k < ldof; k += 1)
+  {
+    for (size_t j = m.first_dof(); j < ldof; j += 1)
+      out << m.get(k, j) << " ";
+    out << "\n";
+  }
+  return out;
+}
+
 
 } // namespace macrocirculation
 

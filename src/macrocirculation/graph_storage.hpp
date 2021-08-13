@@ -124,6 +124,19 @@ struct NonlinearCharacteristicData {
   double q;
 };
 
+/*! @brief Connects a vertex in one graph weakly to a vertex of a different disjoint graph. */
+class InterGraphConnection {
+public:
+  InterGraphConnection(const std::shared_ptr<GraphStorage> &graph, const Vertex &vertex);
+
+  const GraphStorage &get_graph() const;
+  const Vertex &get_vertex() const;
+
+private:
+  std::weak_ptr<GraphStorage> d_graph;
+  size_t d_vertex_id;
+};
+
 class MicroEdge {
 public:
   MicroEdge(std::size_t local_id, std::size_t global_id)
@@ -268,7 +281,7 @@ public:
 
   const NonlinearCharacteristicData &get_nonlinear_characteristic_data() const;
 
-  const RCLModel& get_rcl_data() const;
+  const RCLModel &get_rcl_data() const;
 
   bool is_free_outflow() const;
 
@@ -281,6 +294,13 @@ public:
   bool is_nonlinear_characteristic_inflow() const;
 
   bool is_rcl_outflow() const;
+
+  void add_inter_graph_connection(std::shared_ptr<GraphStorage> graph, Vertex &v);
+
+  const std::vector<InterGraphConnection> &get_inter_graph_connections() const;
+
+  /*! @brief Establishes a symmetric inter graph connections between vertex v1 on graph g1 with vertex v2 on graph g2. */
+  static void connect(const std::shared_ptr<GraphStorage> &g1, Vertex &v1, const std::shared_ptr<GraphStorage> &g2, Vertex &v2);
 
 private:
   std::function<double(double)> p_inflow_value;
@@ -296,6 +316,8 @@ private:
   NonlinearCharacteristicData p_nonlinear_characteristic_data;
 
   RCLModel p_rcl_data;
+
+  std::vector<InterGraphConnection> d_inter_graph_connections;
 
   std::vector<std::size_t> p_neighbors;
 
@@ -444,6 +466,9 @@ private:
 
   /*! @brief Returns true if the given vertex has a neighbor edge, which is assigned to the given rank. */
   bool vertex_is_neighbor_of_rank(const Vertex &e, int rank) const;
+
+  /*! @brief Returns true if the given edge has a neighbor edge on a connected graph, which is assigned to the given rank. */
+  bool edge_is_connected_to_rank(const Edge &e, int rank) const;
 
   std::map<std::size_t, std::shared_ptr<Edge>> p_edges;
   std::map<std::size_t, std::shared_ptr<Vertex>> p_vertices;

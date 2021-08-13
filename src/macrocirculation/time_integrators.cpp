@@ -45,7 +45,6 @@ TimeIntegrator::TimeIntegrator(ButcherScheme bs, std::size_t num_dofs)
       d_k(std::vector<std::vector<double>>(d_bs.b.size(), std::vector<double>(num_dofs, 0))),
       d_tmp(num_dofs, 0) {}
 
-template<std::size_t degree>
 void TimeIntegrator::apply(const std::vector<double> &u_prev,
                            const double t,
                            const double tau,
@@ -68,10 +67,5 @@ void TimeIntegrator::apply(const std::vector<double> &u_prev,
     gmm::add(u_now, gmm::scaled(d_k[i], coeff), u_now);
   }
 }
-
-template void TimeIntegrator::apply<0>(const std::vector<double> &, const double, const double, RightHandSideEvaluator &, std::vector<double> &) const;
-template void TimeIntegrator::apply<1>(const std::vector<double> &, const double, const double, RightHandSideEvaluator &, std::vector<double> &) const;
-template void TimeIntegrator::apply<2>(const std::vector<double> &, const double, const double, RightHandSideEvaluator &, std::vector<double> &) const;
-template void TimeIntegrator::apply<3>(const std::vector<double> &, const double, const double, RightHandSideEvaluator &, std::vector<double> &) const;
 
 } // namespace macrocirculation
