@@ -258,6 +258,11 @@ public:
 
   void update_linear_characteristic_inflow(double p, double q);
 
+  /*! @brief Updates the outgoing pressure at the vessel tips.
+   *         If the boundary conditions do not have a pressure parameter a runtime_error is thrown.
+   */
+  void update_vessel_tip_pressures(double p);
+
   void set_to_nonlinear_characteristic_inflow(double G0, double A0, double rh0, bool points_towards_vertex, double p, double q);
 
   void update_nonlinear_characteristic_inflow(double p, double q);

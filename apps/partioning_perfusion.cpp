@@ -19,7 +19,8 @@
 #include "libmesh/libmesh.h"
 #include "macrocirculation/assembly_system.hpp"
 #include "macrocirculation/base_model.hpp"
-#include "macrocirculation/vtk_io.hpp"
+#include "macrocirculation/vtk_io_libmesh.hpp"
+#include "macrocirculation/vtk_writer.hpp"
 
 #include <vtkSmartPointer.h>
 #include <vtkUnstructuredGrid.h>
@@ -112,9 +113,9 @@ class Pres : public mc::BaseAssembly {
 public:
   Pres(Model *model, lm::MeshBase &mesh,
        lm::TransientLinearImplicitSystem &sys)
-      : mc::BaseAssembly("P", mesh, sys, 1,
-                         {sys.variable_number("p")}),
-        d_model_p(model) {
+    : mc::BaseAssembly("P", mesh, sys, 1,
+                       {sys.variable_number("p")}),
+      d_model_p(model) {
     sys.attach_assemble_object(
       *this);                     // attach this element assembly object
     sys.attach_init_function(ic); // add ic
@@ -135,10 +136,10 @@ public:
         lm::TransientLinearImplicitSystem &pres,
         lm::ExplicitSystem &hyd_cond,
         mc::Logger &log)
-      : mc::BaseModel(comm, mesh, eq_sys, log, "Darcy_3D"),
-        d_input(input),
-        d_pres(this, d_mesh, pres),
-        d_hyd_cond(hyd_cond) {
+    : mc::BaseModel(comm, mesh, eq_sys, log, "Darcy_3D"),
+      d_input(input),
+      d_pres(this, d_mesh, pres),
+      d_hyd_cond(hyd_cond) {
     d_log("model created\n");
   };
 
@@ -232,10 +233,10 @@ void set_perfusion_pts(std::string out_dir,
 
 //
 int create_heterogeneous_conductivity(const lm::MeshBase &mesh,
-                                       lm::ExplicitSystem &hyd_cond,
-                                       lm::EquationSystems &eq_sys,
-                                       const std::vector<int> &elem_taken,
-                                       Model &model) {
+                                      lm::ExplicitSystem &hyd_cond,
+                                      lm::EquationSystems &eq_sys,
+                                      const std::vector<int> &elem_taken,
+                                      Model &model) {
   std::vector<unsigned int> dof_indices;
   for (const auto &elem : mesh.active_local_element_ptr_range()) {
     hyd_cond.get_dof_map().dof_indices(elem, dof_indices);
@@ -248,10 +249,10 @@ int create_heterogeneous_conductivity(const lm::MeshBase &mesh,
 
 //
 void create_perfusion_territory(std::string out_dir,
-                       std::vector<NetPoint> &pts,
-                       lm::ExplicitSystem &hyd_cond,
-                       lm::EquationSystems &eq_sys,
-                       Model &model) {
+                                std::vector<NetPoint> &pts,
+                                lm::ExplicitSystem &hyd_cond,
+                                lm::EquationSystems &eq_sys,
+                                Model &model) {
 
   // initialize random number generator
   int seed = 0;
@@ -328,41 +329,22 @@ void create_perfusion_territory(std::string out_dir,
     model.d_log(oss.str());
 
     // output vascular domain elements
-    auto vtu_writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
-    auto vtu_data = vtkSmartPointer<vtkUnstructuredGrid>::New();
-
-    // create vtu file
-    auto fname = out_dir + "perfusion_points.vtu";
-    vtu_writer->SetFileName(fname.c_str());
+    auto vtu_writer = mc::VTKWriter(out_dir + "perfusion_points.vtu");
 
     // create point and radius data
-    auto points = vtkSmartPointer<vtkPoints>::New();
-    auto radius = vtkSmartPointer<vtkDoubleArray>::New();
-    auto indices = vtkSmartPointer<vtkDoubleArray>::New();
-    radius->SetNumberOfComponents(1);
-    radius->SetName("Radius");
-    indices->SetNumberOfComponents(1);
-    indices->SetName("Indices");
-
-    // fill data
-    double p_tag[1] = {0};
-    for (int i=0; i<pts.size(); i++) {
-      auto x = pts[i].d_x;
-      p_tag[0] = pts[i].d_R;
-      points->InsertNextPoint(x(0), x(1), x(2));
-      radius->InsertNextTuple(p_tag);
-
-      p_tag[0] = double(i+1);
-      indices->InsertNextTuple(p_tag);
+    std::vector<lm::Point> pts_x;
+    std::vector<double> pts_r;
+    std::vector<double> pts_i;
+    for (size_t i=0; i<pts.size(); i++) {
+      auto pti = pts[i];
+      pts_x.push_back(pti.d_x);
+      pts_r.push_back(pti.d_R);
+      pts_i.push_back(i+1);
     }
-
-    vtu_data->SetPoints(points);
-    vtu_data->GetPointData()->AddArray(radius);
-    vtu_data->GetPointData()->AddArray(indices);
-    vtu_writer->SetInputData(vtu_data);
-    vtu_writer->SetDataModeToAppended();
-    vtu_writer->EncodeAppendedDataOn();
-    vtu_writer->Write();
+    mc::add_points(pts_x, vtu_writer.d_d_p);
+    mc::add_array("Radius", pts_r, vtu_writer.d_d_p);
+    mc::add_array("Indices", pts_i, vtu_writer.d_d_p);
+    vtu_writer.write();
   }
 
 
@@ -450,7 +432,7 @@ void create_perfusion_territory(std::string out_dir,
     oss << "      radius target = " << mc::print_str(pts_vol_rad);
 
     std::vector<double> temp2;
-    for (int i=0; i<pts.size(); i++) temp2.push_back(100. * (pts_vol[i] - pts_actual_vol[i])/pts_vol[i]);
+    for (int i=0; i<pts.size(); i++) temp2.push_back(100. * std::abs(pts_vol[i] - pts_actual_vol[i])/pts_vol[i]);
     oss << "      percent vol difference = " << mc::print_str(temp2);
 
     // get average percentage error
@@ -470,7 +452,7 @@ void create_perfusion_territory(std::string out_dir,
 
     double vol_err = 0.;
     for (auto i : pts_actual_vol) vol_err += i;
-    vol_err = 100. * (total_vol - vol_err)/total_vol;
+    vol_err = 100. * std::abs(total_vol - vol_err)/total_vol;
     oss << "      percent volume not distributed = " << vol_err << "\n";
     vol_not_dist.push_back(vol_err);
 
@@ -492,13 +474,15 @@ void create_perfusion_territory(std::string out_dir,
       auto & elem_i = pts_elem[i];
 
       // check if we really need to process this outlet
-      if (voli_act < voli + vol_tol and voli_act > voli - vol_tol)
+      if (voli_act < voli + vol_tol and voli_act > voli - vol_tol) {
+        model.d_log(fmt::format("      skipping outlet end = {}\n", i));
         continue;
+      }
 
       model.d_log(fmt::format("      processing outlet end = {}\n", i));
 
       // loop over elements of this outlet and for each element find the neighboring element
-      int num_neigh_elem = 10;
+      int num_neigh_elem = 20;
       double voli_sum_act = voli_act;
       for (auto e : elem_i_old) {
         auto xe = elem_centers[e];
@@ -530,6 +514,22 @@ void create_perfusion_territory(std::string out_dir,
 
           // check if adding this element perturbs the volume a lot
           if (voli_sum_act + vol_ee > voli + vol_tol)
+            continue;
+
+          // check if at least one adjacent element to this element is owned by outlet i
+          bool found_adj_elem_owned_by_i = false;
+          auto ee_elem = mesh.elem_ptr(ee);
+          for (auto s : ee_elem->side_index_range()) {
+            const auto &ee_neigh = ee_elem->neighbor_ptr(s);
+            if (ee_neigh != nullptr) {
+              found_adj_elem_owned_by_i = elem_taken[ee_neigh->id()] == i;
+              if (found_adj_elem_owned_by_i)
+                break;
+            }
+          }
+
+          // if none of the neighbors are owned by i, skip this element
+          if (!found_adj_elem_owned_by_i)
             continue;
 
           // move element ee from previous owner to outlet i

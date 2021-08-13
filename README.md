@@ -67,6 +67,9 @@ Core dependencies are:
   - [Catch2](https://github.com/catchorg/Catch2.git) (2.13.1)
     * directly pulled using CMake `FetchContent` module
     * for ctest
+  - [gmm](http://getfem.org/project/libdesc_gmm.html)
+    * included as external library in the code
+    * provides framework to solve linear systems associated to the 1D networks
 
 Dependencies for running the examples:
   - [python3](https://www.python.org/)

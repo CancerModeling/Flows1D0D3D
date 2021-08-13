@@ -34,6 +34,7 @@ int main(int argc, char *argv[]) {
   options.add_options()                                                                                               //
     ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.))) //
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                     //
+    ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("1e-3"))         //
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10"))                      //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
@@ -48,35 +49,27 @@ int main(int argc, char *argv[]) {
 
     const auto tau = args["tau"].as<double>();
     const auto tau_out = args["tau-out"].as<double>();
+    const auto tau_coup = args["tau-coup"].as<double>();
 
     // const double tau_out = tau;
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
+    const auto coupling_interval = static_cast<std::size_t>(tau_coup / tau);
 
     mc::HeartToBreast1DSolver solver(MPI_COMM_WORLD);
-    solver.setup(degree, tau);
-
-    // we average the pressure between the 9th and 10th heart beat:
-    double t_start_pressure_averaging = static_cast<size_t>(std::floor(9. / tau));
-    double t_stop_pressure_averaging = static_cast<size_t>(std::floor(10. / tau));
+    solver.setup(degree, tau, mc::BoundaryModel::DiscreteRCRTree);
 
     const auto begin_t = std::chrono::steady_clock::now();
     for (std::size_t it = 0; it < max_iter; it += 1) {
       solver.solve();
 
-      if (it == t_start_pressure_averaging) {
-        std::cout << "start integrating 0D pressures" << std::endl;
-        solver.start_0d_pressure_integrator();
-      }
-
-      if (it == t_stop_pressure_averaging) {
-        std::cout << "stop integrating 0D pressures" << std::endl;
-        auto data = solver.stop_0d_pressure_integrator();
+      if (it % coupling_interval == 0) {
+        std::cout << "calculates coupling " << std::endl;
+        auto data = solver.get_vessel_tip_pressures();
 
         for (auto &d : data) {
-
           // just return the values for now:
           if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-            std::cout << d.p.x << ", " << d.p.y << ", " << d.p.z << ", " << d.p_art << ", " << d.p_ven << ", " << d.R2_art << ", " << d.R2_cap << std::endl;
+            std::cout << d.p.x << ", " << d.p.y << ", " << d.p.z << ", " << d.pressure << ", " << d.R2 << ", " << d.radius << std::endl;
         }
 
         // Some condition to solve the 3D system
@@ -86,6 +79,17 @@ int main(int argc, char *argv[]) {
           // TODO: Solver 3D system
 
           // TODO: Write 3D System
+        }
+
+        // update the boundary conditions of the 1D system:
+        {
+          std::map<size_t, double> new_tip_pressures;
+          for (auto &d : data) {
+            // TODO: Replace this with something more meaningful.
+            //       Note that 50 mmHg is much too much and just here to see the change from 30 mmHg which are the default.
+            new_tip_pressures[d.vertex_id] = 50 * 1333.3;
+          }
+          solver.update_vessel_tip_pressures(new_tip_pressures);
         }
       }
 

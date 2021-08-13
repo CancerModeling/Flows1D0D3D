@@ -43,14 +43,14 @@ void HeartToBreast1DSolver::start_0d_pressure_integrator() {
   d_integrator_running = true;
 }
 
-std::vector<VesselTipCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integrator() {
+std::vector<VesselTipAverageCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integrator() {
   d_integrator_running = false;
 
   auto values = integrator->get_integral_value({last_arterial_tip_index, first_vene_tip_index});
 
   double time_interval = integrator->get_integration_time();
 
-  std::vector<VesselTipCouplingData> results;
+  std::vector<VesselTipAverageCouplingData> results;
 
   for (auto v_id : graph_li->get_vertex_ids()) {
     auto &v = *graph_li->get_vertex(v_id);
@@ -78,14 +78,82 @@ std::vector<VesselTipCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integ
       auto R2_art = (R[last_arterial_tip_index]) * 1e3;
       auto R2_cap = (R[capillary_tip_index]) * 1e3;
 
-      results.push_back({p, p_art, p_ven, R2_art, R2_cap});
+      results.push_back({p, v.get_id(), p_art, p_ven, R2_art, R2_cap});
     }
   }
 
   return results;
 }
 
-void HeartToBreast1DSolver::setup_graphs() {
+std::map<size_t, double> get_vessel_tip_dof_values(MPI_Comm comm,
+                                                   const GraphStorage &graph,
+                                                   const DofMap &dof_map,
+                                                   const PetscVec &u) {
+  std::map<size_t, double> data;
+  std::vector<double> vertex_dof_values;
+  for (auto v_id : graph.get_vertex_ids()) {
+    auto v = graph.get_vertex(v_id);
+    if (v->is_vessel_tree_outflow()) {
+      data[v_id] = 0;
+      auto &e = *graph.get_edge(v->get_edge_neighbors()[0]);
+      if (e.rank() == mpi::rank(comm)) {
+        auto local_dof_map = dof_map.get_local_dof_map(*v);
+        const auto &dof_indices = local_dof_map.dof_indices();
+        vertex_dof_values.resize(dof_indices.size());
+        extract_dof(dof_indices, u, vertex_dof_values);
+        data.at(v_id) = vertex_dof_values.back();
+      }
+      MPI_Bcast(&data[v_id], 1, MPI_DOUBLE, e.rank(), comm);
+    }
+  }
+  return data;
+}
+
+std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_pressures() {
+  auto &dof_map = *solver->get_implicit_dof_map();
+  auto &u = solver->get_implicit_solver()->get_solution();
+  auto values = get_vessel_tip_dof_values(d_comm, *graph_li, dof_map, u);
+
+  std::vector<VesselTipCurrentCouplingData> results;
+
+  for (auto v_id : graph_li->get_vertex_ids()) {
+    auto &v = *graph_li->get_vertex(v_id);
+
+    if (v.is_vessel_tree_outflow()) {
+      auto &e = *graph_li->get_edge(v.get_edge_neighbors()[0]);
+
+      auto &R = v.get_vessel_tree_data().resistances;
+
+      if (!e.has_embedding_data())
+        throw std::runtime_error("cannot determine coupling data for an unembedded graph");
+
+      Point p = e.is_pointing_to(v_id) ? e.get_embedding_data().points.back() : e.get_embedding_data().points.front();
+
+      // 1e3 since we have to convert kg -> g:
+      auto p_out = values[v_id] * 1e3;
+
+      // 1e3 since we have to convert kg -> g:
+      auto R2 = R.back() * 1e3;
+
+      auto radius = calculate_edge_tree_parameters(e).radii.back();
+
+      results.push_back({p, v.get_id(), p_out, R2, radius});
+    }
+  }
+
+  return results;
+}
+
+void HeartToBreast1DSolver::update_vessel_tip_pressures(const std::map<size_t, double> &pressures_at_outlets) {
+  for (auto v_id : graph_li->get_active_vertex_ids(mpi::rank(d_comm))) {
+    auto &v = *graph_li->get_vertex(v_id);
+    if (v.is_vessel_tree_outflow())
+      // convert [Ba] to [kg / cm / s^2]
+      v.update_vessel_tip_pressures(pressures_at_outlets.at(v_id)*1e-3);
+  }
+}
+
+void HeartToBreast1DSolver::setup_graphs(BoundaryModel bmodel) {
   EmbeddedGraphReader graph_reader;
 
   graph_reader.append(path_nonlinear_geometry, *graph_nl);
@@ -97,7 +165,12 @@ void HeartToBreast1DSolver::setup_graphs() {
   graph_reader.set_boundary_data(path_boundary_linear, *graph_li);
   graph_reader.set_boundary_data(path_boundary_nonlinear, *graph_nl);
 
-  convert_rcr_to_partitioned_tree_bcs(graph_li);
+  if (bmodel == BoundaryModel::DiscreteRCRChain)
+    convert_rcr_to_partitioned_tree_bcs(graph_li);
+  else if (bmodel == BoundaryModel::DiscreteRCRTree)
+    set_0d_tree_boundary_conditions(graph_li, "bg");
+  else
+    throw std::runtime_error("Boundary model type was not implemented yet.");
 
   coupling->add_coupled_vertices("cw_out_1_1", "bg_132");
   coupling->add_coupled_vertices("cw_out_1_2", "bg_141");
@@ -189,8 +262,8 @@ void HeartToBreast1DSolver::write_output() {
   vessel_tip_writer->write(t, get_solver_li().get_solution());
 }
 
-void HeartToBreast1DSolver::setup(size_t degree, double tau) {
-  setup_graphs();
+void HeartToBreast1DSolver::setup(size_t degree, double tau, BoundaryModel boundary_model) {
+  setup_graphs(boundary_model);
   setup_solver(degree, tau);
   setup_output();
 }
@@ -203,5 +276,7 @@ void HeartToBreast1DSolver::solve() {
 }
 
 double HeartToBreast1DSolver::get_time() const { return t; }
+
+void HeartToBreast1DSolver::set_output_folder(std::string output_dir) { output_folder_name = output_dir; }
 
 } // namespace macrocirculation

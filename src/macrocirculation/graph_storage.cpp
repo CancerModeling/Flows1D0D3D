@@ -159,6 +159,17 @@ bool Vertex::bc_finalized() const { return d_bcs_finalized; }
 
 void Vertex::finalize_bcs() { d_bcs_finalized = true; }
 
+void Vertex::update_vessel_tip_pressures(double p){
+  if (is_vessel_tree_outflow())
+    p_vessel_tree_data.p_out = p;
+  else if (is_rcl_outflow())
+    p_rcl_data.p_out = p;
+  else if (is_windkessel_outflow())
+    p_peripheral_vessel_data.p_out = p;
+  else
+    throw std::runtime_error("updating the boundary pressure was not implemented for the given boundary type.");
+}
+
 const PeripheralVesselData &Vertex::get_peripheral_vessel_data() const {
   assert(is_windkessel_outflow());
   return p_peripheral_vessel_data;
