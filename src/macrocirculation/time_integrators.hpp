@@ -38,7 +38,6 @@ class TimeIntegrator {
 public:
   TimeIntegrator(ButcherScheme bs, std::size_t num_dofs);
 
-  template<std::size_t degree>
   void apply(const std::vector<double> &u_prev, double t, double tau, RightHandSideEvaluator &rhs, std::vector<double> &u_now) const;
 
 private:

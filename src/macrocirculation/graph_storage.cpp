@@ -63,6 +63,20 @@ double PhysicalData::get_c0() const {
   return std::pow(G0 / (2.0 * rho), 0.5);
 }
 
+InterGraphConnection::InterGraphConnection(const std::shared_ptr<GraphStorage> &graph, const Vertex &vertex)
+    : d_graph(graph),
+      d_vertex_id(vertex.get_id()) {}
+
+const GraphStorage &InterGraphConnection::get_graph() const {
+  auto graph = d_graph.lock();
+  return *graph;
+}
+
+const Vertex &InterGraphConnection::get_vertex() const {
+  return *get_graph().get_vertex(d_vertex_id);
+}
+
+
 const std::string &Primitive::get_name() const {
   return p_name;
 }
@@ -260,6 +274,19 @@ void Vertex::update_nonlinear_characteristic_inflow(double p, double q) {
   double sigma = p_nonlinear_characteristic_data.points_towards_vertex ? +1 : -1;
   p_nonlinear_characteristic_data.p = p;
   p_nonlinear_characteristic_data.q = sigma * q;
+}
+
+void Vertex::add_inter_graph_connection(std::shared_ptr<GraphStorage> graph, Vertex &v) {
+  d_inter_graph_connections.emplace_back(graph, v);
+}
+
+const std::vector<InterGraphConnection> &Vertex::get_inter_graph_connections() const {
+  return d_inter_graph_connections;
+}
+
+void Vertex::connect(const std::shared_ptr<GraphStorage> &g1, Vertex &v1, const std::shared_ptr<GraphStorage> &g2, Vertex &v2) {
+  v1.add_inter_graph_connection(g2, v2);
+  v2.add_inter_graph_connection(g1, v1);
 }
 
 bool Edge::is_pointing_to(std::size_t vertex_id) const {
@@ -501,6 +528,22 @@ bool GraphStorage::edge_is_neighbor_of_rank(const Edge &e, int rank) const {
   return false;
 }
 
+bool GraphStorage::edge_is_connected_to_rank(const Edge &e, int rank) const {
+  for (auto v_id : e.get_vertex_neighbors()) {
+    auto vertex = get_vertex(v_id);
+
+    for (auto& con: vertex->get_inter_graph_connections() )
+    {
+      auto& connected_graph = con.get_graph();
+      auto& connected_vertex = con.get_vertex();
+
+      if ( connected_graph.vertex_is_neighbor_of_rank(connected_vertex, rank) )
+        return true;
+    }
+  }
+  return false;
+}
+
 bool GraphStorage::vertex_is_neighbor_of_rank(const Vertex &v, int rank) const {
   for (const auto &e_id : v.get_edge_neighbors()) {
     auto neighbor_edge = get_edge(e_id);
@@ -519,7 +562,7 @@ std::vector<std::size_t> GraphStorage::get_ghost_edge_ids(int main_rank, int gho
     if (ghost_rank_edge->rank() != ghost_rank)
       continue;
 
-    if (edge_is_neighbor_of_rank(*ghost_rank_edge, main_rank))
+    if (edge_is_neighbor_of_rank(*ghost_rank_edge, main_rank) || edge_is_connected_to_rank(*ghost_rank_edge, main_rank))
       ghost_edge_ids.push_back(ghost_rank_edge->get_id());
   }
   return ghost_edge_ids;

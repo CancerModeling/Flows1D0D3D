@@ -19,7 +19,7 @@ NonlinearLinearCoupling::
   NonlinearLinearCoupling(
     MPI_Comm comm,
     std::shared_ptr<GraphStorage> graph_nl,
-    std::shared_ptr<GraphStorage> graph_li )
+    std::shared_ptr<GraphStorage> graph_li)
     : d_graph_nl(std::move(graph_nl)),
       d_graph_li(std::move(graph_li)),
       d_comm(comm),
@@ -43,6 +43,7 @@ void NonlinearLinearCoupling::add_coupled_vertices(const std::string &name_nl, c
   v_nl->set_to_nonlinear_characteristic_inflow(data_li.G0, data_li.A0, data_li.rho, e_li->is_pointing_to(v_li->get_id()), 0, 0);
   v_li->set_to_linear_characteristic_inflow(linear::get_C(data_nl), linear::get_L(data_nl), e_nl->is_pointing_to(v_nl->get_id()), 0, 0);
   coupled_vertices.push_back({v_nl->get_id(), v_li->get_id()});
+  Vertex::connect(d_graph_nl, *v_nl, d_graph_li, *v_li);
 }
 
 int NonlinearLinearCoupling::get_rank(GraphStorage &graph, Vertex &v) {
@@ -50,7 +51,7 @@ int NonlinearLinearCoupling::get_rank(GraphStorage &graph, Vertex &v) {
   return graph.get_edge(v.get_edge_neighbors()[0])->rank();
 }
 
-void NonlinearLinearCoupling::update_linear_solver( const ExplicitNonlinearFlowSolver& nonlinear_solver, ImplicitLinearFlowSolver& linear_solver ){
+void NonlinearLinearCoupling::update_linear_solver(const ExplicitNonlinearFlowSolver &nonlinear_solver, ImplicitLinearFlowSolver &linear_solver) {
   // send data
   for (auto vertex_pair : coupled_vertices) {
     auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);
@@ -86,7 +87,7 @@ void NonlinearLinearCoupling::update_linear_solver( const ExplicitNonlinearFlowS
   d_buffer_system.clear();
 }
 
-void NonlinearLinearCoupling::update_nonlinear_solver( const ImplicitLinearFlowSolver& linear_solver,  ExplicitNonlinearFlowSolver& nonlinear_solver ) {
+void NonlinearLinearCoupling::update_nonlinear_solver(const ImplicitLinearFlowSolver &linear_solver, ExplicitNonlinearFlowSolver &nonlinear_solver) {
   // send data
   for (auto vertex_pair : coupled_vertices) {
     auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);

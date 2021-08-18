@@ -15,9 +15,8 @@ FlowUpwindEvaluator::FlowUpwindEvaluator(MPI_Comm comm, std::shared_ptr<GraphSto
     : d_comm(comm),
       d_graph(std::move(graph)),
       d_dof_map(std::move(dof_map)),
-      d_edge_boundary_communicator(Communicator::create_edge_boundary_value_communicator(comm, d_graph)),
-      d_Q_macro_edge_boundary_value(2 * d_graph->num_edges()),
-      d_A_macro_edge_boundary_value(2 * d_graph->num_edges()),
+      d_A_boundary_evaluator(comm, d_graph, d_dof_map, 1),
+      d_Q_boundary_evaluator(comm, d_graph, d_dof_map, 0),
       d_Q_macro_edge_flux_l(d_graph->num_edges()),
       d_Q_macro_edge_flux_r(d_graph->num_edges()),
       d_A_macro_edge_flux_l(d_graph->num_edges()),
@@ -27,22 +26,11 @@ FlowUpwindEvaluator::FlowUpwindEvaluator(MPI_Comm comm, std::shared_ptr<GraphSto
 void FlowUpwindEvaluator::init(double t, const std::vector<double> &u_prev) {
   d_current_t = t;
 
-  evaluate_macro_edge_boundary_values(u_prev);
-  d_edge_boundary_communicator.update_ghost_layer(d_Q_macro_edge_boundary_value);
-  d_edge_boundary_communicator.update_ghost_layer(d_A_macro_edge_boundary_value);
-
-  // std::cout << "fluxes Q_macro_edge_boundary_value_l " << d_Q_macro_edge_boundary_value_l << std::endl;
-  // std::cout << "fluxes Q_macro_edge_boundary_value_r " << d_Q_macro_edge_boundary_value_r << std::endl;
-  // std::cout << "fluxes A_macro_edge_boundary_value_l " << d_A_macro_edge_boundary_value_l << std::endl;
-  // std::cout << "fluxes A_macro_edge_boundary_value_r " << d_A_macro_edge_boundary_value_r << std::endl;
+  d_A_boundary_evaluator.init(u_prev);
+  d_Q_boundary_evaluator.init(u_prev);
 
   calculate_nfurcation_fluxes(u_prev);
   calculate_inout_fluxes(t, u_prev);
-
-  // std::cout << "fluxes d_Q_macro_edge_flux_r " << d_Q_macro_edge_flux_r << std::endl;
-  // std::cout << "fluxes d_A_macro_edge_flux_r " << d_A_macro_edge_flux_r << std::endl;
-  // std::cout << "fluxes d_Q_macro_edge_flux_l " << d_Q_macro_edge_flux_l << std::endl;
-  // std::cout << "fluxes d_A_macro_edge_flux_l " << d_A_macro_edge_flux_l << std::endl;
 }
 
 void FlowUpwindEvaluator::get_fluxes_on_macro_edge(double t, const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &Q_up_macro_edge, std::vector<double> &A_up_macro_edge) const {
@@ -130,40 +118,6 @@ void FlowUpwindEvaluator::get_fluxes_on_macro_edge(double t, const Edge &edge, c
   A_up_macro_edge[local_dof_map.num_micro_vertices() - 1] = d_A_macro_edge_flux_r[edge.get_id()];
 }
 
-void FlowUpwindEvaluator::evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev) {
-  std::vector<std::size_t> dof_indices(4, 0);
-  std::vector<double> local_dofs(4, 0);
-
-  for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
-    const auto edge = d_graph->get_edge(e_id);
-    const auto &param = edge->get_physical_data();
-    const auto &local_dof_map = d_dof_map->get_local_dof_map(*edge);
-    const double h = param.length / local_dof_map.num_micro_edges();
-
-    FETypeNetwork fe(create_midpoint_rule(), local_dof_map.num_basis_functions() - 1);
-    fe.reinit(h);
-
-    dof_indices.resize(local_dof_map.num_basis_functions());
-    local_dofs.resize(local_dof_map.num_basis_functions());
-
-    local_dof_map.dof_indices(0, 0, dof_indices);
-    extract_dof(dof_indices, u_prev, local_dofs);
-    d_Q_macro_edge_boundary_value[2 * edge->get_id()] = fe.evaluate_dof_at_boundary_points(local_dofs).left;
-
-    local_dof_map.dof_indices(0, 1, dof_indices);
-    extract_dof(dof_indices, u_prev, local_dofs);
-    d_A_macro_edge_boundary_value[2 * edge->get_id()] = fe.evaluate_dof_at_boundary_points(local_dofs).left;
-
-    local_dof_map.dof_indices(local_dof_map.num_micro_edges() - 1, 0, dof_indices);
-    extract_dof(dof_indices, u_prev, local_dofs);
-    d_Q_macro_edge_boundary_value[2 * edge->get_id() + 1] = fe.evaluate_dof_at_boundary_points(local_dofs).right;
-
-    local_dof_map.dof_indices(local_dof_map.num_micro_edges() - 1, 1, dof_indices);
-    extract_dof(dof_indices, u_prev, local_dofs);
-    d_A_macro_edge_boundary_value[2 * edge->get_id() + 1] = fe.evaluate_dof_at_boundary_points(local_dofs).right;
-  }
-}
-
 void FlowUpwindEvaluator::get_fluxes_on_nfurcation(double t, const Vertex &v, std::vector<double> &Q_up, std::vector<double> &A_up) const {
   // evaluator was initialized with the correct time step
   if (d_current_t != t)
@@ -213,14 +167,10 @@ void FlowUpwindEvaluator::calculate_nfurcation_fluxes(const std::vector<double> 
     }
 
     // evaluate on edges
-    std::vector<double> Q_e;
-    std::vector<double> A_e;
-    for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
-      const double Q = e_in[vessel_idx] ? d_Q_macro_edge_boundary_value[2 * e[vessel_idx]->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * e[vessel_idx]->get_id()];
-      const double A = e_in[vessel_idx] ? d_A_macro_edge_boundary_value[2 * e[vessel_idx]->get_id() + 1] : d_A_macro_edge_boundary_value[2 * e[vessel_idx]->get_id()];
-      Q_e.push_back(Q);
-      A_e.push_back(A);
-    }
+    std::vector<double> Q_e(num_vessels);
+    std::vector<double> A_e(num_vessels);
+    d_Q_boundary_evaluator(*vertex, Q_e);
+    d_A_boundary_evaluator(*vertex, A_e);
 
     // get upwinded values at bifurcation
     std::vector<double> Q_up(num_vessels, 0);
@@ -240,8 +190,7 @@ void FlowUpwindEvaluator::calculate_nfurcation_fluxes(const std::vector<double> 
   }
 }
 
-void calculate_windkessel_upwind_values(const PhysicalData& param, bool is_pointing_to, double R1, double Q_DG, double A_DG, double p_c, double& Q_out, double& A_out)
-{
+void calculate_windkessel_upwind_values(const PhysicalData &param, bool is_pointing_to, double R1, double Q_DG, double A_DG, double p_c, double &Q_out, double &A_out) {
   const auto W = is_pointing_to ? calculate_W2_value(Q_DG, A_DG, param.G0, param.rho, param.A0)
                                 : calculate_W1_value(Q_DG, A_DG, param.G0, param.rho, param.A0);
 
@@ -255,7 +204,7 @@ void calculate_windkessel_upwind_values(const PhysicalData& param, bool is_point
   const auto df = [&](auto A_out) {
     auto p = param.G0 * (std::sqrt(A_out / param.A0) - 1);
     auto dp = param.G0 * 0.5 / std::sqrt(A_out * param.A0);
-    return - dp / (A_out * R1) + (p - p_c) / (A_out * A_out * R1) - c0 * std::pow(A_out, -0.75) / std::pow(param.A0, 0.25);
+    return -dp / (A_out * R1) + (p - p_c) / (A_out * A_out * R1) - c0 * std::pow(A_out, -0.75) / std::pow(param.A0, 0.25);
   };
 
   const double TOL = 1.0e-10;
@@ -281,7 +230,7 @@ void calculate_windkessel_upwind_values(const PhysicalData& param, bool is_point
       std::cerr << "warning: Newton did not converge" << std::endl;
   }
 
-  const double sgn = is_pointing_to ? + 1 : -1;
+  const double sgn = is_pointing_to ? +1 : -1;
 
   Q_out = sgn * (calculate_static_p(A_out, param.G0, param.A0) - p_c) / R1;
 }
@@ -303,10 +252,8 @@ void FlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<dou
       // does the vessel point towards the vertex?
       const bool in = edge->is_pointing_to(vertex->get_id());
 
-      const double Q =
-        in ? d_Q_macro_edge_boundary_value[2 * edge->get_id() + 1] : d_Q_macro_edge_boundary_value[2 * edge->get_id()];
-      const double A =
-        in ? d_A_macro_edge_boundary_value[2 * edge->get_id() + 1] : d_A_macro_edge_boundary_value[2 * edge->get_id()];
+      const double Q = d_Q_boundary_evaluator(*vertex, *edge);
+      const double A = d_A_boundary_evaluator(*vertex, *edge);
 
       // inflow boundary
       if (vertex->is_inflow()) {
@@ -361,20 +308,18 @@ void FlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<dou
 
         double Q_out = 0;
         double A_out = 0;
-        calculate_windkessel_upwind_values( param, is_pointing_to, R1, Q, A, p_c, Q_out, A_out );
+        calculate_windkessel_upwind_values(param, is_pointing_to, R1, Q, A, p_c, Q_out, A_out);
 
         if (is_pointing_to) {
           d_Q_macro_edge_flux_r[edge->get_id()] = Q_out;
           d_A_macro_edge_flux_r[edge->get_id()] = A_out;
-        }
-        else
-        {
+        } else {
           d_Q_macro_edge_flux_l[edge->get_id()] = Q_out;
           d_A_macro_edge_flux_l[edge->get_id()] = A_out;
         }
-      }  else if (vertex->is_nonlinear_characteristic_inflow()) {
+      } else if (vertex->is_nonlinear_characteristic_inflow()) {
 
-        auto& data = vertex->get_nonlinear_characteristic_data();
+        auto &data = vertex->get_nonlinear_characteristic_data();
 
         double A_r = nonlinear::get_A_from_p(data, data.p);
 
@@ -384,15 +329,13 @@ void FlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<dou
         std::vector<double> Q_up_list = Q_list;
         std::vector<double> A_up_list = A_list;
 
-        std::vector< VesselParameters > param_list = {
+        std::vector<VesselParameters> param_list = {
           {param.G0, param.A0, param.rho},
-          {data.G0, data.A0, data.rho}
-        };
+          {data.G0, data.A0, data.rho}};
 
-        std::vector< bool > points_to_vertex_list = {
+        std::vector<bool> points_to_vertex_list = {
           edge->is_pointing_to(v_id),
-          true
-        };
+          true};
 
         solve_at_nfurcation(Q_list, A_list, param_list, points_to_vertex_list, Q_up_list, A_up_list);
 

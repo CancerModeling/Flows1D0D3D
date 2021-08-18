@@ -148,6 +148,9 @@ public:
   /*! @returns The degree of the legendre basis. */
   std::size_t get_degree() const;
 
+  /*! @returns The quadrature formula for the given finite element type. */
+  QuadratureFormula get_quadrature_formula() const;
+
 private:
   QuadratureFormula d_qf;
 

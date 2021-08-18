@@ -25,8 +25,8 @@ public:
 
   PetscVec(const PetscVec &) = delete;
   PetscVec(PetscVec &&) = delete;
-  PetscVec& operator=(const PetscVec &) = delete;
-  PetscVec& operator=(PetscVec &&) = delete;
+  PetscVec &operator=(const PetscVec &) = delete;
+  PetscVec &operator=(PetscVec &&) = delete;
 
   ~PetscVec() {
     CHKERRABORT(PETSC_COMM_WORLD, VecDestroy(&d_vec));
@@ -71,9 +71,38 @@ public:
     d_vec = tmp;
   }
 
+  size_t local_size() const {
+    PetscInt size = 0;
+    CHKERRABORT(PETSC_COMM_WORLD, VecGetLocalSize(d_vec, &size));
+    return size;
+  }
+
+  size_t first_dof() const {
+    PetscInt start = 0;
+    PetscInt end = 0;
+    CHKERRABORT(PETSC_COMM_WORLD, VecGetOwnershipRange(d_vec, &start, &end));
+    return start;
+  }
+
+  size_t last_dof() const {
+    PetscInt start = 0;
+    PetscInt end = 0;
+    CHKERRABORT(PETSC_COMM_WORLD, VecGetOwnershipRange(d_vec, &start, &end));
+    return end;
+  }
+
 private:
   Vec d_vec;
 };
+
+template< typename Stream >
+inline Stream& operator<<(Stream& out, const PetscVec& v)
+{
+  auto ldof = v.last_dof();
+  for (size_t k = v.first_dof(); k < ldof; k += 1)
+    out << v.get(k) << " ";
+  return out;
+}
 
 } // namespace macrocirculation
 
