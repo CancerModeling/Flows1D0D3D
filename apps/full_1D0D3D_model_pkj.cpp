@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     ("permeability-cap", "permeability for mass exchange", cxxopts::value<double>()->default_value("0.1"))                                 //
     ("permeability-tis", "permeability for mass exchange", cxxopts::value<double>()->default_value("0.1"))                                 //
     ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value(""))                                                   //
-    ("num-points", "number of perfusion points", cxxopts::value<int>()->default_value("10"))                                           //
+    ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                                                   //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
 
@@ -79,12 +79,15 @@ int main(int argc, char *argv[]) {
     solver_1d.set_output_folder(out_dir);
     solver_1d.setup(degree, tau, mc::BoundaryModel::DiscreteRCRTree);
 
+    // create logger
+    mc::Logger log(out_dir + "sim", comm->rank());
+
     // setup 3D solver
+    log("setting up 3D solver\n");
     auto filename = args["input-file"].as<std::string>();
-    int num_perf_points = args["num-points"].as<int>();
     // read input parameters
-    auto input = mc::HeartToBreast3DSolverInputDeck(filename);
-    if (filename == "") {
+    mc::HeartToBreast3DSolverInputDeck input(filename);
+    if (filename.empty()) {
       input.d_T = t_end;
       input.d_dt = args["time-step"].as<double>();
       input.d_h = args["mesh-size"].as<double>();
@@ -98,16 +101,13 @@ int main(int argc, char *argv[]) {
       input.d_perf_fn_type = "linear";
       input.d_perf_neigh_size = std::make_pair(4., 10.);
     }
-
-    // create logger
-    mc::Logger log(out_dir + "sim", comm->rank());
     log("input data \n" + input.print_str() + "\n");
 
     // create mesh
     log("creating mesh\n");
     lm::ReplicatedMesh mesh(*comm);
     long N = long(1. / input.d_h);
-    if (input.d_mesh_file != "")
+    if (!input.d_mesh_file.empty())
       mesh.read(input.d_mesh_file);
     else
       lm::MeshTools::Generation::build_cube(mesh, N, N, N, 0., 1., 0.,
@@ -154,12 +154,12 @@ int main(int argc, char *argv[]) {
 
       if (it % coupling_interval == 0) {
         std::cout << "calculates coupling " << std::endl;
-        auto data_1d = solver_1d.get_vessel_tip_pressures();
+        data_1d = solver_1d.get_vessel_tip_pressures();
 
         for (auto &d : data_1d) {
           // just return the values for now:
           if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-            std::cout << d.p.x << ", " << d.p.y << ", " << d.p.z << ", " << d.pressure << ", " << d.R2 << std::endl;
+            std::cout << d.p.x << ", " << d.p.y << ", " << d.p.z << ", " << d.pressure << ", " << d.R2 << ", " << d.radius << std::endl;
         }
 
         // Some condition to solve the 3D system
@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
           // Solver 1D may store vector (for each outlet) of coefficients a and b
           // and also vector of weighted avg of 3D pressure
           // ===> digest data_3d into solver_1d
-          auto data_3d = solver_3d.get_vessel_tip_data_3d();
+          data_3d = solver_3d.get_vessel_tip_data_3d();
         }
 
         // update the boundary conditions of the 1D system:

@@ -95,7 +95,7 @@ HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string
       d_T(1.), d_dt(0.01), d_h(0.1), d_mesh_file(""), d_out_dir(""),
       d_perf_fn_type("linear"), d_perf_neigh_size({4., 10.}),
       d_debug_lvl(0) {
-  if (!filename.empty() and filename != "")
+  if (!filename.empty())
     read_parameters(filename);
 }
 
@@ -359,6 +359,10 @@ void HeartToBreast3DSolver::set_output_folder(std::string output_dir) {
 void HeartToBreast3DSolver::setup_1d3d(const std::vector<VesselTipCurrentCouplingData> &data_1d) {
 
   auto num_perf_outlets = data_1d.size();
+  if (num_perf_outlets == 0) {
+    std::cerr << "Error outlet 1d data should not be empty.\n";
+    exit(EXIT_FAILURE);
+  }
 
   // step 1: copy relevant data
   for (const auto &a : data_1d) {
