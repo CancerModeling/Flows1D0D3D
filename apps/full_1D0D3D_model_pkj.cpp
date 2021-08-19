@@ -26,7 +26,7 @@
 #include "macrocirculation/nonlinear_linear_coupling.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-
+#include "macrocirculation/libmesh_utils.hpp"
 #include "macrocirculation/heart_to_breast_3d_solver.hpp"
 
 namespace mc = macrocirculation;
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     ("hyd-cond-tis", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                                              //
     ("permeability-cap", "permeability for mass exchange", cxxopts::value<double>()->default_value("0.1"))                                 //
     ("permeability-tis", "permeability for mass exchange", cxxopts::value<double>()->default_value("0.1"))                                 //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value(""))                                                   //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))                                                   //
     ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                                                   //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
@@ -106,12 +106,17 @@ int main(int argc, char *argv[]) {
     // create mesh
     log("creating mesh\n");
     lm::ReplicatedMesh mesh(*comm);
-    long N = long(1. / input.d_h);
-    if (!input.d_mesh_file.empty())
+    if (!input.d_mesh_file.empty()) {
       mesh.read(input.d_mesh_file);
-    else
+      //input.d_h = mc::get_min_nodal_spacing(mesh);
+      input.d_h = mc::get_mesh_size_estimate_using_element_volume(mesh);
+      log(fmt::format("mesh size = {}\n", input.d_h));
+    }
+    else {
+      long N = long(1. / input.d_h);
       lm::MeshTools::Generation::build_cube(mesh, N, N, N, 0., 1., 0.,
                                             1., 0., 1., lm::HEX8);
+    }
 
     // create equation system
     log("creating equation system\n");
@@ -132,6 +137,9 @@ int main(int argc, char *argv[]) {
     // create model that holds all essential variables
     log("creating model\n");
     auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm, input, mesh, eq_sys, p_cap, p_tis, K_cap, Lp_cap, log);
+    eq_sys.init();
+    solver_3d.set_K_cap();
+    solver_3d.set_Lp_cap();
 
     // setup the 1D pressure data in 3D solver
     log("setting 1D-3D coupling data in 3D solver\n");
@@ -146,6 +154,8 @@ int main(int argc, char *argv[]) {
     // call get_vessel_tip_data_3d()
     // data_3d contains vector of coefficients a and b and also weighted avg of 3D pressure
     auto data_3d = solver_3d.get_vessel_tip_data_3d();
+
+    exit(EXIT_SUCCESS);
 
     // time integration
     const auto begin_t = std::chrono::steady_clock::now();

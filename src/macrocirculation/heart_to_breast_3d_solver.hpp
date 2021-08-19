@@ -59,7 +59,7 @@ struct HeartToBreast3DSolverInputDeck {
   std::string d_out_dir;
   /*! @brief Perfusion weight function type {'const', 'linear', 'gaussian'}. */
   std::string d_perf_fn_type;
-  /*! @brief Perfusion neighbor radius min and max (factor of mesh size). */
+  /*! @brief Perfusion neighbor radius min and max. */
   std::pair<double, double> d_perf_neigh_size;
   /*! @brief Debug output level. */
   int d_debug_lvl;
@@ -110,6 +110,9 @@ public:
 
   /*! @brief Update 1D data. */
   void update_1d_data(const std::vector<VesselTipCurrentCouplingData> &data_1d);
+
+  void set_Lp_cap();
+  void set_K_cap();
 
 public:
   /*! @brief MPI comm. (Note that we have another comm from libmesh defined in BaseModel class) */
