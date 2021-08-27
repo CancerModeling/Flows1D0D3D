@@ -117,6 +117,8 @@ public:
   void solve(double tau, double t);
 
   const PetscVec &get_solution() const { return *u; }
+  
+  void applySlopeLimiter();
 
 private:
   /*! @brief Assembles the left-hand-side matrix for the given time step. */

@@ -230,6 +230,116 @@ void ImplicitTransportSolver::assemble_matrix_cells(double tau, double t, const 
   }
 }
 
+void ImplicitTransportSolver::applySlopeLimiter(){
+  for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
+    const auto macro_edge = d_graph->get_edge(e_id);
+
+    const auto &local_dof_map = d_dof_map->get_local_dof_map(*macro_edge);
+    const auto &param = macro_edge->get_physical_data();
+    
+    std::vector<std::size_t> dof_indices(local_dof_map.num_basis_functions());    
+    std::vector<std::size_t> dof_indices_left(local_dof_map.num_basis_functions());
+    std::vector<std::size_t> dof_indices_right(local_dof_map.num_basis_functions());
+      
+    for (size_t micro_vertex_id = 0; micro_vertex_id < macro_edge->num_micro_vertices(); micro_vertex_id += 1) {
+    
+      auto edge_id = micro_vertex_id;
+      
+      local_dof_map.dof_indices(edge_id, 0, dof_indices); 
+      std::vector<double> dof_edge(local_dof_map.num_basis_functions());
+      extract_dof(dof_indices, *u, dof_edge);
+	     	
+      if( micro_vertex_id == 0 ){                  
+          auto &vertex = *d_graph->get_vertex(micro_vertex_id);          
+          auto right_edge_id = micro_vertex_id + 1;        
+          local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);        
+          std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());
+          extract_dof(dof_indices_right, *u, dof_right_edge); 
+          
+	  for( int j=dof_indices.size()-1;j>0;j--){
+	    double gamma = 1.0/(2.0*( 2.0*(double) j -1.0 ));
+	    double diff_left  = gamma * ( dof_edge[ j-1 ] - 0.0 ); 
+	    double diff_right = gamma * ( dof_right_edge[ j-1 ] - dof_edge[ j-1 ] ); 
+	    double dof_central = dof_edge[ j ];
+	    double new_dof = 0.0;
+
+	    if( dof_central > 0.0 && diff_left > 0.0  && diff_right > 0.0 ){          
+		new_dof = std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) ); 
+  	    }
+		  
+	    if( dof_central < 0.0 && diff_left < 0.0  && diff_right < 0.0 ){          
+		new_dof = -std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) );        
+	    }
+	    
+	    //if( std::abs( dof_central-new_dof )>1.0e-10 ) 
+	    	 u->set(dof_indices[j],new_dof);  
+          } 
+             
+      }
+      else if( micro_vertex_id == macro_edge->num_micro_vertices() - 1 ){    
+      
+          auto left_edge_id  = micro_vertex_id - 1;        
+          local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);        
+          std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
+          extract_dof(dof_indices_left, *u, dof_left_edge);                     
+
+          for(int j=dof_indices.size()-1;j>0;j--){	      
+	      double gamma = 1.0/(2.0*( 2.0*(double) j -1.0 ));
+	      double diff_left  = gamma * ( dof_edge[ j-1 ] - dof_left_edge[ j-1 ] ); 
+	      double diff_right = gamma * ( 0.0 - dof_edge[ j-1 ] ); 
+	      double dof_central = dof_edge[ j ];
+	      double new_dof = 0.0;
+
+	      if( dof_central > 0.0 && diff_left > 0.0  && diff_right > 0.0 ){          
+		  new_dof = std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) ); 
+  	      }
+		  
+	      if( dof_central < 0.0 && diff_left < 0.0  && diff_right < 0.0 ){          
+		new_dof = -std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) );        
+	      }
+	    
+	    //if( std::abs( dof_central-new_dof )>1.0e-10 ) 
+	    	 u->set(dof_indices[j],new_dof);  		         
+          }        
+      
+      }
+      else{ 
+
+        auto left_edge_id  = micro_vertex_id - 1;
+        auto right_edge_id = micro_vertex_id + 1;
+      
+	local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
+	local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
+	     
+	std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
+	std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());  
+	
+	extract_dof(dof_indices_left, *u, dof_left_edge);
+	extract_dof(dof_indices_right, *u, dof_right_edge);      
+	      
+	for(int j=dof_indices.size()-1;j>0;j--){	      
+	    double gamma = 1.0/(2.0*( 2.0*(double) j -1.0 ));
+	    double diff_left  = gamma * ( dof_edge[ j-1 ] - dof_left_edge[ j-1 ] ); 
+	    double diff_right = gamma * ( dof_right_edge[ j-1 ] - dof_edge[ j-1 ] ); 
+	    double dof_central = dof_edge[ j ];
+	    double new_dof = 0.0;
+
+	    if( dof_central > 0.0 && diff_left > 0.0  && diff_right > 0.0 ){          
+		new_dof = std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) ); 
+  	    }
+		  
+	    if( dof_central < 0.0 && diff_left < 0.0  && diff_right < 0.0 ){          
+		new_dof = -std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) );        
+	    }
+	    
+	    //if( std::abs( dof_central-new_dof )>1.0e-10 ) 
+	    	 u->set(dof_indices[j],new_dof);		         
+        } 	      
+      }  
+    }      
+  }
+}
+
 void ImplicitTransportSolver::assemble_matrix_inner_boundaries(double tau, double t, const UpwindProvider &upwind_provider) {
   std::vector<double> v_up;
 
