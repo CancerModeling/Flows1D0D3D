@@ -116,7 +116,7 @@ def animate(i):
         lc.set_ydata(data_c)
         ax_Q.relim()
         ax_p.relim()
-        ax_c.set_ylim([0, 1])
+        ax_c.set_ylim([0, 1.05])
         ax_Q.autoscale_view()
         ax_p.autoscale_view()
         ax_c.autoscale_view()

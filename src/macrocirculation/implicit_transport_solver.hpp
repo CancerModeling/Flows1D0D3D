@@ -13,8 +13,8 @@
 #include <cmath>
 #include <functional>
 #include <memory>
-#include <vector>
 #include <random>
+#include <vector>
 
 namespace macrocirculation {
 
@@ -27,8 +27,10 @@ class PetscKsp;
 class Vertex;
 class Edge;
 class QuadratureFormula;
-class FlowUpwindEvaluator;
+class NonlinearFlowUpwindEvaluator;
+class LinearizedFlowUpwindEvaluator;
 class ExplicitNonlinearFlowSolver;
+class ImplicitLinearFlowSolver;
 
 class UpwindProvider {
 public:
@@ -75,7 +77,7 @@ private:
 
 class UpwindProviderNonlinearFlow : public UpwindProvider {
 public:
-  explicit UpwindProviderNonlinearFlow(std::shared_ptr<FlowUpwindEvaluator> evaluator, std::shared_ptr<ExplicitNonlinearFlowSolver> solver);
+  explicit UpwindProviderNonlinearFlow(std::shared_ptr<NonlinearFlowUpwindEvaluator> evaluator, std::shared_ptr<ExplicitNonlinearFlowSolver> solver);
 
   ~UpwindProviderNonlinearFlow() override = default;
 
@@ -93,11 +95,38 @@ public:
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
 
 private:
-  std::shared_ptr<FlowUpwindEvaluator> d_evaluator;
+  std::shared_ptr<NonlinearFlowUpwindEvaluator> d_evaluator;
   std::shared_ptr<ExplicitNonlinearFlowSolver> d_solver;
 };
 
+class UpwindProviderLinearizedFlow : public UpwindProvider {
+public:
+  UpwindProviderLinearizedFlow(std::shared_ptr<GraphStorage> graph, std::shared_ptr<LinearizedFlowUpwindEvaluator> evaluator, std::shared_ptr<ImplicitLinearFlowSolver> solver);
 
+  ~UpwindProviderLinearizedFlow() override = default;
+
+  void init(double t, const std::vector<double> &u) override;
+
+  void init(double t, const PetscVec &u) override;
+
+  void get_values_at_qp(double t,
+                        const Edge &edge,
+                        size_t micro_edge,
+                        const QuadratureFormula &qf,
+                        std::vector<double> &v_qp) const override;
+
+  /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
+  void get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const override;
+
+  void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
+
+private:
+  std::shared_ptr<GraphStorage> d_graph;
+
+  std::shared_ptr<LinearizedFlowUpwindEvaluator> d_evaluator;
+
+  std::shared_ptr<ImplicitLinearFlowSolver> d_solver;
+};
 
 class ImplicitTransportSolver {
 public:
@@ -120,22 +149,22 @@ public:
 
 private:
   /*! @brief Assembles the left-hand-side matrix for the given time step. */
-  void assemble_matrix(double tau, double t, const UpwindProvider& upwind_provider);
+  void assemble_matrix(double tau, double t, const UpwindProvider &upwind_provider);
 
   /*! @brief Assembles the right-hand-side vectors for the given time step at the given time. */
-  void assemble_rhs(double tau, double t, const UpwindProvider& upwind_provider);
+  void assemble_rhs(double tau, double t, const UpwindProvider &upwind_provider);
 
-  void assemble_matrix_cells(double tau, double t, const UpwindProvider& upwind_provider);
+  void assemble_matrix_cells(double tau, double t, const UpwindProvider &upwind_provider);
 
-  void assemble_rhs_cells(double tau, double t, const UpwindProvider& upwind_provider);
+  void assemble_rhs_cells(double tau, double t, const UpwindProvider &upwind_provider);
 
-  void assemble_rhs_inflow(double tau, double t, const UpwindProvider& upwind_provider);
+  void assemble_rhs_inflow(double tau, double t, const UpwindProvider &upwind_provider);
 
-  void assemble_matrix_outflow(double tau, double t, const UpwindProvider& upwind_provider);
+  void assemble_matrix_outflow(double tau, double t, const UpwindProvider &upwind_provider);
 
-  void assemble_matrix_inner_boundaries(double tau, double t, const UpwindProvider& upwind_provider);
+  void assemble_matrix_inner_boundaries(double tau, double t, const UpwindProvider &upwind_provider);
 
-  void assemble_matrix_nfurcations(double tau, double t, const UpwindProvider& upwind_provider);
+  void assemble_matrix_nfurcations(double tau, double t, const UpwindProvider &upwind_provider);
 
   /*! @brief Assembles the matrix with different upwindings, so that the sparsity pattern does not change,
    *         when the velocity field changes.  */
