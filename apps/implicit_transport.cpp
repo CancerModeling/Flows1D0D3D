@@ -30,7 +30,7 @@
 
 namespace mc = macrocirculation;
 
-constexpr std::size_t degree = 1;
+constexpr std::size_t degree = 2;
 
 namespace linearized {
 
@@ -456,7 +456,7 @@ int main(int argc, char *argv[]) {
     // const double tau_out = tau;
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
-    const std::size_t num_micro_edges = 40;
+    const std::size_t num_micro_edges = 20;
 
     // vessel parameters
     //const double vessel_length = 20.5;
@@ -474,30 +474,30 @@ int main(int argc, char *argv[]) {
     auto v0 = graph->create_vertex();
     auto v1 = graph->create_vertex();
     auto v2 = graph->create_vertex();
-    // auto v3 = graph->create_vertex();
-    // auto v4 = graph->create_vertex();
+    auto v3 = graph->create_vertex();
+    auto v4 = graph->create_vertex();
 
-    auto edge_0 = graph->connect(*v0, *v1, 32);
+    auto edge_0 = graph->connect(*v0, *v1, num_micro_edges);
     edge_0->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
     edge_0->add_physical_data(physical_data_short);
 
-    auto edge_1 = graph->connect(*v1, *v2, 32);
+    auto edge_1 = graph->connect(*v1, *v2, num_micro_edges);
     edge_1->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1., 0, 0)}});
     edge_1->add_physical_data(physical_data_long);
 
-    // auto edge_2 = graph->connect(*v1, *v3, 32);
-    // edge_2->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(0.5, 0.5, 0)}});
-    // edge_2->add_physical_data(physical_data_long);
+    auto edge_2 = graph->connect(*v1, *v3, 32);
+    edge_2->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(0.5, 0.5, 0)}});
+    edge_2->add_physical_data(physical_data_long);
 
-    //auto edge_3 = graph->connect(*v1, *v4, 32);
-    //edge_3->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(0.5, -0.5, 0)}});
-    //edge_3->add_physical_data(physical_data_long);
+    auto edge_3 = graph->connect(*v1, *v4, 32);
+    edge_3->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(0.5, -0.5, 0)}});
+    edge_3->add_physical_data(physical_data_long);
 
     // v0->set_to_inflow([](double t) { return 1.; });
     v0->set_to_inflow([] (double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
     v2->set_to_free_outflow();
-    // v3->set_to_free_outflow();
-    //v4->set_to_free_outflow();
+    v3->set_to_free_outflow();
+    v4->set_to_free_outflow();
 
     graph->finalize_bcs();
 
