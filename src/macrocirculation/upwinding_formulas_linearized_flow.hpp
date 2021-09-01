@@ -11,7 +11,7 @@
 #include <Eigen/Dense>
 #include <cassert>
 
-#include "macrocirculation/vessel_formulas.hpp"
+#include "vessel_formulas.hpp"
 
 namespace macrocirculation {
 
