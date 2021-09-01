@@ -15,6 +15,7 @@
 #include "fe_type.hpp"
 #include "graph_storage.hpp"
 #include "implicit_linear_flow_solver.hpp"
+#include "linearized_flow_upwind_evaluator.hpp"
 #include "nonlinear_flow_upwind_evaluator.hpp"
 #include "petsc/petsc_ksp.hpp"
 #include "petsc/petsc_vec.hpp"
@@ -106,6 +107,67 @@ void UpwindProviderNonlinearFlow::get_upwinded_values(double t, const Edge &edge
 
 void UpwindProviderNonlinearFlow::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
   d_evaluator->get_fluxes_on_nfurcation(t, v, Q, A);
+}
+
+UpwindProviderLinearizedFlow::UpwindProviderLinearizedFlow(std::shared_ptr<GraphStorage> graph, std::shared_ptr<LinearizedFlowUpwindEvaluator> evaluator, std::shared_ptr<ImplicitLinearFlowSolver> solver)
+    : d_graph(std::move(graph)),
+      d_evaluator(std::move(evaluator)),
+      d_solver(std::move(solver)) {}
+
+void UpwindProviderLinearizedFlow::init(double t, const std::vector<double> &u) {
+  d_evaluator->init(t, u);
+}
+
+void UpwindProviderLinearizedFlow::init(double t, const PetscVec &u) {
+  d_evaluator->init(t, u);
+}
+
+void UpwindProviderLinearizedFlow::get_values_at_qp(double t,
+                                                    const Edge &edge,
+                                                    size_t micro_edge,
+                                                    const QuadratureFormula &qf,
+                                                    std::vector<double> &v_qp) const {
+  assert(v_qp.size() == qf.size());
+
+  FETypeNetwork fe(qf, d_solver->get_degree());
+  auto &ldof_map = d_solver->get_dof_map().get_local_dof_map(edge);
+  std::vector<size_t> dof_indices(ldof_map.num_basis_functions());
+  std::vector<double> dof_values(ldof_map.num_basis_functions());
+
+  std::vector<double> values_q(qf.size());
+
+  ldof_map.dof_indices(micro_edge, d_solver->q_component, dof_indices);
+  extract_dof(dof_indices, d_solver->get_solution(), dof_values);
+  fe.evaluate_dof_at_quadrature_points(dof_values, values_q);
+
+  auto &param = edge.get_physical_data();
+
+  for (size_t k = 0; k < qf.size(); k += 1)
+    v_qp[k] = values_q[k] / param.A0;
+}
+
+/*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
+void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const {
+  assert(v_qp.size() == edge.num_micro_vertices());
+  std::vector<double> p_up(edge.num_micro_vertices());
+  std::vector<double> q_up(edge.num_micro_vertices());
+  d_evaluator->get_fluxes_on_macro_edge(t, edge, d_solver->get_solution(), p_up, q_up);
+  assert(edge.has_physical_data());
+  auto A0 = edge.get_physical_data().A0;
+  for (size_t k = 0; k < v_qp.size(); k += 1)
+    v_qp[k] = q_up[k] / A0;
+}
+
+void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
+  std::vector<double> p_up(v.get_edge_neighbors().size());
+  d_evaluator->get_fluxes_on_nfurcation(t, v, p_up, Q);
+
+  std::vector<double> A0;
+  for (size_t k = 0; k < v.get_edge_neighbors().size(); k += 1) {
+    auto &edge = *d_graph->get_edge(v.get_edge_neighbors()[k]);
+    assert(edge.has_physical_data());
+    A[k] = edge.get_physical_data().A0;
+  }
 }
 
 ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,

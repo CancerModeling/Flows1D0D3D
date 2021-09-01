@@ -15,7 +15,6 @@
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
-#include "macrocirculation/explicit_transport_solver.hpp"
 #include "macrocirculation/fe_type.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
@@ -27,93 +26,11 @@
 #include "macrocirculation/petsc/petsc_vec.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/right_hand_side_evaluator.hpp"
-#include "macrocirculation/upwinding_formulas_linearized_flow.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-
 
 namespace mc = macrocirculation;
 
 constexpr std::size_t degree = 2;
-
-
-class UpwindProviderLinearizedFlow : public mc::UpwindProvider {
-public:
-  explicit UpwindProviderLinearizedFlow(std::shared_ptr<mc::GraphStorage> graph, std::shared_ptr<mc::LinearizedFlowUpwindEvaluator> evaluator, std::shared_ptr<mc::ImplicitLinearFlowSolver> solver)
-      : d_graph(std::move(graph)),
-        d_evaluator(std::move(evaluator)),
-        d_solver(std::move(solver)) {}
-
-  ~UpwindProviderLinearizedFlow() override = default;
-
-  void init(double t, const std::vector<double> &u) override {
-    d_evaluator->init(t, u);
-  }
-
-  void init(double t, const mc::PetscVec &u) override {
-    d_evaluator->init(t, u);
-  }
-
-  void get_values_at_qp(double t,
-                        const mc::Edge &edge,
-                        size_t micro_edge,
-                        const mc::QuadratureFormula &qf,
-                        std::vector<double> &v_qp) const override {
-    assert(v_qp.size() == qf.size());
-
-    mc::FETypeNetwork fe(qf, d_solver->get_degree());
-    auto &ldof_map = d_solver->get_dof_map().get_local_dof_map(edge);
-    std::vector<size_t> dof_indices(ldof_map.num_basis_functions());
-    std::vector<double> dof_values(ldof_map.num_basis_functions());
-
-    std::vector<double> values_q(qf.size());
-
-    ldof_map.dof_indices(micro_edge, d_solver->q_component, dof_indices);
-    mc::extract_dof(dof_indices, d_solver->get_solution(), dof_values);
-    fe.evaluate_dof_at_quadrature_points(dof_values, values_q);
-
-    auto &param = edge.get_physical_data();
-
-    for (size_t k = 0; k < qf.size(); k += 1)
-      v_qp[k] = values_q[k] / param.A0;
-
-    // std::cout << v_qp << std::endl;
-  }
-
-  /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
-  void get_upwinded_values(double t, const mc::Edge &edge, std::vector<double> &v_qp) const override {
-    assert(v_qp.size() == edge.num_micro_vertices());
-    std::vector<double> p_up(edge.num_micro_vertices());
-    std::vector<double> q_up(edge.num_micro_vertices());
-    d_evaluator->get_fluxes_on_macro_edge(t, edge, d_solver->get_solution(), p_up, q_up);
-    assert(edge.has_physical_data());
-    auto A0 = edge.get_physical_data().A0;
-    for (size_t k = 0; k < v_qp.size(); k += 1)
-      v_qp[k] = q_up[k] / A0;
-
-    // std::cout << v_qp << std::endl;
-  }
-
-  void get_upwinded_values(double t, const mc::Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override {
-    std::vector<double> p_up(v.get_edge_neighbors().size());
-    d_evaluator->get_fluxes_on_nfurcation(t, v, p_up, Q);
-
-    std::vector<double> A0;
-    for (size_t k = 0; k < v.get_edge_neighbors().size(); k += 1) {
-      auto &edge = *d_graph->get_edge(v.get_edge_neighbors()[k]);
-      assert(edge.has_physical_data());
-      A[k] = edge.get_physical_data().A0;
-    }
-
-    // std::cout << "v = " << v.get_id() << " " << A << " " << Q << std::endl;
-  }
-
-private:
-  std::shared_ptr<mc::GraphStorage> d_graph;
-
-  std::shared_ptr<mc::LinearizedFlowUpwindEvaluator> d_evaluator;
-
-  std::shared_ptr<mc::ImplicitLinearFlowSolver> d_solver;
-};
 
 void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_end, std::shared_ptr<mc::GraphStorage> graph) {
   const std::size_t max_iter = 1600000;
@@ -132,7 +49,7 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
   flow_solver->setup(tau);
 
   auto upwind_evaluator = std::make_shared<mc::LinearizedFlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
-  auto variable_upwind_provider = std::make_shared<UpwindProviderLinearizedFlow>(graph, upwind_evaluator, flow_solver);
+  auto variable_upwind_provider = std::make_shared<mc::UpwindProviderLinearizedFlow>(graph, upwind_evaluator, flow_solver);
 
   mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
 
