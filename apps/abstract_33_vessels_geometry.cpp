@@ -17,7 +17,6 @@
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/explicit_transport_solver.hpp"
-#include "macrocirculation/flow_aq_upwind_evaluator.hpp"
 #include "macrocirculation/graph_csv_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
@@ -25,6 +24,7 @@
 #include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include "macrocirculation/implicit_transport_solver.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
+#include "macrocirculation/nonlinear_flow_upwind_evaluator.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
 
     auto dof_map_transport = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
     dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, true);
-    auto upwind_evaluator = std::make_shared<mc::FlowAQUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
+    auto upwind_evaluator = std::make_shared<mc::NonlinearFlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
     auto variable_upwind_provider = std::make_shared<mc::UpwindProviderNonlinearFlow>(upwind_evaluator, flow_solver);
     auto transport_solver = std::make_shared<mc::ImplicitTransportSolver>(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
 

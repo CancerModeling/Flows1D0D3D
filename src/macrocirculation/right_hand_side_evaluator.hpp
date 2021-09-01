@@ -8,7 +8,7 @@
 #ifndef TUMORMODELS_RIGHT_HAND_SIDE_EVALUATOR_HPP
 #define TUMORMODELS_RIGHT_HAND_SIDE_EVALUATOR_HPP
 
-#include "flow_aq_upwind_evaluator.hpp"
+#include "nonlinear_flow_upwind_evaluator.hpp"
 #include <functional>
 #include <memory>
 #include <mpi.h>
@@ -87,7 +87,7 @@ private:
   /*! @brief The dof map for our domain */
   std::shared_ptr<DofMap> d_dof_map;
 
-  FlowAQUpwindEvaluator d_flow_upwind_evaluator;
+  NonlinearFlowUpwindEvaluator d_flow_upwind_evaluator;
 
   /*! @brief Evaluates the Q- and A-component of the right-hand side S,
    *         given Q and A at eacht of the quadrature points.

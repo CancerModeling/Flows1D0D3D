@@ -520,7 +520,7 @@ void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_
   auto flow_solver = std::make_shared<mc::ExplicitNonlinearFlowSolver>(MPI_COMM_WORLD, graph, dof_map_flow, degree);
   flow_solver->use_ssp_method();
 
-  auto upwind_evaluator = std::make_shared<mc::FlowAQUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
+  auto upwind_evaluator = std::make_shared<mc::NonlinearFlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
   auto variable_upwind_provider = std::make_shared<mc::UpwindProviderNonlinearFlow>(upwind_evaluator, flow_solver);
 
   mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);

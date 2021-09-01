@@ -27,7 +27,7 @@ class PetscKsp;
 class Vertex;
 class Edge;
 class QuadratureFormula;
-class FlowAQUpwindEvaluator;
+class NonlinearFlowUpwindEvaluator;
 class ExplicitNonlinearFlowSolver;
 
 class UpwindProvider {
@@ -75,7 +75,7 @@ private:
 
 class UpwindProviderNonlinearFlow : public UpwindProvider {
 public:
-  explicit UpwindProviderNonlinearFlow(std::shared_ptr<FlowAQUpwindEvaluator> evaluator, std::shared_ptr<ExplicitNonlinearFlowSolver> solver);
+  explicit UpwindProviderNonlinearFlow(std::shared_ptr<NonlinearFlowUpwindEvaluator> evaluator, std::shared_ptr<ExplicitNonlinearFlowSolver> solver);
 
   ~UpwindProviderNonlinearFlow() override = default;
 
@@ -93,7 +93,7 @@ public:
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
 
 private:
-  std::shared_ptr<FlowAQUpwindEvaluator> d_evaluator;
+  std::shared_ptr<NonlinearFlowUpwindEvaluator> d_evaluator;
   std::shared_ptr<ExplicitNonlinearFlowSolver> d_solver;
 };
 
