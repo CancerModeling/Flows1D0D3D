@@ -1,4 +1,4 @@
-#include "flow_upwind_evaluator.hpp"
+#include "flow_aq_upwind_evaluator.hpp"
 
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
@@ -11,7 +11,7 @@
 
 namespace macrocirculation {
 
-FlowUpwindEvaluator::FlowUpwindEvaluator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map)
+FlowAQUpwindEvaluator::FlowAQUpwindEvaluator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map)
     : d_comm(comm),
       d_graph(std::move(graph)),
       d_dof_map(std::move(dof_map)),
@@ -23,7 +23,7 @@ FlowUpwindEvaluator::FlowUpwindEvaluator(MPI_Comm comm, std::shared_ptr<GraphSto
       d_A_macro_edge_flux_r(d_graph->num_edges()),
       d_current_t(NAN) {}
 
-void FlowUpwindEvaluator::init(double t, const std::vector<double> &u_prev) {
+void FlowAQUpwindEvaluator::init(double t, const std::vector<double> &u_prev) {
   d_current_t = t;
 
   d_A_boundary_evaluator.init(u_prev);
@@ -33,7 +33,7 @@ void FlowUpwindEvaluator::init(double t, const std::vector<double> &u_prev) {
   calculate_inout_fluxes(t, u_prev);
 }
 
-void FlowUpwindEvaluator::get_fluxes_on_macro_edge(double t, const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &Q_up_macro_edge, std::vector<double> &A_up_macro_edge) const {
+void FlowAQUpwindEvaluator::get_fluxes_on_macro_edge(double t, const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &Q_up_macro_edge, std::vector<double> &A_up_macro_edge) const {
   // evaluator was initialized with the correct time step
   if (d_current_t != t)
     throw std::runtime_error("FlowUpwindEvaluator was not initialized for the given time step");
@@ -118,7 +118,7 @@ void FlowUpwindEvaluator::get_fluxes_on_macro_edge(double t, const Edge &edge, c
   A_up_macro_edge[local_dof_map.num_micro_vertices() - 1] = d_A_macro_edge_flux_r[edge.get_id()];
 }
 
-void FlowUpwindEvaluator::get_fluxes_on_nfurcation(double t, const Vertex &v, std::vector<double> &Q_up, std::vector<double> &A_up) const {
+void FlowAQUpwindEvaluator::get_fluxes_on_nfurcation(double t, const Vertex &v, std::vector<double> &Q_up, std::vector<double> &A_up) const {
   // evaluator was initialized with the correct time step
   if (d_current_t != t)
     throw std::runtime_error("FlowUpwindEvaluator was not initialized for the given time step");
@@ -139,7 +139,7 @@ void FlowUpwindEvaluator::get_fluxes_on_nfurcation(double t, const Vertex &v, st
   }
 }
 
-void FlowUpwindEvaluator::calculate_nfurcation_fluxes(const std::vector<double> &u_prev) {
+void FlowAQUpwindEvaluator::calculate_nfurcation_fluxes(const std::vector<double> &u_prev) {
   for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
@@ -235,7 +235,7 @@ void calculate_windkessel_upwind_values(const PhysicalData &param, bool is_point
   Q_out = sgn * (calculate_static_p(A_out, param.G0, param.A0) - p_c) / R1;
 }
 
-void FlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<double> &u_prev) {
+void FlowAQUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<double> &u_prev) {
   // initial value of the flow
   // TODO: make this more generic for other initial flow values
   const double Q_init = 0;

@@ -5,8 +5,8 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TUMORMODELS_FLOW_UPWIND_EVALUATOR_HPP
-#define TUMORMODELS_FLOW_UPWIND_EVALUATOR_HPP
+#ifndef TUMORMODELS_FLOW_AQ_UPWIND_EVALUATOR_HPP
+#define TUMORMODELS_FLOW_AQ_UPWIND_EVALUATOR_HPP
 
 #include <mpi.h>
 #include <memory>
@@ -27,9 +27,9 @@ class Edge;
  *  This is in a separate class from the right-hand-side evaluator, since the transport equation also needs these flows.
  *  And since transport and flow can be decoupled it makes sense to keep them apart.
  */
-class FlowUpwindEvaluator {
+class FlowAQUpwindEvaluator {
 public:
-  FlowUpwindEvaluator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map);
+  FlowAQUpwindEvaluator(MPI_Comm comm, std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map);
 
   void init(double t, const std::vector<double> &u_prev);
 

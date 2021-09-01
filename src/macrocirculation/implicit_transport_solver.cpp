@@ -13,7 +13,7 @@
 #include "dof_map.hpp"
 #include "explicit_nonlinear_flow_solver.hpp"
 #include "fe_type.hpp"
-#include "flow_upwind_evaluator.hpp"
+#include "flow_aq_upwind_evaluator.hpp"
 #include "graph_storage.hpp"
 #include "implicit_linear_flow_solver.hpp"
 #include "petsc/petsc_ksp.hpp"
@@ -60,7 +60,7 @@ void ConstantUpwindProvider::get_upwinded_values(double t, const Vertex &v, std:
   }
 }
 
-UpwindProviderNonlinearFlow::UpwindProviderNonlinearFlow(std::shared_ptr<FlowUpwindEvaluator> evaluator, std::shared_ptr<ExplicitNonlinearFlowSolver> solver)
+UpwindProviderNonlinearFlow::UpwindProviderNonlinearFlow(std::shared_ptr<FlowAQUpwindEvaluator> evaluator, std::shared_ptr<ExplicitNonlinearFlowSolver> solver)
     : d_evaluator(std::move(evaluator)),
       d_solver(std::move(solver)) {}
 

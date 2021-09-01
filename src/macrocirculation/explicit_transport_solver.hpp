@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 
-#include "flow_upwind_evaluator.hpp"
+#include "flow_aq_upwind_evaluator.hpp"
 
 namespace macrocirculation {
 
@@ -54,7 +54,7 @@ private:
   std::shared_ptr<DofMap> d_dof_map_flow;
   std::shared_ptr<DofMap> d_dof_map_transport;
 
-  FlowUpwindEvaluator d_flow_upwind_evaluator;
+  FlowAQUpwindEvaluator d_flow_upwind_evaluator;
 
   Communicator d_edge_boundary_communicator;
 
