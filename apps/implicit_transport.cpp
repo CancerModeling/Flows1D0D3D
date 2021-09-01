@@ -30,7 +30,7 @@
 
 namespace mc = macrocirculation;
 
-constexpr std::size_t degree = 2;
+constexpr std::size_t degree = 1;
 
 namespace linearized {
 
@@ -105,8 +105,8 @@ inline void nfurcation_boundary(const std::vector<double> &p,
     rhs(N + k) = 0.;
   }
 
-  std::cout << mat << std::endl;
-  std::cout << rhs << std::endl;
+  // std::cout << mat << std::endl;
+  // std::cout << rhs << std::endl;
 
   Eigen::VectorXd result = mat.fullPivLu().solve(rhs);
 
@@ -227,7 +227,7 @@ private:
     std::vector<double> q_r(edge.num_micro_edges(), 0);
 
     compute_inner_boundary_values_on_macro_edge(edge, *d_dof_map, u_prev, 0, p_l, p_r);
-    compute_inner_boundary_values_on_macro_edge(edge, *d_dof_map, u_prev, 0, q_l, q_r);
+    compute_inner_boundary_values_on_macro_edge(edge, *d_dof_map, u_prev, 1, q_l, q_r);
 
     assert(edge.has_physical_data());
     auto param = edge.get_physical_data();
@@ -236,7 +236,7 @@ private:
     const auto alpha = std::sqrt(mc::linear::get_C(param) / mc::linear::get_L(param));
 
     for (std::size_t micro_vertex_id = 1; micro_vertex_id < edge.num_micro_vertices() - 1; micro_vertex_id += 1) {
-      linearized::inner_boundary(alpha, p_l[micro_vertex_id], q_l[micro_vertex_id], p_r[micro_vertex_id], q_r[micro_vertex_id], p_up[micro_vertex_id], q_up[micro_vertex_id]);
+      linearized::inner_boundary(alpha, p_l[micro_vertex_id], q_l[micro_vertex_id], p_r[micro_vertex_id-1], q_r[micro_vertex_id-1], p_up[micro_vertex_id], q_up[micro_vertex_id]);
     }
 
     // update left fluxes
@@ -402,7 +402,7 @@ public:
     for (size_t k = 0; k < qf.size(); k += 1)
       v_qp[k] = values_q[k] / param.A0;
 
-    std::cout << v_qp << std::endl;
+    // std::cout << v_qp << std::endl;
   }
 
   /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
@@ -416,7 +416,7 @@ public:
     for (size_t k = 0; k < v_qp.size(); k += 1)
       v_qp[k] = q_up[k] / A0;
 
-    std::cout << v_qp << std::endl;
+    // std::cout << v_qp << std::endl;
   }
 
   void get_upwinded_values(double t, const mc::Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override {
@@ -430,7 +430,7 @@ public:
       A[k] = edge.get_physical_data().A0;
     }
 
-    std::cout << "v = " << v.get_id() << " " << A << " " << Q << std::endl;
+    // std::cout << "v = " << v.get_id() << " " << A << " " << Q << std::endl;
   }
 
 private:
@@ -466,15 +466,15 @@ int main(int argc, char *argv[]) {
     const double elastic_modulus = 400000.0;
     const double density = 1.028e-3;
 
-    auto physical_data_short = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 9., radius, vessel_length / 2.);
-    auto physical_data_long = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 9., radius, vessel_length / 2.);
+    auto physical_data_short = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length / 2.);
+    auto physical_data_long = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length / 2.);
 
     // create_for_node the geometry of the ascending aorta
     auto graph = std::make_shared<mc::GraphStorage>();
     auto v0 = graph->create_vertex();
     auto v1 = graph->create_vertex();
     auto v2 = graph->create_vertex();
-    auto v3 = graph->create_vertex();
+    // auto v3 = graph->create_vertex();
     // auto v4 = graph->create_vertex();
 
     auto edge_0 = graph->connect(*v0, *v1, 32);
@@ -485,18 +485,18 @@ int main(int argc, char *argv[]) {
     edge_1->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1., 0, 0)}});
     edge_1->add_physical_data(physical_data_long);
 
-    auto edge_2 = graph->connect(*v1, *v3, 32);
-    edge_2->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(0.5, 0.5, 0)}});
-    edge_2->add_physical_data(physical_data_long);
+    // auto edge_2 = graph->connect(*v1, *v3, 32);
+    // edge_2->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(0.5, 0.5, 0)}});
+    // edge_2->add_physical_data(physical_data_long);
 
     //auto edge_3 = graph->connect(*v1, *v4, 32);
     //edge_3->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(0.5, -0.5, 0)}});
     //edge_3->add_physical_data(physical_data_long);
 
     // v0->set_to_inflow([](double t) { return 1.; });
-    v0->set_to_inflow(mc::heart_beat_inflow(4., 1., 0.7));
+    v0->set_to_inflow([] (double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
     v2->set_to_free_outflow();
-    v3->set_to_free_outflow();
+    // v3->set_to_free_outflow();
     //v4->set_to_free_outflow();
 
     graph->finalize_bcs();
