@@ -154,18 +154,6 @@ private:
   /*! @brief Assembles the right-hand-side vectors for the given time step at the given time. */
   void assemble_rhs(double tau, double t, const UpwindProvider &upwind_provider);
 
-  void assemble_matrix_cells(double tau, double t, const UpwindProvider &upwind_provider);
-
-  void assemble_rhs_cells(double tau, double t, const UpwindProvider &upwind_provider);
-
-  void assemble_rhs_inflow(double tau, double t, const UpwindProvider &upwind_provider);
-
-  void assemble_matrix_outflow(double tau, double t, const UpwindProvider &upwind_provider);
-
-  void assemble_matrix_inner_boundaries(double tau, double t, const UpwindProvider &upwind_provider);
-
-  void assemble_matrix_nfurcations(double tau, double t, const UpwindProvider &upwind_provider);
-
   /*! @brief Assembles the matrix with different upwindings, so that the sparsity pattern does not change,
    *         when the velocity field changes.  */
   void sparsity_pattern();
@@ -198,6 +186,24 @@ private:
       return 1.;
   };
 };
+
+namespace implicit_transport {
+
+void additively_assemble_rhs_cells(PetscVec &mass, PetscVec &u, PetscVec &rhs);
+
+void additively_assemble_rhs_inflow(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, const std::function<double(double)> &inflow_function, PetscVec &rhs);
+
+void additively_assemble_matrix(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, PetscMat &mat);
+
+void additively_assemble_matrix_cells(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, PetscMat &mat);
+
+void additively_assemble_matrix_outflow(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, PetscMat &mat);
+
+void additively_assemble_matrix_inner_boundaries(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, PetscMat &mat);
+
+void additively_assemble_matrix_nfurcations(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, PetscMat &mat);
+
+} // namespace implicit_transport
 
 } // namespace macrocirculation
 
