@@ -175,20 +175,37 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
                                                  std::shared_ptr<DofMap> dof_map,
                                                  std::shared_ptr<UpwindProvider> upwind_provider,
                                                  size_t degree)
+    : ImplicitTransportSolver(comm,
+                              std::vector<std::shared_ptr<GraphStorage>>({std::move(graph)}),
+                              std::vector<std::shared_ptr<DofMap>>({std::move(dof_map)}),
+                              std::vector<std::shared_ptr<UpwindProvider>>({std::move(upwind_provider)}), degree) {}
+
+
+ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
+                                                 std::vector<std::shared_ptr<GraphStorage>> graph,
+                                                 std::vector<std::shared_ptr<DofMap>> dof_map,
+                                                 std::vector<std::shared_ptr<UpwindProvider>> upwind_provider,
+                                                 size_t degree)
     : d_comm(comm),
       d_graph(std::move(graph)),
       d_dof_map(std::move(dof_map)),
       d_upwind_provider(std::move(upwind_provider)),
       d_degree(degree),
-      u(std::make_shared<PetscVec>("u", *d_dof_map)),
-      rhs(std::make_shared<PetscVec>("rhs", *d_dof_map)),
-      A(std::make_shared<PetscMat>("A", *d_dof_map)),
-      mass(std::make_shared<PetscVec>("mass", *d_dof_map)),
+      u(std::make_shared<PetscVec>("u", d_dof_map)),
+      rhs(std::make_shared<PetscVec>("rhs", d_dof_map)),
+      A(std::make_shared<PetscMat>("A", d_dof_map)),
+      mass(std::make_shared<PetscVec>("mass", d_dof_map)),
       linear_solver(PetscKsp::create_with_pc_ilu(*A)) {
+
+  if (d_graph.size() != d_dof_map.size())
+    throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and dof maps must coincide");
+  if (d_graph.size() != d_upwind_provider.size())
+    throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and upwind providers must coincide");
+
   // TODO: preallocate the nonzeros properly!
   MatSetOption(A->get_mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
-  assemble_mass(d_comm, *d_graph, *d_dof_map, *mass);
+  assemble_mass(d_comm, d_graph, d_dof_map, *mass);
   u->zero();
   rhs->zero();
   // initialize zero pattern of matrix with velocity 1 vector:
@@ -202,8 +219,8 @@ void ImplicitTransportSolver::solve(double tau, double t) {
 }
 
 void ImplicitTransportSolver::assemble(double tau, double t) {
-  assemble_matrix(tau, t, *d_upwind_provider);
-  assemble_rhs(tau, t, *d_upwind_provider);
+  assemble_matrix(tau, t);
+  assemble_rhs(tau, t);
 }
 
 void ImplicitTransportSolver::sparsity_pattern() {
@@ -212,21 +229,99 @@ void ImplicitTransportSolver::sparsity_pattern() {
   const double tau = 1e-3;
   const double t = 1.;
   A->zero();
-  implicit_transport::additively_assemble_matrix(d_comm, tau, t, upwind_provider_plus, *d_dof_map, *d_graph, *A);
-  implicit_transport::additively_assemble_matrix(d_comm, tau, t, upwind_provider_minus, *d_dof_map, *d_graph, *A);
+  for (size_t k = 0; k < d_graph.size(); k += 1) {
+    implicit_transport::additively_assemble_matrix(d_comm, tau, t, upwind_provider_plus, *d_dof_map[k], *d_graph[k], *A);
+    implicit_transport::additively_assemble_matrix(d_comm, tau, t, upwind_provider_minus, *d_dof_map[k], *d_graph[k], *A);
+  }
   A->assemble();
 }
 
-void ImplicitTransportSolver::assemble_matrix(double tau, double t, const UpwindProvider &upwind_provider) {
+void ImplicitTransportSolver::assemble_matrix(double tau, double t) {
   A->zero();
-  implicit_transport::additively_assemble_matrix(d_comm, tau, t, upwind_provider, *d_dof_map, *d_graph, *A);
+  for (size_t k = 0; k < d_graph.size(); k += 1) {
+    implicit_transport::additively_assemble_matrix(d_comm, tau, t, *d_upwind_provider[k], *d_dof_map[k], *d_graph[k], *A);
+  }
+  assemble_characteristics(tau, t);
   A->assemble();
 }
 
-void ImplicitTransportSolver::assemble_rhs(double tau, double t, const UpwindProvider &upwind_provider) {
+void ImplicitTransportSolver::assemble_characteristics(double tau, double t) {
+  for (size_t graph_index = 0; graph_index < d_graph.size(); graph_index += 1) {
+    auto graph = d_graph[graph_index];
+
+    for (const auto &v_id : graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+      auto &vertex = *graph->get_vertex(v_id);
+
+      // only vertices which are coupled
+      if (!(vertex.is_nonlinear_characteristic_inflow() || vertex.is_linear_characteristic_inflow()))
+        continue;
+
+      auto edge = graph->get_edge(vertex.get_edge_neighbors()[0]);
+
+      auto conn = vertex.get_inter_graph_connections();
+      auto &adjacent_graph = conn[0].get_graph();
+      auto &adjacent_vertex = conn[0].get_vertex();
+      auto adjacent_edge = adjacent_graph.get_edge(adjacent_vertex.get_edge_neighbors()[0]);
+
+      auto adjacent_graph_index = -1;
+      for (size_t j = 0; j < d_graph.size(); j += 1)
+        if (d_graph[j].get() == &adjacent_graph)
+          adjacent_graph_index = j;
+
+      // we only assemble once with the smaller index!
+      if (adjacent_graph_index < graph_index)
+        continue;
+
+      std::vector<Edge const *> edges = {edge.get(), adjacent_edge.get()};
+
+      std::vector<double> sigma = {
+        edge->is_pointing_to(vertex.get_id()) ? +1. : -1.,
+        adjacent_edge->is_pointing_to(adjacent_vertex.get_id()) ? +1. : -1.};
+
+      // get upwinded values
+      std::vector<double> A_up;
+      std::vector<double> Q_up;
+      std::vector<double> A_up_value(1), Q_up_value(1);
+      d_upwind_provider[graph_index]->get_upwinded_values(t, vertex, A_up_value, Q_up_value);
+      A_up.push_back(A_up_value[0]);
+      Q_up.push_back(Q_up_value[0]);
+      d_upwind_provider[adjacent_graph_index]->get_upwinded_values(t, adjacent_vertex, A_up_value, Q_up_value);
+      A_up.push_back(A_up_value[0]);
+      Q_up.push_back(Q_up_value[0]);
+
+      // get boundary point type
+      using BPT = BoundaryPointType;
+      std::vector<BPT> boundary_type;
+      boundary_type.push_back(edge->is_pointing_to(vertex.get_id()) ? BPT::Right : BPT::Left);
+      boundary_type.push_back(adjacent_edge->is_pointing_to(adjacent_vertex.get_id()) ? BPT::Right : BPT::Left);
+
+      std::vector<std::vector<size_t>> dof_indices_list;
+      {
+        auto &local_dof_map = d_dof_map[graph_index]->get_local_dof_map(*edge);
+        auto micro_edge_id = edge->is_pointing_to(vertex.get_id()) ? edge->num_micro_edges() - 1 : 0;
+        std::vector<size_t> dof_indices(local_dof_map.num_basis_functions());
+        local_dof_map.dof_indices(micro_edge_id, 0, dof_indices);
+        dof_indices_list.push_back(dof_indices);
+      }
+      {
+        auto &local_dof_map = d_dof_map[adjacent_graph_index]->get_local_dof_map(*adjacent_edge);
+        auto micro_edge_id = adjacent_edge->is_pointing_to(adjacent_vertex.get_id()) ? adjacent_edge->num_micro_edges() - 1 : 0;
+        std::vector<size_t> dof_indices(local_dof_map.num_basis_functions());
+        local_dof_map.dof_indices(micro_edge_id, 0, dof_indices);
+        dof_indices_list.push_back(dof_indices);
+      }
+
+      implicit_transport::assembly_kernel_nfurcation(d_comm, tau, dof_indices_list, edges, sigma, Q_up, A_up, boundary_type, *A);
+    }
+  }
+}
+
+void ImplicitTransportSolver::assemble_rhs(double tau, double t) {
   rhs->zero();
   implicit_transport::additively_assemble_rhs_cells(*mass, *u, *rhs);
-  implicit_transport::additively_assemble_rhs_inflow(d_comm, tau, t, *d_upwind_provider, *d_dof_map, *d_graph, inflow_function, *rhs);
+  for (size_t k = 0; k < d_graph.size(); k += 1) {
+    implicit_transport::additively_assemble_rhs_inflow(d_comm, tau, t, *d_upwind_provider[k], *d_dof_map[k], *d_graph[k], inflow_function, *rhs);
+  }
   rhs->assemble();
 }
 
@@ -330,14 +425,14 @@ void additively_assemble_matrix_inner_boundaries(MPI_Comm comm,
     auto pattern_rl = create_boundary(local_dof_map, BPT::Right, BPT::Left);
     auto pattern_rr = create_boundary(local_dof_map, BPT::Right, BPT::Right);
 
+    upwind_provider.get_upwinded_values(t, *macro_edge, v_up);
+
     for (size_t micro_vertex_id = 1; micro_vertex_id < macro_edge->num_micro_vertices() - 1; micro_vertex_id += 1) {
       auto left_edge_id = micro_vertex_id - 1;
       auto right_edge_id = micro_vertex_id;
 
       local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
       local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
-
-      upwind_provider.get_upwinded_values(t, *macro_edge, v_up);
 
       const double v = v_up[micro_vertex_id];
 
@@ -417,6 +512,11 @@ void additively_assemble_matrix_outflow(MPI_Comm comm,
     if (vertex.is_inflow())
       continue;
 
+    if (vertex.is_linear_characteristic_inflow())
+      continue;
+    if (vertex.is_nonlinear_characteristic_inflow())
+      continue;
+
     auto &neighbor_edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
     auto &local_dof_map = dof_map.get_local_dof_map(neighbor_edge);
     auto micro_edge_idx = neighbor_edge.is_pointing_to(v_id) ? neighbor_edge.num_micro_edges() - 1 : 0;
@@ -439,7 +539,6 @@ void additively_assemble_matrix_outflow(MPI_Comm comm,
     A.add(dof_indices, dof_indices, mat);
   }
 }
-
 
 void additively_assemble_matrix_nfurcations(MPI_Comm comm,
                                             double tau,
@@ -471,70 +570,85 @@ void additively_assemble_matrix_nfurcations(MPI_Comm comm,
     std::vector<double> Q_up(num_edges);
     upwind_provider.get_upwinded_values(t, vertex, A_up, Q_up);
 
-    // divide into inflow and outflow edges
-    std::vector<size_t> inflows;
-    std::vector<size_t> outflows;
-    for (size_t k = 0; k < num_edges; k += 1) {
-      // if the flux is very small (mainly at the beginning), we have a bias to make it an inflow
-      if (Q_up[k] / A_up[k] * sigma[k] >= 0 || std::abs(Q_up[k]) < 1e-14)
-        inflows.push_back(k);
-      else
-        outflows.push_back(k);
-    }
-
-    // get total inflow flux
-    double Q_in = 0;
-    for (auto k : inflows)
-      Q_in += Q_up[k] * sigma[k];
-
-    // create patterns
-    auto &l_dof_map = dof_map.get_local_dof_map(*edges[0]);
-
+    // get boundary point type
     using BPT = BoundaryPointType;
+    std::vector<BPT> boundary_type;
+    for (auto edge : edges)
+      boundary_type.push_back(edge->is_pointing_to(v_idx) ? BPT::Right : BPT::Left);
 
-    // assemble the inflow edges
-    for (auto i : inflows) {
-      auto &edge = *edges[i];
-
-      // we only assemble rows which belong to us:
-      if (edge.rank() != mpi::rank(comm))
-        continue;
-
-      auto &local_dof_map_i = dof_map.get_local_dof_map(edge);
-      auto micro_edge_id_i = edge.is_pointing_to(v_idx) ? local_dof_map_i.num_micro_edges() - 1 : 0;
-      auto boundary_typ = edge.is_pointing_to(v_idx) ? BPT::Right : BPT::Left;
-      std::vector<size_t> dof_indices_i(local_dof_map_i.num_basis_functions());
-      local_dof_map_i.dof_indices(micro_edge_id_i, 0, dof_indices_i);
-      auto pattern = create_boundary(local_dof_map_i, boundary_typ, boundary_typ);
-      Eigen::MatrixXd mat = tau * Q_up[i] / A_up[i] * sigma[i] * pattern;
-      A.add(dof_indices_i, dof_indices_i, mat);
+    std::vector<std::vector<size_t>> dof_indices_list;
+    for (int i = 0; i < num_edges; i += 1) {
+      auto edge = edges[i];
+      auto &local_dof_map = dof_map.get_local_dof_map(*edge);
+      auto micro_edge_id = edge->is_pointing_to(v_idx) ? edge->num_micro_edges() - 1 : 0;
+      std::vector<size_t> dof_indices(local_dof_map.num_basis_functions());
+      local_dof_map.dof_indices(micro_edge_id, 0, dof_indices);
+      dof_indices_list.push_back(dof_indices);
     }
 
-    // assemble the outflow edges
-    for (auto i : outflows) {
-      auto &edge_i = *edges[i];
+    assembly_kernel_nfurcation(comm, tau, dof_indices_list, edges, sigma, Q_up, A_up, boundary_type, A);
+  }
+}
 
-      // we only assemble rows which belong to us:
-      if (edge_i.rank() != mpi::rank(comm))
-        continue;
+void assembly_kernel_nfurcation(MPI_Comm comm,
+                                double tau,
+                                const std::vector<std::vector<size_t>> &dof_indices_list,
+                                const std::vector<Edge const *> &edges,
+                                const std::vector<double> &sigma,
+                                const std::vector<double> &Q_up,
+                                const std::vector<double> &A_up,
+                                const std::vector<BoundaryPointType> &boundary_type,
+                                PetscMat &A) {
+  const size_t num_edges = dof_indices_list.size();
 
-      auto &local_dof_map_i = dof_map.get_local_dof_map(edge_i);
-      auto micro_edge_id_i = edge_i.is_pointing_to(v_idx) ? local_dof_map_i.num_micro_edges() - 1 : 0;
-      auto boundary_type_i = edge_i.is_pointing_to(v_idx) ? BPT::Right : BPT::Left;
-      std::vector<size_t> dof_indices_i(local_dof_map_i.num_basis_functions());
-      local_dof_map_i.dof_indices(micro_edge_id_i, 0, dof_indices_i);
+  if (num_edges != dof_indices_list.size() || num_edges != sigma.size() || num_edges != Q_up.size() || num_edges != A_up.size() || num_edges != boundary_type.size())
+    throw std::runtime_error("assembly_kernel_nfurcation: inconsistent sizes");
 
-      for (auto j : inflows) {
-        auto &edge_j = *edges[j];
-        auto &local_dof_map_j = dof_map.get_local_dof_map(edge_j);
-        auto micro_edge_id_j = edge_j.is_pointing_to(v_idx) ? local_dof_map_j.num_micro_edges() - 1 : 0;
-        auto boundary_type_j = edge_j.is_pointing_to(v_idx) ? BPT::Right : BPT::Left;
-        std::vector<size_t> dof_indices_j(local_dof_map_j.num_basis_functions());
-        local_dof_map_j.dof_indices(micro_edge_id_j, 0, dof_indices_j);
-        auto pattern = create_boundary(local_dof_map_i, boundary_type_i, boundary_type_j);
-        Eigen::MatrixXd mat = tau * Q_up[i] * sigma[i] / Q_in * Q_up[j] * sigma[j] / A_up[j] * pattern;
-        A.add(dof_indices_i, dof_indices_j, mat);
-      }
+  // divide into inflow and outflow edges
+  std::vector<size_t> inflows;
+  std::vector<size_t> outflows;
+  for (size_t k = 0; k < num_edges; k += 1) {
+    // if the flux is very small (mainly at the beginning), we have a bias to make it an inflow
+    if (Q_up[k] / A_up[k] * sigma[k] >= 0 || std::abs(Q_up[k]) < 1e-14)
+      inflows.push_back(k);
+    else
+      outflows.push_back(k);
+  }
+
+  // get total inflow flux
+  double Q_in = 0;
+  for (auto k : inflows)
+    Q_in += Q_up[k] * sigma[k];
+
+  // assemble the inflow edges
+  for (auto i : inflows) {
+    auto &edge = *edges[i];
+
+    // we only assemble rows which belong to us:
+    if (edge.rank() != mpi::rank(comm))
+      continue;
+
+    const auto &dof_indices_i = dof_indices_list[i];
+    auto pattern = create_boundary(dof_indices_i.size(), boundary_type[i], boundary_type[i]);
+    Eigen::MatrixXd mat = tau * Q_up[i] / A_up[i] * sigma[i] * pattern;
+    A.add(dof_indices_i, dof_indices_i, mat);
+  }
+
+  // assemble the outflow edges
+  for (auto i : outflows) {
+    auto &edge_i = *edges[i];
+
+    // we only assemble rows which belong to us:
+    if (edge_i.rank() != mpi::rank(comm))
+      continue;
+
+    const auto &dof_indices_i = dof_indices_list[i];
+
+    for (auto j : inflows) {
+      const auto &dof_indices_j = dof_indices_list[j];
+      auto pattern = create_boundary(dof_indices_j.size(), boundary_type[i], boundary_type[j]);
+      Eigen::MatrixXd mat = tau * Q_up[i] * sigma[i] / Q_in * Q_up[j] * sigma[j] / A_up[j] * pattern;
+      A.add(dof_indices_i, dof_indices_j, mat);
     }
   }
 }

@@ -8,6 +8,7 @@
 #include "dof_map.hpp"
 
 #include <cassert>
+#include <numeric>
 
 #include "communication/mpi.hpp"
 #include "graph_storage.hpp"
@@ -59,26 +60,38 @@ std::size_t LocalEdgeDofMap::num_basis_functions() const {
   return d_num_basis_functions;
 }
 
+DofMap::DofMap(const GraphStorage &graph)
+    : DofMap(graph.num_vertices(), graph.num_edges()) {}
+
 DofMap::DofMap(std::size_t num_vertices, std::size_t num_edges)
     : d_local_dof_maps(num_edges),
       d_local_vertex_dof_maps(num_vertices),
+      d_first_global_dof(0),
       d_num_dof(0),
       d_first_owned_global_dof(0),
       d_num_owned_dofs(0) {}
+
+size_t DofMap::first_global_dof() const {
+  return d_first_global_dof;
+}
+
+size_t DofMap::last_global_dof() const {
+  return d_first_global_dof + d_num_dof - 1;
+}
 
 void DofMap::add_local_dof_map(const Edge &e,
                                std::size_t num_components,
                                std::size_t num_basis_functions,
                                std::size_t num_local_micro_edges) {
   assert(d_local_dof_maps[e.get_id()] == nullptr);
-  auto local_dof_map = std::make_unique<LocalEdgeDofMap>(d_num_dof, num_components, num_basis_functions, num_local_micro_edges);
+  auto local_dof_map = std::make_unique<LocalEdgeDofMap>(d_first_global_dof + d_num_dof, num_components, num_basis_functions, num_local_micro_edges);
   d_num_dof += local_dof_map->num_local_dof();
   d_local_dof_maps[e.get_id()] = std::move(local_dof_map);
 }
 
 void DofMap::add_local_dof_map(const Vertex &v, std::size_t num_components) {
   assert(d_local_vertex_dof_maps[v.get_id()] == nullptr);
-  auto local_dof_map = std::make_unique<LocalVertexDofMap>(d_num_dof, num_components);
+  auto local_dof_map = std::make_unique<LocalVertexDofMap>(d_first_global_dof + d_num_dof, num_components);
   d_num_dof += local_dof_map->num_local_dof();
   d_local_vertex_dof_maps[v.get_id()] = std::move(local_dof_map);
 }
@@ -112,11 +125,18 @@ void extract_dof(const std::vector<std::size_t> &dof_indices,
     local[i] = global.get(dof_indices[i]);
 }
 
+void DofMap::create(MPI_Comm comm, const GraphStorage &graph, std::size_t num_components, std::size_t degree, bool global) {
+  create(comm, graph, num_components, degree, 0, global);
+}
+
 void DofMap::create(MPI_Comm comm,
                     const GraphStorage &graph,
                     std::size_t num_components,
                     std::size_t degree,
+                    std::size_t start_dof_offset,
                     bool global) {
+  d_first_global_dof = start_dof_offset;
+
   for (int rank = 0; rank < mpi::size(comm); rank += 1) {
     const bool callingRank = (rank == mpi::rank(comm));
 
@@ -126,7 +146,7 @@ void DofMap::create(MPI_Comm comm,
 
     // if we are the rank
     if (callingRank)
-      d_first_owned_global_dof = d_num_dof;
+      d_first_owned_global_dof = d_num_dof + d_first_global_dof;
 
     for (const auto &e_id : graph.get_active_edge_ids(rank)) {
       const auto edge = graph.get_edge(e_id);

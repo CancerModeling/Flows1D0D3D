@@ -226,6 +226,22 @@ void LinearizedFlowUpwindEvaluator::calculate_inout_fluxes(double t, const Vecto
     } else if (vertex->is_free_outflow()) {
       p_up = 0.5 * (p_value[0] + sigma / alpha * q_value[0]);
       q_up = sigma * alpha * p_up;
+    } else if (vertex->is_linear_characteristic_inflow()) {
+      const auto C_tilde = vertex->get_linear_characteristic_data().C;
+      const auto L_tilde = vertex->get_linear_characteristic_data().L;
+
+      const auto p_tilde = vertex->get_linear_characteristic_data().p;
+      const auto q_tilde = vertex->get_linear_characteristic_data().q;
+
+      const auto C = linear::get_C(param);
+      const auto L = linear::get_L(param);
+
+      const auto beta = std::sqrt(C / L);
+      const auto beta_tilde = std::sqrt(C_tilde / L_tilde);
+      const auto gamma = beta + beta_tilde;
+
+      p_up = 1. / gamma * (beta_tilde * p_tilde + beta * p_value[0] + q_tilde + sigma * q_value[0]);
+      q_up = - beta * p_value[0] - sigma * q_value[0] + beta * p_up;
     } else {
       throw std::runtime_error("boundary type not implemented yet in LinearizedFlowUpwindEvaluator.");
     }
