@@ -28,8 +28,8 @@ namespace linearized {
  * @param q_up  The upwinded flux.
  */
 inline void inner_boundary(double alpha, double p_l, double q_l, double p_r, double q_r, double &p_up, double &q_up) {
-  p_up = 0.5 * (p_l + p_r + alpha * (q_l - q_r));
-  q_up = alpha * (-p_up + p_l) + q_l;
+  q_up = 0.5 * (q_l + q_r + alpha * (p_l - p_r));
+  p_up = (alpha * p_l + q_l  - q_up) / alpha;
 }
 
 /*! @brief Calculates the upwinding at an nfurcation.

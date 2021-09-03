@@ -34,7 +34,7 @@ namespace lm = libMesh;
 namespace mc = macrocirculation;
 
 int main(int argc, char *argv[]) {
-  const std::size_t degree = 0;
+  const std::size_t degree = 2;
   const std::size_t num_micro_edges = 10;
 
   // initialize petsc
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
 
-    const double tau = 2.5e-4 / 16.;
+    const double tau = 2.5e-4 / 32.;
     const double t_end = 3.;
     const double tau_out = 1e-2;
 
@@ -134,6 +134,10 @@ int main(int argc, char *argv[]) {
     mc::GraphPVDWriter writer_li(PETSC_COMM_WORLD, "./output", "explicit_implicit_li");
     mc::GraphPVDWriter writer_nl(PETSC_COMM_WORLD, "./output", "explicit_implicit_nl");
 
+    std::vector<mc::Point> points;
+    std::vector<double> vessel_A0_li;
+    mc::fill_with_vessel_A0(MPI_COMM_WORLD, *graph_li, points, vessel_A0_li);
+
     solver.setup(tau);
 
     double t = 0;
@@ -146,12 +150,27 @@ int main(int argc, char *argv[]) {
 
       t += tau;
 
+      if (t_idx == 95478)
+      {
+        std::cout << "it = " << t_idx << " t  = " << t << std::endl;
+        std::cout << transport_solver.get_solution() << std::endl;
+        std::cout << transport_solver.get_mat() << std::endl;
+        std::cout << transport_solver.get_rhs() << std::endl;
+      }
+      if (transport_solver.get_solution().norm2() < 1e-10 && t > 0.1)
+      {
+        std::cout << "it = " << t_idx << " t  = " << t << std::endl;
+        std::cout << transport_solver.get_solution() << std::endl;
+        std::cout << transport_solver.get_mat() << std::endl;
+        std::cout << transport_solver.get_rhs() << std::endl;
+        return 0;
+      }
+
       if (t_idx % output_interval == 0) {
         std::cout << "it = " << t_idx << std::endl;
 
         // linear solver
         {
-          std::vector<mc::Point> points;
           std::vector<double> p_vertex_values;
           std::vector<double> q_vertex_values;
           std::vector<double> c_vertex_values;
@@ -159,16 +178,17 @@ int main(int argc, char *argv[]) {
           interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_li, solver_li->q_component, solver_li->get_solution(), points, q_vertex_values);
           interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_transport_li, 0, transport_solver.get_solution(), points, c_vertex_values);
 
+
           writer_li.set_points(points);
           writer_li.add_vertex_data("p", p_vertex_values);
           writer_li.add_vertex_data("q", q_vertex_values);
           writer_li.add_vertex_data("c", c_vertex_values);
+          writer_li.add_vertex_data("A", vessel_A0_li);
           writer_li.write(t);
         }
 
         // nonlinear solver
         {
-          std::vector<mc::Point> points;
           std::vector<double> Q_vertex_values;
           std::vector<double> A_vertex_values;
           std::vector<double> p_total_vertex_values;

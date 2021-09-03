@@ -647,7 +647,8 @@ void assembly_kernel_nfurcation(MPI_Comm comm,
     for (auto j : inflows) {
       const auto &dof_indices_j = dof_indices_list[j];
       auto pattern = create_boundary(dof_indices_j.size(), boundary_type[i], boundary_type[j]);
-      Eigen::MatrixXd mat = tau * Q_up[i] * sigma[i] / Q_in * Q_up[j] * sigma[j] / A_up[j] * pattern;
+      const double q_factor = std::abs(Q_in) < 1e-16 ? 0.0 : ((Q_up[i] * Q_up[j]) / Q_in);
+      Eigen::MatrixXd mat = tau * sigma[i] * q_factor * sigma[j] / A_up[j] * pattern;
       A.add(dof_indices_i, dof_indices_j, mat);
     }
   }

@@ -55,6 +55,12 @@ public:
     CHKERRABORT(PETSC_COMM_WORLD, VecSetValue(d_vec, idx, value, INSERT_VALUES));
   }
 
+  double norm2() const {
+    double value;
+    CHKERRABORT(PETSC_COMM_WORLD, VecNorm(d_vec, NORM_2, &value));
+    return value;
+  }
+
   double get(size_t idx) const { return get(static_cast<PetscInt>(idx)); }
 
   double get(PetscInt idx) const {
