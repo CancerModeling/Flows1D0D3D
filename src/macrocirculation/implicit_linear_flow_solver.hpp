@@ -99,6 +99,8 @@ public:
 
   /*! @brief Returns the degree of the finite element basis functions. */
   size_t get_degree() const;
+  
+  void applySlopeLimiter();
 
 private:
   void assemble_matrix_cells(double tau);

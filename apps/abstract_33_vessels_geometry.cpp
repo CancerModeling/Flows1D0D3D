@@ -43,9 +43,9 @@ int main(int argc, char *argv[]) {
       ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))                     //
       ("inlet-name", "the name of the inlet", cxxopts::value<std::string>()->default_value("cw_in"))                                  //
       ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                           //
-      ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                                //
+      ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-6)))                                //
       ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-4"))                                   //
-      ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("1"))                                               //
+      ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("5"))                                               //
       ("h,help", "print usage");
     options.allow_unrecognised_options(); // for petsc
     auto args = options.parse(argc, argv);
@@ -87,9 +87,9 @@ int main(int argc, char *argv[]) {
     const double t_end = args["t-end"].as<double>();
     const std::size_t max_iter = 160000000;
 
-    const auto tau = args["tau"].as<double>();
+    const auto tau = 2.0e-6; //args["tau"].as<double>();
     const auto tau_out = args["tau-out"].as<double>();
-    // const double tau_out = tau;
+
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
     std::cout << "tau = " << tau << ", tau_out = " << tau_out << ", output_interval = " << output_interval << std::endl;
 
@@ -149,14 +149,20 @@ int main(int argc, char *argv[]) {
 
     const auto begin_t = std::chrono::steady_clock::now();
     double t = 0;
+    double t_transport = 0.0;
+    
     for (std::size_t it = 0; it < max_iter; it += 1) {
-      // transport_solver->solve(it * tau, tau, flow_solver->get_solution());
       flow_solver->solve(tau, t);
-      variable_upwind_provider->init(t + tau, flow_solver->get_solution());
-      transport_solver->solve(tau, t + tau);
-
+      if( it%5 == 0 ){
+        std::cout << "t_transport = " << t_transport << std::endl;
+        variable_upwind_provider->init(t_transport + 5.0*tau, flow_solver->get_solution()); 
+        transport_solver->solve(5.0*tau, t_transport + 5.0*tau);
+        transport_solver->applySlopeLimiter(t_transport + 5.0*tau);
+        t_transport += 5.0*tau;
+      }
+      
       t += tau;
-
+      
       if (it % output_interval == 0) {
         std::cout << "iter = " << it << ", t = " << t << std::endl;
 
