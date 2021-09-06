@@ -8,6 +8,7 @@
 #include "heart_to_breast_3d_solver.hpp"
 #include "heart_to_breast_1d_solver.hpp"
 #include "vtk_writer.hpp"
+#include "vtk_io_libmesh.hpp"
 #include "random_dist.hpp"
 #include "tree_search.hpp"
 #include <fmt/format.h>
@@ -91,7 +92,8 @@ void set_perfusion_pts(std::string out_dir,
 // input class definitions
 
 HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string &filename)
-    : d_K_cap(1.), d_K_tis(1.), d_Lp_cap(0.1), d_Lp_tis(0.1),
+    : d_rho_cap(1.), d_rho_tis(1.), d_K_cap(1.e-9), d_K_tis(1.e-11),
+      d_Lp_art_cap(1.e-6), d_Lc_cap(1e-12), d_Sc_cap(1e2),
       d_T(1.), d_dt(0.01), d_h(0.1), d_mesh_file(""), d_out_dir(""),
       d_perf_fn_type("linear"), d_perf_neigh_size({1., 4.}),
       d_debug_lvl(0) {
@@ -101,23 +103,33 @@ HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string
 
 void HeartToBreast3DSolverInputDeck::read_parameters(const std::string &filename) {
   GetPot input(filename);
+  d_rho_cap = input("rho_cap", 1.);
+  d_rho_tis = input("rho_tis", 1.);
   d_K_cap = input("K_cap", 1.);
-  d_K_tis = input("K_tis", 0.1);
-  d_Lp_cap = input("Lp_cap", 1.);
-  d_Lp_tis = input("Lp_tis", 0.1);
+  d_K_tis = input("K_tis", 1.);
+  d_Lp_art_cap = input("Lp_art_cap", 1.);
+  d_Lc_cap = input("Lc_cap", 1.);
+  d_Sc_cap = input("Sc_cap", 1.);
   d_T = input("T", 1.);
   d_dt = input("dt", 0.01);
   d_h = input("h", 0.1);
   d_mesh_file = input("mesh_file", "");
   d_out_dir = input("out_dir", "");
+  d_perf_fn_type = input("perf_fn_type", "linear");
+  d_perf_neigh_size.first = input("perf_neigh_size_min", 1.);
+  d_perf_neigh_size.second = input("perf_neigh_size_max", 4.);
+  d_debug_lvl = input("debug_lvl", 0);
 }
 
 std::string HeartToBreast3DSolverInputDeck::print_str() {
   std::ostringstream oss;
+  oss << "rho_cap = " << d_rho_cap << "\n";
+  oss << "rho_tis = " << d_rho_tis << "\n";
   oss << "K_cap = " << d_K_cap << "\n";
   oss << "K_tis = " << d_K_tis << "\n";
-  oss << "Lp_cap = " << d_Lp_cap << "\n";
-  oss << "Lp_tis = " << d_Lp_tis << "\n";
+  oss << "L_art_cap = " << d_Lp_art_cap << "\n";
+  oss << "Lc_cap = " << d_Lc_cap << "\n";
+  oss << "Sc_cap = " << d_Sc_cap << "\n";
   oss << "T = " << d_T << "\n";
   oss << "dt = " << d_dt << "\n";
   oss << "h = " << d_h << "\n";
@@ -135,14 +147,18 @@ HeartToBreast3DSolver::HeartToBreast3DSolver(MPI_Comm mpi_comm,
                                              lm::TransientLinearImplicitSystem &p_cap,
                                              lm::TransientLinearImplicitSystem &p_tis,
                                              lm::ExplicitSystem &K_cap_field,
-                                             lm::ExplicitSystem &Lp_cap_field,
+                                             lm::ExplicitSystem &K_tis_field,
+                                             lm::ExplicitSystem &Lp_art_cap_field,
+                                             lm::ExplicitSystem &Lp_cap_tis_field,
                                              Logger &log)
     : BaseModel(libmesh_comm, mesh, eq_sys, log, "HeartToBreast3DSolver"),
       d_input(input),
       d_p_cap(this, d_mesh, p_cap),
       d_p_tis(this, d_mesh, p_tis),
       d_K_cap_field(K_cap_field),
-      d_Lp_cap_field(Lp_cap_field) {
+      d_K_tis_field(K_tis_field),
+      d_Lp_art_cap_field(Lp_art_cap_field),
+      d_Lp_cap_tis_field(Lp_cap_tis_field) {
 
   d_dt = input.d_dt;
   d_log("created HeartToBreast3DSolver object\n");
@@ -276,13 +292,13 @@ void HeartToBreast3DSolver::setup_random_outlets(unsigned int num_perf_outlets) 
       const auto &elem = mesh.elem_ptr(elem_id);
       // init dof map
       d_p_cap.init_dof(elem);
-      d_Lp_cap_field.get_dof_map().dof_indices(elem, Lp_cap_dof_indices);
+      d_Lp_art_cap_field.get_dof_map().dof_indices(elem, Lp_cap_dof_indices);
 
       // init fe
       d_p_cap.init_fe(elem);
 
       // get Lp at this element
-      double Lp_elem = d_Lp_cap_field.current_solution(Lp_cap_dof_indices[0]);
+      double Lp_elem = d_Lp_art_cap_field.current_solution(Lp_cap_dof_indices[0]);
       if (counter % 100 == 0)
         std::cout << Lp_elem << "; ";
       counter++;
@@ -356,8 +372,19 @@ double HeartToBreast3DSolver::get_time() const {
   return d_time;
 }
 void HeartToBreast3DSolver::solve() {
+  // solve for capillary and tissue pressure
+  auto solve_clock = std::chrono::steady_clock::now();
+  d_p_cap.solve();
+  d_log("capillary pressure solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+
+  solve_clock = std::chrono::steady_clock::now();
+  d_p_tis.solve();
+  d_log("tissue pressure solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 }
 void HeartToBreast3DSolver::write_output() {
+  static int out_n = 0;
+  VTKIO(d_mesh).write_equation_systems(d_input.d_out_dir + "/output_3D_" + std::to_string(out_n) + ".pvtu", d_eq_sys);
+  out_n++;
 }
 void HeartToBreast3DSolver::set_output_folder(std::string output_dir) {
 }
@@ -487,13 +514,13 @@ void HeartToBreast3DSolver::setup_1d3d(const std::vector<VesselTipCurrentCouplin
       const auto &elem = d_mesh.elem_ptr(elem_id);
       // init dof map
       d_p_cap.init_dof(elem);
-      d_Lp_cap_field.get_dof_map().dof_indices(elem, Lp_cap_dof_indices);
+      d_Lp_art_cap_field.get_dof_map().dof_indices(elem, Lp_cap_dof_indices);
 
       // init fe
       d_p_cap.init_fe(elem);
 
       // get Lp at this element
-      double Lp_elem = d_Lp_cap_field.current_solution(Lp_cap_dof_indices[0]);
+      double Lp_elem = d_Lp_art_cap_field.current_solution(Lp_cap_dof_indices[0]);
       if (counter % 100 == 0)
         std::cout << Lp_elem << "; ";
       counter++;
@@ -593,25 +620,33 @@ void HeartToBreast3DSolver::update_1d_data(const std::vector<VesselTipCurrentCou
   for (size_t i=0; i<data_1d.size(); i++)
     d_perf_pres[i] = data_1d[i].pressure;
 }
-void HeartToBreast3DSolver::set_Lp_cap() {
 
-  std::vector<unsigned int> dof_indices;
-    for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
-      d_Lp_cap_field.get_dof_map().dof_indices(elem, dof_indices);
-      d_Lp_cap_field.solution->set(dof_indices[0], d_input.d_Lp_cap);
-    }
-  d_Lp_cap_field.solution->close();
-  d_Lp_cap_field.update();
-}
-void HeartToBreast3DSolver::set_K_cap() {
-
+void HeartToBreast3DSolver::set_conductivity_fields() {
   std::vector<unsigned int> dof_indices;
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
+    d_Lp_art_cap_field.get_dof_map().dof_indices(elem, dof_indices);
+    d_Lp_art_cap_field.solution->set(dof_indices[0], d_input.d_Lp_art_cap);
+
+    d_Lp_cap_tis_field.get_dof_map().dof_indices(elem, dof_indices);
+    d_Lp_cap_tis_field.solution->set(dof_indices[0], d_input.d_Lc_cap * d_input.d_Sc_cap);
+
     d_K_cap_field.get_dof_map().dof_indices(elem, dof_indices);
     d_K_cap_field.solution->set(dof_indices[0], d_input.d_K_cap);
+
+    d_K_tis_field.get_dof_map().dof_indices(elem, dof_indices);
+    d_K_tis_field.solution->set(dof_indices[0], d_input.d_K_tis);
   }
+  d_Lp_art_cap_field.solution->close();
+  d_Lp_art_cap_field.update();
+
+  d_Lp_cap_tis_field.solution->close();
+  d_Lp_cap_tis_field.update();
+
   d_K_cap_field.solution->close();
   d_K_cap_field.update();
+
+  d_K_tis_field.solution->close();
+  d_K_tis_field.update();
 }
 
 } // namespace macrocirculation

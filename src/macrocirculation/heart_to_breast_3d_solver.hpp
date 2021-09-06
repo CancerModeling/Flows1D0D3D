@@ -39,14 +39,20 @@ struct HeartToBreast3DSolverInputDeck {
   /*! @brief Print parameters for debug. */
   std::string print_str();
 
-  /*! @brief Capillary hydraulic conductivity. */
+  /*! @brief Capillary blood density (g/cm^3). */
+  double d_rho_cap;
+  /*! @brief Tissue blood density (g/cm^3). */
+  double d_rho_tis;
+  /*! @brief Capillary hydraulic conductivity (cm^3 . s/g). */
   double d_K_cap;
-  /*! @brief Tissue hydraulic conductivity. */
+  /*! @brief Tissue hydraulic conductivity (cm^3 . s/g). */
   double d_K_tis;
-  /*! @brief Artery - Capillary exchange permeability. */
-  double d_Lp_cap;
-  /*! @brief Capillary - Tissue exchange permeability. */
-  double d_Lp_tis;
+  /*! @brief Artery - Capillary exchange permeability (cm^4 . s/g). */
+  double d_Lp_art_cap;
+  /*! @brief Permeability of capillary surface (cm^2 . s/g). */
+  double d_Lc_cap;
+  /*! @brief Average surface area of capillary per unit volume (1/cm). */
+  double d_Sc_cap;
   /*! @brief Final simulation time. */
   double d_T;
   /*! @brief Size of time step. */
@@ -75,7 +81,9 @@ public:
                         lm::TransientLinearImplicitSystem &p_cap,
                         lm::TransientLinearImplicitSystem &p_tis,
                         lm::ExplicitSystem &K_cap_field,
-                        lm::ExplicitSystem &Lp_cap_field,
+                        lm::ExplicitSystem &K_tis_field,
+                        lm::ExplicitSystem &Lp_art_cap_field,
+                        lm::ExplicitSystem &Lp_cap_tis_field,
                         Logger &log);
 
   /*! @brief Setup artificial perfusion outlets . */
@@ -111,8 +119,7 @@ public:
   /*! @brief Update 1D data. */
   void update_1d_data(const std::vector<VesselTipCurrentCouplingData> &data_1d);
 
-  void set_Lp_cap();
-  void set_K_cap();
+  void set_conductivity_fields();
 
 public:
   /*! @brief MPI comm. (Note that we have another comm from libmesh defined in BaseModel class) */
@@ -127,8 +134,12 @@ public:
   TissuePressure d_p_tis;
   /*! @brief Capillary hydraulic conductivity parameter (spatially varying, may vary element-wise). */
   lm::ExplicitSystem &d_K_cap_field;
+  /*! @brief Tissue hydraulic conductivity parameter (spatially varying, may vary element-wise). */
+  lm::ExplicitSystem &d_K_tis_field;
   /*! @brief Artery - Capillary exchange permeability parameter (spatially varying, may vary element-wise). */
-  lm::ExplicitSystem &d_Lp_cap_field;
+  lm::ExplicitSystem &d_Lp_art_cap_field;
+  /*! @brief Capillary - Tissue exchange permeability parameter (spatially varying, may vary element-wise). */
+  lm::ExplicitSystem &d_Lp_cap_tis_field;
 
   /*!
    * @brief Coordinates of perfusion outlets.
