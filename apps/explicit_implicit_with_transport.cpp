@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     const double elastic_modulus = 400000.0;
     const double density = 1.028e-3;
 
-    auto physical_data_1 = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length / 2.);
+    auto physical_data_1 = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 9., radius, vessel_length / 2.);
     auto physical_data_2 = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length / 2.);
     // we set the viscosity to zero
     // physical_data_1.viscosity = 0;
@@ -71,11 +71,13 @@ int main(int argc, char *argv[]) {
     auto v2_nl = graph_nl->create_vertex();
 
     auto edge_0_nl = graph_nl->connect(*v0_nl, *v1_nl, num_micro_edges);
-    auto edge_1_nl = graph_nl->connect(*v1_nl, *v2_nl, num_micro_edges);
+    // auto edge_1_nl = graph_nl->connect(*v1_nl, *v2_nl, num_micro_edges);
+    auto edge_1_nl = graph_nl->connect(*v2_nl, *v1_nl, num_micro_edges);
 
     edge_0_nl->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
     edge_0_nl->add_physical_data(physical_data_1);
-    edge_1_nl->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1, 0, 0)}});
+    // edge_1_nl->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1, 0, 0)}});
+    edge_1_nl->add_embedding_data({{mc::Point(1.0, 0, 0), mc::Point(0.5, 0, 0)}});
     edge_1_nl->add_physical_data(physical_data_1);
 
     auto graph_li = std::make_shared<mc::GraphStorage>();
@@ -85,11 +87,13 @@ int main(int argc, char *argv[]) {
     auto v2_li = graph_li->create_vertex();
 
     auto edge_0_li = graph_li->connect(*v0_li, *v1_li, num_micro_edges);
-    auto edge_1_li = graph_li->connect(*v1_li, *v2_li, num_micro_edges);
+    // auto edge_1_li = graph_li->connect(*v1_li, *v2_li, num_micro_edges);
+    auto edge_1_li = graph_li->connect(*v2_li, *v1_li, num_micro_edges);
 
     edge_0_li->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1.5, 0, 0)}});
     edge_0_li->add_physical_data(physical_data_2);
-    edge_1_li->add_embedding_data({{mc::Point(1.5, 0, 0), mc::Point(2, 0, 0)}});
+    //edge_1_li->add_embedding_data({{mc::Point(1.5, 0, 0), mc::Point(2, 0, 0)}});
+    edge_1_li->add_embedding_data({{mc::Point(2, 0, 0), mc::Point(1.5, 0, 0)}});
     edge_1_li->add_physical_data(physical_data_2);
 
     v0_nl->set_to_inflow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
@@ -99,7 +103,8 @@ int main(int argc, char *argv[]) {
     // v1_li->set_to_free_outflow();
 
     //v2_li->set_to_windkessel_outflow(1.8, 0.387);
-    v2_li->set_to_free_outflow();
+    // v2_li->set_to_free_outflow();
+    v2_li->set_to_windkessel_outflow(18, 387);
 
     // v2_li->set_name("windkessel_outflow");
     // mc::set_0d_tree_boundary_conditions(graph_li, "windkessel_outflow");
@@ -111,6 +116,7 @@ int main(int argc, char *argv[]) {
     coupling->add_coupled_vertices("nl_out", "li_in");
 
     mc::CoupledExplicitImplicit1DSolver solver(MPI_COMM_WORLD, coupling, graph_nl, graph_li, degree, degree);
+    solver.get_explicit_solver()->use_ssp_method();
 
     auto dof_map_nl = solver.get_explicit_dof_map();
     auto dof_map_li = solver.get_implicit_dof_map();
