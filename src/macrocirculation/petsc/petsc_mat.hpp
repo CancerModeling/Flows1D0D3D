@@ -8,19 +8,29 @@
 #ifndef TUMORMODELS_PETSC_MAT_HPP
 #define TUMORMODELS_PETSC_MAT_HPP
 
-#include "gmm.h"
-#include <Eigen/Dense>
-#include "petsc.h"
+#include <numeric>
 #include <vector>
+
+#include "gmm.h"
+#include "petsc.h"
+#include <Eigen/Dense>
 
 namespace macrocirculation {
 
 class PetscMat {
 public:
-  PetscMat(const std::string &name, const DofMap &dof_map) {
+  PetscMat(const std::string &name, const std::vector<std::shared_ptr<DofMap>> &dof_map)
+      : PetscMat(name,
+                 std::accumulate(dof_map.begin(), dof_map.end(), 0, [](auto v, auto dm) { return v + dm->num_owned_dofs(); }),
+                 std::accumulate(dof_map.begin(), dof_map.end(), 0, [](auto v, auto dm) { return v + dm->num_dof(); })) {}
+
+  PetscMat(const std::string &name, const DofMap &dof_map)
+      : PetscMat(name, dof_map.num_owned_dofs(), dof_map.num_dof()) {}
+
+  PetscMat(const std::string &name, std::size_t num_owned_dofs, std::size_t num_dofs) {
     CHKERRABORT(PETSC_COMM_WORLD, MatCreate(PETSC_COMM_WORLD, &d_mat));
     CHKERRABORT(PETSC_COMM_WORLD, MatSetType(d_mat, MATMPIAIJ));
-    CHKERRABORT(PETSC_COMM_WORLD, MatSetSizes(d_mat, dof_map.num_owned_dofs(), dof_map.num_owned_dofs(), dof_map.num_dof(), dof_map.num_dof()));
+    CHKERRABORT(PETSC_COMM_WORLD, MatSetSizes(d_mat, num_owned_dofs, num_owned_dofs, num_dofs, num_dofs));
     // we overestimate the number non-zero entries, otherwise matrix assembly is incredibly slow :
     CHKERRABORT(PETSC_COMM_WORLD, MatMPIAIJSetPreallocation(d_mat, 1000, nullptr, 1000, nullptr));
     CHKERRABORT(PETSC_COMM_WORLD, PetscObjectSetName((PetscObject) d_mat, name.c_str()));
@@ -122,7 +132,8 @@ public:
 
   double get(size_t i, size_t j) const {
     double value;
-    PetscInt ii = i; PetscInt jj = j;
+    PetscInt ii = i;
+    PetscInt jj = j;
     CHKERRABORT(PETSC_COMM_WORLD, MatGetValues(d_mat, 1, &ii, 1, &jj, &value));
     return value;
   }
@@ -131,12 +142,10 @@ private:
   Mat d_mat{};
 };
 
-template< typename Stream >
-inline Stream& operator<<(Stream& out, const PetscMat& m)
-{
+template<typename Stream>
+inline Stream &operator<<(Stream &out, const PetscMat &m) {
   auto ldof = m.last_dof();
-  for (size_t k = m.first_dof(); k < ldof; k += 1)
-  {
+  for (size_t k = m.first_dof(); k < ldof; k += 1) {
     for (size_t j = m.first_dof(); j < ldof; j += 1)
       out << m.get(k, j) << " ";
     out << "\n";

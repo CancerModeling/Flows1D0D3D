@@ -55,6 +55,10 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
 
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "transport_solution");
 
+  std::vector<mc::Point> points;
+  std::vector<double> vessel_A0;
+  mc::fill_with_vessel_A0(MPI_COMM_WORLD, *graph, points, vessel_A0);
+
   const auto begin_t = std::chrono::steady_clock::now();
   double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
@@ -70,7 +74,6 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
         std::cout << "iter = " << it << ", time = " << t << std::endl;
 
       // save solution
-      std::vector<mc::Point> points;
       std::vector<double> c_vertex_values;
       std::vector<double> p_vertex_values;
       std::vector<double> q_vertex_values;
@@ -80,8 +83,9 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
 
       pvd_writer.set_points(points);
       pvd_writer.add_vertex_data("c", c_vertex_values);
-      pvd_writer.add_vertex_data("q", q_vertex_values);
+      pvd_writer.add_vertex_data("Q", q_vertex_values);
       pvd_writer.add_vertex_data("p", p_vertex_values);
+      pvd_writer.add_vertex_data("A", vessel_A0);
       pvd_writer.write(t);
     }
 
@@ -185,7 +189,7 @@ int main(int argc, char *argv[]) {
   const bool no_lower_vessel = args["no-lower-vessel"].as<bool>();
   const bool no_upper_vessel = args["no-upper-vessel"].as<bool>();
 
-  const std::size_t num_micro_edges = 20;
+  const std::size_t num_micro_edges = 40;
 
   // vessel parameters
   //const double vessel_length = 20.5;
@@ -202,15 +206,15 @@ int main(int argc, char *argv[]) {
   auto graph = std::make_shared<mc::GraphStorage>();
   auto v0 = graph->create_vertex();
   auto v1 = graph->create_vertex();
-  auto v2 = graph->create_vertex();
+  //auto v2 = graph->create_vertex();
 
   auto edge_0 = graph->connect(*v0, *v1, num_micro_edges);
   edge_0->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
   edge_0->add_physical_data(physical_data_short);
 
-  auto edge_1 = graph->connect(*v1, *v2, num_micro_edges);
-  edge_1->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1., 0, 0)}});
-  edge_1->add_physical_data(physical_data_long);
+  //auto edge_1 = graph->connect(*v1, *v2, num_micro_edges);
+  //edge_1->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1., 0, 0)}});
+  //edge_1->add_physical_data(physical_data_long);
 
   if (!no_upper_vessel) {
     auto v3 = graph->create_vertex();
@@ -229,7 +233,8 @@ int main(int argc, char *argv[]) {
   }
 
   v0->set_to_inflow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
-  v2->set_to_free_outflow();
+  v1->set_to_free_outflow();
+  // v2->set_to_free_outflow();
 
   graph->finalize_bcs();
 

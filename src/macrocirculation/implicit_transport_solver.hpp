@@ -16,6 +16,8 @@
 #include <random>
 #include <vector>
 
+#include "petsc_assembly_blocks.hpp"
+
 namespace macrocirculation {
 
 // forward declarations:
@@ -136,6 +138,12 @@ public:
                           std::shared_ptr<UpwindProvider> upwind_provider,
                           size_t degree);
 
+  ImplicitTransportSolver(MPI_Comm comm,
+                          std::vector<std::shared_ptr<GraphStorage>> graph,
+                          std::vector<std::shared_ptr<DofMap>> dof_map,
+                          std::vector<std::shared_ptr<UpwindProvider>> upwind_provider,
+                          size_t degree);
+
   /*! @brief Assembles matrix and right-hand-side. */
   void assemble(double tau, double t);
 
@@ -147,24 +155,18 @@ public:
 
   const PetscVec &get_solution() const { return *u; }
 
+  const PetscMat &get_mat() const { return *A; }
+
+  const PetscVec &get_rhs() const { return *rhs; }
+
 private:
   /*! @brief Assembles the left-hand-side matrix for the given time step. */
-  void assemble_matrix(double tau, double t, const UpwindProvider &upwind_provider);
+  void assemble_matrix(double tau, double t);
 
   /*! @brief Assembles the right-hand-side vectors for the given time step at the given time. */
-  void assemble_rhs(double tau, double t, const UpwindProvider &upwind_provider);
+  void assemble_rhs(double tau, double t);
 
-  void assemble_matrix_cells(double tau, double t, const UpwindProvider &upwind_provider);
-
-  void assemble_rhs_cells(double tau, double t, const UpwindProvider &upwind_provider);
-
-  void assemble_rhs_inflow(double tau, double t, const UpwindProvider &upwind_provider);
-
-  void assemble_matrix_outflow(double tau, double t, const UpwindProvider &upwind_provider);
-
-  void assemble_matrix_inner_boundaries(double tau, double t, const UpwindProvider &upwind_provider);
-
-  void assemble_matrix_nfurcations(double tau, double t, const UpwindProvider &upwind_provider);
+  void assemble_characteristics(double tau, double t);
 
   /*! @brief Assembles the matrix with different upwindings, so that the sparsity pattern does not change,
    *         when the velocity field changes.  */
@@ -173,11 +175,11 @@ private:
 private:
   MPI_Comm d_comm;
 
-  std::shared_ptr<GraphStorage> d_graph;
+  std::vector<std::shared_ptr<GraphStorage>> d_graph;
 
-  std::shared_ptr<DofMap> d_dof_map;
+  std::vector<std::shared_ptr<DofMap>> d_dof_map;
 
-  std::shared_ptr<UpwindProvider> d_upwind_provider;
+  std::vector<std::shared_ptr<UpwindProvider>> d_upwind_provider;
 
   size_t d_degree;
 
@@ -198,6 +200,26 @@ private:
       return 1.;
   };
 };
+
+namespace implicit_transport {
+
+void additively_assemble_rhs_cells(PetscVec &mass, PetscVec &u, PetscVec &rhs);
+
+void additively_assemble_rhs_inflow(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, const std::function<double(double)> &inflow_function, PetscVec &rhs);
+
+void additively_assemble_matrix(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, PetscMat &mat);
+
+void additively_assemble_matrix_cells(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, PetscMat &mat);
+
+void additively_assemble_matrix_outflow(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, PetscMat &mat);
+
+void additively_assemble_matrix_inner_boundaries(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, PetscMat &mat);
+
+void additively_assemble_matrix_nfurcations(MPI_Comm comm, double tau, double t, const UpwindProvider &upwind_provider, const DofMap &dof_map, const GraphStorage &graph, PetscMat &mat);
+
+void assembly_kernel_nfurcation(MPI_Comm comm, double tau, const std::vector<std::vector<size_t>> &dof_indices_list, const std::vector<Edge const *> &edges, const std::vector<double> &sigma, const std::vector<double> &Q_up, const std::vector<double> &A_up, const std::vector<BoundaryPointType> &boundary_type, PetscMat &A);
+
+} // namespace implicit_transport
 
 } // namespace macrocirculation
 

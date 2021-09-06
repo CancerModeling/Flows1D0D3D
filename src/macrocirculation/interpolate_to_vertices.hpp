@@ -36,6 +36,8 @@ void add_discontinuous_points( const std::vector< Point >& embedded_points, std:
 
 void fill_with_vessel_id(const MPI_Comm comm, const GraphStorage &graph, std::vector<Point> &points, std::vector<double> &interpolated);
 
+void fill_with_vessel_A0(const MPI_Comm comm, const GraphStorage &graph, std::vector<Point> &points, std::vector<double> &interpolated);
+
 void fill_with_radius(const MPI_Comm comm, const GraphStorage &graph, std::vector<Point> &points, std::vector<double> &interpolated);
 
 void fill_with_edge_parameter(const MPI_Comm comm, const GraphStorage &graph, std::function< double(const Edge&)> extractor, std::vector<Point> &points, std::vector<double> &interpolated);

@@ -68,6 +68,18 @@ void assemble_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_m
   }
 }
 
+void assemble_mass(MPI_Comm comm,
+                   const std::vector<std::shared_ptr<GraphStorage>> &graph,
+                   const std::vector<std::shared_ptr<DofMap>> &dof_map,
+                   PetscVec &mass_vec) {
+  if (graph.size() != dof_map.size())
+    throw std::runtime_error("assemble_mass: size of graph and dofmap vectors does not match");
+
+  for (size_t k = 0; k < graph.size(); k += 1) {
+    assemble_mass(comm, *graph[k], *dof_map[k], mass_vec);
+  }
+}
+
 // TODO: Move somewhere else!!!
 // TODO: Clean up from implicit advection solver
 void interpolate_to_vertices(const MPI_Comm comm,

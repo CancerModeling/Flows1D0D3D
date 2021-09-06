@@ -29,6 +29,11 @@ class Vertex;
 
 void assemble_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, PetscVec &mass_vec);
 
+void assemble_mass(MPI_Comm comm,
+                   const std::vector< std::shared_ptr< GraphStorage > > &graph,
+                   const std::vector< std::shared_ptr< DofMap  > > &dof_map,
+                   PetscVec &mass_vec);
+
 // TODO: Move somewhere else!!!
 // TODO: Clean up from implicit advection solver
 void interpolate_to_vertices(const MPI_Comm comm,

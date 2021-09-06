@@ -70,6 +70,11 @@ target_link_libraries(${ProjectName}ExplicitImplicitScheme ${ProjectLib})
 target_link_libraries(${ProjectName}ExplicitImplicitScheme ${LIBMESH_LIBRARIES}) # libmesh for eigen
 target_link_libraries(${ProjectName}ExplicitImplicitScheme cxxopts)
 
+add_executable(${ProjectName}ExplicitImplicitWithTransport explicit_implicit_with_transport.cpp)
+target_link_libraries(${ProjectName}ExplicitImplicitWithTransport ${ProjectLib})
+target_link_libraries(${ProjectName}ExplicitImplicitWithTransport ${LIBMESH_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}ExplicitImplicitWithTransport cxxopts)
+
 add_executable(${ProjectName}Transport transport_test.cpp)
 target_link_libraries(${ProjectName}Transport ${ProjectLib})
 
