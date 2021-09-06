@@ -35,7 +35,7 @@ namespace mc = macrocirculation;
 
 int main(int argc, char *argv[]) {
   const std::size_t degree = 2;
-  const std::size_t num_micro_edges = 10;
+  const std::size_t num_micro_edges = 20;
 
   // initialize petsc
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
@@ -43,8 +43,8 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
 
-    const double tau = 2.5e-4 / 32.;
-    const double t_end = 3.;
+    const double tau = 2.5e-4 / 16.;
+    const double t_end = 5.;
     const double tau_out = 1e-2;
 
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
 
     //v2_li->set_to_windkessel_outflow(1.8, 0.387);
     // v2_li->set_to_free_outflow();
-    v2_li->set_to_windkessel_outflow(18, 387);
+    v2_li->set_to_windkessel_outflow(1.8, 3870);
 
     // v2_li->set_name("windkessel_outflow");
     // mc::set_0d_tree_boundary_conditions(graph_li, "windkessel_outflow");
@@ -180,16 +180,18 @@ int main(int argc, char *argv[]) {
           std::vector<double> p_vertex_values;
           std::vector<double> q_vertex_values;
           std::vector<double> c_vertex_values;
+          std::vector<double> v_vertex_values;
           interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_li, solver_li->p_component, solver_li->get_solution(), points, p_vertex_values);
           interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_li, solver_li->q_component, solver_li->get_solution(), points, q_vertex_values);
           interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_transport_li, 0, transport_solver.get_solution(), points, c_vertex_values);
-
+          mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *variable_upwind_provider_li, t, points, v_vertex_values);
 
           writer_li.set_points(points);
           writer_li.add_vertex_data("p", p_vertex_values);
           writer_li.add_vertex_data("q", q_vertex_values);
           writer_li.add_vertex_data("c", c_vertex_values);
           writer_li.add_vertex_data("A", vessel_A0_li);
+          writer_li.add_vertex_data("v", v_vertex_values);
           writer_li.write(t);
         }
 
@@ -200,12 +202,14 @@ int main(int argc, char *argv[]) {
           std::vector<double> p_total_vertex_values;
           std::vector<double> p_static_vertex_values;
           std::vector<double> c_vertex_values;
+          std::vector<double> v_vertex_values;
 
           mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl->Q_component, solver_nl->get_solution(), points, Q_vertex_values);
           mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl->A_component, solver_nl->get_solution(), points, A_vertex_values);
           mc::interpolate_to_vertices(PETSC_COMM_WORLD, *graph_nl, *dof_map_transport_nl, 0, transport_solver.get_solution(), points, c_vertex_values);
           mc::calculate_total_pressure(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl->get_solution(), points, p_total_vertex_values);
           mc::calculate_static_pressure(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl->get_solution(), points, p_static_vertex_values);
+          mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_nl, *variable_upwind_provider_nl, t, points, v_vertex_values);
 
           writer_nl.set_points(points);
           writer_nl.add_vertex_data("Q", Q_vertex_values);
@@ -213,6 +217,7 @@ int main(int argc, char *argv[]) {
           writer_nl.add_vertex_data("p_static", p_static_vertex_values);
           writer_nl.add_vertex_data("p_total", p_total_vertex_values);
           writer_nl.add_vertex_data("c", c_vertex_values);
+          writer_nl.add_vertex_data("v", v_vertex_values);
           writer_nl.write(t);
         }
       }

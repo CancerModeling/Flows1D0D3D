@@ -77,15 +77,18 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
       std::vector<double> c_vertex_values;
       std::vector<double> p_vertex_values;
       std::vector<double> q_vertex_values;
+      std::vector<double> v_vertex_values;
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_transport, 0, transport_solver.get_solution(), points, c_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->p_component, flow_solver->get_solution(), points, p_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->q_component, flow_solver->get_solution(), points, q_vertex_values);
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *variable_upwind_provider, t, points, v_vertex_values);
 
       pvd_writer.set_points(points);
       pvd_writer.add_vertex_data("c", c_vertex_values);
       pvd_writer.add_vertex_data("Q", q_vertex_values);
       pvd_writer.add_vertex_data("p", p_vertex_values);
       pvd_writer.add_vertex_data("A", vessel_A0);
+      pvd_writer.add_vertex_data("v", v_vertex_values);
       pvd_writer.write(t);
     }
 
@@ -125,7 +128,7 @@ void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_
   double t = 0;
   for (std::size_t it = 0; it < max_iter; it += 1) {
 
-    flow_solver->solve(tau, t + tau);
+    flow_solver->solve(tau, t);
     variable_upwind_provider->init(t + tau, flow_solver->get_solution());
     transport_solver.solve(tau, t + tau);
 
@@ -140,14 +143,17 @@ void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_
       std::vector<double> c_vertex_values;
       std::vector<double> A_vertex_values;
       std::vector<double> Q_vertex_values;
+      std::vector<double> v_vertex_values;
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_transport, 0, transport_solver.get_solution(), points, c_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->A_component, flow_solver->get_solution(), points, A_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->Q_component, flow_solver->get_solution(), points, Q_vertex_values);
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *variable_upwind_provider, t, points, v_vertex_values);
 
       pvd_writer.set_points(points);
       pvd_writer.add_vertex_data("c", c_vertex_values);
       pvd_writer.add_vertex_data("Q", Q_vertex_values);
       pvd_writer.add_vertex_data("A", A_vertex_values);
+      pvd_writer.add_vertex_data("v", v_vertex_values);
       pvd_writer.write(t);
     }
 
