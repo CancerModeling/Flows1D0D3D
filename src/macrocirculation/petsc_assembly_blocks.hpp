@@ -23,6 +23,8 @@ Eigen::MatrixXd create_phi_grad_psi(const FETypeNetwork &fe, const LocalEdgeDofM
 enum class BoundaryPointType { Left,
                                Right };
 
+Eigen::MatrixXd create_boundary(size_t num_basis_functions, BoundaryPointType row, BoundaryPointType col);
+
 Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row, BoundaryPointType col);
 
 Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType type);
