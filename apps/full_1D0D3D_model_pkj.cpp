@@ -145,6 +145,7 @@ int main(int argc, char *argv[]) {
     // finalize 3D solver setup
     log("finalizing setup of 3D solver\n");
     solver_3d.setup();
+    solver_3d.write_output();
 
     // NOTE to get relevant values from 3D system to solve 1D system
     // call get_vessel_tip_data_3d()

@@ -62,7 +62,7 @@ void CapillaryPressure::assemble() {
   // call assemble term for artery-capillary coupling
   assemble_1d();
 
-  // now assemble from rest and the close the matrix and rhs vector
+  // assemble from rest and then close the matrix and rhs vector
   auto &eq_sys = d_model_p->get_system();
   const auto &input = d_model_p->d_input;
   const double dt = d_model_p->d_dt;
@@ -98,7 +98,7 @@ void CapillaryPressure::assemble() {
       // get tissue pressure
       p_tis_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
-        p_tis_cur += d_phi[l][qp] * p_tis_field.get_old_sol_var(l, 0);
+        p_tis_cur += d_phi[l][qp] * p_tis_field.get_current_sol(l);
       }
 
       lhs = d_JxW[qp] * input.d_rho_cap * elem_Lp;
@@ -145,7 +145,7 @@ void CapillaryPressure::assemble() {
 }
 
 void TissuePressure::assemble() {
-  // now assemble from rest and the close the matrix and rhs vector
+  // assemble and close the matrix and rhs vector
   auto &eq_sys = d_model_p->get_system();
   const auto &input = d_model_p->d_input;
   const double dt = d_model_p->d_dt;
@@ -181,7 +181,7 @@ void TissuePressure::assemble() {
       // get tissue pressure
       p_cap_cur = 0.;
       for (unsigned int l = 0; l < d_phi.size(); l++) {
-        p_cap_cur += d_phi[l][qp] * p_cap_field.get_old_sol_var(l, 0);
+        p_cap_cur += d_phi[l][qp] * p_cap_field.get_current_sol(l);
       }
 
       lhs = d_JxW[qp] * input.d_rho_cap * elem_Lp;
