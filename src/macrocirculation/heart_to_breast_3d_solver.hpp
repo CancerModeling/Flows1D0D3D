@@ -63,6 +63,8 @@ struct HeartToBreast3DSolverInputDeck {
   std::string d_mesh_file;
   /*! @brief Path to output results. */
   std::string d_out_dir;
+  /*! @brief Specify if we want regularized source or partitioned source. */
+  bool d_perf_regularized;
   /*! @brief Perfusion weight function type {'const', 'linear', 'gaussian'}. */
   std::string d_perf_fn_type;
   /*! @brief Perfusion neighbor radius min and max. */
@@ -86,11 +88,10 @@ public:
                         lm::ExplicitSystem &Lp_cap_tis_field,
                         Logger &log);
 
-  /*! @brief Setup artificial perfusion outlets . */
-  void setup_random_outlets(unsigned int num_perf_outlets = 10);
-
   /*! @brief Setup 1D-3D coupled data in 3D solver. */
   void setup_1d3d(const std::vector<VesselTipCurrentCouplingData> &data_1d);
+  void setup_1d3d_reg_source(const std::vector<VesselTipCurrentCouplingData> &data_1d);
+  void setup_1d3d_partition(const std::vector<VesselTipCurrentCouplingData> &data_1d);
 
   /*! @brief Perform secondary setup remaining after constructor. */
   void setup();

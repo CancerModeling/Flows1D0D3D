@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
     ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.))) //
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                     //
     ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("1e-3"))         //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10"))                      //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("1"))                      //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                                   //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                         //
@@ -90,7 +90,8 @@ int main(int argc, char *argv[]) {
       input.d_mesh_file = args["mesh-file"].as<std::string>();
       input.d_out_dir = out_dir;
       input.d_debug_lvl = 1;
-      input.d_perf_fn_type = "linear";
+      input.d_perf_regularized = false;
+      input.d_perf_fn_type = "const";
       input.d_perf_neigh_size = std::make_pair(4., 10.);
     }
     log("input data \n" + input.print_str() + "\n");

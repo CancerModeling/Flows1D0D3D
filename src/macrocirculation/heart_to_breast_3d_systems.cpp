@@ -114,7 +114,7 @@ void CapillaryPressure::assemble() {
     } // loop over quad points
 
     // dirichlet bc
-    {
+    if (false) {
       // The penalty value.
       const double penalty = 1.e10;
 
@@ -197,7 +197,7 @@ void TissuePressure::assemble() {
     } // loop over quad points
 
     // dirichlet bc
-    {
+    if (false) {
       // The penalty value.
       const double penalty = 1.e10;
 

@@ -95,7 +95,8 @@ HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string
     : d_rho_cap(1.), d_rho_tis(1.), d_K_cap(1.e-9), d_K_tis(1.e-11),
       d_Lp_art_cap(1.e-6), d_Lc_cap(1e-12), d_Sc_cap(1e2),
       d_T(1.), d_dt(0.01), d_h(0.1), d_mesh_file(""), d_out_dir(""),
-      d_perf_fn_type("linear"), d_perf_neigh_size({1., 4.}),
+      d_perf_regularized(false),
+      d_perf_fn_type("const"), d_perf_neigh_size({1., 4.}),
       d_debug_lvl(0) {
   if (!filename.empty())
     read_parameters(filename);
@@ -115,6 +116,7 @@ void HeartToBreast3DSolverInputDeck::read_parameters(const std::string &filename
   d_h = input("h", 0.1);
   d_mesh_file = input("mesh_file", "");
   d_out_dir = input("out_dir", "");
+  d_perf_regularized = input("regularized_source", 1) == 0;
   d_perf_fn_type = input("perf_fn_type", "linear");
   d_perf_neigh_size.first = input("perf_neigh_size_min", 1.);
   d_perf_neigh_size.second = input("perf_neigh_size_max", 4.);
@@ -174,196 +176,6 @@ void HeartToBreast3DSolver::write_perfusion_output(std::string out_file) {
   vtu_writer.write();
 }
 
-void HeartToBreast3DSolver::setup_random_outlets(unsigned int num_perf_outlets) {
-
-  const auto &mesh = get_mesh();
-
-  //  Step 1: setup perfusion outlets and its properties
-  set_perfusion_pts(d_input.d_out_dir, num_perf_outlets, d_perf_pts, d_perf_radii, d_eq_sys, *this);
-  double max_r = max(d_perf_radii);
-  double min_r = min(d_perf_radii);
-
-  // random pressure between 10 and 1000
-  d_perf_pres.resize(num_perf_outlets);
-  DistributionSample<UniformDistribution> uni_dist(10., 1000., 0);
-  for (size_t i = 0; i < num_perf_outlets; i++)
-    d_perf_pres[i] = uni_dist();
-
-  // instead of point source, we have volume source supported over a ball.
-  // radius of ball is proportional to the outlet radius and varies from [ball_r_min, ball_r_max]
-  double ball_r_min = 4 * d_input.d_h;
-  double ball_r_max = 10. * d_input.d_h;
-  d_perf_pres.clear();
-  for (size_t i = 0; i < num_perf_outlets; i++)
-    d_perf_pres.push_back(ball_r_min + (ball_r_max - ball_r_min) * (d_perf_radii[i] - min_r) / (max_r - min_r));
-
-  //  Step 2: setup perfusion outlet element list and weight function
-  // create outlet functions (we choose linear \phi(r) = 1 - r
-  for (size_t i = 0; i < num_perf_outlets; i++)
-    d_perf_fns.push_back(std::make_unique<LinearOutletRadial>(d_perf_pts[i], d_perf_pres[i]));
-
-  // for each outlet, create a list of elements and node affected by outlet source and also create coefficients
-  d_perf_elems_3D.resize(num_perf_outlets);
-  for (size_t I = 0; I < num_perf_outlets; I++) {
-    auto &I_out_fn = d_perf_fns[I];
-    std::vector<lm::dof_id_type> I_elems;
-    for (const auto &elem : mesh.active_local_element_ptr_range()) {
-      // check if element is inside the ball
-      bool any_node_inside_ball = false;
-      for (const auto &node : elem->node_index_range()) {
-        const lm::Point nodei = elem->node_ref(node);
-        auto dx = d_perf_pts[I] - nodei;
-        if (dx.norm() < d_perf_pres[I] - 1.e-10) {
-          any_node_inside_ball = true;
-          break;
-        }
-      }
-
-      if (any_node_inside_ball)
-        add_unique(I_elems, elem->id());
-    } // loop over elems
-
-    d_perf_elems_3D[I] = I_elems;
-  } // loop over outlets
-
-  // compute normalizing coefficient for each outlet weight function
-  std::vector<double> local_out_normal_const(num_perf_outlets, 0.);
-  for (size_t I=0; I<num_perf_outlets; I++) {
-    auto &out_fn_I = d_perf_fns[I];
-    double c = 0.;
-    // loop over elements
-    for (const auto &elem_id : d_perf_elems_3D[I]) {
-      const auto &elem = mesh.elem_ptr(elem_id);
-      // init dof map
-      d_p_cap.init_dof(elem);
-      // init fe
-      d_p_cap.init_fe(elem);
-      // loop over quad points
-      for (unsigned int qp = 0; qp < d_p_cap.d_qrule.n_points(); qp++) {
-        c += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]);
-      } // quad point loop
-    } // elem loop
-    local_out_normal_const[I] = c;
-  } // outlet loop
-
-  // we now need to communicate among all processors to compute the total coefficient at processor 0
-  const auto &comm = get_comm();
-  std::vector<double> recv_c = local_out_normal_const;
-  comm->gather(0, recv_c);
-
-  // this is temporary for storing normalizing constants
-  std::vector<double> out_normal_c;
-
-  // in rank 0, compute coefficients
-  if (comm->rank() == 0) {
-    // resize of appropriate size
-    out_normal_c.resize(num_perf_outlets);
-    // compute
-    for (int i = 0; i < comm->size(); i++) {
-      for (size_t I = 0; I < num_perf_outlets; I++)
-        out_normal_c[I] += recv_c[i*num_perf_outlets + I];
-    }
-  }
-  else
-    // in rank other than 0, get coefficients
-    out_normal_c.resize(0);
-
-  // do allgather (since rank/= 0 has no data and only rank =0 has data, this should work)
-  comm->allgather(out_normal_c);
-
-  // last thing is to set the normalizing constant
-  for (size_t I = 0; I < num_perf_outlets; I++) {
-    auto &out_fn_I = d_perf_fns[I];
-    (*out_fn_I).d_c += out_normal_c[I];
-  }
-
-  // step 3: compute coefficients that we need to exchange with the network system
-  std::vector<unsigned int> Lp_cap_dof_indices;
-  std::vector<double> local_out_coeff_a(num_perf_outlets, 0.);
-  std::vector<double> local_out_coeff_b(num_perf_outlets, 0.);
-  size_t counter = 0;
-  std::cout << "Lp_elem = "<< std::endl;
-  for (size_t I=0; I<num_perf_outlets; I++) {
-    auto &out_fn_I = d_perf_fns[I];
-    double a = 0.;
-    double b = 0.;
-    // loop over elements
-    for (const auto &elem_id : d_perf_elems_3D[I]) {
-      const auto &elem = mesh.elem_ptr(elem_id);
-      // init dof map
-      d_p_cap.init_dof(elem);
-      d_Lp_art_cap_field.get_dof_map().dof_indices(elem, Lp_cap_dof_indices);
-
-      // init fe
-      d_p_cap.init_fe(elem);
-
-      // get Lp at this element
-      double Lp_elem = d_Lp_art_cap_field.current_solution(Lp_cap_dof_indices[0]);
-      if (counter % 100 == 0)
-        std::cout << Lp_elem << "; ";
-      counter++;
-
-      // loop over quad points
-      for (unsigned int qp = 0; qp < d_p_cap.d_qrule.n_points(); qp++) {
-        a += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * Lp_elem;
-
-        // get pressure at quad point
-        double p_qp = 0.;
-        for (unsigned int l = 0; l < d_p_cap.d_phi.size(); l++) {
-          p_qp += d_p_cap.d_phi[l][qp] * d_p_cap.get_current_sol(l);
-        }
-
-        b += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * Lp_elem * p_qp;
-      } // quad point loop
-    } // elem loop
-
-    local_out_coeff_a[I] = a;
-    local_out_coeff_b[I] = b;
-  } // outlet loop
-
-  std::vector<double> recv_a = local_out_coeff_a;
-  std::vector<double> recv_b = local_out_coeff_b;
-  comm->gather(0, recv_a);
-  comm->gather(0, recv_b);
-
-  // in rank 0, compute coefficients
-  if (comm->rank() == 0) {
-    // resize of appropriate size
-    d_perf_coeff_a.resize(num_perf_outlets);
-    d_perf_coeff_b.resize(num_perf_outlets);
-    // compute
-    for (int i = 0; i < comm->size(); i++) {
-      for (size_t I = 0; I < num_perf_outlets; I++) {
-        d_perf_coeff_a[I] += recv_a[i*num_perf_outlets + I];
-        d_perf_coeff_b[I] += recv_b[i*num_perf_outlets + I];
-      }
-    }
-  }
-  else {
-    // in rank other than 0, get coefficients
-    d_perf_coeff_a.resize(0);
-    d_perf_coeff_b.resize(0);
-  }
-
-  // do allgather (since rank/= 0 has no data and only rank =0 has data, this should work)
-  comm->allgather(d_perf_coeff_a);
-  comm->allgather(d_perf_coeff_b);
-
-  // at this point, all processors must have
-  // 1. same d_c for outlet weight function
-  // 2. same values of coefficients a and b
-
-  // to verify, store the values in file
-  std::ofstream of;
-  of.open(fmt::format("{}outlet_coefficients_t_{:5.3f}_proc_{}.txt", d_input.d_out_dir, d_time, comm->rank()));
-  of << "c, a, b\n";
-  for (size_t I = 0; I < num_perf_outlets; I++) {
-    auto &out_fn_I = d_perf_fns[I];
-    of << (*out_fn_I).d_c << ", " << d_perf_coeff_a[I] << ", " << d_perf_coeff_b[I] << "\n";
-  }
-  of.close();
-}
-
 void HeartToBreast3DSolver::setup() {
   // TODO setup other things
   //d_eq_sys.init();
@@ -384,11 +196,19 @@ void HeartToBreast3DSolver::solve() {
 void HeartToBreast3DSolver::write_output() {
   static int out_n = 0;
   VTKIO(d_mesh).write_equation_systems(d_input.d_out_dir + "/output_3D_" + std::to_string(out_n) + ".pvtu", d_eq_sys);
+  write_perfusion_output(d_input.d_out_dir + "/output_3D_perf_" + std::to_string(out_n) + ".vtu");
   out_n++;
 }
 void HeartToBreast3DSolver::set_output_folder(std::string output_dir) {
 }
 void HeartToBreast3DSolver::setup_1d3d(const std::vector<VesselTipCurrentCouplingData> &data_1d) {
+if (d_input.d_perf_regularized)
+  setup_1d3d_reg_source(data_1d);
+else
+  setup_1d3d_partition(data_1d);
+}
+
+void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCurrentCouplingData> &data_1d) {
 
   auto num_perf_outlets = data_1d.size();
   if (num_perf_outlets == 0) {
@@ -502,8 +322,6 @@ void HeartToBreast3DSolver::setup_1d3d(const std::vector<VesselTipCurrentCouplin
   std::vector<double> local_out_coeff_a(num_perf_outlets, 0.);
   std::vector<double> local_out_coeff_b(num_perf_outlets, 0.);
   std::vector<double> local_out_p_3d_weighted(num_perf_outlets, 0.);
-  size_t counter = 0;
-  std::cout << "Lp_elem = ";
   for (size_t I=0; I<num_perf_outlets; I++) {
     auto &out_fn_I = d_perf_fns[I];
     double a = 0.;
@@ -521,9 +339,6 @@ void HeartToBreast3DSolver::setup_1d3d(const std::vector<VesselTipCurrentCouplin
 
       // get Lp at this element
       double Lp_elem = d_Lp_art_cap_field.current_solution(Lp_cap_dof_indices[0]);
-      if (counter % 100 == 0)
-        std::cout << Lp_elem << "; ";
-      counter++;
 
       // loop over quad points
       for (unsigned int qp = 0; qp < d_p_cap.d_qrule.n_points(); qp++) {
@@ -571,6 +386,154 @@ void HeartToBreast3DSolver::setup_1d3d(const std::vector<VesselTipCurrentCouplin
     of.close();
   }
 }
+
+void HeartToBreast3DSolver::setup_1d3d_partition(const std::vector<VesselTipCurrentCouplingData> &data_1d) {
+
+  auto num_perf_outlets = data_1d.size();
+  if (num_perf_outlets == 0) {
+    std::cerr << "Error outlet 1d data should not be empty.\n";
+    exit(EXIT_FAILURE);
+  }
+
+  // step 1: copy relevant data
+  for (const auto &a : data_1d) {
+    d_perf_pts.push_back(lm::Point(a.p.x, a.p.y, a.p.z));
+    d_perf_radii.push_back(a.radius);
+    d_perf_pres.push_back(a.pressure);
+    d_perf_ball_radii.push_back(0.);
+    d_perf_coeff_a.push_back(0.);
+    d_perf_coeff_b.push_back(0.);
+    d_perf_p_3d_weighted.push_back(0.);
+  }
+
+  //  create outlet functions (for this case, it will be constant function)
+  for (size_t i = 0; i < num_perf_outlets; i++) {
+    if (d_input.d_perf_fn_type == "const")
+      d_perf_fns.push_back(std::make_unique<ConstOutletRadial>(d_perf_pts[i], DBL_MAX)); // so that it is practically 1 for any point
+    else {
+      std::cerr << "Error: input flag for outlet weight function is invalid for partitioned perfusion.\n";
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  // step 3: for each outlet, create a list of elements and node affected by outlet source and also create coefficients
+  d_perf_elems_3D.resize(num_perf_outlets);
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
+    auto xc = elem->centroid();
+
+    // find the closest outlet to the center of this element
+    double dist = (xc - d_perf_pts[0]).norm();
+    long I_found = 0;
+    for (size_t I=0; I<num_perf_outlets; I++) {
+      double dist2 = (xc - d_perf_pts[I]).norm();
+      if (dist2 < dist) {
+        I_found = I;
+        dist = dist2;
+      }
+    }
+
+    // add element to outlet
+    d_perf_elems_3D[I_found].push_back(elem->id());
+  }
+
+  for (size_t I=0; I<num_perf_outlets; I++)
+    std::cout << "nelems (I = " << I << ") = " << d_perf_elems_3D[I].size() << "\n";
+
+  // compute normalizing coefficient for each outlet weight function
+  // note that elements associated to each outlet is now distributed
+  // so we first compute local value and then global
+  std::vector<double> local_out_normal_const(num_perf_outlets, 0.);
+  for (size_t I=0; I<num_perf_outlets; I++) {
+    auto &out_fn_I = d_perf_fns[I];
+    double c = 0.;
+    // loop over elements
+    for (const auto &elem_id : d_perf_elems_3D[I]) {
+      const auto &elem = d_mesh.elem_ptr(elem_id);
+      c += elem->volume();
+    } // elem loop
+    local_out_normal_const[I] = c;
+  } // outlet loop
+
+  // we now need to communicate among all processors to compute the global coefficient at processor 0
+  std::vector<double> out_normal_c;
+  comm_local_to_global(local_out_normal_const, out_normal_c);
+
+  // last thing is to set the normalizing constant of outlet weight function
+  for (size_t I = 0; I < num_perf_outlets; I++) {
+    auto &out_fn_I = d_perf_fns[I];
+    (*out_fn_I).d_c += out_normal_c[I];
+    std::cout << "c (I = " << I << ") = " << out_normal_c[I] << "\n";
+  }
+
+  // step 4: compute coefficients that we need to exchange with the network system
+  std::vector<unsigned int> Lp_cap_dof_indices;
+  std::vector<double> local_out_coeff_a(num_perf_outlets, 0.);
+  std::vector<double> local_out_coeff_b(num_perf_outlets, 0.);
+  std::vector<double> local_out_p_3d_weighted(num_perf_outlets, 0.);
+  for (size_t I=0; I<num_perf_outlets; I++) {
+    auto &out_fn_I = d_perf_fns[I];
+    double a = 0.;
+    double b = 0.;
+    double p_3d_w = 0.; // 3D weighted pressure at outlet
+    // loop over elements
+    for (const auto &elem_id : d_perf_elems_3D[I]) {
+      const auto &elem = d_mesh.elem_ptr(elem_id);
+      // init dof map
+      d_p_cap.init_dof(elem);
+      d_Lp_art_cap_field.get_dof_map().dof_indices(elem, Lp_cap_dof_indices);
+
+      // init fe
+      d_p_cap.init_fe(elem);
+
+      // get Lp at this element
+      double Lp_elem = d_Lp_art_cap_field.current_solution(Lp_cap_dof_indices[0]);
+
+      // loop over quad points
+      for (unsigned int qp = 0; qp < d_p_cap.d_qrule.n_points(); qp++) {
+        a += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * Lp_elem;
+
+        // get pressure at quad point
+        double p_qp = 0.;
+        for (unsigned int l = 0; l < d_p_cap.d_phi.size(); l++) {
+          p_qp += d_p_cap.d_phi[l][qp] * d_p_cap.get_current_sol(l);
+        }
+
+        b += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * Lp_elem * p_qp;
+
+        p_3d_w += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * p_qp;
+      } // quad point loop
+    } // elem loop
+
+    local_out_coeff_a[I] = a;
+    local_out_coeff_b[I] = b;
+    local_out_p_3d_weighted[I] = p_3d_w;
+  } // outlet loop
+
+  // sum distributed coefficients and sync with all processors
+  comm_local_to_global(local_out_coeff_a, d_perf_coeff_a);
+  comm_local_to_global(local_out_coeff_b, d_perf_coeff_b);
+  comm_local_to_global(local_out_p_3d_weighted, d_perf_p_3d_weighted);
+
+  // at this point, all processors must have
+  // 1. same d_c for outlet weight function
+  // 2. same values of coefficients a and b
+
+  // to verify that all processor have same values of coefficients a and b and normalizing constant
+  if (d_input.d_debug_lvl > 0) {
+    std::ofstream of;
+    of.open(fmt::format("{}outlet_coefficients_t_{:5.3f}_proc_{}.txt", d_input.d_out_dir, d_time, get_comm()->rank()));
+    of << "x, y, z, r, ball_r, c, a, b, p_3d_weighted\n";
+    for (size_t I = 0; I < num_perf_outlets; I++) {
+      auto &out_fn_I = d_perf_fns[I];
+      of << d_perf_pts[I](0) << ", " << d_perf_pts[I](1) << ", " << d_perf_pts[I](2) << ", "
+         << d_perf_radii[I] << ", " << d_perf_ball_radii[I] << ", "
+         << (*out_fn_I).d_c << ", " << d_perf_coeff_a[I] << ", "
+         << d_perf_coeff_b[I] << ", " << d_perf_p_3d_weighted[I] << "\n";
+    }
+    of.close();
+  }
+}
+
 void HeartToBreast3DSolver::comm_local_to_global(const std::vector<double> &local, std::vector<double> &global) {
 
   auto n = local.size();
