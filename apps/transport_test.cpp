@@ -93,7 +93,9 @@ int main(int argc, char *argv[]) {
   std::vector<mc::Point> points;
   points.reserve(graph->num_edges() * 2);
   std::vector<double> c_vertex_values;
+  std::vector<double> A_vertex_values;
   c_vertex_values.reserve(graph->num_edges() * 2);
+  A_vertex_values.reserve(graph->num_edges() * 2);
 
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "transport_solution");
 
@@ -119,6 +121,7 @@ int main(int argc, char *argv[]) {
 
       // save solution
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_transport, 0, transport.get_solution(), points, c_vertex_values);
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, solver.A_component, solver.get_solution(), points, A_vertex_values);
 
       csv_writer.add_data("q", solver.get_solution());
       csv_writer.add_data("a", solver.get_solution());
@@ -127,6 +130,7 @@ int main(int argc, char *argv[]) {
 
       pvd_writer.set_points(points);
       pvd_writer.add_vertex_data("c", c_vertex_values);
+      pvd_writer.add_vertex_data("A", A_vertex_values);
       pvd_writer.write(t);
     }
 

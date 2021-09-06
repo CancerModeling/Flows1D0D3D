@@ -242,6 +242,22 @@ void LinearizedFlowUpwindEvaluator::calculate_inout_fluxes(double t, const Vecto
 
       p_up = 1. / gamma * (beta_tilde * p_tilde + beta * p_value[0] + q_tilde + sigma * q_value[0]);
       q_up = - beta * p_value[0] - sigma * q_value[0] + beta * p_up;
+    } else if (vertex->is_windkessel_outflow() || vertex->is_vessel_tree_outflow()) {
+      const double R0 = calculate_R1(edge->get_physical_data());
+      const double C = linear::get_C(edge->get_physical_data());
+      const double L = linear::get_L(edge->get_physical_data());
+      const double beta = std::sqrt(C/L);
+
+      const auto& vdof_map = d_dof_map->get_local_dof_map(*vertex);
+      const auto& vertex_dof_indices = vdof_map.dof_indices();
+
+      std::vector< double > vertex_dof_values (vdof_map.dof_indices().size());
+      extract_dof(vertex_dof_indices, u_prev, vertex_dof_values);
+
+      const double p_c = vertex_dof_values[0];
+
+      p_up = 1./(beta + 1./R0) * (beta * p_value[0] + sigma * q_value[0] + p_c / R0);
+      q_up = sigma / R0 * (p_up - p_c);
     } else {
       throw std::runtime_error("boundary type not implemented yet in LinearizedFlowUpwindEvaluator.");
     }
