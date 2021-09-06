@@ -8,6 +8,7 @@
 #ifndef TUMORMODELS_DOF_MAP_HPP
 #define TUMORMODELS_DOF_MAP_HPP
 
+#include <functional>
 #include <memory>
 #include <mpi.h>
 #include <vector>
@@ -66,7 +67,9 @@ private:
 /** @brief Stores and returns the local dof-maps for all macro primitives. */
 class DofMap {
 public:
-  explicit DofMap(std::size_t num_vertices, std::size_t num_edges);
+  explicit DofMap(const GraphStorage &graph);
+
+  DofMap(std::size_t num_vertices, std::size_t num_edges);
 
   const LocalEdgeDofMap &get_local_dof_map(const Edge &e) const;
 
@@ -78,8 +81,6 @@ public:
                          std::size_t num_micro_edges);
 
   void add_local_dof_map(const Vertex &v, std::size_t num_components);
-
-  std::size_t num_dof() const;
 
   /*! @brief Creates the dof-map.
    *
@@ -100,6 +101,43 @@ public:
               std::size_t degree,
               bool global);
 
+  /*! @brief Creates the dof-map.
+   *
+   * @param comm    The communicator.
+   * @param graph   The graph storage
+   * @param num_components   The number of components which we want to calculate.
+   * @param degree           The degree of the FE-shape functions.
+   * @param start_dof_offset The start offset in the dof mapping.
+   * @param global           If global is true, the dofs are distributed to all macro-edges,
+   *                         starting with the edges assigned to rank 0, then rank 1 and so on.
+   *                         If global is false, then the dofs are only distributed to the macro-edges
+   *                         which belong to the calling rank.
+   *                         The first approach is useful if you want to assemble a global matrix with e.g. petsc.
+   *                         The second approach is useful if you have a fully explicit scheme and only need the local dofs.
+   */
+  void create(MPI_Comm comm,
+              const GraphStorage &graph,
+              std::size_t num_components,
+              std::size_t degree,
+              std::size_t start_dof_offset,
+              bool global);
+
+  /*! @brief Returns the first global dof index in this dof map.
+   *         If no global distribution is used the first local index (0) is returned. */
+  size_t first_global_dof() const;
+
+  /*! @brief Returns the number of dof indices in this dof map.
+   *         If no global distribution is used this corresponds to the number of local dofs.
+   *         If a global distribution is used this corresponds to the number of global dofs.
+   */
+  std::size_t num_dof() const;
+
+
+  /*! @brief Returns the last global dof index in this dof map.
+   *         If no global distribution is used the last local index is returned, which is equal to the number of dofs.
+   */
+  size_t last_global_dof() const;
+
   size_t first_owned_global_dof() const;
 
   size_t num_owned_dofs() const;
@@ -109,6 +147,7 @@ private:
 
   std::vector<std::unique_ptr<LocalVertexDofMap>> d_local_vertex_dof_maps;
 
+  std::size_t d_first_global_dof;
   std::size_t d_num_dof;
 
   size_t d_first_owned_global_dof;

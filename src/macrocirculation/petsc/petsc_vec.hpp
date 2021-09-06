@@ -8,20 +8,29 @@
 #ifndef TUMORMODELS_PETSC_VEC_HPP
 #define TUMORMODELS_PETSC_VEC_HPP
 
+#include <numeric>
+
 #include "petsc.h"
 
 namespace macrocirculation {
 
 class PetscVec {
 public:
+  PetscVec(const std::string &name, const std::vector<std::shared_ptr<DofMap>> &dof_map)
+      : PetscVec(name, std::accumulate(dof_map.begin(), dof_map.end(), 0, [](auto v, auto dm) { return v + dm->num_owned_dofs(); })) {}
+
   PetscVec(const std::string &name, const DofMap &dof_map)
+      : PetscVec(name, dof_map.num_owned_dofs()) {}
+
+  PetscVec(const std::string &name, size_t size)
       : d_vec() {
     CHKERRABORT(PETSC_COMM_WORLD, VecCreate(PETSC_COMM_WORLD, &d_vec));
     CHKERRABORT(PETSC_COMM_WORLD, VecSetType(d_vec, VECSTANDARD));
-    CHKERRABORT(PETSC_COMM_WORLD, VecSetSizes(d_vec, (PetscInt) dof_map.num_owned_dofs(), PETSC_DECIDE));
+    CHKERRABORT(PETSC_COMM_WORLD, VecSetSizes(d_vec, (PetscInt) size, PETSC_DECIDE));
     CHKERRABORT(PETSC_COMM_WORLD, VecSetUp(d_vec));
     CHKERRABORT(PETSC_COMM_WORLD, PetscObjectSetName((PetscObject) d_vec, name.c_str()));
   }
+
 
   PetscVec(const PetscVec &) = delete;
   PetscVec(PetscVec &&) = delete;
@@ -44,6 +53,12 @@ public:
 
   void set(PetscInt idx, double value) {
     CHKERRABORT(PETSC_COMM_WORLD, VecSetValue(d_vec, idx, value, INSERT_VALUES));
+  }
+
+  double norm2() const {
+    double value;
+    CHKERRABORT(PETSC_COMM_WORLD, VecNorm(d_vec, NORM_2, &value));
+    return value;
   }
 
   double get(size_t idx) const { return get(static_cast<PetscInt>(idx)); }
@@ -95,9 +110,8 @@ private:
   Vec d_vec;
 };
 
-template< typename Stream >
-inline Stream& operator<<(Stream& out, const PetscVec& v)
-{
+template<typename Stream>
+inline Stream &operator<<(Stream &out, const PetscVec &v) {
   auto ldof = v.last_dof();
   for (size_t k = v.first_dof(); k < ldof; k += 1)
     out << v.get(k) << " ";

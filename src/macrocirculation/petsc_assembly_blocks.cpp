@@ -44,13 +44,17 @@ Eigen::MatrixXd create_phi_grad_psi(const FETypeNetwork &fe, const LocalEdgeDofM
 }
 
 Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType row, BoundaryPointType col) {
-  Eigen::MatrixXd u_loc(local_dof_map.num_basis_functions(), local_dof_map.num_basis_functions());
+  return create_boundary(local_dof_map.num_basis_functions(), row, col);
+}
+
+Eigen::MatrixXd create_boundary(size_t num_basis_functions, BoundaryPointType row, BoundaryPointType col) {
+  Eigen::MatrixXd u_loc(num_basis_functions, num_basis_functions);
   const auto left = [](size_t i) -> double { return std::pow(-1., i); };
   const auto right = [](size_t i) -> double { return 1.; };
   const auto phi = (col == BoundaryPointType::Left) ? left : right;
   const auto psi = (row == BoundaryPointType::Left) ? left : right;
-  for (int j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
-    for (int i = 0; i < local_dof_map.num_basis_functions(); i += 1) {
+  for (int j = 0; j < num_basis_functions; j += 1) {
+    for (int i = 0; i < num_basis_functions; i += 1) {
       u_loc(j, i) = psi(j) * phi(i);
     }
   }
