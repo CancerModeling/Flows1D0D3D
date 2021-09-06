@@ -137,7 +137,7 @@ std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_
 
       auto radius = calculate_edge_tree_parameters(e).radii.back();
 
-      results.push_back({p, v.get_id(), p_out, R2, radius});
+      results.push_back({p, v.get_id(), p_out, R2, radius, R.size()});
     }
   }
 
