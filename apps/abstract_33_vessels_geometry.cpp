@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
         std::cout << "t_transport = " << t_transport << std::endl;
         variable_upwind_provider->init(t_transport + 5.0*tau, flow_solver->get_solution()); 
         transport_solver->solve(5.0*tau, t_transport + 5.0*tau);
-        transport_solver->applySlopeLimiter();
+        transport_solver->applySlopeLimiter(t_transport + 5.0*tau);
         t_transport += 5.0*tau;
       }
       

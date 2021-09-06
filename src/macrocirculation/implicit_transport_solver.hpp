@@ -155,12 +155,12 @@ public:
 
   const PetscVec &get_solution() const { return *u; }
   
-  void applySlopeLimiter();
+  void applySlopeLimiter(double t);
 
   const PetscMat &get_mat() const { return *A; }
 
   const PetscVec &get_rhs() const { return *rhs; }
-
+  
 private:
   /*! @brief Assembles the left-hand-side matrix for the given time step. */
   void assemble_matrix(double tau, double t);
@@ -201,6 +201,9 @@ private:
     else
       return 1.;
   };
+  
+  void applySlopeLimiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t);
+  
 };
 
 namespace implicit_transport {
