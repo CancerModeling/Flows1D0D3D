@@ -117,6 +117,9 @@ public:
   /*! @brief Get 3D data at outlet for coupling with 1D system. */
   std::vector<VesselTipCurrentCouplingData3D> get_vessel_tip_data_3d();
 
+  /*! @brief Recompute 3D data used by 1D systems. */
+  void update_3d_data();
+
   /*! @brief Update 1D data. */
   void update_1d_data(const std::vector<VesselTipCurrentCouplingData> &data_1d);
 

@@ -7,10 +7,10 @@
 
 #include "heart_to_breast_3d_solver.hpp"
 #include "heart_to_breast_1d_solver.hpp"
-#include "vtk_writer.hpp"
-#include "vtk_io_libmesh.hpp"
 #include "random_dist.hpp"
 #include "tree_search.hpp"
+#include "vtk_io_libmesh.hpp"
+#include "vtk_writer.hpp"
 #include <fmt/format.h>
 
 namespace macrocirculation {
@@ -87,7 +87,7 @@ void set_perfusion_pts(std::string out_dir,
     radii[i] = uni_dist();
   }
 }
-} // local namespace
+} // namespace
 
 // input class definitions
 
@@ -173,6 +173,7 @@ void HeartToBreast3DSolver::write_perfusion_output(std::string out_file) {
   add_array("Radius", d_perf_radii, vtu_writer.d_d_p);
   add_array("Ball_Radius", d_perf_ball_radii, vtu_writer.d_d_p);
   add_array("pv", d_perf_pres, vtu_writer.d_d_p);
+  add_array("pcap", d_perf_p_3d_weighted, vtu_writer.d_d_p);
   vtu_writer.write();
 }
 
@@ -202,10 +203,13 @@ void HeartToBreast3DSolver::write_output() {
 void HeartToBreast3DSolver::set_output_folder(std::string output_dir) {
 }
 void HeartToBreast3DSolver::setup_1d3d(const std::vector<VesselTipCurrentCouplingData> &data_1d) {
-if (d_input.d_perf_regularized)
-  setup_1d3d_reg_source(data_1d);
-else
-  setup_1d3d_partition(data_1d);
+  if (d_input.d_perf_regularized) {
+    std::cout << "Setting up regularized perfusion sources\n";
+    setup_1d3d_reg_source(data_1d);
+  } else {
+    std::cout << "Setting up uniform partitioned perfusion sources\n";
+    setup_1d3d_partition(data_1d);
+  }
 }
 
 void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCurrentCouplingData> &data_1d) {
@@ -229,7 +233,7 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
 
   //
   std::vector<double> perf_flow_capacity;
-  for (const auto & r: d_perf_radii)
+  for (const auto &r : d_perf_radii)
     perf_flow_capacity.push_back(std::pow(r, 3));
   double max_r3 = max(perf_flow_capacity);
   double min_r3 = min(perf_flow_capacity);
@@ -237,8 +241,8 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
   // step 2: setup perfusion neighborhood
   // instead of point source, we have volume source supported over a ball.
   // radius of ball is proportional to the outlet radius^3 and varies from [ball_r_min, ball_r_max]
-  double ball_r_min = d_input.d_perf_neigh_size.first;// * d_input.d_h; // avoid point sources
-  double ball_r_max = d_input.d_perf_neigh_size.second;// * d_input.d_h; // avoid too large neighborhood
+  double ball_r_min = d_input.d_perf_neigh_size.first;  // * d_input.d_h; // avoid point sources
+  double ball_r_max = d_input.d_perf_neigh_size.second; // * d_input.d_h; // avoid too large neighborhood
   std::cout << "ball r = ";
   for (size_t i = 0; i < num_perf_outlets; i++) {
     d_perf_ball_radii[i] = ball_r_min + (ball_r_max - ball_r_min) * (perf_flow_capacity[i] - min_r3) / (max_r3 - min_r3);
@@ -289,7 +293,7 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
   // note that elements associated to each outlet is now distributed
   // so we first compute local value and then global
   std::vector<double> local_out_normal_const(num_perf_outlets, 0.);
-  for (size_t I=0; I<num_perf_outlets; I++) {
+  for (size_t I = 0; I < num_perf_outlets; I++) {
     auto &out_fn_I = d_perf_fns[I];
     double c = 0.;
     // loop over elements
@@ -303,7 +307,7 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
       for (unsigned int qp = 0; qp < d_p_cap.d_qrule.n_points(); qp++) {
         c += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]);
       } // quad point loop
-    } // elem loop
+    }   // elem loop
     local_out_normal_const[I] = c;
   } // outlet loop
 
@@ -314,7 +318,8 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
   // last thing is to set the normalizing constant of outlet weight function
   for (size_t I = 0; I < num_perf_outlets; I++) {
     auto &out_fn_I = d_perf_fns[I];
-    (*out_fn_I).d_c += out_normal_c[I];
+    out_fn_I->set_normalize_const(1. / out_normal_c[I]);
+    std::cout << "c (I = " << I << ") = " << (*out_fn_I).d_c << "\n";
   }
 
   // step 4: compute coefficients that we need to exchange with the network system
@@ -322,7 +327,7 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
   std::vector<double> local_out_coeff_a(num_perf_outlets, 0.);
   std::vector<double> local_out_coeff_b(num_perf_outlets, 0.);
   std::vector<double> local_out_p_3d_weighted(num_perf_outlets, 0.);
-  for (size_t I=0; I<num_perf_outlets; I++) {
+  for (size_t I = 0; I < num_perf_outlets; I++) {
     auto &out_fn_I = d_perf_fns[I];
     double a = 0.;
     double b = 0.;
@@ -354,7 +359,7 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
 
         p_3d_w += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * p_qp;
       } // quad point loop
-    } // elem loop
+    }   // elem loop
 
     local_out_coeff_a[I] = a;
     local_out_coeff_b[I] = b;
@@ -424,7 +429,7 @@ void HeartToBreast3DSolver::setup_1d3d_partition(const std::vector<VesselTipCurr
     // find the closest outlet to the center of this element
     double dist = (xc - d_perf_pts[0]).norm();
     long I_found = 0;
-    for (size_t I=0; I<num_perf_outlets; I++) {
+    for (size_t I = 0; I < num_perf_outlets; I++) {
       double dist2 = (xc - d_perf_pts[I]).norm();
       if (dist2 < dist) {
         I_found = I;
@@ -436,14 +441,14 @@ void HeartToBreast3DSolver::setup_1d3d_partition(const std::vector<VesselTipCurr
     d_perf_elems_3D[I_found].push_back(elem->id());
   }
 
-  for (size_t I=0; I<num_perf_outlets; I++)
+  for (size_t I = 0; I < num_perf_outlets; I++)
     std::cout << "nelems (I = " << I << ") = " << d_perf_elems_3D[I].size() << "\n";
 
   // compute normalizing coefficient for each outlet weight function
   // note that elements associated to each outlet is now distributed
   // so we first compute local value and then global
   std::vector<double> local_out_normal_const(num_perf_outlets, 0.);
-  for (size_t I=0; I<num_perf_outlets; I++) {
+  for (size_t I = 0; I < num_perf_outlets; I++) {
     auto &out_fn_I = d_perf_fns[I];
     double c = 0.;
     // loop over elements
@@ -461,8 +466,8 @@ void HeartToBreast3DSolver::setup_1d3d_partition(const std::vector<VesselTipCurr
   // last thing is to set the normalizing constant of outlet weight function
   for (size_t I = 0; I < num_perf_outlets; I++) {
     auto &out_fn_I = d_perf_fns[I];
-    (*out_fn_I).d_c += out_normal_c[I];
-    std::cout << "c (I = " << I << ") = " << out_normal_c[I] << "\n";
+    out_fn_I->set_normalize_const(1. / out_normal_c[I]);
+    std::cout << "c (I = " << I << ") = " << (*out_fn_I).d_c << "\n";
   }
 
   // step 4: compute coefficients that we need to exchange with the network system
@@ -470,7 +475,7 @@ void HeartToBreast3DSolver::setup_1d3d_partition(const std::vector<VesselTipCurr
   std::vector<double> local_out_coeff_a(num_perf_outlets, 0.);
   std::vector<double> local_out_coeff_b(num_perf_outlets, 0.);
   std::vector<double> local_out_p_3d_weighted(num_perf_outlets, 0.);
-  for (size_t I=0; I<num_perf_outlets; I++) {
+  for (size_t I = 0; I < num_perf_outlets; I++) {
     auto &out_fn_I = d_perf_fns[I];
     double a = 0.;
     double b = 0.;
@@ -502,7 +507,7 @@ void HeartToBreast3DSolver::setup_1d3d_partition(const std::vector<VesselTipCurr
 
         p_3d_w += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * p_qp;
       } // quad point loop
-    } // elem loop
+    }   // elem loop
 
     local_out_coeff_a[I] = a;
     local_out_coeff_b[I] = b;
@@ -547,16 +552,15 @@ void HeartToBreast3DSolver::comm_local_to_global(const std::vector<double> &loca
   if (comm->rank() == 0) {
     // resize of appropriate size
     global.resize(n);
-    for (auto & a: global)
+    for (auto &a : global)
       a = 0.;
 
     // compute
     for (int i = 0; i < comm->size(); i++) {
       for (size_t I = 0; I < n; I++)
-        global[I] += recv_c[i*n + I];
+        global[I] += recv_c[i * n + I];
     }
-  }
-  else
+  } else
     // in rank other than 0, set the data size to zero so that 'allgather' works properly
     global.resize(0);
 
@@ -565,7 +569,7 @@ void HeartToBreast3DSolver::comm_local_to_global(const std::vector<double> &loca
 }
 std::vector<VesselTipCurrentCouplingData3D> HeartToBreast3DSolver::get_vessel_tip_data_3d() {
   std::vector<VesselTipCurrentCouplingData3D> data;
-  for (size_t i=0; i<d_perf_pts.size(); i++) {
+  for (size_t i = 0; i < d_perf_pts.size(); i++) {
     VesselTipCurrentCouplingData3D d;
     d.d_a = d_perf_coeff_a[i];
     d.d_b = d_perf_coeff_b[i];
@@ -574,13 +578,61 @@ std::vector<VesselTipCurrentCouplingData3D> HeartToBreast3DSolver::get_vessel_ti
 
   return data;
 }
+
+void HeartToBreast3DSolver::update_3d_data() {
+  auto num_perf_outlets = d_perf_pts.size();
+
+  // recompute coefficients b and avg 3d pressure
+  std::vector<unsigned int> Lp_cap_dof_indices;
+  std::vector<double> local_out_coeff_b(num_perf_outlets, 0.);
+  std::vector<double> local_out_p_3d_weighted(num_perf_outlets, 0.);
+  for (size_t I = 0; I < num_perf_outlets; I++) {
+    auto &out_fn_I = d_perf_fns[I];
+    double b = 0.;
+    double p_3d_w = 0.; // 3D weighted pressure at outlet
+    // loop over elements
+    for (const auto &elem_id : d_perf_elems_3D[I]) {
+      const auto &elem = d_mesh.elem_ptr(elem_id);
+      // init dof map
+      d_p_cap.init_dof(elem);
+      d_Lp_art_cap_field.get_dof_map().dof_indices(elem, Lp_cap_dof_indices);
+
+      // init fe
+      d_p_cap.init_fe(elem);
+
+      // get Lp at this element
+      double Lp_elem = d_Lp_art_cap_field.current_solution(Lp_cap_dof_indices[0]);
+
+      // loop over quad points
+      for (unsigned int qp = 0; qp < d_p_cap.d_qrule.n_points(); qp++) {
+        // get pressure at quad point
+        double p_qp = 0.;
+        for (unsigned int l = 0; l < d_p_cap.d_phi.size(); l++) {
+          p_qp += d_p_cap.d_phi[l][qp] * d_p_cap.get_current_sol(l);
+        }
+
+        b += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * Lp_elem * p_qp;
+
+        p_3d_w += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * p_qp;
+      } // quad point loop
+    }   // elem loop
+
+    local_out_coeff_b[I] = b;
+    local_out_p_3d_weighted[I] = p_3d_w;
+  } // outlet loop
+
+  // sum distributed coefficients and sync with all processors
+  comm_local_to_global(local_out_coeff_b, d_perf_coeff_b);
+  comm_local_to_global(local_out_p_3d_weighted, d_perf_p_3d_weighted);
+}
+
 void HeartToBreast3DSolver::update_1d_data(const std::vector<VesselTipCurrentCouplingData> &data_1d) {
   if (d_perf_pts.size() != data_1d.size()) {
     std::cerr << "1D data passed should match the 1D data currently stored in the 3D solver.\n";
     exit(EXIT_FAILURE);
   }
 
-  for (size_t i=0; i<data_1d.size(); i++)
+  for (size_t i = 0; i < data_1d.size(); i++)
     d_perf_pres[i] = data_1d[i].pressure;
 }
 

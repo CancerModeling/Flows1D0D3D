@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
     ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.))) //
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                     //
     ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("1e-3"))         //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("1"))                      //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("1.e-1"))                      //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                                   //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                         //
@@ -92,6 +92,8 @@ int main(int argc, char *argv[]) {
       input.d_debug_lvl = 1;
       input.d_perf_regularized = false;
       input.d_perf_fn_type = "const";
+      //input.d_perf_regularized = true;
+      //input.d_perf_fn_type = "linear";
       input.d_perf_neigh_size = std::make_pair(4., 10.);
     }
     log("input data \n" + input.print_str() + "\n");
@@ -176,7 +178,10 @@ int main(int argc, char *argv[]) {
           log("solve 3d systems\n");
           solver_3d.solve();
 
-          if (it % output_interval == 0)
+          log("update 3d data for 1d systems\n");
+          solver_3d.update_3d_data();
+
+          if (it % (4*coupling_interval) == 0)
             solver_3d.write_output();
 
           // TODO: since 3D pressures are modified, update the values in 1D solver
