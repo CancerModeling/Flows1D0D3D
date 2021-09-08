@@ -124,13 +124,13 @@ public:
 
   Pres &get_pres() { return d_pres; }
 
-  void run() override{};
+  void run() {};
 
-  void write_system(const unsigned int &t_step) override{};
+  void write_system(const unsigned int &t_step) {};
 
-  void solve_system() override{};
+  void solve_system() {};
 
-  void compute_qoi() override{};
+  void compute_qoi() {};
 
   InputDeck &d_input;
   Pres d_pres;

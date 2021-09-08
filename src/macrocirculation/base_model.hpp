@@ -42,9 +42,6 @@ public:
   lm::Parallel::Communicator *get_comm() const { return d_comm_p; }
   lm::Parallel::Communicator *get_comm() { return d_comm_p; }
 
-  /*! @brief Run model */
-  virtual void run() = 0;
-
   /*! @brief Get various system classes */
   virtual BaseAssembly &get_assembly(const std::string &system) {
     libmesh_error_msg("Error: get_assembly should be defined in inheriting class");
@@ -97,14 +94,6 @@ public:
   unsigned int d_procSize;
 
 protected:
-  /*! @brief Output results of tumor system and network system */
-  virtual void write_system(const unsigned int &t_step) = 0;
-
-  /*! @brief Solves tumor system */
-  virtual void solve_system() = 0;
-
-  /*! @brief Compute quantity of interest */
-  virtual void compute_qoi() = 0;
 
   /*! @brief Pointer to communicator */
   lm::Parallel::Communicator *d_comm_p;

@@ -26,7 +26,7 @@
 #include "macrocirculation/nonlinear_linear_coupling.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-
+#include "macrocirculation/libmesh_utils.hpp"
 #include "macrocirculation/heart_to_breast_3d_solver.hpp"
 
 namespace mc = macrocirculation;
@@ -44,16 +44,12 @@ int main(int argc, char *argv[]) {
     ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.))) //
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                     //
     ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("1e-3"))         //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10"))                      //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("1.e-1"))                      //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                                   //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                         //
-    ("hyd-cond-cap", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                                              //
-    ("hyd-cond-tis", "hydraulic conductivity", cxxopts::value<double>()->default_value("1."))                                              //
-    ("permeability-cap", "permeability for mass exchange", cxxopts::value<double>()->default_value("0.1"))                                 //
-    ("permeability-tis", "permeability for mass exchange", cxxopts::value<double>()->default_value("0.1"))                                 //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value(""))                                                   //
-    ("num-points", "number of perfusion points", cxxopts::value<int>()->default_value("10"))                                           //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))                                                   //
+    ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                                                   //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
 
@@ -79,36 +75,43 @@ int main(int argc, char *argv[]) {
     solver_1d.set_output_folder(out_dir);
     solver_1d.setup(degree, tau, mc::BoundaryModel::DiscreteRCRTree);
 
+    // create logger
+    mc::Logger log(out_dir + "sim", comm->rank());
+
     // setup 3D solver
+    log("setting up 3D solver\n");
     auto filename = args["input-file"].as<std::string>();
-    int num_perf_points = args["num-points"].as<int>();
     // read input parameters
-    auto input = mc::HeartToBreast3DSolverInputDeck(filename);
-    if (filename == "") {
+    mc::HeartToBreast3DSolverInputDeck input(filename);
+    if (filename.empty()) {
       input.d_T = t_end;
       input.d_dt = args["time-step"].as<double>();
       input.d_h = args["mesh-size"].as<double>();
-      input.d_K_cap = args["hyd-cond-cap"].as<double>();
-      input.d_K_tis = args["hyd-cond-tis"].as<double>();
-      input.d_Lp_cap = args["permeability-cap"].as<double>();
-      input.d_Lp_tis = args["permeability-tis"].as<double>();
       input.d_mesh_file = args["mesh-file"].as<std::string>();
       input.d_out_dir = out_dir;
+      input.d_debug_lvl = 1;
+      input.d_perf_regularized = false;
+      input.d_perf_fn_type = "const";
+      //input.d_perf_regularized = true;
+      //input.d_perf_fn_type = "linear";
+      input.d_perf_neigh_size = std::make_pair(4., 10.);
     }
-
-    // create logger
-    mc::Logger log(out_dir + "sim", comm->rank());
     log("input data \n" + input.print_str() + "\n");
 
     // create mesh
     log("creating mesh\n");
     lm::ReplicatedMesh mesh(*comm);
-    long N = long(1. / input.d_h);
-    if (input.d_mesh_file != "")
+    if (!input.d_mesh_file.empty()) {
       mesh.read(input.d_mesh_file);
-    else
+      //input.d_h = mc::get_min_nodal_spacing(mesh);
+      input.d_h = mc::get_mesh_size_estimate_using_element_volume(mesh);
+      log(fmt::format("mesh size = {}\n", input.d_h));
+    }
+    else {
+      long N = long(1. / input.d_h);
       lm::MeshTools::Generation::build_cube(mesh, N, N, N, 0., 1., 0.,
                                             1., 0., 1., lm::HEX8);
+    }
 
     // create equation system
     log("creating equation system\n");
@@ -123,14 +126,34 @@ int main(int argc, char *argv[]) {
     // create spatial field of hydraulic conductivity
     auto &K_cap = eq_sys.add_system<lm::ExplicitSystem>("Capillary_K");
     K_cap.add_variable("k_cap", lm::CONSTANT, lm::MONOMIAL);
-    auto &Lp_cap = eq_sys.add_system<lm::ExplicitSystem>("Capillary_Lp");
-    Lp_cap.add_variable("lp_cap", lm::CONSTANT, lm::MONOMIAL);
+    auto &K_tis = eq_sys.add_system<lm::ExplicitSystem>("Tissue_K");
+    K_tis.add_variable("k_tis", lm::CONSTANT, lm::MONOMIAL);
+    auto &Lp_art_cap = eq_sys.add_system<lm::ExplicitSystem>("Capillary_Artery_Lp");
+    Lp_art_cap.add_variable("lp_art_cap", lm::CONSTANT, lm::MONOMIAL);
+    auto &Lp_cap_tis = eq_sys.add_system<lm::ExplicitSystem>("Capillary_Tissue_Lp");
+    Lp_cap_tis.add_variable("lp_cap_tis", lm::CONSTANT, lm::MONOMIAL);
 
     // create model that holds all essential variables
     log("creating model\n");
-    auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm, input, mesh, eq_sys, p_cap, p_tis, K_cap, Lp_cap, log);
-    solver_3d.d_dt = input.d_dt;
+    auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm, input, mesh, eq_sys, p_cap, p_tis,
+                                               K_cap, K_tis, Lp_art_cap, Lp_cap_tis, log);
+    eq_sys.init();
+    solver_3d.set_conductivity_fields();
+
+    // setup the 1D pressure data in 3D solver
+    log("setting 1D-3D coupling data in 3D solver\n");
+    auto data_1d = solver_1d.get_vessel_tip_pressures();
+    solver_3d.setup_1d3d(data_1d);
+
+    // finalize 3D solver setup
+    log("finalizing setup of 3D solver\n");
     solver_3d.setup();
+    solver_3d.write_output();
+
+    // NOTE to get relevant values from 3D system to solve 1D system
+    // call get_vessel_tip_data_3d()
+    // data_3d contains vector of coefficients a and b and also weighted avg of 3D pressure
+    auto data_3d = solver_3d.get_vessel_tip_data_3d();
 
     // time integration
     const auto begin_t = std::chrono::steady_clock::now();
@@ -139,27 +162,39 @@ int main(int argc, char *argv[]) {
 
       if (it % coupling_interval == 0) {
         std::cout << "calculates coupling " << std::endl;
-        auto data = solver_1d.get_vessel_tip_pressures();
+        data_1d = solver_1d.get_vessel_tip_pressures();
 
-        for (auto &d : data) {
+        for (auto &d : data_1d) {
           // just return the values for now:
           if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-            std::cout << d.p.x << ", " << d.p.y << ", " << d.p.z << ", " << d.pressure << ", " << d.R2 << std::endl;
+            std::cout << d.p.x << ", " << d.p.y << ", " << d.p.z << ", " << d.pressure << ", " << d.R2 << ", " << d.radius << std::endl;
         }
 
         // Some condition to solve the 3D system
         {
-          // TODO: Transfer 0D boundary values to 3D model.
+          log("update 1d data in 3d solver\n");
+          solver_3d.update_1d_data(data_1d);
 
-          // TODO: Solver 3D system
+          log("solve 3d systems\n");
+          solver_3d.solve();
 
-          // TODO: Write 3D System
+          log("update 3d data for 1d systems\n");
+          solver_3d.update_3d_data();
+
+          if (it % (4*coupling_interval) == 0)
+            solver_3d.write_output();
+
+          // TODO: since 3D pressures are modified, update the values in 1D solver
+          // Solver 1D may store vector (for each outlet) of coefficients a and b
+          // and also vector of weighted avg of 3D pressure
+          // ===> digest data_3d into solver_1d
+          data_3d = solver_3d.get_vessel_tip_data_3d();
         }
 
         // update the boundary conditions of the 1D system:
         {
           std::map<size_t, double> new_tip_pressures;
-          for (auto &d : data) {
+          for (auto &d : data_1d) {
             // TODO: Replace this with something more meaningful.
             //       Note that 50 mmHg is much too much and just here to see the change from 30 mmHg which are the default.
             new_tip_pressures[d.vertex_id] = 50 * 1.3333;

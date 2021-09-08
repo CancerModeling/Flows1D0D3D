@@ -225,13 +225,13 @@ public:
     d_log("model created\n");
   };
 
-  void run() override{};
+  void run() {};
 
-  void write_system(const unsigned int &t_step) override{};
+  void write_system(const unsigned int &t_step) {};
 
-  void solve_system() override{};
+  void solve_system() {};
 
-  void compute_qoi() override{};
+  void compute_qoi() {};
 
   InputDeck &d_input;
   Pres1 d_p1;
