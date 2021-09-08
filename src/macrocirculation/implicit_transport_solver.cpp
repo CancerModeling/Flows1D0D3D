@@ -20,6 +20,7 @@
 #include "petsc/petsc_ksp.hpp"
 #include "petsc/petsc_vec.hpp"
 #include "petsc_assembly_blocks.hpp"
+#include "vessel_formulas.hpp"
 
 namespace macrocirculation {
 
@@ -109,6 +110,15 @@ void UpwindProviderNonlinearFlow::get_upwinded_values(double t, const Vertex &v,
   d_evaluator->get_fluxes_on_nfurcation(t, v, Q, A);
 }
 
+void UpwindProviderNonlinearFlow::get_0d_pressures(double t, const Vertex &v, std::vector<double> &p_c) const {
+  assert(v.is_windkessel_outflow());
+  const auto &dof_map = d_solver->get_dof_map();
+  auto dof_indices = dof_map.get_local_dof_map(v).dof_indices();
+  p_c.resize(dof_indices.size());
+  extract_dof(dof_indices, d_solver->get_solution(), p_c);
+  p_c.push_back(v.get_peripheral_vessel_data().p_out);
+}
+
 UpwindProviderLinearizedFlow::UpwindProviderLinearizedFlow(std::shared_ptr<GraphStorage> graph, std::shared_ptr<LinearizedFlowUpwindEvaluator> evaluator, std::shared_ptr<ImplicitLinearFlowSolver> solver)
     : d_graph(std::move(graph)),
       d_evaluator(std::move(evaluator)),
@@ -180,6 +190,16 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
                               std::vector<std::shared_ptr<DofMap>>({std::move(dof_map)}),
                               std::vector<std::shared_ptr<UpwindProvider>>({std::move(upwind_provider)}), degree) {}
 
+void initialize_vessels_tip_volume_vector(MPI_Comm comm, const GraphStorage &graph, std::vector<std::vector<double>> &vessel_tip_volumes) {
+  for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
+    auto &vertex = *graph.get_vertex(v_id);
+
+    if (!vertex.is_windkessel_outflow())
+      continue;
+
+    vessel_tip_volumes[vertex.get_id()] = std::vector<double>(1, 0);
+  }
+}
 
 ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
                                                  std::vector<std::shared_ptr<GraphStorage>> graph,
@@ -195,7 +215,14 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
       rhs(std::make_shared<PetscVec>("rhs", d_dof_map)),
       A(std::make_shared<PetscMat>("A", d_dof_map)),
       mass(std::make_shared<PetscVec>("mass", d_dof_map)),
-      linear_solver(PetscKsp::create_with_pc_ilu(*A)) {
+      linear_solver(PetscKsp::create_with_pc_ilu(*A)),
+      // TODO: Generalize this to more graphs
+      vessel_tip_volume(d_graph[0]->num_vertices()) {
+  // TODO: See Above
+  assert(d_graph.size() == 1);
+
+  // TODO: Refactor this
+  initialize_vessels_tip_volume_vector(d_comm, *d_graph[0], vessel_tip_volume);
 
   if (d_graph.size() != d_dof_map.size())
     throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and dof maps must coincide");
@@ -213,14 +240,21 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
   sparsity_pattern();
 }
 
+void ImplicitTransportSolver::set_inflow_function(std::function<double(double)> infct) { inflow_function = std::move(infct); }
+
 void ImplicitTransportSolver::solve(double tau, double t) {
   assemble(tau, t);
   linear_solver->solve(*rhs, *u);
 }
 
 void ImplicitTransportSolver::assemble(double tau, double t) {
+  A->zero();
+  rhs->zero();
   assemble_matrix(tau, t);
   assemble_rhs(tau, t);
+  assemble_windkessel_rhs_and_matrix(tau, t);
+  rhs->assemble();
+  A->assemble();
 }
 
 void ImplicitTransportSolver::sparsity_pattern() {
@@ -237,12 +271,10 @@ void ImplicitTransportSolver::sparsity_pattern() {
 }
 
 void ImplicitTransportSolver::assemble_matrix(double tau, double t) {
-  A->zero();
   for (size_t k = 0; k < d_graph.size(); k += 1) {
     implicit_transport::additively_assemble_matrix(d_comm, tau, t, *d_upwind_provider[k], *d_dof_map[k], *d_graph[k], *A);
   }
   assemble_characteristics(tau, t);
-  A->assemble();
 }
 
 void ImplicitTransportSolver::assemble_characteristics(double tau, double t) {
@@ -323,6 +355,116 @@ void ImplicitTransportSolver::assemble_rhs(double tau, double t) {
     implicit_transport::additively_assemble_rhs_inflow(d_comm, tau, t, *d_upwind_provider[k], *d_dof_map[k], *d_graph[k], inflow_function, *rhs);
   }
   rhs->assemble();
+}
+
+void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t) {
+  assert(d_graph.size() == 1);
+
+  auto &graph = *d_graph[0];
+  auto &dof_map = *d_dof_map[0];
+  auto &upwind_provider = *d_upwind_provider[0];
+
+  for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(d_comm))) {
+    auto &vertex = *graph.get_vertex(v_id);
+    auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
+    if (vertex.is_windkessel_outflow()) {
+      auto &vertex_ldof_map = dof_map.get_local_dof_map(vertex);
+      auto &vertex_dof_indices = vertex_ldof_map.dof_indices();
+
+      std::vector<double> vertex_values(vertex_dof_indices.size());
+      extract_dof(vertex_dof_indices, *u, vertex_values);
+
+      auto &edge_ldof_map = dof_map.get_local_dof_map(edge);
+      std::vector<size_t> edge_dof_indices(edge_ldof_map.num_components());
+      edge_ldof_map.dof_indices(edge.get_adajcent_micro_edge_id(vertex), 0, edge_dof_indices);
+
+      const double c_n = vertex_values[0];
+      const double V_n = vessel_tip_volume[vertex.get_id()][0];
+
+      std::vector<double> p_c;
+      upwind_provider.get_0d_pressures(t, vertex, p_c);
+
+      const double sigma = edge.is_pointing_to(vertex.get_id()) ? +1. : -1.;
+
+      std::vector<double> A_up(1), Q_up(1);
+      upwind_provider.get_upwinded_values(t, vertex, A_up, Q_up);
+      Q_up[0] *= sigma;
+
+      const double R0 = calculate_R1(edge.get_physical_data());
+      const double R1 = vertex.get_peripheral_vessel_data().resistance - R0;
+
+      const double V_np1 = V_n + tau * (Q_up[0] - (p_c[0] - p_c[1]) / R1);
+
+      using BPT = BoundaryPointType;
+      auto boundary_type = edge.is_pointing_to(vertex.get_id()) ? BPT::Right : BPT::Left;
+      auto pattern = create_boundary(edge_ldof_map, boundary_type);
+
+      // if the future volume is too small we do not change the concentration
+      // Q: some concentration cannot leave?
+      if (V_np1 <= 1e-12) {
+        Eigen::MatrixXd A_c_c(1, 1);
+        A_c_c << 1.;
+
+        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
+
+        rhs->set(vertex_dof_indices[0], c_n);
+
+        vessel_tip_volume[vertex.get_id()][0] = V_np1;
+        continue;
+      }
+
+      Eigen::MatrixXd A_c_c(1, 1);
+
+      // case -> ->
+      if (Q_up[0] >= 0 && (p_c[0] - p_c[1]) / R1 >= 0) {
+        A_c_c << 1. + tau / V_np1 * (Q_up[0] - 2 * (p_c[0] - p_c[1]) / R1);
+
+        Eigen::MatrixXd A_c_gamma = -tau / V_np1 * pattern * Q_up[0] / A_up[0];
+
+        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
+        A->add(vertex_dof_indices, edge_dof_indices, A_c_gamma);
+
+        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
+      }
+      // case <- <-
+      else if (Q_up[0] <= 0 && (p_c[0] - p_c[1]) / R1 <= 0) {
+        A_c_c << 1 - tau / V_np1 * Q_up[0];
+
+        Eigen::MatrixXd A_gamma_c = -tau * pattern.transpose() * Q_up[0];
+
+        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
+        A->add(edge_dof_indices, vertex_dof_indices, A_gamma_c);
+
+        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
+      }
+      // case -> <-
+      else if (Q_up[0] >= 0 && (p_c[0] - p_c[1]) / R1 <= 0) {
+        A_c_c << 1;
+
+        Eigen::MatrixXd A_c_gamma = -tau / V_np1 * pattern * Q_up[0] / A_up[0];
+
+        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
+        A->add(vertex_dof_indices, edge_dof_indices, A_c_gamma);
+
+        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
+      }
+      // case <- ->
+      else if (Q_up[0] <= 0 && (p_c[0] - p_c[1]) / R1 >= 0) {
+        A_c_c << 1 - tau / V_np1 * Q_up[0] + tau / V_np1 * (p_c[0] - p_c[1]) / R1;
+
+        Eigen::MatrixXd A_gamma_c = -tau * pattern.transpose() * Q_up[0];
+
+        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
+        A->add(edge_dof_indices, vertex_dof_indices, A_gamma_c);
+
+        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
+      } else {
+        throw std::runtime_error("not implemented yet");
+      }
+
+      vessel_tip_volume[vertex.get_id()][0] = V_np1;
+    }
+  }
 }
 
 Eigen::MatrixXd create_QA_phi_grad_psi(const FETypeNetwork &fe,

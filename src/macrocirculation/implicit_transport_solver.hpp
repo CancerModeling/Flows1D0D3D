@@ -54,6 +54,8 @@ public:
                                    std::vector<double> &v_qp) const = 0;
 
   virtual void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const = 0;
+
+  virtual void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const = 0;
 };
 
 class ConstantUpwindProvider : public UpwindProvider {
@@ -72,6 +74,8 @@ public:
   void get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const override;
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
+
+  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override { throw std::runtime_error("not implemented yet"); }
 
 private:
   double d_speed;
@@ -95,6 +99,8 @@ public:
   void get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const override;
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
+
+  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override;
 
 private:
   std::shared_ptr<NonlinearFlowUpwindEvaluator> d_evaluator;
@@ -121,6 +127,8 @@ public:
   void get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const override;
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
+
+  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override { throw std::runtime_error("not implemented yet"); }
 
 private:
   std::shared_ptr<GraphStorage> d_graph;
@@ -160,7 +168,9 @@ public:
   const PetscMat &get_mat() const { return *A; }
 
   const PetscVec &get_rhs() const { return *rhs; }
-  
+
+  void set_inflow_function(std::function<double(double)> inflow_function);
+
 private:
   /*! @brief Assembles the left-hand-side matrix for the given time step. */
   void assemble_matrix(double tau, double t);
@@ -169,6 +179,8 @@ private:
   void assemble_rhs(double tau, double t);
 
   void assemble_characteristics(double tau, double t);
+
+  void assemble_windkessel_rhs_and_matrix(double tau, double t);
 
   /*! @brief Assembles the matrix with different upwindings, so that the sparsity pattern does not change,
    *         when the velocity field changes.  */
@@ -192,6 +204,8 @@ private:
   std::shared_ptr<PetscVec> mass;
 
   std::shared_ptr<PetscKsp> linear_solver;
+
+  std::vector< std::vector< double > > vessel_tip_volume;
 
   // std::function<double(double)> inflow_function = [](double t) { return 0.5*std::sin(M_PI * t); };
   std::function<double(double)> inflow_function = [](double t) {

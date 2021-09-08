@@ -413,6 +413,14 @@ const MicroVertex &Edge::right_micro_vertex() const {
   return d_micro_vertices.back();
 }
 
+std::size_t Edge::get_adajcent_micro_edge_id(const Vertex& vertex) const
+{
+  if (vertex.get_id() != get_vertex_neighbors()[0] && vertex.get_id() != get_vertex_neighbors()[1])
+    throw std::runtime_error("Edge::get_adjacent_micro_edge_id: edge is not adjacent to given vertex");
+
+  return is_pointing_to(vertex.get_id()) ? num_micro_edges() - 1 : 0;
+}
+
 GraphStorage::GraphStorage()
     : p_next_edge_id(0),
       p_next_vertex_id(0),

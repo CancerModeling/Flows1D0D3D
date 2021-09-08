@@ -351,6 +351,8 @@ public:
   void add_discretization_data(const DiscretizationData &data);
   void add_embedding_data(const EmbeddingData &data);
 
+  std::size_t get_adajcent_micro_edge_id(const Vertex& vertex) const;
+
   bool has_physical_data() const;
   bool has_discretization_data() const;
   bool has_embedding_data() const;

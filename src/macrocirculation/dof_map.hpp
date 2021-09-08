@@ -122,6 +122,14 @@ public:
               std::size_t start_dof_offset,
               bool global);
 
+  void create(MPI_Comm comm,
+              const GraphStorage &graph,
+              std::size_t num_components,
+              std::size_t degree,
+              std::size_t start_dof_offset,
+              bool global,
+              const std::function<size_t(const Vertex &)> &num_vertex_dofs);
+
   /*! @brief Returns the first global dof index in this dof map.
    *         If no global distribution is used the first local index (0) is returned. */
   size_t first_global_dof() const;

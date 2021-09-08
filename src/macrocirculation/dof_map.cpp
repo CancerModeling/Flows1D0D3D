@@ -135,6 +135,27 @@ void DofMap::create(MPI_Comm comm,
                     std::size_t degree,
                     std::size_t start_dof_offset,
                     bool global) {
+  auto num_vertex_components = [](const Vertex& vertex) -> size_t {
+    if (vertex.is_windkessel_outflow()) {
+      return 1;
+    } else if (vertex.is_vessel_tree_outflow()) {
+      return vertex.get_vessel_tree_data().resistances.size();
+    } else if (vertex.is_rcl_outflow()) {
+      return 2 * vertex.get_rcl_data().resistances.size();
+    }
+    return 0;
+  };
+
+  create(comm, graph, num_components, degree, start_dof_offset, global, num_vertex_components);
+}
+
+void DofMap::create(MPI_Comm comm,
+                    const GraphStorage &graph,
+                    std::size_t num_components,
+                    std::size_t degree,
+                    std::size_t start_dof_offset,
+                    bool global,
+                    const std::function<size_t(const Vertex &)> &num_vertex_dofs) {
   d_first_global_dof = start_dof_offset;
 
   for (int rank = 0; rank < mpi::size(comm); rank += 1) {
@@ -163,23 +184,15 @@ void DofMap::create(MPI_Comm comm,
           "Boundary conditions have to be finalized before distributing the dof on primitives.\n"
           "Please call GraphStorage::finalize_bcs() before.");
 
-
-      if (vertex->is_windkessel_outflow()) {
-        add_local_dof_map(*vertex, 1);
-        if (callingRank)
-          d_num_owned_dofs += get_local_dof_map(*vertex).num_local_dof();
-      } else if (vertex->is_vessel_tree_outflow()) {
-        add_local_dof_map(*vertex, vertex->get_vessel_tree_data().resistances.size());
-        if (callingRank)
-          d_num_owned_dofs += get_local_dof_map(*vertex).num_local_dof();
-      } else if (vertex->is_rcl_outflow()) {
-        add_local_dof_map(*vertex, 2 * vertex->get_rcl_data().resistances.size());
+      if (vertex->is_leaf()) {
+        add_local_dof_map(*vertex, num_vertex_dofs(*vertex));
         if (callingRank)
           d_num_owned_dofs += get_local_dof_map(*vertex).num_local_dof();
       }
     }
   }
 }
+
 
 const LocalVertexDofMap &DofMap::get_local_dof_map(const Vertex &v) const {
   if (d_local_vertex_dof_maps.at(v.get_id()) == nullptr)
