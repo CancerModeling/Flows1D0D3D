@@ -191,6 +191,7 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
                               std::vector<std::shared_ptr<UpwindProvider>>({std::move(upwind_provider)}), degree) {}
 
 void initialize_vessels_tip_volume_vector(MPI_Comm comm, const GraphStorage &graph, std::vector<std::vector<double>> &vessel_tip_volumes) {
+  vessel_tip_volumes.resize(graph.num_vertices());
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
     auto &vertex = *graph.get_vertex(v_id);
 
@@ -216,18 +217,15 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
       A(std::make_shared<PetscMat>("A", d_dof_map)),
       mass(std::make_shared<PetscVec>("mass", d_dof_map)),
       linear_solver(PetscKsp::create_with_pc_ilu(*A)),
-      // TODO: Generalize this to more graphs
-      vessel_tip_volume(d_graph[0]->num_vertices()) {
-  // TODO: See Above
-  assert(d_graph.size() == 1);
-
-  // TODO: Refactor this
-  initialize_vessels_tip_volume_vector(d_comm, *d_graph[0], vessel_tip_volume);
+      d_vessel_tip_volume(d_graph.size()) {
 
   if (d_graph.size() != d_dof_map.size())
     throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and dof maps must coincide");
   if (d_graph.size() != d_upwind_provider.size())
     throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and upwind providers must coincide");
+
+  for (size_t k = 0; k < d_graph.size(); k+=1)
+    initialize_vessels_tip_volume_vector(d_comm, *d_graph[k], d_vessel_tip_volume[k]);
 
   // TODO: preallocate the nonzeros properly!
   MatSetOption(A->get_mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
@@ -358,12 +356,12 @@ void ImplicitTransportSolver::assemble_rhs(double tau, double t) {
 }
 
 void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t) {
-  assert(d_graph.size() == 1);
+  for (size_t k = 0; k < d_graph.size(); k += 1)
+    assemble_windkessel_rhs_and_matrix(tau, t, *d_graph[k], *d_dof_map[k], *d_upwind_provider[k], d_vessel_tip_volume[k]);
+}
 
-  auto &graph = *d_graph[0];
-  auto &dof_map = *d_dof_map[0];
-  auto &upwind_provider = *d_upwind_provider[0];
 
+void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t, const GraphStorage &graph, const DofMap &dof_map, const UpwindProvider &upwind_provider, std::vector< std::vector< double > >& vessel_tip_volume) {
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *graph.get_vertex(v_id);
     auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
@@ -485,19 +483,19 @@ Eigen::MatrixXd create_QA_phi_grad_psi(const FETypeNetwork &fe,
   return k_loc;
 }
 
-void ImplicitTransportSolver::applySlopeLimiter(double t) {
+void ImplicitTransportSolver::apply_slope_limiter(double t) {
 
   for (int i = 0; i < d_graph.size(); i++) {
-    applySlopeLimiter(d_graph[i], d_dof_map[i], d_upwind_provider[i], t);
+    apply_slope_limiter(d_graph[i], d_dof_map[i], d_upwind_provider[i], t);
   }
 }
 
-void ImplicitTransportSolver::applySlopeLimiter(std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t) {
+void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t) {
 
-  for (const auto &e_id : graph->get_active_edge_ids(mpi::rank(d_comm))) {
-    const auto macro_edge = graph->get_edge(e_id);
+  for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
+    const auto macro_edge = d_graph->get_edge(e_id);
 
-    const auto &local_dof_map = dof_map->get_local_dof_map(*macro_edge);
+    const auto &local_dof_map = d_dof_map->get_local_dof_map(*macro_edge);
     const auto &param = macro_edge->get_physical_data();
 
     std::vector<std::size_t> dof_indices(local_dof_map.num_basis_functions());
@@ -513,7 +511,7 @@ void ImplicitTransportSolver::applySlopeLimiter(std::shared_ptr<GraphStorage> gr
       extract_dof(dof_indices, *u, dof_edge);
 
       if (micro_vertex_id == 0) {
-        auto &vertex = *graph->get_vertex(macro_edge->get_vertex_neighbors()[0]);
+        auto &vertex = *d_graph->get_vertex(macro_edge->get_vertex_neighbors()[0]);
 
         if (!vertex.is_leaf())
           continue;

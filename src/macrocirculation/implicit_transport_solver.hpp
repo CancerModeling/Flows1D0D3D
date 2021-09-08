@@ -163,7 +163,7 @@ public:
 
   const PetscVec &get_solution() const { return *u; }
   
-  void applySlopeLimiter(double t);
+  void apply_slope_limiter(double t);
 
   const PetscMat &get_mat() const { return *A; }
 
@@ -181,6 +181,8 @@ private:
   void assemble_characteristics(double tau, double t);
 
   void assemble_windkessel_rhs_and_matrix(double tau, double t);
+
+  void assemble_windkessel_rhs_and_matrix(double tau, double t, const GraphStorage& graph, const DofMap& dof_map, const UpwindProvider& upwind_provider, std::vector< std::vector< double > >& vessel_tip_volume);
 
   /*! @brief Assembles the matrix with different upwindings, so that the sparsity pattern does not change,
    *         when the velocity field changes.  */
@@ -205,7 +207,7 @@ private:
 
   std::shared_ptr<PetscKsp> linear_solver;
 
-  std::vector< std::vector< double > > vessel_tip_volume;
+  std::vector< std::vector< std::vector< double > > > d_vessel_tip_volume;
 
   // std::function<double(double)> inflow_function = [](double t) { return 0.5*std::sin(M_PI * t); };
   std::function<double(double)> inflow_function = [](double t) {
@@ -216,7 +218,7 @@ private:
       return 1.;
   };
   
-  void applySlopeLimiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t);
+  void apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t);
   
 };
 
