@@ -180,6 +180,25 @@ void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Vertex &v
   }
 }
 
+void UpwindProviderLinearizedFlow::get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const {
+  if (v.is_windkessel_outflow() || v.is_vessel_tree_outflow())
+  {
+    const auto &dof_map = d_solver->get_dof_map();
+    auto dof_indices = dof_map.get_local_dof_map(v).dof_indices();
+    p_c.resize(dof_indices.size());
+    extract_dof(dof_indices, d_solver->get_solution(), p_c);
+  }
+  else
+  {
+    throw std::runtime_error("UpwindProviderLinearizedFlow::get_0d_pressures: given boundary type not supported yet!");
+  }
+
+  if (v.is_windkessel_outflow())
+    p_c.push_back(v.get_peripheral_vessel_data().p_out);
+  else if (v.is_vessel_tree_outflow())
+    p_c.push_back(v.get_vessel_tree_data().p_out);
+}
+
 ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
                                                  std::shared_ptr<GraphStorage> graph,
                                                  std::shared_ptr<DofMap> dof_map,
@@ -195,10 +214,14 @@ void initialize_vessels_tip_volume_vector(MPI_Comm comm, const GraphStorage &gra
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
     auto &vertex = *graph.get_vertex(v_id);
 
-    if (!vertex.is_windkessel_outflow())
-      continue;
-
-    vessel_tip_volumes[vertex.get_id()] = std::vector<double>(1, 0);
+    if (vertex.is_windkessel_outflow())
+    {
+      vessel_tip_volumes[vertex.get_id()] = std::vector<double>(1, 0);
+    }
+    else if (vertex.is_vessel_tree_outflow())
+    {
+      vessel_tip_volumes[vertex.get_id()] = std::vector<double>(vertex.get_vessel_tree_data().resistances.size(), 0);
+    }
   }
 }
 

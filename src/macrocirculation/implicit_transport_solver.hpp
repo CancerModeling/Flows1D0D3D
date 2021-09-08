@@ -128,7 +128,7 @@ public:
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
 
-  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override { throw std::runtime_error("not implemented yet"); }
+  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override;
 
 private:
   std::shared_ptr<GraphStorage> d_graph;
