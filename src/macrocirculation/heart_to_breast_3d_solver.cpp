@@ -11,6 +11,7 @@
 #include "tree_search.hpp"
 #include "vtk_io_libmesh.hpp"
 #include "vtk_writer.hpp"
+#include <cfloat>
 #include <fmt/format.h>
 
 namespace macrocirculation {
