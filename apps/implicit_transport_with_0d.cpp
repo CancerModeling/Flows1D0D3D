@@ -134,7 +134,6 @@ void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_
   // configure solver
   auto dof_map_transport = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
 
-  dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, true);
   dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, 0, true, [](const mc::Vertex& v) -> size_t{
     if (v.is_windkessel_outflow())
       return 1;

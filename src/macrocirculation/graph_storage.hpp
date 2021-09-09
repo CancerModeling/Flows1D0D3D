@@ -14,6 +14,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <cmath>
 
 namespace macrocirculation {
 
@@ -27,6 +28,10 @@ struct Point {
   Point(double x, double y, double z);
 
   double x, y, z;
+
+  static double distance(const Point& a, const Point& b) {
+    return std::sqrt(std::pow(a.x-b.x, 2) + std::pow(a.y-b.y, 2) + std::pow(a.z-b.z, 2));
+  }
 };
 
 Point convex_combination(const Point &left, const Point &right, double theta);

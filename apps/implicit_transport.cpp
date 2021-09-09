@@ -27,6 +27,7 @@
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/right_hand_side_evaluator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
+#include "macrocirculation/petsc/petsc_mat.hpp"
 
 namespace mc = macrocirculation;
 
@@ -49,7 +50,8 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
   flow_solver->setup(tau);
 
   auto upwind_evaluator = std::make_shared<mc::LinearizedFlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
-  auto variable_upwind_provider = std::make_shared<mc::UpwindProviderLinearizedFlow>(graph, upwind_evaluator, flow_solver);
+  // auto variable_upwind_provider = std::make_shared<mc::UpwindProviderLinearizedFlow>(graph, upwind_evaluator, flow_solver);
+  auto variable_upwind_provider = std::make_shared<mc::ConstantUpwindProvider>(100.);
 
   mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
 
@@ -119,6 +121,10 @@ void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_
 
   auto upwind_evaluator = std::make_shared<mc::NonlinearFlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
   auto variable_upwind_provider = std::make_shared<mc::UpwindProviderNonlinearFlow>(upwind_evaluator, flow_solver);
+  // auto variable_upwind_provider = std::make_shared<mc::ConstantUpwindProvider>(5.);
+  // auto variable_upwind_provider = std::make_shared<mc::EmbeddedUpwindProvider>(graph, [](double t, const mc::Point& p){
+  //   return /* std::cos( 1 * M_PI * p.x ) */ std::abs(std::cos( M_PI * t / 4. ));
+  // });
 
   mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
 
@@ -212,15 +218,15 @@ int main(int argc, char *argv[]) {
   auto graph = std::make_shared<mc::GraphStorage>();
   auto v0 = graph->create_vertex();
   auto v1 = graph->create_vertex();
-  //auto v2 = graph->create_vertex();
+  auto v2 = graph->create_vertex();
 
   auto edge_0 = graph->connect(*v0, *v1, num_micro_edges);
   edge_0->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
   edge_0->add_physical_data(physical_data_short);
 
-  //auto edge_1 = graph->connect(*v1, *v2, num_micro_edges);
-  //edge_1->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1., 0, 0)}});
-  //edge_1->add_physical_data(physical_data_long);
+  auto edge_1 = graph->connect(*v1, *v2, num_micro_edges);
+  edge_1->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1., 0, 0)}});
+  edge_1->add_physical_data(physical_data_long);
 
   if (!no_upper_vessel) {
     auto v3 = graph->create_vertex();
@@ -239,8 +245,7 @@ int main(int argc, char *argv[]) {
   }
 
   v0->set_to_inflow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
-  v1->set_to_free_outflow();
-  // v2->set_to_free_outflow();
+  v2->set_to_free_outflow();
 
   graph->finalize_bcs();
 

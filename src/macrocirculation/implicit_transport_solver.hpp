@@ -33,6 +33,7 @@ class NonlinearFlowUpwindEvaluator;
 class LinearizedFlowUpwindEvaluator;
 class ExplicitNonlinearFlowSolver;
 class ImplicitLinearFlowSolver;
+class Point;
 
 class UpwindProvider {
 public:
@@ -81,6 +82,31 @@ private:
   double d_speed;
 };
 
+class EmbeddedUpwindProvider : public UpwindProvider {
+public:
+  explicit EmbeddedUpwindProvider(std::shared_ptr< GraphStorage > graph, std::function< double(double, const Point&)> field);
+
+  ~EmbeddedUpwindProvider() override;
+
+  void get_values_at_qp(double t,
+                        const Edge &edge,
+                        size_t micro_edge,
+                        const QuadratureFormula &qf,
+                        std::vector<double> &v_qp) const override;
+
+  /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
+  void get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const override;
+
+  void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
+
+  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override { throw std::runtime_error("not implemented yet"); }
+
+private:
+  std::shared_ptr< GraphStorage > d_graph;
+
+  std::function< double(double, const Point&)> d_field;
+};
+
 class UpwindProviderNonlinearFlow : public UpwindProvider {
 public:
   explicit UpwindProviderNonlinearFlow(std::shared_ptr<NonlinearFlowUpwindEvaluator> evaluator, std::shared_ptr<ExplicitNonlinearFlowSolver> solver);
@@ -101,7 +127,6 @@ public:
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
 
   void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override;
-
 private:
   std::shared_ptr<NonlinearFlowUpwindEvaluator> d_evaluator;
   std::shared_ptr<ExplicitNonlinearFlowSolver> d_solver;
@@ -187,6 +212,8 @@ private:
   /*! @brief Assembles the matrix with different upwindings, so that the sparsity pattern does not change,
    *         when the velocity field changes.  */
   void sparsity_pattern();
+
+  void sparsity_pattern_characteristics();
 
 private:
   MPI_Comm d_comm;
