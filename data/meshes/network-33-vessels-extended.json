@@ -612,7 +612,7 @@
       "right_vertex_id": 33
     },
     {
-      "id": 36,
+      "id": 37,
       "name": "cw_right_branch_short_end_1",
       "vessel_length": 0.5,
       "radius": 0.06,
@@ -624,7 +624,7 @@
       "right_vertex_id": 38
     },
     {
-      "id": 36,
+      "id": 38,
       "name": "cw_right_branch_short_end_2",
       "vessel_length": 0.5,
       "radius": 0.06,
@@ -636,7 +636,7 @@
       "right_vertex_id": 39
     },
     {
-      "id": 37,
+      "id": 39,
       "name": "cw_right_branch_long",
       "vessel_length": 5,
       "radius": 0.06,
@@ -648,7 +648,7 @@
       "right_vertex_id": 34
     },
     {
-      "id": 38,
+      "id": 40,
       "name": "cw_left_branch_start",
       "vessel_length": 5,
       "radius": 0.06,
@@ -660,7 +660,7 @@
       "right_vertex_id": 35
     },
     {
-      "id": 39,
+      "id": 41,
       "name": "cw_left_branch_short",
       "vessel_length": 2.5,
       "radius": 0.06,
@@ -672,7 +672,7 @@
       "right_vertex_id": 36
     },
     {
-      "id": 40,
+      "id": 42,
       "name": "cw_left_branch_long",
       "vessel_length": 7,
       "radius": 0.06,
