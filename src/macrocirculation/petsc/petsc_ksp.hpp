@@ -32,20 +32,32 @@ public:
   static std::shared_ptr<PetscKsp> create_with_pc_ilu(PetscMat &mat) {
     std::shared_ptr<PetscKsp> ksp(new PetscKsp(mat));
 
-    PC pc;
     /*
+    PC pc;
     CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
     CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCHYPRE));
     CHKERRABORT(PETSC_COMM_WORLD, PCHYPRESetType(pc, "euclid"));
-    */
-        
+     */
+
+    PC pc;
+    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(ksp->d_ksp));
+    //CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PC));
+    // CHKERRABORT(PETSC_COMM_WORLD, KSPSetTolerances(ksp->d_ksp, 1e-10, 1e-10, 1e-10, 100000));
+
+    /*
+    PC pc;
     CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
     CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
-/*
-    KSPSetType(ksp->d_ksp,KSPPREONLY);
-    PCSetType(pc,PCLU);
-    PCFactorSetMatSolverType(pc,MATSOLVERSUPERLU_DIST);
-*/
+     */
+
+    /*
+    PC pc;
+    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetType(ksp->d_ksp,KSPPREONLY));
+    CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc,PCLU));
+    CHKERRABORT(PETSC_COMM_WORLD, PCFactorSetMatSolverType(pc,MATSOLVERSUPERLU_DIST));
+     */
     // CHKERRABORT(PETSC_COMM_WORLD, KSPSetUp(ksp->d_ksp));
 
     return ksp;

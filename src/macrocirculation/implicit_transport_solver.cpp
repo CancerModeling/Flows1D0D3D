@@ -7,6 +7,7 @@
 
 #include "implicit_transport_solver.hpp"
 
+#include <chrono>
 #include <utility>
 
 #include "communication/mpi.hpp"
@@ -20,6 +21,7 @@
 #include "petsc/petsc_ksp.hpp"
 #include "petsc/petsc_vec.hpp"
 #include "petsc_assembly_blocks.hpp"
+#include "vessel_formulas.hpp"
 
 namespace macrocirculation {
 
@@ -58,6 +60,72 @@ void ConstantUpwindProvider::get_upwinded_values(double t, const Vertex &v, std:
   for (size_t k = 0; k < A.size(); k += 1) {
     A[k] = 1.;
     Q[k] = d_speed;
+  }
+}
+
+
+Eigen::Vector3d point_to_vec(const Point & p) { return {p.x, p.y, p.z}; }
+
+Point vec_to_point (const Eigen::Vector3d & v) { return {v[0], v[1], v[2]}; }
+
+EmbeddedUpwindProvider::~EmbeddedUpwindProvider() = default;
+
+EmbeddedUpwindProvider::EmbeddedUpwindProvider(std::shared_ptr< GraphStorage > graph, std::function< double(double, const Point&)> field)
+: d_graph(std::move( graph )),
+  d_field(std::move(field))
+{}
+
+void EmbeddedUpwindProvider::get_values_at_qp(double t,
+                      const Edge &edge,
+                      size_t micro_edge,
+                      const QuadratureFormula &qf,
+                      std::vector<double> &v_qp) const
+{
+  if (!edge.has_embedding_data())
+    throw std::runtime_error("embedded upwind provider needs an embedding");
+
+  auto a = edge.get_embedding_data().points[0];
+  auto b = edge.get_embedding_data().points[1];
+  const double h = Point::distance(a, b) / edge.num_micro_edges();
+  Eigen::Vector3d vec = point_to_vec(b) - point_to_vec(a);
+
+  for (size_t qp = 0; qp < qf.size(); qp += 1)
+  {
+    double s = h*(qf.ref_points[qp]+1.)/2.;
+    Point p = vec_to_point(point_to_vec(a) + vec * (h * micro_edge + s));
+    v_qp[qp] = d_field(t, p);
+  }
+}
+
+void EmbeddedUpwindProvider::get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const {
+  if (!edge.has_embedding_data())
+    throw std::runtime_error("embedded upwind provider needs an embedding");
+
+  auto a = edge.get_embedding_data().points[0];
+  auto b = edge.get_embedding_data().points[1];
+  const double h = Point::distance(a, b) / edge.num_micro_edges();
+  Eigen::Vector3d vec = point_to_vec(b) - point_to_vec(a);
+
+  for (size_t vid = 0; vid < edge.num_micro_vertices(); vid += 1)
+  {
+    Point p = vec_to_point(point_to_vec(a) + vec * (h * vid));
+    v_qp[vid] = d_field(t, p);
+  }
+}
+
+void EmbeddedUpwindProvider::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const
+{
+  auto& edge = *d_graph->get_edge(v.get_edge_neighbors()[0]);
+
+  if (!edge.has_embedding_data())
+    throw std::runtime_error("embedded upwind provider needs an embedding");
+
+  Point p = edge.is_pointing_to(v.get_id()) ? edge.get_embedding_data().points.back() : edge.get_embedding_data().points.front();
+
+  for (size_t k = 0; k < A.size(); k+=1)
+  {
+    A[k] = 1.;
+    Q[k] = d_field(t, p);
   }
 }
 
@@ -107,6 +175,15 @@ void UpwindProviderNonlinearFlow::get_upwinded_values(double t, const Edge &edge
 
 void UpwindProviderNonlinearFlow::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
   d_evaluator->get_fluxes_on_nfurcation(t, v, Q, A);
+}
+
+void UpwindProviderNonlinearFlow::get_0d_pressures(double t, const Vertex &v, std::vector<double> &p_c) const {
+  assert(v.is_windkessel_outflow());
+  const auto &dof_map = d_solver->get_dof_map();
+  auto dof_indices = dof_map.get_local_dof_map(v).dof_indices();
+  p_c.resize(dof_indices.size());
+  extract_dof(dof_indices, d_solver->get_solution(), p_c);
+  p_c.push_back(v.get_peripheral_vessel_data().p_out);
 }
 
 UpwindProviderLinearizedFlow::UpwindProviderLinearizedFlow(std::shared_ptr<GraphStorage> graph, std::shared_ptr<LinearizedFlowUpwindEvaluator> evaluator, std::shared_ptr<ImplicitLinearFlowSolver> solver)
@@ -170,6 +247,25 @@ void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Vertex &v
   }
 }
 
+void UpwindProviderLinearizedFlow::get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const {
+  if (v.is_windkessel_outflow() || v.is_vessel_tree_outflow())
+  {
+    const auto &dof_map = d_solver->get_dof_map();
+    auto dof_indices = dof_map.get_local_dof_map(v).dof_indices();
+    p_c.resize(dof_indices.size());
+    extract_dof(dof_indices, d_solver->get_solution(), p_c);
+  }
+  else
+  {
+    throw std::runtime_error("UpwindProviderLinearizedFlow::get_0d_pressures: given boundary type not supported yet!");
+  }
+
+  if (v.is_windkessel_outflow())
+    p_c.push_back(v.get_peripheral_vessel_data().p_out);
+  else if (v.is_vessel_tree_outflow())
+    p_c.push_back(v.get_vessel_tree_data().p_out);
+}
+
 ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
                                                  std::shared_ptr<GraphStorage> graph,
                                                  std::shared_ptr<DofMap> dof_map,
@@ -180,6 +276,21 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
                               std::vector<std::shared_ptr<DofMap>>({std::move(dof_map)}),
                               std::vector<std::shared_ptr<UpwindProvider>>({std::move(upwind_provider)}), degree) {}
 
+void initialize_vessels_tip_volume_vector(MPI_Comm comm, const GraphStorage &graph, std::vector<std::vector<double>> &vessel_tip_volumes) {
+  vessel_tip_volumes.resize(graph.num_vertices());
+  for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
+    auto &vertex = *graph.get_vertex(v_id);
+
+    if (vertex.is_windkessel_outflow())
+    {
+      vessel_tip_volumes[vertex.get_id()] = std::vector<double>(1, 0);
+    }
+    else if (vertex.is_vessel_tree_outflow())
+    {
+      vessel_tip_volumes[vertex.get_id()] = std::vector<double>(vertex.get_vessel_tree_data().resistances.size(), 0);
+    }
+  }
+}
 
 ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
                                                  std::vector<std::shared_ptr<GraphStorage>> graph,
@@ -195,15 +306,19 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
       rhs(std::make_shared<PetscVec>("rhs", d_dof_map)),
       A(std::make_shared<PetscMat>("A", d_dof_map)),
       mass(std::make_shared<PetscVec>("mass", d_dof_map)),
-      linear_solver(PetscKsp::create_with_pc_ilu(*A)) {
+      linear_solver(PetscKsp::create_with_pc_ilu(*A)),
+      d_vessel_tip_volume(d_graph.size()) {
 
   if (d_graph.size() != d_dof_map.size())
     throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and dof maps must coincide");
   if (d_graph.size() != d_upwind_provider.size())
     throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and upwind providers must coincide");
 
+  for (size_t k = 0; k < d_graph.size(); k+=1)
+    initialize_vessels_tip_volume_vector(d_comm, *d_graph[k], d_vessel_tip_volume[k]);
+
   // TODO: preallocate the nonzeros properly!
-  MatSetOption(A->get_mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+  // MatSetOption(A->get_mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
   assemble_mass(d_comm, d_graph, d_dof_map, *mass);
   u->zero();
@@ -213,43 +328,196 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
   sparsity_pattern();
 }
 
+void ImplicitTransportSolver::set_inflow_function(std::function<double(double)> infct) { inflow_function = std::move(infct); }
+
 void ImplicitTransportSolver::solve(double tau, double t) {
   assemble(tau, t);
   linear_solver->solve(*rhs, *u);
 }
 
 void ImplicitTransportSolver::assemble(double tau, double t) {
+  A->zero();
+  rhs->zero();
   assemble_matrix(tau, t);
   assemble_rhs(tau, t);
+  // assemble_windkessel_rhs_and_matrix(tau, t);
+  rhs->assemble();
+  A->assemble();
+}
+
+void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, PetscMat& mat)
+{
+  // macro edge coupling
+  for (const auto &e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
+    const auto macro_edge = graph.get_edge(e_id);
+
+    const auto &local_dof_map = dof_map.get_local_dof_map(*macro_edge);
+
+    std::vector<std::size_t> dof_indices_left(local_dof_map.num_basis_functions());
+    std::vector<std::size_t> dof_indices_right(local_dof_map.num_basis_functions());
+
+    Eigen::MatrixXd ones = Eigen::Matrix3d::Constant(local_dof_map.num_basis_functions(), local_dof_map.num_basis_functions(), 1.);
+
+    // coupling between elements
+    for (size_t micro_edge_id = 0; micro_edge_id < macro_edge->num_micro_edges(); micro_edge_id +=1 ) {
+      local_dof_map.dof_indices(micro_edge_id, 0, dof_indices_left);
+      mat.add(dof_indices_left, dof_indices_left, ones);
+    }
+
+    // coupling between neighboring elements
+    for (size_t micro_vertex_id = 1; micro_vertex_id < macro_edge->num_micro_vertices()-1; micro_vertex_id +=1 ) {
+      size_t left_micro_edge_id = micro_vertex_id-1;
+      size_t right_micro_edge_id = micro_vertex_id;
+      local_dof_map.dof_indices(left_micro_edge_id, 0, dof_indices_left);
+      local_dof_map.dof_indices(right_micro_edge_id, 0, dof_indices_right);
+
+      mat.add(dof_indices_left, dof_indices_right, ones);
+      mat.add(dof_indices_right, dof_indices_left, ones);
+    }
+  }
+
+  // bifurcation coupling
+  for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
+    auto &vertex = *graph.get_vertex(v_id);
+
+    std::vector<Edge const *> edges;
+    for (auto e_id : vertex.get_edge_neighbors())
+      edges.push_back(graph.get_edge(e_id).get());
+
+    for (int i = 0; i < edges.size(); i += 1) {
+      if (edges[i]->rank() != mpi::rank(comm))
+        continue;
+
+      auto &local_dof_map_i = dof_map.get_local_dof_map(*edges[i]);
+      std::vector<size_t> dof_indices_i(local_dof_map_i.num_basis_functions());
+      local_dof_map_i.dof_indices(edges[i]->get_adajcent_micro_edge_id(vertex), 0, dof_indices_i);
+
+      for (int j = 0; j < edges.size(); j += 1) {
+        if (j == i)
+          continue;
+
+        auto &local_dof_map_j = dof_map.get_local_dof_map(*edges[j]);
+        std::vector<size_t> dof_indices_j(local_dof_map_j.num_basis_functions());
+        local_dof_map_j.dof_indices(edges[j]->get_adajcent_micro_edge_id(vertex), 0, dof_indices_j);
+
+        Eigen::MatrixXd ones = Eigen::Matrix3d::Constant(local_dof_map_i.num_basis_functions(), local_dof_map_j.num_basis_functions(), 1.);
+
+        mat.add(dof_indices_i, dof_indices_j, ones);
+      }
+    }
+  }
+
+  // boundary conditions
+  for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
+    auto &vertex = *graph.get_vertex(v_id);
+
+    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow() || vertex.is_rcl_outflow())
+    {
+      auto& local_dof_map_vertex = dof_map.get_local_dof_map(vertex);
+      auto& vertex_dof_indices = local_dof_map_vertex.dof_indices();
+
+      // exchange vertex-vertex
+      {
+        Eigen::MatrixXd ones = Eigen::Matrix3d::Constant(local_dof_map_vertex.num_local_dof(), local_dof_map_vertex.num_local_dof(), 1.);
+        mat.add(vertex_dof_indices, vertex_dof_indices, ones);
+      }
+
+      // exchange vertex-edge and edge-vertex
+      for (auto e_id : vertex.get_edge_neighbors())
+      {
+        auto& edge = *graph.get_edge(e_id);
+        auto &local_dof_map_edge = dof_map.get_local_dof_map(edge);
+        std::vector<size_t> dof_indices_edge(local_dof_map_edge.num_basis_functions());
+        local_dof_map_edge.dof_indices(edge.get_adajcent_micro_edge_id(vertex), 0, dof_indices_edge);
+
+        Eigen::MatrixXd ones_ev = Eigen::Matrix3d::Constant(local_dof_map_edge.num_basis_functions(), local_dof_map_vertex.num_local_dof(), 1.);
+        Eigen::MatrixXd ones_ve = Eigen::Matrix3d::Constant(local_dof_map_vertex.num_local_dof(), local_dof_map_edge.num_local_dof(), 1.);
+
+        mat.add(vertex_dof_indices, dof_indices_edge, ones_ve);
+        mat.add(dof_indices_edge, vertex_dof_indices, ones_ev);
+      }
+    }
+  }
+}
+
+void ImplicitTransportSolver::sparsity_pattern_characteristics() {
+  for (size_t graph_index = 0; graph_index < d_graph.size(); graph_index += 1) {
+    auto graph = d_graph[graph_index];
+
+    for (const auto &v_id : graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
+      auto &vertex = *graph->get_vertex(v_id);
+
+      // only vertices which are coupled
+      if (!(vertex.is_nonlinear_characteristic_inflow() || vertex.is_linear_characteristic_inflow()))
+        continue;
+
+      auto edge = graph->get_edge(vertex.get_edge_neighbors()[0]);
+
+      auto conn = vertex.get_inter_graph_connections();
+      auto &adjacent_graph = conn[0].get_graph();
+      auto &adjacent_vertex = conn[0].get_vertex();
+      auto adjacent_edge = adjacent_graph.get_edge(adjacent_vertex.get_edge_neighbors()[0]);
+
+      auto adjacent_graph_index = -1;
+      for (size_t j = 0; j < d_graph.size(); j += 1)
+        if (d_graph[j].get() == &adjacent_graph)
+          adjacent_graph_index = j;
+
+      // we only assemble once with the smaller index!
+      if (adjacent_graph_index < graph_index)
+        continue;
+
+      std::vector<std::vector<size_t>> dof_indices_list;
+      {
+        auto &local_dof_map = d_dof_map[graph_index]->get_local_dof_map(*edge);
+        std::vector<size_t> dof_indices(local_dof_map.num_basis_functions());
+        local_dof_map.dof_indices(edge->get_adajcent_micro_edge_id(vertex), 0, dof_indices);
+        dof_indices_list.push_back(dof_indices);
+      }
+      {
+        auto &local_dof_map = d_dof_map[adjacent_graph_index]->get_local_dof_map(*adjacent_edge);
+        auto micro_edge_id = adjacent_edge->is_pointing_to(adjacent_vertex.get_id()) ? adjacent_edge->num_micro_edges() - 1 : 0;
+        std::vector<size_t> dof_indices(local_dof_map.num_basis_functions());
+        local_dof_map.dof_indices(micro_edge_id, 0, dof_indices);
+        dof_indices_list.push_back(dof_indices);
+      }
+
+      if (edge->rank() == mpi::rank(d_comm))
+      {
+        Eigen::MatrixXd ones = Eigen::Matrix3d::Constant(dof_indices_list[0].size(), dof_indices_list[1].size(), 1.);
+        A->add(dof_indices_list[0], dof_indices_list[1], ones);
+      }
+
+      if (adjacent_edge->rank() == mpi::rank(d_comm))
+      {
+        Eigen::MatrixXd ones = Eigen::Matrix3d::Constant(dof_indices_list[1].size(), dof_indices_list[0].size(), 1.);
+        A->add(dof_indices_list[1], dof_indices_list[0], ones);
+      }
+    }
+  }
 }
 
 void ImplicitTransportSolver::sparsity_pattern() {
-  ConstantUpwindProvider upwind_provider_plus(1.);
-  ConstantUpwindProvider upwind_provider_minus(-42.);
-  const double tau = 1e-3;
-  const double t = 1.;
   A->zero();
   for (size_t k = 0; k < d_graph.size(); k += 1) {
-    implicit_transport::additively_assemble_matrix(d_comm, tau, t, upwind_provider_plus, *d_dof_map[k], *d_graph[k], *A);
-    implicit_transport::additively_assemble_matrix(d_comm, tau, t, upwind_provider_minus, *d_dof_map[k], *d_graph[k], *A);
+    calculate_sparsity_pattern(d_comm, *d_graph[k], *d_dof_map[k], *A);
   }
+  sparsity_pattern_characteristics();
   A->assemble();
 }
 
 void ImplicitTransportSolver::assemble_matrix(double tau, double t) {
-  A->zero();
   for (size_t k = 0; k < d_graph.size(); k += 1) {
     implicit_transport::additively_assemble_matrix(d_comm, tau, t, *d_upwind_provider[k], *d_dof_map[k], *d_graph[k], *A);
   }
   assemble_characteristics(tau, t);
-  A->assemble();
 }
 
 void ImplicitTransportSolver::assemble_characteristics(double tau, double t) {
   for (size_t graph_index = 0; graph_index < d_graph.size(); graph_index += 1) {
     auto graph = d_graph[graph_index];
 
-    for (const auto &v_id : graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+    for (const auto &v_id : graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
       auto &vertex = *graph->get_vertex(v_id);
 
       // only vertices which are coupled
@@ -317,12 +585,120 @@ void ImplicitTransportSolver::assemble_characteristics(double tau, double t) {
 }
 
 void ImplicitTransportSolver::assemble_rhs(double tau, double t) {
-  rhs->zero();
   implicit_transport::additively_assemble_rhs_cells(*mass, *u, *rhs);
   for (size_t k = 0; k < d_graph.size(); k += 1) {
     implicit_transport::additively_assemble_rhs_inflow(d_comm, tau, t, *d_upwind_provider[k], *d_dof_map[k], *d_graph[k], inflow_function, *rhs);
   }
-  rhs->assemble();
+}
+
+void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t) {
+  for (size_t k = 0; k < d_graph.size(); k += 1)
+    assemble_windkessel_rhs_and_matrix(tau, t, *d_graph[k], *d_dof_map[k], *d_upwind_provider[k], d_vessel_tip_volume[k]);
+}
+
+
+void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t, const GraphStorage &graph, const DofMap &dof_map, const UpwindProvider &upwind_provider, std::vector< std::vector< double > >& vessel_tip_volume) {
+  for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(d_comm))) {
+    auto &vertex = *graph.get_vertex(v_id);
+    auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
+    if (vertex.is_windkessel_outflow()) {
+      auto &vertex_ldof_map = dof_map.get_local_dof_map(vertex);
+      auto &vertex_dof_indices = vertex_ldof_map.dof_indices();
+
+      std::vector<double> vertex_values(vertex_dof_indices.size());
+      extract_dof(vertex_dof_indices, *u, vertex_values);
+
+      auto &edge_ldof_map = dof_map.get_local_dof_map(edge);
+      std::vector<size_t> edge_dof_indices(edge_ldof_map.num_components());
+      edge_ldof_map.dof_indices(edge.get_adajcent_micro_edge_id(vertex), 0, edge_dof_indices);
+
+      const double c_n = vertex_values[0];
+      const double V_n = vessel_tip_volume[vertex.get_id()][0];
+
+      std::vector<double> p_c;
+      upwind_provider.get_0d_pressures(t, vertex, p_c);
+
+      const double sigma = edge.is_pointing_to(vertex.get_id()) ? +1. : -1.;
+
+      std::vector<double> A_up(1), Q_up(1);
+      upwind_provider.get_upwinded_values(t, vertex, A_up, Q_up);
+      Q_up[0] *= sigma;
+
+      const double R0 = calculate_R1(edge.get_physical_data());
+      const double R1 = vertex.get_peripheral_vessel_data().resistance - R0;
+
+      const double V_np1 = V_n + tau * (Q_up[0] - (p_c[0] - p_c[1]) / R1);
+
+      using BPT = BoundaryPointType;
+      auto boundary_type = edge.is_pointing_to(vertex.get_id()) ? BPT::Right : BPT::Left;
+      auto pattern = create_boundary(edge_ldof_map, boundary_type);
+
+      // if the future volume is too small we do not change the concentration
+      // Q: some concentration cannot leave?
+      if (V_np1 <= 1e-12) {
+        Eigen::MatrixXd A_c_c(1, 1);
+        A_c_c << 1.;
+
+        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
+
+        rhs->set(vertex_dof_indices[0], c_n);
+
+        vessel_tip_volume[vertex.get_id()][0] = V_np1;
+        continue;
+      }
+
+      Eigen::MatrixXd A_c_c(1, 1);
+
+      // case -> ->
+      if (Q_up[0] >= 0 && (p_c[0] - p_c[1]) / R1 >= 0) {
+        A_c_c << 1. + tau / V_np1 * (Q_up[0] - 2 * (p_c[0] - p_c[1]) / R1);
+
+        Eigen::MatrixXd A_c_gamma = -tau / V_np1 * pattern * Q_up[0] / A_up[0];
+
+        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
+        A->add(vertex_dof_indices, edge_dof_indices, A_c_gamma);
+
+        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
+      }
+      // case <- <-
+      else if (Q_up[0] <= 0 && (p_c[0] - p_c[1]) / R1 <= 0) {
+        A_c_c << 1 - tau / V_np1 * Q_up[0];
+
+        Eigen::MatrixXd A_gamma_c = -tau * pattern.transpose() * Q_up[0];
+
+        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
+        A->add(edge_dof_indices, vertex_dof_indices, A_gamma_c);
+
+        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
+      }
+      // case -> <-
+      else if (Q_up[0] >= 0 && (p_c[0] - p_c[1]) / R1 <= 0) {
+        A_c_c << 1;
+
+        Eigen::MatrixXd A_c_gamma = -tau / V_np1 * pattern * Q_up[0] / A_up[0];
+
+        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
+        A->add(vertex_dof_indices, edge_dof_indices, A_c_gamma);
+
+        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
+      }
+      // case <- ->
+      else if (Q_up[0] <= 0 && (p_c[0] - p_c[1]) / R1 >= 0) {
+        A_c_c << 1 - tau / V_np1 * Q_up[0] + tau / V_np1 * (p_c[0] - p_c[1]) / R1;
+
+        Eigen::MatrixXd A_gamma_c = -tau * pattern.transpose() * Q_up[0];
+
+        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
+        A->add(edge_dof_indices, vertex_dof_indices, A_gamma_c);
+
+        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
+      } else {
+        throw std::runtime_error("not implemented yet");
+      }
+
+      vessel_tip_volume[vertex.get_id()][0] = V_np1;
+    }
+  }
 }
 
 Eigen::MatrixXd create_QA_phi_grad_psi(const FETypeNetwork &fe,
@@ -343,145 +719,141 @@ Eigen::MatrixXd create_QA_phi_grad_psi(const FETypeNetwork &fe,
   return k_loc;
 }
 
-void ImplicitTransportSolver::applySlopeLimiter(  double t ){
+void ImplicitTransportSolver::apply_slope_limiter(double t) {
 
-     for(int i=0;i<d_graph.size();i++){
-         applySlopeLimiter(d_graph[ i ], d_dof_map[ i ], d_upwind_provider[ i ], t );
-     }
-     
+  for (int i = 0; i < d_graph.size(); i++) {
+    apply_slope_limiter(d_graph[i], d_dof_map[i], d_upwind_provider[i], t);
+  }
 }
 
-void ImplicitTransportSolver::applySlopeLimiter(std::shared_ptr<GraphStorage> graph, std::shared_ptr<DofMap> dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t ){
+void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t) {
 
-  for (const auto &e_id : graph->get_active_edge_ids(mpi::rank(d_comm))) {
-    const auto macro_edge = graph->get_edge(e_id);
+  for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
+    const auto macro_edge = d_graph->get_edge(e_id);
 
-    const auto &local_dof_map = dof_map->get_local_dof_map(*macro_edge);
+    const auto &local_dof_map = d_dof_map->get_local_dof_map(*macro_edge);
     const auto &param = macro_edge->get_physical_data();
-    
-    std::vector<std::size_t> dof_indices(local_dof_map.num_basis_functions());    
+
+    std::vector<std::size_t> dof_indices(local_dof_map.num_basis_functions());
     std::vector<std::size_t> dof_indices_left(local_dof_map.num_basis_functions());
     std::vector<std::size_t> dof_indices_right(local_dof_map.num_basis_functions());
-      
+
     for (size_t micro_vertex_id = 0; micro_vertex_id < macro_edge->num_micro_vertices(); micro_vertex_id += 1) {
-    
+
       auto edge_id = micro_vertex_id;
-      
-      local_dof_map.dof_indices(edge_id, 0, dof_indices); 
+
+      local_dof_map.dof_indices(edge_id, 0, dof_indices);
       std::vector<double> dof_edge(local_dof_map.num_basis_functions());
       extract_dof(dof_indices, *u, dof_edge);
-	     	
-      if( micro_vertex_id == 0 ){                  
-          auto &vertex = *graph->get_vertex( macro_edge->get_vertex_neighbors()[0] );  
-          
-          if( !vertex.is_leaf() )
-            continue;
-          
-          std::vector<double> A_up( vertex.get_edge_neighbors().size() );
-          std::vector<double> Q_up( vertex.get_edge_neighbors().size() );
-          upwind_provider->get_upwinded_values( t, vertex, A_up, Q_up);
-          
-          auto right_edge_id = micro_vertex_id + 1;        
-          local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);        
-          std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());
-          extract_dof(dof_indices_right, *u, dof_right_edge); 
-          
-	  for( int j=dof_indices.size()-1;j>0;j--){
-	    double gamma = 1.0/(2.0*( 2.0*(double) j -1.0 ));
-	    double diff_left  = 0.0;
-	    
-	    if( j==1 )
-	        diff_left = gamma * ( dof_edge[ j-1 ] - 1.0*A_up[0] );
-	    else
-	        diff_left = gamma * ( dof_edge[ j-1 ] - 0.0 );
-	    
-	     
-	    double diff_right = gamma * ( dof_right_edge[ j-1 ] - dof_edge[ j-1 ] ); 
-	    double dof_central = dof_edge[ j ];
-	    double new_dof = 0.0;
 
-	    if( dof_central > 0.0 && diff_left > 0.0  && diff_right > 0.0 ){          
-		new_dof = std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) ); 
-  	    }
-		  
-	    if( dof_central < 0.0 && diff_left < 0.0  && diff_right < 0.0 ){          
-		new_dof = -std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) );        
-	    }
-	    
-	    if( std::abs( dof_central-new_dof )>1.0e-10 ) 
-	    	 u->set(dof_indices[j],new_dof); 
-	    else
-	         break; 
-          } 
-             
-      }
-      else if( micro_vertex_id == macro_edge->num_micro_vertices() - 1 ){    
-      
-          auto left_edge_id  = micro_vertex_id - 1;        
-          local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);        
-          std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
-          extract_dof(dof_indices_left, *u, dof_left_edge);                     
+      if (micro_vertex_id == 0) {
+        auto &vertex = *d_graph->get_vertex(macro_edge->get_vertex_neighbors()[0]);
 
-          for(int j=dof_indices.size()-1;j>0;j--){	      
-	      double gamma = 1.0/(2.0*( 2.0*(double) j -1.0 ));
-	      double diff_left  = gamma * ( dof_edge[ j-1 ] - dof_left_edge[ j-1 ] ); 
-	      double diff_right = gamma * ( 0.0 - dof_edge[ j-1 ] ); 
-	      double dof_central = dof_edge[ j ];
-	      double new_dof = 0.0;
+        if (!vertex.is_leaf())
+          continue;
 
-	      if( dof_central > 0.0 && diff_left > 0.0  && diff_right > 0.0 ){          
-		  new_dof = std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) ); 
-  	      }
-		  
-	      if( dof_central < 0.0 && diff_left < 0.0  && diff_right < 0.0 ){          
-		new_dof = -std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) );        
-	      }
-	    
-	    if( std::abs( dof_central-new_dof )>1.0e-10 ) 
-	    	 u->set(dof_indices[j],new_dof);  
-	    else
-	         break; 		         
-          }        
-      
-      }
-      else{ 
+        std::vector<double> A_up(vertex.get_edge_neighbors().size());
+        std::vector<double> Q_up(vertex.get_edge_neighbors().size());
+        upwind_provider->get_upwinded_values(t, vertex, A_up, Q_up);
 
-        auto left_edge_id  = micro_vertex_id - 1;
         auto right_edge_id = micro_vertex_id + 1;
-      
-	local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
-	local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
-	     
-	std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
-	std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());  
-	
-	extract_dof(dof_indices_left, *u, dof_left_edge);
-	extract_dof(dof_indices_right, *u, dof_right_edge);      
-	      
-	for(int j=dof_indices.size()-1;j>0;j--){	      
-	    double gamma = 1.0/(2.0*( 2.0*(double) j -1.0 ));
-	    double diff_left  = gamma * ( dof_edge[ j-1 ] - dof_left_edge[ j-1 ] ); 
-	    double diff_right = gamma * ( dof_right_edge[ j-1 ] - dof_edge[ j-1 ] ); 
-	    double dof_central = dof_edge[ j ];
-	    double new_dof = 0.0;
+        local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
+        std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());
+        extract_dof(dof_indices_right, *u, dof_right_edge);
 
-	    if( dof_central > 0.0 && diff_left > 0.0  && diff_right > 0.0 ){          
-		new_dof = std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) ); 
-  	    }
-		  
-	    if( dof_central < 0.0 && diff_left < 0.0  && diff_right < 0.0 ){          
-		new_dof = -std::min( std::min( std::abs( dof_central), std::abs( diff_left ) ), std::abs( diff_right ) );        
-	    }
-	    
-	    if( std::abs( dof_central-new_dof )>1.0e-10 ) 
-	    	 u->set(dof_indices[j],new_dof);
-	    else
-	         break;  	 		         
-        } 	      
-      }  
-    }      
+        for (int j = dof_indices.size() - 1; j > 0; j--) {
+          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
+          double diff_left = 0.0;
+
+          if (j == 1)
+            diff_left = gamma * (dof_edge[j - 1] - 1.0 * A_up[0]);
+          else
+            diff_left = gamma * (dof_edge[j - 1] - 0.0);
+
+
+          double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
+          double dof_central = dof_edge[j];
+          double new_dof = 0.0;
+
+          if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
+            new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+          }
+
+          if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
+            new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+          }
+
+          if (std::abs(dof_central - new_dof) > 1.0e-10)
+            u->set(dof_indices[j], new_dof);
+          else
+            break;
+        }
+
+      } else if (micro_vertex_id == macro_edge->num_micro_vertices() - 1) {
+
+        auto left_edge_id = micro_vertex_id - 1;
+        local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
+        std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
+        extract_dof(dof_indices_left, *u, dof_left_edge);
+
+        for (int j = dof_indices.size() - 1; j > 0; j--) {
+          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
+          double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
+          double diff_right = gamma * (0.0 - dof_edge[j - 1]);
+          double dof_central = dof_edge[j];
+          double new_dof = 0.0;
+
+          if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
+            new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+          }
+
+          if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
+            new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+          }
+
+          if (std::abs(dof_central - new_dof) > 1.0e-10)
+            u->set(dof_indices[j], new_dof);
+          else
+            break;
+        }
+
+      } else {
+
+        auto left_edge_id = micro_vertex_id - 1;
+        auto right_edge_id = micro_vertex_id + 1;
+
+        local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
+        local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
+
+        std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
+        std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());
+
+        extract_dof(dof_indices_left, *u, dof_left_edge);
+        extract_dof(dof_indices_right, *u, dof_right_edge);
+
+        for (int j = dof_indices.size() - 1; j > 0; j--) {
+          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
+          double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
+          double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
+          double dof_central = dof_edge[j];
+          double new_dof = 0.0;
+
+          if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
+            new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+          }
+
+          if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
+            new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+          }
+
+          if (std::abs(dof_central - new_dof) > 1.0e-10)
+            u->set(dof_indices[j], new_dof);
+          else
+            break;
+        }
+      }
+    }
   }
-
 }
 
 namespace implicit_transport {
@@ -629,6 +1001,8 @@ void additively_assemble_rhs_inflow(MPI_Comm comm,
       // L^{-1} * tau * q_in(t) * phi_j(-1) = L^{-1} * tau * q_in(t) * (-1)^{j}
       rhs_values[j] = tau * (-sigma * v_up * c_in) * std::pow(sigma, j);
     }
+
+    // std::cout << v_up << " " << rhs_values << " " << dof_indices << std::endl;
 
     rhs.add(dof_indices, rhs_values);
   }

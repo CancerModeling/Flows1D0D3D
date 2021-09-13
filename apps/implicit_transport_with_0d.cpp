@@ -27,11 +27,26 @@
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/right_hand_side_evaluator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/petsc/petsc_mat.hpp"
 
 namespace mc = macrocirculation;
 
 constexpr std::size_t degree = 2;
+
+template <typename SolverType>
+void output_tip_values (const mc::GraphStorage& graph, const mc::DofMap & dof_map, const SolverType& solver){
+  for (const auto &v_id : graph.get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
+    auto &vertex = *graph.get_vertex(v_id);
+    auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
+    if (vertex.is_windkessel_outflow()) {
+      auto &vertex_dof_indices = dof_map.get_local_dof_map(vertex).dof_indices();
+
+      std::vector<double> vertex_values(vertex_dof_indices.size());
+      extract_dof(vertex_dof_indices, solver.get_solution(), vertex_values);
+
+      std::cout << "vertex id = " << vertex.get_id() << " has c = " << vertex_values << std::endl;
+    }
+  }
+}
 
 void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_end, std::shared_ptr<mc::GraphStorage> graph) {
   const std::size_t max_iter = 1600000;
@@ -50,10 +65,15 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
   flow_solver->setup(tau);
 
   auto upwind_evaluator = std::make_shared<mc::LinearizedFlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
-  // auto variable_upwind_provider = std::make_shared<mc::UpwindProviderLinearizedFlow>(graph, upwind_evaluator, flow_solver);
-  auto variable_upwind_provider = std::make_shared<mc::ConstantUpwindProvider>(100.);
+  auto variable_upwind_provider = std::make_shared<mc::UpwindProviderLinearizedFlow>(graph, upwind_evaluator, flow_solver);
 
   mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
+
+  transport_solver.set_inflow_function([](double t) -> double{
+    if (t < 1.5)
+      return 1.;
+    return 0.;
+  });
 
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "transport_solution");
 
@@ -92,6 +112,8 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
       pvd_writer.add_vertex_data("A", vessel_A0);
       pvd_writer.add_vertex_data("v", v_vertex_values);
       pvd_writer.write(t);
+
+      output_tip_values(*graph, *dof_map_transport, transport_solver);
     }
 
     // break
@@ -111,7 +133,12 @@ void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_
 
   // configure solver
   auto dof_map_transport = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
-  dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, true);
+
+  dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, 0, true, [](const mc::Vertex& v) -> size_t{
+    if (v.is_windkessel_outflow())
+      return 1;
+    return 0;
+  });
 
   auto dof_map_flow = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
   dof_map_flow->create(MPI_COMM_WORLD, *graph, 2, degree, false);
@@ -121,12 +148,14 @@ void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_
 
   auto upwind_evaluator = std::make_shared<mc::NonlinearFlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
   auto variable_upwind_provider = std::make_shared<mc::UpwindProviderNonlinearFlow>(upwind_evaluator, flow_solver);
-  // auto variable_upwind_provider = std::make_shared<mc::ConstantUpwindProvider>(5.);
-  // auto variable_upwind_provider = std::make_shared<mc::EmbeddedUpwindProvider>(graph, [](double t, const mc::Point& p){
-  //   return /* std::cos( 1 * M_PI * p.x ) */ std::abs(std::cos( M_PI * t / 4. ));
-  // });
 
   mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
+
+  transport_solver.set_inflow_function([](double t) -> double{
+    if (t < 1.5)
+      return 1.;
+    return 0.;
+  });
 
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "transport_solution");
 
@@ -161,6 +190,8 @@ void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_
       pvd_writer.add_vertex_data("A", A_vertex_values);
       pvd_writer.add_vertex_data("v", v_vertex_values);
       pvd_writer.write(t);
+
+      output_tip_values(*graph, *dof_map_transport, transport_solver);
     }
 
     // break
@@ -178,12 +209,9 @@ int main(int argc, char *argv[]) {
 
   cxxopts::Options options(argv[0], "Implicit transport solver.");
   options.add_options()                                                                                                              //
-    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                //
+    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 8.)))                //
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                                    //
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("6"))                                      //
-    ("no-upper-vessel", "Disables the upper vessel at the bifurcation", cxxopts::value<bool>()->default_value("false"))              //
-    ("no-lower-vessel", "Disables the lower vessel at the bifurcation", cxxopts::value<bool>()->default_value("false"))              //
-    ("explicit-flow", "Enables an explicit flow solver instead of the implicit one", cxxopts::value<bool>()->default_value("false")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
 
@@ -198,14 +226,11 @@ int main(int argc, char *argv[]) {
   const double tau_out = args["tau-out"].as<double>();
   const double t_end = args["t-end"].as<double>();
 
-  const bool no_lower_vessel = args["no-lower-vessel"].as<bool>();
-  const bool no_upper_vessel = args["no-upper-vessel"].as<bool>();
-
   const std::size_t num_micro_edges = 40;
 
   // vessel parameters
   //const double vessel_length = 20.5;
-  const double vessel_length = 10.5;
+  const double vessel_length = 10.;
   const double radius = 0.403;
   const double wall_thickness = 0.067;
   const double elastic_modulus = 400000.0;
@@ -218,47 +243,21 @@ int main(int argc, char *argv[]) {
   auto graph = std::make_shared<mc::GraphStorage>();
   auto v0 = graph->create_vertex();
   auto v1 = graph->create_vertex();
-  auto v2 = graph->create_vertex();
 
   auto edge_0 = graph->connect(*v0, *v1, num_micro_edges);
-  edge_0->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
+  edge_0->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1., 0, 0)}});
   edge_0->add_physical_data(physical_data_short);
 
-  auto edge_1 = graph->connect(*v1, *v2, num_micro_edges);
-  edge_1->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1., 0, 0)}});
-  edge_1->add_physical_data(physical_data_long);
-
-  if (!no_upper_vessel) {
-    auto v3 = graph->create_vertex();
-    auto edge_2 = graph->connect(*v3, *v1, num_micro_edges);
-    edge_2->add_embedding_data({{mc::Point(0.5, 0.5, 0), mc::Point(0.5, 0, 0)}});
-    edge_2->add_physical_data(physical_data_long);
-    v3->set_to_free_outflow();
-  }
-
-  if (!no_lower_vessel) {
-    auto v4 = graph->create_vertex();
-    auto edge_3 = graph->connect(*v4, *v1, num_micro_edges);
-    edge_3->add_embedding_data({{mc::Point(0.5, -0.5, 0), mc::Point(0.5, 0.0, 0)}});
-    edge_3->add_physical_data(physical_data_long);
-    v4->set_to_free_outflow();
-  }
-
   v0->set_to_inflow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
-  v2->set_to_free_outflow();
+  v1->set_to_windkessel_outflow(18000., 3870);
 
   graph->finalize_bcs();
 
   // partition graph
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
-  const bool explicit_flow = args["explicit-flow"].as<bool>();
-
-  if (explicit_flow) {
-    implicit_transport_with_explicit_flow(tau, tau_out, t_end, graph);
-  } else {
-    implicit_transport_with_implicit_flow(tau, tau_out, t_end, graph);
-  }
+  //implicit_transport_with_explicit_flow(tau, tau_out, t_end, graph);
+  implicit_transport_with_implicit_flow(tau, tau_out, t_end, graph);
 
   CHKERRQ(PetscFinalize());
 }

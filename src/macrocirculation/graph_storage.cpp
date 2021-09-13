@@ -413,6 +413,14 @@ const MicroVertex &Edge::right_micro_vertex() const {
   return d_micro_vertices.back();
 }
 
+std::size_t Edge::get_adajcent_micro_edge_id(const Vertex& vertex) const
+{
+  if (vertex.get_id() != get_vertex_neighbors()[0] && vertex.get_id() != get_vertex_neighbors()[1])
+    throw std::runtime_error("Edge::get_adjacent_micro_edge_id: edge is not adjacent to given vertex");
+
+  return is_pointing_to(vertex.get_id()) ? num_micro_edges() - 1 : 0;
+}
+
 GraphStorage::GraphStorage()
     : p_next_edge_id(0),
       p_next_vertex_id(0),
@@ -518,6 +526,17 @@ std::vector<std::size_t> GraphStorage::get_active_vertex_ids(int rank) const {
   return active_vertex_ids;
 }
 
+std::vector<std::size_t> GraphStorage::get_active_and_connected_vertex_ids(int rank) const {
+  std::vector<std::size_t> active_vertex_ids;
+  for (const auto &v_it : p_vertices) {
+    auto vertex = v_it.second;
+
+    if (vertex_is_neighbor_of_rank(*vertex, rank) || vertex_is_connected_to_rank(*vertex, rank))
+      active_vertex_ids.push_back(vertex->get_id());
+  }
+  return active_vertex_ids;
+}
+
 bool GraphStorage::edge_is_neighbor_of_rank(const Edge &e, int rank) const {
   for (auto v_id : e.get_vertex_neighbors()) {
     auto vertex = get_vertex(v_id);
@@ -528,18 +547,24 @@ bool GraphStorage::edge_is_neighbor_of_rank(const Edge &e, int rank) const {
   return false;
 }
 
+bool GraphStorage::vertex_is_connected_to_rank(const Vertex &vertex, int rank) const {
+  for (auto& con: vertex.get_inter_graph_connections() )
+  {
+    auto& connected_graph = con.get_graph();
+    auto& connected_vertex = con.get_vertex();
+
+    if ( connected_graph.vertex_is_neighbor_of_rank(connected_vertex, rank) )
+      return true;
+  }
+  return false;
+}
+
 bool GraphStorage::edge_is_connected_to_rank(const Edge &e, int rank) const {
   for (auto v_id : e.get_vertex_neighbors()) {
     auto vertex = get_vertex(v_id);
 
-    for (auto& con: vertex->get_inter_graph_connections() )
-    {
-      auto& connected_graph = con.get_graph();
-      auto& connected_vertex = con.get_vertex();
-
-      if ( connected_graph.vertex_is_neighbor_of_rank(connected_vertex, rank) )
-        return true;
-    }
+    if (vertex_is_connected_to_rank(*vertex, rank))
+      return true;
   }
   return false;
 }
@@ -620,6 +645,10 @@ void GraphStorage::finalize_bcs() {
     auto &vertex = *it.second;
     vertex.finalize_bcs();
   }
+}
+
+bool GraphStorage::owns_primitive(const Vertex & vertex, size_t rank) const{
+  return vertex_is_neighbor_of_rank(vertex, rank);
 }
 
 } // namespace macrocirculation

@@ -14,6 +14,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <cmath>
 
 namespace macrocirculation {
 
@@ -27,6 +28,10 @@ struct Point {
   Point(double x, double y, double z);
 
   double x, y, z;
+
+  static double distance(const Point& a, const Point& b) {
+    return std::sqrt(std::pow(a.x-b.x, 2) + std::pow(a.y-b.y, 2) + std::pow(a.z-b.z, 2));
+  }
 };
 
 Point convex_combination(const Point &left, const Point &right, double theta);
@@ -351,6 +356,8 @@ public:
   void add_discretization_data(const DiscretizationData &data);
   void add_embedding_data(const EmbeddingData &data);
 
+  std::size_t get_adajcent_micro_edge_id(const Vertex& vertex) const;
+
   bool has_physical_data() const;
   bool has_discretization_data() const;
   bool has_embedding_data() const;
@@ -440,6 +447,10 @@ public:
   /*! @brief Returns all the vertex ids, which he on active neighbor edge. */
   std::vector<std::size_t> get_active_vertex_ids(int rank) const;
 
+  std::vector<std::size_t> get_active_and_connected_vertex_ids(int rank) const;
+
+  bool owns_primitive(const Vertex & vertex, size_t rank) const;
+
   void assign_edge_to_rank(Edge &edge, int rank);
 
   std::vector<std::shared_ptr<Vertex>> find_embedded_vertices(const Point &p) const;
@@ -469,6 +480,9 @@ private:
 
   /*! @brief Returns true if the given edge has a neighbor edge on a connected graph, which is assigned to the given rank. */
   bool edge_is_connected_to_rank(const Edge &e, int rank) const;
+
+  /*! @brief Returns true if the given vertex is to connected to another graph with an edge assigned to the given rank. */
+  bool vertex_is_connected_to_rank(const Vertex &vertex, int rank) const;
 
   std::map<std::size_t, std::shared_ptr<Edge>> p_edges;
   std::map<std::size_t, std::shared_ptr<Vertex>> p_vertices;

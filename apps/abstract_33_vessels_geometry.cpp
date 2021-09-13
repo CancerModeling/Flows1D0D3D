@@ -32,20 +32,37 @@ namespace mc = macrocirculation;
 
 constexpr std::size_t degree = 2;
 
+template<typename SolverType>
+void output_tip_values(const mc::GraphStorage &graph, const mc::DofMap &dof_map, const SolverType &solver) {
+  for (const auto &v_id : graph.get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
+    auto &vertex = *graph.get_vertex(v_id);
+    auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
+    if (vertex.is_windkessel_outflow()) {
+      auto &vertex_dof_indices = dof_map.get_local_dof_map(vertex).dof_indices();
+
+      std::vector<double> vertex_values(vertex_dof_indices.size());
+      extract_dof(vertex_dof_indices, solver.get_solution(), vertex_values);
+
+      std::cout << "vertex id = " << vertex.get_id() << " has c = " << vertex_values << std::endl;
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
 
   {
     cxxopts::Options options(argv[0], "Abstract 33 vessel geometry");
-    options.add_options()                                                                                                             //
-      ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/meshes/network-33-vessels.json")) //
-      ("boundary-file", "path to the file for the boundary conditions", cxxopts::value<std::string>()->default_value(""))             //
-      ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))                     //
-      ("inlet-name", "the name of the inlet", cxxopts::value<std::string>()->default_value("cw_in"))                                  //
-      ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                           //
-      ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-6)))                                //
-      ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-4"))                                   //
-      ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("5"))                                               //
+    options.add_options()                                                                                                                                           //
+      ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/meshes/network-33-vessels.json"))                               //
+      ("boundary-file", "path to the file for the boundary conditions", cxxopts::value<std::string>()->default_value(""))                                           //
+      ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))                                                   //
+      ("inlet-name", "the name of the inlet", cxxopts::value<std::string>()->default_value("cw_in"))                                                                //
+      ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                                                         //
+      ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                                                              //
+      ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-4"))                                                                 //
+      ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("5"))                                                                             //
+      ("update-interval-transport", "transport is only updated every nth flow step, where n is the update-interval?", cxxopts::value<size_t>()->default_value("5")) //
       ("h,help", "print usage");
     options.allow_unrecognised_options(); // for petsc
     auto args = options.parse(argc, argv);
@@ -102,7 +119,12 @@ int main(int argc, char *argv[]) {
     // auto transport_solver = std::make_shared<mc::ExplicitTransportSolver>(MPI_COMM_WORLD, graph, dof_map_flow, dof_map_transport);
 
     auto dof_map_transport = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
-    dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, true);
+    dof_map_transport->create(MPI_COMM_WORLD, *graph, 1, degree, 0, true, [](const mc::Vertex &v) {
+      if (v.is_windkessel_outflow())
+        return 1;
+      return 0;
+    });
+
     auto upwind_evaluator = std::make_shared<mc::NonlinearFlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
     auto variable_upwind_provider = std::make_shared<mc::UpwindProviderNonlinearFlow>(upwind_evaluator, flow_solver);
     auto transport_solver = std::make_shared<mc::ImplicitTransportSolver>(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
@@ -150,19 +172,24 @@ int main(int argc, char *argv[]) {
     const auto begin_t = std::chrono::steady_clock::now();
     double t = 0;
     double t_transport = 0.0;
-    
+
+    const size_t update_interval_transport = args["update-interval-transport"].as<size_t>();
+    if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
+      std::cout << "updating transport every " << update_interval_transport << " interval" << std::endl;
+
     for (std::size_t it = 0; it < max_iter; it += 1) {
       flow_solver->solve(tau, t);
-      if( it%5 == 0 ){
-        std::cout << "t_transport = " << t_transport << std::endl;
-        variable_upwind_provider->init(t_transport + 5.0*tau, flow_solver->get_solution()); 
-        transport_solver->solve(5.0*tau, t_transport + 5.0*tau);
-        transport_solver->applySlopeLimiter(t_transport + 5.0*tau);
-        t_transport += 5.0*tau;
-      }
-      
       t += tau;
-      
+      if (it % update_interval_transport == 0) {
+        // std::cout << "t_transport = " << t_transport << std::endl;
+        variable_upwind_provider->init(t_transport + update_interval_transport * tau, flow_solver->get_solution());
+        transport_solver->solve(update_interval_transport * tau, t_transport + update_interval_transport * tau);
+        // transport_solver->apply_slope_limiter(t_transport + update_interval_transport * tau);
+        t_transport += update_interval_transport * tau;
+      }
+
+      assert(std::abs(t - t_transport) < 1e-12);
+
       if (it % output_interval == 0) {
         std::cout << "iter = " << it << ", t = " << t << std::endl;
 
@@ -185,6 +212,8 @@ int main(int argc, char *argv[]) {
         pvd_writer.add_vertex_data("c", c_vertex_values);
         pvd_writer.add_vertex_data("vessel_id", vessel_ids);
         pvd_writer.write(t);
+
+        output_tip_values(*graph, *dof_map_transport, *transport_solver);
 
         for (auto &v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
           auto &vertex = *graph->get_vertex(v_id);

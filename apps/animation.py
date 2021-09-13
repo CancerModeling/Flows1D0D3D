@@ -96,7 +96,7 @@ for dset_index in range(len(data_sets)):
 fig.suptitle('t={}'.format(times[start_index+t_index]))
 
 for ax_id, vid in enumerate(args.vessels):
-    axes[0,vid].set_title('vessel {}'.format(vid))
+    axes[0,ax_id].set_title('vessel {}'.format(vid))
 
 def animate(i):
     t_index = i % len(times[start_index:])

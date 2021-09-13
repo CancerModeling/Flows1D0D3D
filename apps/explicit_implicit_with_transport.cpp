@@ -35,16 +35,17 @@ namespace mc = macrocirculation;
 
 int main(int argc, char *argv[]) {
   const std::size_t degree = 2;
-  const std::size_t num_micro_edges = 10;
+  const std::size_t num_micro_edges = 20;
 
   // initialize petsc
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
 
   {
-    std::cout << "rank = " << mc::mpi::rank(PETSC_COMM_WORLD) << std::endl;
+    std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << std::endl;
 
-    const double tau = 2.5e-4 / 32.;
-    const double t_end = 3.;
+    const double tau = 2.5e-4 / 16.;
+    // const double t_end = 2.5e-4 / 16 * 100;
+    const double t_end = 4;
     const double tau_out = 1e-2;
 
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
@@ -71,13 +72,11 @@ int main(int argc, char *argv[]) {
     auto v2_nl = graph_nl->create_vertex();
 
     auto edge_0_nl = graph_nl->connect(*v0_nl, *v1_nl, num_micro_edges);
-    // auto edge_1_nl = graph_nl->connect(*v1_nl, *v2_nl, num_micro_edges);
-    auto edge_1_nl = graph_nl->connect(*v2_nl, *v1_nl, num_micro_edges);
+    auto edge_1_nl = graph_nl->connect(*v1_nl, *v2_nl, num_micro_edges);
 
     edge_0_nl->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
     edge_0_nl->add_physical_data(physical_data_1);
-    // edge_1_nl->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1, 0, 0)}});
-    edge_1_nl->add_embedding_data({{mc::Point(1.0, 0, 0), mc::Point(0.5, 0, 0)}});
+    edge_1_nl->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1, 0, 0)}});
     edge_1_nl->add_physical_data(physical_data_1);
 
     auto graph_li = std::make_shared<mc::GraphStorage>();
@@ -87,13 +86,11 @@ int main(int argc, char *argv[]) {
     auto v2_li = graph_li->create_vertex();
 
     auto edge_0_li = graph_li->connect(*v0_li, *v1_li, num_micro_edges);
-    // auto edge_1_li = graph_li->connect(*v1_li, *v2_li, num_micro_edges);
-    auto edge_1_li = graph_li->connect(*v2_li, *v1_li, num_micro_edges);
+    auto edge_1_li = graph_li->connect(*v1_li, *v2_li, num_micro_edges);
 
     edge_0_li->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1.5, 0, 0)}});
     edge_0_li->add_physical_data(physical_data_2);
-    //edge_1_li->add_embedding_data({{mc::Point(1.5, 0, 0), mc::Point(2, 0, 0)}});
-    edge_1_li->add_embedding_data({{mc::Point(2, 0, 0), mc::Point(1.5, 0, 0)}});
+    edge_1_li->add_embedding_data({{mc::Point(1.5, 0, 0), mc::Point(2, 0, 0)}});
     edge_1_li->add_physical_data(physical_data_2);
 
     v0_nl->set_to_inflow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
@@ -104,13 +101,13 @@ int main(int argc, char *argv[]) {
 
     //v2_li->set_to_windkessel_outflow(1.8, 0.387);
     // v2_li->set_to_free_outflow();
-    v2_li->set_to_windkessel_outflow(18, 387);
+    v2_li->set_to_windkessel_outflow(1.8, 3870);
 
     // v2_li->set_name("windkessel_outflow");
     // mc::set_0d_tree_boundary_conditions(graph_li, "windkessel_outflow");
 
-    mc::naive_mesh_partitioner(*graph_li, PETSC_COMM_WORLD);
-    mc::naive_mesh_partitioner(*graph_nl, PETSC_COMM_WORLD);
+    mc::naive_mesh_partitioner(*graph_li, MPI_COMM_WORLD);
+    mc::naive_mesh_partitioner(*graph_nl, MPI_COMM_WORLD);
 
     auto coupling = std::make_shared<mc::NonlinearLinearCoupling>(MPI_COMM_WORLD, graph_nl, graph_li);
     coupling->add_coupled_vertices("nl_out", "li_in");
@@ -122,9 +119,48 @@ int main(int argc, char *argv[]) {
     auto dof_map_li = solver.get_implicit_dof_map();
 
     auto dof_map_transport_nl = std::make_shared<mc::DofMap>(*graph_nl);
-    dof_map_transport_nl->create(PETSC_COMM_WORLD, *graph_nl, 1, degree, 0, true);
     auto dof_map_transport_li = std::make_shared<mc::DofMap>(*graph_li);
-    dof_map_transport_li->create(PETSC_COMM_WORLD, *graph_li, 1, degree, dof_map_transport_nl->last_global_dof() + 1, true);
+    mc::DofMap::create(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, 1, degree,  [](const mc::GraphStorage&, const mc::Vertex &v) { return 0; });
+
+    std::cout << mc::mpi::rank(MPI_COMM_WORLD) << " last global dof " << dof_map_transport_nl->last_global_dof() << std::endl;
+    for (auto eid : graph_nl->get_edge_ids()) {
+      auto edge = graph_nl->get_edge(eid);
+      auto ldof_map = dof_map_transport_nl->get_local_dof_map(*edge);
+      std::vector<size_t> dof_indices(ldof_map.num_basis_functions());
+      for (size_t meid = 0; meid < edge->num_micro_edges(); meid += 1) {
+        ldof_map.dof_indices(meid, 0, dof_indices);
+        std::cout << "[" << mc::mpi::rank(MPI_COMM_WORLD) << "] nonlinear "
+                  << "macro-edge = " << eid << ", micro-edge = " << meid << ", dof-indices " << dof_indices << std::endl;
+      }
+    }
+    for (auto vid : graph_nl->get_vertex_ids()) {
+      auto vertex = graph_nl->get_vertex(vid);
+      if (!vertex->is_leaf())
+        continue;
+      auto ldof_map = dof_map_transport_nl->get_local_dof_map(*vertex);
+      std::cout << "[" << mc::mpi::rank(MPI_COMM_WORLD) << "] nonlinear "
+                  << "macro-vertex= " << vid << ", dof-indices " << ldof_map.dof_indices() << std::endl;
+    }
+
+    std::cout << mc::mpi::rank(MPI_COMM_WORLD) << " last global dof " << dof_map_transport_li->last_global_dof() << std::endl;
+    for (auto eid : graph_li->get_edge_ids()) {
+      auto edge = graph_li->get_edge(eid);
+      auto ldof_map = dof_map_transport_li->get_local_dof_map(*edge);
+      std::vector<size_t> dof_indices(ldof_map.num_basis_functions());
+      for (size_t meid = 0; meid < edge->num_micro_edges(); meid += 1) {
+        ldof_map.dof_indices(meid, 0, dof_indices);
+        std::cout << "[" << mc::mpi::rank(MPI_COMM_WORLD) << "] linear "
+                  << "macro-edge = " << eid << ", micro-edge = " << meid << ", dof-indices " << dof_indices << std::endl;
+      }
+    }
+    for (auto vid : graph_li->get_vertex_ids()) {
+      auto vertex = graph_li->get_vertex(vid);
+      if (!vertex->is_leaf())
+        continue;
+      auto ldof_map = dof_map_transport_li->get_local_dof_map(*vertex);
+      std::cout << "[" << mc::mpi::rank(MPI_COMM_WORLD) << "] linear "
+                << "macro-vertex= " << vid << ", dof-indices " << ldof_map.dof_indices() << std::endl;
+    }
 
     auto upwind_evaluator_nl = std::make_shared<mc::NonlinearFlowUpwindEvaluator>(MPI_COMM_WORLD, graph_nl, dof_map_nl);
     auto variable_upwind_provider_nl = std::make_shared<mc::UpwindProviderNonlinearFlow>(upwind_evaluator_nl, solver.get_explicit_solver());
@@ -134,11 +170,13 @@ int main(int argc, char *argv[]) {
 
     mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, {variable_upwind_provider_nl, variable_upwind_provider_li}, degree);
 
+    transport_solver.set_inflow_function([](double t){ return 1.; });
+
     auto solver_nl = solver.get_explicit_solver();
     auto solver_li = solver.get_implicit_solver();
 
-    mc::GraphPVDWriter writer_li(PETSC_COMM_WORLD, "./output", "explicit_implicit_li");
-    mc::GraphPVDWriter writer_nl(PETSC_COMM_WORLD, "./output", "explicit_implicit_nl");
+    mc::GraphPVDWriter writer_li(MPI_COMM_WORLD, "./output", "explicit_implicit_li");
+    mc::GraphPVDWriter writer_nl(MPI_COMM_WORLD, "./output", "explicit_implicit_nl");
 
     std::vector<mc::Point> points;
     std::vector<double> vessel_A0_li;
@@ -154,42 +192,36 @@ int main(int argc, char *argv[]) {
       upwind_evaluator_li->init(t + tau, solver.get_implicit_solver()->get_solution());
       transport_solver.solve(tau, t + tau);
 
-      t += tau;
 
-      if (t_idx == 95478)
-      {
-        std::cout << "it = " << t_idx << " t  = " << t << std::endl;
-        std::cout << transport_solver.get_solution() << std::endl;
-        std::cout << transport_solver.get_mat() << std::endl;
-        std::cout << transport_solver.get_rhs() << std::endl;
-      }
-      if (transport_solver.get_solution().norm2() < 1e-10 && t > 0.1)
-      {
-        std::cout << "it = " << t_idx << " t  = " << t << std::endl;
-        std::cout << transport_solver.get_solution() << std::endl;
-        std::cout << transport_solver.get_mat() << std::endl;
-        std::cout << transport_solver.get_rhs() << std::endl;
-        return 0;
-      }
+      t += tau;
 
       if (t_idx % output_interval == 0) {
         std::cout << "it = " << t_idx << std::endl;
+
+        std::cout << "norm transport solution: " << transport_solver.get_solution().norm2() << std::endl;
+        std::cout << "norm transport rhs: " << transport_solver.get_rhs().norm2() << std::endl;
+
+        // transport_solver.get_solution().print();
+        // transport_solver.get_rhs().print();
+        // transport_solver.get_mat().print();
 
         // linear solver
         {
           std::vector<double> p_vertex_values;
           std::vector<double> q_vertex_values;
           std::vector<double> c_vertex_values;
-          interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_li, solver_li->p_component, solver_li->get_solution(), points, p_vertex_values);
-          interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_li, solver_li->q_component, solver_li->get_solution(), points, q_vertex_values);
-          interpolate_to_vertices(PETSC_COMM_WORLD, *graph_li, *dof_map_transport_li, 0, transport_solver.get_solution(), points, c_vertex_values);
-
+          std::vector<double> v_vertex_values;
+          interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->p_component, solver_li->get_solution(), points, p_vertex_values);
+          interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->q_component, solver_li->get_solution(), points, q_vertex_values);
+          interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_transport_li, 0, transport_solver.get_solution(), points, c_vertex_values);
+          mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *variable_upwind_provider_li, t, points, v_vertex_values);
 
           writer_li.set_points(points);
           writer_li.add_vertex_data("p", p_vertex_values);
           writer_li.add_vertex_data("q", q_vertex_values);
           writer_li.add_vertex_data("c", c_vertex_values);
           writer_li.add_vertex_data("A", vessel_A0_li);
+          writer_li.add_vertex_data("v", v_vertex_values);
           writer_li.write(t);
         }
 
@@ -200,19 +232,23 @@ int main(int argc, char *argv[]) {
           std::vector<double> p_total_vertex_values;
           std::vector<double> p_static_vertex_values;
           std::vector<double> c_vertex_values;
+          std::vector<double> v_vertex_values;
 
           mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl->Q_component, solver_nl->get_solution(), points, Q_vertex_values);
           mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl->A_component, solver_nl->get_solution(), points, A_vertex_values);
-          mc::interpolate_to_vertices(PETSC_COMM_WORLD, *graph_nl, *dof_map_transport_nl, 0, transport_solver.get_solution(), points, c_vertex_values);
+          mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_nl, *dof_map_transport_nl, 0, transport_solver.get_solution(), points, c_vertex_values);
           mc::calculate_total_pressure(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl->get_solution(), points, p_total_vertex_values);
           mc::calculate_static_pressure(MPI_COMM_WORLD, *graph_nl, *dof_map_nl, solver_nl->get_solution(), points, p_static_vertex_values);
+          mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_nl, *variable_upwind_provider_nl, t, points, v_vertex_values);
 
+          // VecView(transport_solver.get_solution().get_vec(), PETSC_VIEWER_STDOUT_WORLD);
           writer_nl.set_points(points);
           writer_nl.add_vertex_data("Q", Q_vertex_values);
           writer_nl.add_vertex_data("A", A_vertex_values);
           writer_nl.add_vertex_data("p_static", p_static_vertex_values);
           writer_nl.add_vertex_data("p_total", p_total_vertex_values);
           writer_nl.add_vertex_data("c", c_vertex_values);
+          writer_nl.add_vertex_data("v", v_vertex_values);
           writer_nl.write(t);
         }
       }

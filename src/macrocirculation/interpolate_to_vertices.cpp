@@ -11,6 +11,7 @@
 #include "dof_map.hpp"
 #include "fe_type.hpp"
 #include "graph_storage.hpp"
+#include "implicit_transport_solver.hpp"
 
 namespace macrocirculation {
 
@@ -84,6 +85,54 @@ void interpolate_to_vertices(const MPI_Comm comm,
       interpolated.push_back(boundary_values.left);
       interpolated.push_back(boundary_values.right);
     }
+  }
+}
+
+void interpolate_to_vertices(MPI_Comm comm,
+                             const GraphStorage &graph,
+                             const UpwindProvider &upwind,
+                             double t,
+                             std::vector<Point> &points,
+                             std::vector<double> &interpolated) {
+  points.clear();
+  interpolated.clear();
+
+  std::vector<std::size_t> dof_indices;
+  std::vector<double> dof_vector_local;
+  std::vector<double> evaluated_at_qps;
+
+  for (auto e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
+    auto edge = graph.get_edge(e_id);
+
+    // we only write out embedded vessel segments
+    if (!edge->has_embedding_data())
+      continue;
+    const auto &embedding = edge->get_embedding_data();
+
+    if (embedding.points.size() == 2 && edge->num_micro_edges() > 1)
+      linear_interpolate_points(embedding.points[0], embedding.points[1], edge->num_micro_edges(), points);
+    else if (embedding.points.size() == edge->num_micro_edges() + 1)
+      add_discontinuous_points(embedding.points, points);
+    else
+      throw std::runtime_error("this type of embedding is not implemented");
+
+    const auto &param = edge->get_physical_data();
+    const double h = param.length / edge->num_micro_edges();
+
+    std::vector< double > upwinded_values_v( edge->num_micro_vertices() );
+
+    upwind.get_upwinded_values(t, *edge, upwinded_values_v );
+
+    interpolated.push_back(upwinded_values_v.front());
+
+    for (size_t k = 1; k <upwinded_values_v.size()-1; k+=1)
+    {
+      interpolated.push_back(upwinded_values_v[k]);
+      interpolated.push_back(upwinded_values_v[k]);
+    }
+
+    interpolated.push_back(upwinded_values_v.back());
+
   }
 }
 

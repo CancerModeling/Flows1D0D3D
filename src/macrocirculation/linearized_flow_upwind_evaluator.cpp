@@ -41,7 +41,7 @@ inline void compute_inner_boundary_values_on_macro_edge(const Edge &edge,
   FETypeNetwork fe(create_trapezoidal_rule(), num_basis_functions - 1);
   fe.reinit(h);
 
-  for (std::size_t micro_edge_id = 0; micro_edge_id < local_dof_map.num_micro_vertices(); micro_edge_id += 1) {
+  for (std::size_t micro_edge_id = 0; micro_edge_id < local_dof_map.num_micro_edges(); micro_edge_id += 1) {
     local_dof_map.dof_indices(micro_edge_id, component_index, dof_indices);
     extract_dof(dof_indices, u, dof_values);
     auto boundary_values = fe.evaluate_dof_at_boundary_points(dof_values);
@@ -148,7 +148,7 @@ void LinearizedFlowUpwindEvaluator::get_fluxes_on_macro_edge_generic(double t, c
 
 template<typename VectorType>
 void LinearizedFlowUpwindEvaluator::calculate_nfurcation_fluxes(const VectorType &u_prev) {
-  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+  for (const auto &v_id : d_graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
     // we only handle bifurcations
@@ -198,7 +198,7 @@ void LinearizedFlowUpwindEvaluator::calculate_nfurcation_fluxes(const VectorType
 
 template<typename VectorType>
 void LinearizedFlowUpwindEvaluator::calculate_inout_fluxes(double t, const VectorType &u_prev) {
-  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+  for (const auto &v_id : d_graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
     // we are only interested in leaves and ignore the rest:

@@ -64,6 +64,8 @@ void NonlinearLinearCoupling::update_linear_solver(const ExplicitNonlinearFlowSo
       double p, q;
       nonlinear_solver.get_1d_pq_values_at_vertex(*v_nl, p, q);
       d_buffer_system.get_send_buffer(receiver) << p << q;
+      // we update our own characteristic inflow:
+      v_li->update_linear_characteristic_inflow(p, q);
     }
   }
 
@@ -100,6 +102,8 @@ void NonlinearLinearCoupling::update_nonlinear_solver(const ImplicitLinearFlowSo
       double p, q;
       linear_solver.get_1d_pq_values_at_vertex(*v_li, p, q);
       d_buffer_system.get_send_buffer(receiver) << p << q;
+      // we update our own nonlinear characteristic inflow:
+      v_nl->update_nonlinear_characteristic_inflow(p, q);
     }
   }
 

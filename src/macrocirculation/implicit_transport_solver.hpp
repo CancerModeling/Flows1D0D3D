@@ -33,6 +33,7 @@ class NonlinearFlowUpwindEvaluator;
 class LinearizedFlowUpwindEvaluator;
 class ExplicitNonlinearFlowSolver;
 class ImplicitLinearFlowSolver;
+class Point;
 
 class UpwindProvider {
 public:
@@ -54,6 +55,8 @@ public:
                                    std::vector<double> &v_qp) const = 0;
 
   virtual void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const = 0;
+
+  virtual void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const = 0;
 };
 
 class ConstantUpwindProvider : public UpwindProvider {
@@ -73,8 +76,35 @@ public:
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
 
+  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override { throw std::runtime_error("not implemented yet"); }
+
 private:
   double d_speed;
+};
+
+class EmbeddedUpwindProvider : public UpwindProvider {
+public:
+  explicit EmbeddedUpwindProvider(std::shared_ptr< GraphStorage > graph, std::function< double(double, const Point&)> field);
+
+  ~EmbeddedUpwindProvider() override;
+
+  void get_values_at_qp(double t,
+                        const Edge &edge,
+                        size_t micro_edge,
+                        const QuadratureFormula &qf,
+                        std::vector<double> &v_qp) const override;
+
+  /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
+  void get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const override;
+
+  void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
+
+  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override { throw std::runtime_error("not implemented yet"); }
+
+private:
+  std::shared_ptr< GraphStorage > d_graph;
+
+  std::function< double(double, const Point&)> d_field;
 };
 
 class UpwindProviderNonlinearFlow : public UpwindProvider {
@@ -96,6 +126,7 @@ public:
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
 
+  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override;
 private:
   std::shared_ptr<NonlinearFlowUpwindEvaluator> d_evaluator;
   std::shared_ptr<ExplicitNonlinearFlowSolver> d_solver;
@@ -121,6 +152,8 @@ public:
   void get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const override;
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
+
+  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override;
 
 private:
   std::shared_ptr<GraphStorage> d_graph;
@@ -155,12 +188,14 @@ public:
 
   const PetscVec &get_solution() const { return *u; }
   
-  void applySlopeLimiter(double t);
+  void apply_slope_limiter(double t);
 
   const PetscMat &get_mat() const { return *A; }
 
   const PetscVec &get_rhs() const { return *rhs; }
-  
+
+  void set_inflow_function(std::function<double(double)> inflow_function);
+
 private:
   /*! @brief Assembles the left-hand-side matrix for the given time step. */
   void assemble_matrix(double tau, double t);
@@ -170,9 +205,15 @@ private:
 
   void assemble_characteristics(double tau, double t);
 
+  void assemble_windkessel_rhs_and_matrix(double tau, double t);
+
+  void assemble_windkessel_rhs_and_matrix(double tau, double t, const GraphStorage& graph, const DofMap& dof_map, const UpwindProvider& upwind_provider, std::vector< std::vector< double > >& vessel_tip_volume);
+
   /*! @brief Assembles the matrix with different upwindings, so that the sparsity pattern does not change,
    *         when the velocity field changes.  */
   void sparsity_pattern();
+
+  void sparsity_pattern_characteristics();
 
 private:
   MPI_Comm d_comm;
@@ -193,6 +234,8 @@ private:
 
   std::shared_ptr<PetscKsp> linear_solver;
 
+  std::vector< std::vector< std::vector< double > > > d_vessel_tip_volume;
+
   // std::function<double(double)> inflow_function = [](double t) { return 0.5*std::sin(M_PI * t); };
   std::function<double(double)> inflow_function = [](double t) {
     const double delta = 0.05;
@@ -202,7 +245,7 @@ private:
       return 1.;
   };
   
-  void applySlopeLimiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t);
+  void apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t);
   
 };
 

@@ -105,6 +105,12 @@ public:
                              ADD_VALUES));
   }
 
+  double norm1() const {
+    double value;
+    CHKERRABORT(PETSC_COMM_WORLD, MatNorm(d_mat, NORM_1, &value));
+    return value;
+  }
+
   void zero() {
     MatZeroEntries(d_mat);
   }
@@ -137,6 +143,10 @@ public:
     CHKERRABORT(PETSC_COMM_WORLD, MatGetValues(d_mat, 1, &ii, 1, &jj, &value));
     return value;
   }
+
+  void print() const {
+    CHKERRABORT(PETSC_COMM_WORLD, MatView(d_mat, PETSC_VIEWER_STDOUT_WORLD));
+    }
 
 private:
   Mat d_mat{};

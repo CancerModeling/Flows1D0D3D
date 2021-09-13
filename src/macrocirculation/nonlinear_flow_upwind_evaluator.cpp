@@ -140,7 +140,7 @@ void NonlinearFlowUpwindEvaluator::get_fluxes_on_nfurcation(double t, const Vert
 }
 
 void NonlinearFlowUpwindEvaluator::calculate_nfurcation_fluxes(const std::vector<double> &u_prev) {
-  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+  for (const auto &v_id : d_graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
     // we only handle bifurcations
@@ -240,7 +240,7 @@ void NonlinearFlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::v
   // TODO: make this more generic for other initial flow values
   const double Q_init = 0;
 
-  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+  for (const auto &v_id : d_graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
     // exterior boundary

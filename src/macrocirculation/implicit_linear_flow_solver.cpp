@@ -173,7 +173,7 @@ double ImplicitLinearFlowSolver::get_C(const Edge &e) {
 
 double ImplicitLinearFlowSolver::get_L(const Edge &e) {
   return linear::get_L(e.get_physical_data());
-}
+};
 
 double ImplicitLinearFlowSolver::get_R(const Edge &e) {
   return linear::get_R(e.get_physical_data());
