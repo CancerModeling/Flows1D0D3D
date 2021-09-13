@@ -7,13 +7,15 @@
 
 #include <chrono>
 #include <cxxopts.hpp>
-#include <macrocirculation/graph_csv_writer.hpp>
-#include <macrocirculation/interpolate_to_vertices.hpp>
 #include <memory>
 #include <utility>
 
 #include "petsc.h"
 
+#include "macrocirculation/graph_csv_writer.hpp"
+#include "macrocirculation/implicit_transport_solver.hpp"
+#include "macrocirculation/interpolate_to_vertices.hpp"
+#include "macrocirculation/nonlinear_flow_upwind_evaluator.hpp"
 #include "macrocirculation/0d_boundary_conditions.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/coupled_explicit_implicit_1d_solver.hpp"
@@ -29,6 +31,10 @@
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/rcr_estimator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
+#include "macrocirculation/linearized_flow_upwind_evaluator.hpp"
+#include "macrocirculation/nonlinear_flow_upwind_evaluator.hpp"
+#include "macrocirculation/petsc/petsc_vec.hpp"
+#include "macrocirculation/petsc/petsc_mat.hpp"
 
 namespace mc = macrocirculation;
 
@@ -41,6 +47,7 @@ int main(int argc, char *argv[]) {
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))    //
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10"))     //
     ("calibration", "starts a calibration run", cxxopts::value<bool>()->default_value("false"))      //
+    ("update-interval-transport", "transport is only updated every nth flow step, where n is the update-interval?", cxxopts::value<size_t>()->default_value("5")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
@@ -130,6 +137,7 @@ int main(int argc, char *argv[]) {
     std::vector<mc::Point> points;
     std::vector<double> p_vertex_values;
     std::vector<double> q_vertex_values;
+    std::vector<double> c_vertex_values;
 
     std::vector<double> vessel_ids_li;
 
@@ -142,27 +150,65 @@ int main(int argc, char *argv[]) {
     auto solver_nl = solver.get_explicit_solver();
     const auto &u_li = solver_li->get_solution();
 
+    // transport dofmap
+    auto dof_map_transport_nl = std::make_shared<mc::DofMap>(*graph_nl);
+    auto dof_map_transport_li = std::make_shared<mc::DofMap>(*graph_li);
+    mc::DofMap::create(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, 1, degree,  [](const mc::GraphStorage&, const mc::Vertex &v) { return 0; });
+
+    // upwind evaluators:
+    auto upwind_evaluator_nl = std::make_shared<mc::NonlinearFlowUpwindEvaluator>(MPI_COMM_WORLD, graph_nl, dof_map_nl);
+    auto variable_upwind_provider_nl = std::make_shared<mc::UpwindProviderNonlinearFlow>(upwind_evaluator_nl, solver.get_explicit_solver());
+
+    // upwind evaluators:
+    auto upwind_evaluator_li = std::make_shared<mc::LinearizedFlowUpwindEvaluator>(MPI_COMM_WORLD, graph_li, dof_map_li);
+    auto variable_upwind_provider_li = std::make_shared<mc::UpwindProviderLinearizedFlow>(graph_li, upwind_evaluator_li, solver.get_implicit_solver());
+
+    mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, {variable_upwind_provider_nl, variable_upwind_provider_li}, degree);
+
     solver_nl->use_ssp_method();
 
     mc::GraphCSVWriter csv_writer_nl(MPI_COMM_WORLD, "output", "combined_geometry_solution_nl", graph_nl);
     csv_writer_nl.add_setup_data(dof_map_nl, solver_nl->A_component, "a");
     csv_writer_nl.add_setup_data(dof_map_nl, solver_nl->Q_component, "q");
+    csv_writer_nl.add_setup_data(dof_map_transport_nl, 0, "c");
     csv_writer_nl.setup();
 
     mc::GraphCSVWriter csv_writer_li(MPI_COMM_WORLD, "output", "combined_geometry_solution_li", graph_li);
     csv_writer_li.add_setup_data(dof_map_li, solver_li->p_component, "p");
     csv_writer_li.add_setup_data(dof_map_li, solver_li->q_component, "q");
+    csv_writer_li.add_setup_data(dof_map_transport_li, 0, "c");
     csv_writer_li.setup();
 
     mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution");
 
     mc::CSVVesselTipWriter vessel_tip_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution_tips", graph_li, dof_map_li);
 
+    const size_t transport_update_interval = args["update-interval-transport"].as<size_t>();
+    if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
+      std::cout << "updating transport every " << transport_update_interval << " interval" << std::endl;
+
     const auto begin_t = std::chrono::steady_clock::now();
     double t = 0;
+    double t_transport = 0;
+
     for (std::size_t it = 0; it < max_iter; it += 1) {
       solver.solve(tau, t);
       t += tau;
+      if (it % transport_update_interval == 0) {
+        upwind_evaluator_nl->init(t_transport + transport_update_interval * tau, solver.get_explicit_solver()->get_solution());
+        upwind_evaluator_li->init(t_transport + transport_update_interval * tau, solver.get_implicit_solver()->get_solution());
+        transport_solver.solve(transport_update_interval * tau, t_transport + transport_update_interval * tau);
+        t_transport += transport_update_interval * tau;
+        // std::cout << "transport sol-norm" << transport_solver.get_solution().norm2() << std::endl;
+        // std::cout << "transport mat-norm" << transport_solver.get_mat().norm1() << std::endl;
+        // std::cout << "transport rhs-norm" << transport_solver.get_rhs().norm2() << std::endl;
+        // if (transport_solver.get_solution().norm2() == INFINITY)
+        // {
+        //  std::cout << "noooo!!" << std::endl;
+        //  exit(1);
+        // }
+        // std::cout << "transport sol " << transport_solver.get_solution() << std::endl;
+      }
 
       if (calibration) {
         flow_integrator_li.update_flow(*solver_li, tau);
@@ -173,22 +219,28 @@ int main(int argc, char *argv[]) {
         if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
           std::cout << "iter = " << it << ", t = " << t << std::endl;
 
+        std::cout << "transport sol-norm" << transport_solver.get_solution().norm2() << std::endl;
+
         // save solution
         csv_writer_nl.add_data("a", solver_nl->get_solution());
         csv_writer_nl.add_data("q", solver_nl->get_solution());
+        csv_writer_nl.add_data("c", transport_solver.get_solution());
         csv_writer_nl.write(t);
 
         csv_writer_li.add_data("p", solver_li->get_solution());
         csv_writer_li.add_data("q", solver_li->get_solution());
+        csv_writer_li.add_data("c", transport_solver.get_solution());
         csv_writer_li.write(t);
 
         mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->p_component, u_li, points, p_vertex_values);
         mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->q_component, u_li, points, q_vertex_values);
+        mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_transport_li, 0, transport_solver.get_solution(), points, c_vertex_values);
 
         pvd_writer.set_points(points);
         pvd_writer.add_vertex_data("p", p_vertex_values);
         pvd_writer.add_vertex_data("q", q_vertex_values);
         pvd_writer.add_vertex_data("vessel_id", vessel_ids_li);
+        pvd_writer.add_vertex_data("c", c_vertex_values);
         pvd_writer.write(t);
 
         vessel_tip_writer.write(t, solver_li->get_solution());
