@@ -144,6 +144,10 @@ public:
     return value;
   }
 
+  void print() const {
+    CHKERRABORT(PETSC_COMM_WORLD, MatView(d_mat, PETSC_VIEWER_STDOUT_WORLD));
+    }
+
 private:
   Mat d_mat{};
 };

@@ -75,13 +75,6 @@ public:
 
   const LocalVertexDofMap &get_local_dof_map(const Vertex &e) const;
 
-  void add_local_dof_map(const Edge &e,
-                         std::size_t num_components,
-                         std::size_t num_basis_functions,
-                         std::size_t num_micro_edges);
-
-  void add_local_dof_map(const Vertex &v, std::size_t num_components);
-
   /*! @brief Creates the dof-map.
    *
    * @param comm    The communicator.
@@ -130,6 +123,13 @@ public:
               bool global,
               const std::function<size_t(const Vertex &)> &num_vertex_dofs);
 
+  static void create(MPI_Comm comm,
+              const std::vector< std::shared_ptr< GraphStorage > > &graphs,
+              const std::vector< std::shared_ptr< DofMap > > &dof_maps,
+              std::size_t num_components,
+              std::size_t degree,
+              const std::function<size_t(const GraphStorage&, const Vertex &)> &num_vertex_dofs);
+
   /*! @brief Returns the first global dof index in this dof map.
    *         If no global distribution is used the first local index (0) is returned. */
   size_t first_global_dof() const;
@@ -151,6 +151,7 @@ public:
   size_t num_owned_dofs() const;
 
 private:
+
   std::vector<std::unique_ptr<LocalEdgeDofMap>> d_local_dof_maps;
 
   std::vector<std::unique_ptr<LocalVertexDofMap>> d_local_vertex_dof_maps;
@@ -160,6 +161,17 @@ private:
 
   size_t d_first_owned_global_dof;
   size_t d_num_owned_dofs;
+
+private:
+  void create(MPI_Comm comm, const std::vector<GraphStorage> &graphs, const std::vector<DofMap> &dof_maps, size_t num_components, size_t degree, bool global, const std::function<size_t(const Vertex &)> &num_vertex_dofs);
+
+  void add_local_dof_map(const Edge &e,
+                         std::size_t num_components,
+                         std::size_t num_basis_functions,
+                         std::size_t num_micro_edges,
+                         std::size_t start_dof);
+
+  void add_local_dof_map(const Vertex &v, std::size_t start_dof, std::size_t num_components);
 };
 
 /*! @brief Copies the dof values in dof_indices from a global vector into a local vector. */

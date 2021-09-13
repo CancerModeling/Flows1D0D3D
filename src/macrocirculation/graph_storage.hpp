@@ -447,6 +447,10 @@ public:
   /*! @brief Returns all the vertex ids, which he on active neighbor edge. */
   std::vector<std::size_t> get_active_vertex_ids(int rank) const;
 
+  std::vector<std::size_t> get_active_and_connected_vertex_ids(int rank) const;
+
+  bool owns_primitive(const Vertex & vertex, size_t rank) const;
+
   void assign_edge_to_rank(Edge &edge, int rank);
 
   std::vector<std::shared_ptr<Vertex>> find_embedded_vertices(const Point &p) const;
@@ -476,6 +480,9 @@ private:
 
   /*! @brief Returns true if the given edge has a neighbor edge on a connected graph, which is assigned to the given rank. */
   bool edge_is_connected_to_rank(const Edge &e, int rank) const;
+
+  /*! @brief Returns true if the given vertex is to connected to another graph with an edge assigned to the given rank. */
+  bool vertex_is_connected_to_rank(const Vertex &vertex, int rank) const;
 
   std::map<std::size_t, std::shared_ptr<Edge>> p_edges;
   std::map<std::size_t, std::shared_ptr<Vertex>> p_vertices;

@@ -148,7 +148,7 @@ void LinearizedFlowUpwindEvaluator::get_fluxes_on_macro_edge_generic(double t, c
 
 template<typename VectorType>
 void LinearizedFlowUpwindEvaluator::calculate_nfurcation_fluxes(const VectorType &u_prev) {
-  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+  for (const auto &v_id : d_graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
     // we only handle bifurcations
@@ -198,7 +198,7 @@ void LinearizedFlowUpwindEvaluator::calculate_nfurcation_fluxes(const VectorType
 
 template<typename VectorType>
 void LinearizedFlowUpwindEvaluator::calculate_inout_fluxes(double t, const VectorType &u_prev) {
-  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+  for (const auto &v_id : d_graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
     // we are only interested in leaves and ignore the rest:

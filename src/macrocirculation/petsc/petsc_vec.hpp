@@ -106,6 +106,10 @@ public:
     return end;
   }
 
+  void print() const {
+    CHKERRABORT(PETSC_COMM_WORLD, VecView(d_vec, PETSC_VIEWER_STDOUT_WORLD));
+  }
+
 private:
   Vec d_vec;
 };

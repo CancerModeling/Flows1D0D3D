@@ -340,7 +340,7 @@ void ImplicitTransportSolver::assemble(double tau, double t) {
   rhs->zero();
   assemble_matrix(tau, t);
   assemble_rhs(tau, t);
-  assemble_windkessel_rhs_and_matrix(tau, t);
+  // assemble_windkessel_rhs_and_matrix(tau, t);
   rhs->assemble();
   A->assemble();
 }
@@ -444,7 +444,7 @@ void ImplicitTransportSolver::sparsity_pattern_characteristics() {
   for (size_t graph_index = 0; graph_index < d_graph.size(); graph_index += 1) {
     auto graph = d_graph[graph_index];
 
-    for (const auto &v_id : graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+    for (const auto &v_id : graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
       auto &vertex = *graph->get_vertex(v_id);
 
       // only vertices which are coupled
@@ -517,7 +517,7 @@ void ImplicitTransportSolver::assemble_characteristics(double tau, double t) {
   for (size_t graph_index = 0; graph_index < d_graph.size(); graph_index += 1) {
     auto graph = d_graph[graph_index];
 
-    for (const auto &v_id : graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+    for (const auto &v_id : graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
       auto &vertex = *graph->get_vertex(v_id);
 
       // only vertices which are coupled
@@ -1001,6 +1001,8 @@ void additively_assemble_rhs_inflow(MPI_Comm comm,
       // L^{-1} * tau * q_in(t) * phi_j(-1) = L^{-1} * tau * q_in(t) * (-1)^{j}
       rhs_values[j] = tau * (-sigma * v_up * c_in) * std::pow(sigma, j);
     }
+
+    // std::cout << v_up << " " << rhs_values << " " << dof_indices << std::endl;
 
     rhs.add(dof_indices, rhs_values);
   }
