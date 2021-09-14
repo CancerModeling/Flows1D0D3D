@@ -56,25 +56,27 @@ axes = fig.subplots(num_rows, len(args.vessels), sharey='row', sharex='col', squ
 for idx, vessel_id in enumerate(args.vessels):
     vessel_info = find_vessel(vessel_id)
 
-    if ('a' in vessel_info['filepaths']):
-        path = os.path.join(directory, vessel_info['filepaths']['a'])
-        print('loading {}'.format(path))
-        a = np.loadtxt(path, delimiter=',')
-        a = a[:]
-        a = a[:, int(a.shape[1]/2)]
-
     path = os.path.join(directory, vessel_info['filepaths']['q'])
     print('loading {}'.format(path))
     q = np.loadtxt(path, delimiter=',')
     q = q[:]
     q = q[:, int(q.shape[1]/2)]
 
+    if ('a' in vessel_info['filepaths']):
+        path = os.path.join(directory, vessel_info['filepaths']['a'])
+        print('loading {}'.format(path))
+        a = np.loadtxt(path, delimiter=',')
+        a = a[:]
+        a = a[:, int(a.shape[1]/2)]
+    else:
+        a = np.ones(q.shape) * vessel_info['A0']
+
     if ('p' in vessel_info['filepaths']):
         path = os.path.join(directory, vessel_info['filepaths']['p'])
         print('loading {}'.format(path))
         p = np.loadtxt(path, delimiter=',') / 1.333332
-        p = q[:]
-        p = q[:, int(q.shape[1]/2)]
+        p = p[:]
+        p = p[:, int(p.shape[1]/2)]
     else:
         p = vessel_info['G0'] * (np.sqrt(a/vessel_info['A0']) - 1) / 1.33332
 
