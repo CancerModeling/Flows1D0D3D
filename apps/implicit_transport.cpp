@@ -201,11 +201,11 @@ int main(int argc, char *argv[]) {
   const bool no_lower_vessel = args["no-lower-vessel"].as<bool>();
   const bool no_upper_vessel = args["no-upper-vessel"].as<bool>();
 
-  const std::size_t num_micro_edges = 40;
+  const std::size_t num_micro_edges = 20;
 
   // vessel parameters
   //const double vessel_length = 20.5;
-  const double vessel_length = 10.5;
+  const double vessel_length = 5.25;
   const double radius = 0.403;
   const double wall_thickness = 0.067;
   const double elastic_modulus = 400000.0;
@@ -214,33 +214,53 @@ int main(int argc, char *argv[]) {
   auto physical_data_short = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length / 2.);
   auto physical_data_long = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length / 2.);
 
+  const bool edge_1_forward = true;
+  const bool edge_2_forward = false;
+
   // create_for_node the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
   auto v0 = graph->create_vertex();
+  auto v0m1 = graph->create_vertex();
   auto v1 = graph->create_vertex();
   auto v2 = graph->create_vertex();
 
-  auto edge_0 = graph->connect(*v0, *v1, num_micro_edges);
-  edge_0->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
+  auto edge_0 = graph->connect(*v0, *v0m1, num_micro_edges);
+  edge_0->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.25, 0, 0)}});
   edge_0->add_physical_data(physical_data_short);
 
-  auto edge_1 = graph->connect(*v1, *v2, num_micro_edges);
-  edge_1->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1., 0, 0)}});
-  edge_1->add_physical_data(physical_data_long);
+  std::shared_ptr< mc::Edge > edge_1;
+  if (edge_1_forward) {
+    edge_1 = graph->connect(*v0m1, *v1, num_micro_edges);
+    edge_1->add_embedding_data({{mc::Point(0.25, 0, 0), mc::Point(0.5, 0, 0)}});
+  } else {
+    edge_1 = graph->connect(*v1, *v0m1, num_micro_edges);
+    edge_1->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(0.25, 0, 0)}});
+  }
+  edge_1->add_physical_data(physical_data_short);
+
+  std::shared_ptr< mc::Edge > edge_2;
+  if (edge_2_forward) {
+    edge_2 = graph->connect(*v1, *v2, num_micro_edges);
+    edge_2->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1., 0, 0)}});
+  } else {
+    edge_2 = graph->connect(*v2, *v1, num_micro_edges);
+    edge_2->add_embedding_data({{mc::Point(1., 0, 0), mc::Point(0.5, 0, 0)}});
+  }
+  edge_2->add_physical_data(physical_data_long);
 
   if (!no_upper_vessel) {
     auto v3 = graph->create_vertex();
-    auto edge_2 = graph->connect(*v3, *v1, num_micro_edges);
-    edge_2->add_embedding_data({{mc::Point(0.5, 0.5, 0), mc::Point(0.5, 0, 0)}});
-    edge_2->add_physical_data(physical_data_long);
+    auto edge_3 = graph->connect(*v3, *v1, num_micro_edges);
+    edge_3->add_embedding_data({{mc::Point(0.5, 0.5, 0), mc::Point(0.5, 0, 0)}});
+    edge_3->add_physical_data(physical_data_long);
     v3->set_to_free_outflow();
   }
 
   if (!no_lower_vessel) {
     auto v4 = graph->create_vertex();
-    auto edge_3 = graph->connect(*v4, *v1, num_micro_edges);
-    edge_3->add_embedding_data({{mc::Point(0.5, -0.5, 0), mc::Point(0.5, 0.0, 0)}});
-    edge_3->add_physical_data(physical_data_long);
+    auto edge_4 = graph->connect(*v4, *v1, num_micro_edges);
+    edge_4->add_embedding_data({{mc::Point(0.5, -0.5, 0), mc::Point(0.5, 0.0, 0)}});
+    edge_4->add_physical_data(physical_data_long);
     v4->set_to_free_outflow();
   }
 

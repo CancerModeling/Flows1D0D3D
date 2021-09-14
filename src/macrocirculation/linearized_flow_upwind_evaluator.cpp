@@ -241,7 +241,7 @@ void LinearizedFlowUpwindEvaluator::calculate_inout_fluxes(double t, const Vecto
       const auto gamma = beta + beta_tilde;
 
       p_up = 1. / gamma * (beta_tilde * p_tilde + beta * p_value[0] + q_tilde + sigma * q_value[0]);
-      q_up = - beta * p_value[0] - sigma * q_value[0] + beta * p_up;
+      q_up = sigma * ( beta * p_value[0] + sigma * q_value[0] - beta * p_up);
     } else if (vertex->is_windkessel_outflow() || vertex->is_vessel_tree_outflow()) {
       const double R0 = calculate_R1(edge->get_physical_data());
       const double C = linear::get_C(edge->get_physical_data());

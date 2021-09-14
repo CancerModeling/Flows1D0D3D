@@ -64,6 +64,9 @@ int main(int argc, char *argv[]) {
     // physical_data_1.viscosity = 0;
     // physical_data_2.viscosity = 0;
 
+    bool nl_forward = false;
+    bool li_forward = false;
+
     // create the ascending aorta
     auto graph_nl = std::make_shared<mc::GraphStorage>();
 
@@ -71,12 +74,20 @@ int main(int argc, char *argv[]) {
     auto v1_nl = graph_nl->create_vertex();
     auto v2_nl = graph_nl->create_vertex();
 
+
     auto edge_0_nl = graph_nl->connect(*v0_nl, *v1_nl, num_micro_edges);
-    auto edge_1_nl = graph_nl->connect(*v1_nl, *v2_nl, num_micro_edges);
+    std::shared_ptr< mc::Edge > edge_1_nl;
+    if (nl_forward)
+      edge_1_nl = graph_nl->connect(*v1_nl, *v2_nl, num_micro_edges);
+    else
+      edge_1_nl = graph_nl->connect(*v2_nl, *v1_nl, num_micro_edges);
 
     edge_0_nl->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
     edge_0_nl->add_physical_data(physical_data_1);
-    edge_1_nl->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1, 0, 0)}});
+    if (nl_forward)
+      edge_1_nl->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1, 0, 0)}});
+    else
+      edge_1_nl->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(0.5, 0, 0)}});
     edge_1_nl->add_physical_data(physical_data_1);
 
     auto graph_li = std::make_shared<mc::GraphStorage>();
@@ -85,12 +96,19 @@ int main(int argc, char *argv[]) {
     auto v1_li = graph_li->create_vertex();
     auto v2_li = graph_li->create_vertex();
 
-    auto edge_0_li = graph_li->connect(*v0_li, *v1_li, num_micro_edges);
-    auto edge_1_li = graph_li->connect(*v1_li, *v2_li, num_micro_edges);
+    std::shared_ptr< mc::Edge > edge_0_li;
+    if (li_forward)
+      edge_0_li = graph_li->connect(*v0_li, *v1_li, num_micro_edges);
+    else
+      edge_0_li = graph_li->connect(*v1_li, *v0_li, num_micro_edges);
+    auto edge_1_li = graph_li->connect(*v2_li, *v1_li, num_micro_edges);
 
-    edge_0_li->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1.5, 0, 0)}});
+    if (li_forward)
+      edge_0_li->add_embedding_data({{mc::Point(1, 0, 0), mc::Point(1.5, 0, 0)}});
+    else
+      edge_0_li->add_embedding_data({{mc::Point(1.5, 0, 0), mc::Point(1, 0, 0)}});
     edge_0_li->add_physical_data(physical_data_2);
-    edge_1_li->add_embedding_data({{mc::Point(1.5, 0, 0), mc::Point(2, 0, 0)}});
+    edge_1_li->add_embedding_data({{mc::Point(2., 0, 0), mc::Point(1.5, 0, 0)}});
     edge_1_li->add_physical_data(physical_data_2);
 
     v0_nl->set_to_inflow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
