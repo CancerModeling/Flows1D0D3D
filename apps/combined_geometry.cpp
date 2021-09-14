@@ -139,9 +139,12 @@ int main(int argc, char *argv[]) {
     std::vector<double> q_vertex_values;
     std::vector<double> c_vertex_values;
 
-    std::vector<double> vessel_ids_li;
+    // initial vessel diameters do not change
+    std::vector<double> vessel_A0_li;
+    mc::fill_with_vessel_A0(MPI_COMM_WORLD, *graph_li, points, vessel_A0_li);
 
     // vessels ids do not change, thus we can precalculate them
+    std::vector<double> vessel_ids_li;
     mc::fill_with_vessel_id(MPI_COMM_WORLD, *graph_li, points, vessel_ids_li);
 
     auto dof_map_li = solver.get_implicit_dof_map();
@@ -219,7 +222,7 @@ int main(int argc, char *argv[]) {
         if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
           std::cout << "iter = " << it << ", t = " << t << std::endl;
 
-        std::cout << "transport sol-norm" << transport_solver.get_solution().norm2() << std::endl;
+        // std::cout << "  transport sol-norm = " << transport_solver.get_solution().norm2() << std::endl;
 
         // save solution
         csv_writer_nl.add_data("a", solver_nl->get_solution());
@@ -241,6 +244,7 @@ int main(int argc, char *argv[]) {
         pvd_writer.add_vertex_data("q", q_vertex_values);
         pvd_writer.add_vertex_data("vessel_id", vessel_ids_li);
         pvd_writer.add_vertex_data("c", c_vertex_values);
+        pvd_writer.add_vertex_data("A", vessel_A0_li);
         pvd_writer.write(t);
 
         vessel_tip_writer.write(t, solver_li->get_solution());
