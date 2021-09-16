@@ -161,6 +161,9 @@ int main(int argc, char *argv[]) {
     // call get_vessel_tip_data_3d()
     // data_3d contains vector of coefficients a and b and also weighted avg of 3D pressure
     auto data_3d = solver_3d.get_vessel_tip_data_3d();
+    for (const auto &a: data_3d)
+      std::cout << a.d_a << ", " << a.d_b << ", " << a.d_p_3d_w << "\n";
+    exit(0);
 
     // time integration
     const auto begin_t = std::chrono::steady_clock::now();

@@ -575,6 +575,7 @@ std::vector<VesselTipCurrentCouplingData3D> HeartToBreast3DSolver::get_vessel_ti
     d.d_a = d_perf_coeff_a[i];
     d.d_b = d_perf_coeff_b[i];
     d.d_p_3d_w = d_perf_p_3d_weighted[i];
+    data.push_back(d);
   }
 
   return data;
