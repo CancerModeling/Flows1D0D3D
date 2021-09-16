@@ -34,8 +34,8 @@ void NonlinearLinearCoupling::add_coupled_vertices(const std::string &name) {
 void NonlinearLinearCoupling::add_coupled_vertices(const std::string &name_nl, const std::string &name_li) {
   auto v_nl = d_graph_nl->find_vertex_by_name(name_nl);
   auto v_li = d_graph_li->find_vertex_by_name(name_li);
-  assert(v_nl.is_leaf());
-  assert(v_li.is_leaf());
+  assert(v_nl->is_leaf());
+  assert(v_li->is_leaf());
   auto e_nl = d_graph_nl->get_edge(v_nl->get_edge_neighbors()[0]);
   auto e_li = d_graph_li->get_edge(v_li->get_edge_neighbors()[0]);
   const auto &data_nl = e_nl->get_physical_data();

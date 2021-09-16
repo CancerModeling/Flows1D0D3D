@@ -28,7 +28,8 @@ inline void compute_inner_boundary_values_on_macro_edge(const Edge &edge,
                                                         std::vector<double> &boundary_values_r) {
   auto &local_dof_map = dof_map.get_local_dof_map(edge);
 
-  assert(local_dof_map.num_micro_edges() == boundary_values.size());
+  assert(local_dof_map.num_micro_edges() == boundary_values_l.size());
+  assert(local_dof_map.num_micro_edges() == boundary_values_r.size());
 
   const std::size_t num_basis_functions = local_dof_map.num_basis_functions();
 
@@ -116,8 +117,8 @@ void LinearizedFlowUpwindEvaluator::get_fluxes_on_macro_edge_generic(double t, c
   if (d_current_t != t)
     throw std::runtime_error("LinearizedFlowUpwindEvaluator was not initialized for the given time step");
 
-  assert(p_up_macro_edge.size() == edge.num_micro_vertices());
-  assert(q_up_macro_edge.size() == edge.num_micro_vertices());
+  assert(p_up.size() == edge.num_micro_vertices());
+  assert(q_up.size() == edge.num_micro_vertices());
 
   std::vector<double> p_l(edge.num_micro_edges(), 0);
   std::vector<double> p_r(edge.num_micro_edges(), 0);
@@ -241,7 +242,7 @@ void LinearizedFlowUpwindEvaluator::calculate_inout_fluxes(double t, const Vecto
       const auto gamma = beta + beta_tilde;
 
       p_up = 1. / gamma * (beta_tilde * p_tilde + beta * p_value[0] + q_tilde + sigma * q_value[0]);
-      q_up = - beta * p_value[0] - sigma * q_value[0] + beta * p_up;
+      q_up = sigma * ( beta * p_value[0] + sigma * q_value[0] - beta * p_up);
     } else if (vertex->is_windkessel_outflow() || vertex->is_vessel_tree_outflow()) {
       const double R0 = calculate_R1(edge->get_physical_data());
       const double C = linear::get_C(edge->get_physical_data());

@@ -190,12 +190,12 @@ bool Vertex::is_rcl_outflow() const {
 }
 
 const LinearCharacteristicData &Vertex::get_linear_characteristic_data() const {
-  assert(is_linear_characteristic());
+  assert(is_linear_characteristic_inflow());
   return p_linear_characteristic_data;
 }
 
 const NonlinearCharacteristicData &Vertex::get_nonlinear_characteristic_data() const {
-  assert(is_nonlinear_characteristic());
+  assert(is_nonlinear_characteristic_inflow());
   return p_nonlinear_characteristic_data;
 }
 
@@ -263,14 +263,14 @@ void Vertex::set_to_nonlinear_characteristic_inflow(double G0, double A0, double
 }
 
 void Vertex::update_linear_characteristic_inflow(double p, double q) {
-  assert(flow_type == FlowType::LinearCharacteristic);
+  assert(p_flow_type == FlowType::LinearCharacteristic);
   double sigma = p_linear_characteristic_data.points_towards_vertex ? +1 : -1;
   p_linear_characteristic_data.p = p;
   p_linear_characteristic_data.q = sigma * q;
 }
 
 void Vertex::update_nonlinear_characteristic_inflow(double p, double q) {
-  assert(flow_type == FlowType::NonlinearCharacteristic);
+  assert(p_flow_type == FlowType::NonlinearCharacteristic);
   double sigma = p_nonlinear_characteristic_data.points_towards_vertex ? +1 : -1;
   p_nonlinear_characteristic_data.p = p;
   p_nonlinear_characteristic_data.q = sigma * q;
