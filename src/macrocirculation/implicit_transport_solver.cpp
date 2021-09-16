@@ -340,7 +340,7 @@ void ImplicitTransportSolver::assemble(double tau, double t) {
   rhs->zero();
   assemble_matrix(tau, t);
   assemble_rhs(tau, t);
-  // assemble_windkessel_rhs_and_matrix(tau, t);
+  assemble_windkessel_rhs_and_matrix(tau, t);
   rhs->assemble();
   A->assemble();
 }
@@ -601,6 +601,8 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *graph.get_vertex(v_id);
     auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
+
+    // windkessel start
     if (vertex.is_windkessel_outflow()) {
       auto &vertex_ldof_map = dof_map.get_local_dof_map(vertex);
       auto &vertex_dof_indices = vertex_ldof_map.dof_indices();
@@ -698,6 +700,142 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
 
       vessel_tip_volume[vertex.get_id()][0] = V_np1;
     }
+
+    // vessel tree start start
+    if (vertex.is_vessel_tree_outflow()) {
+      auto &vertex_ldof_map = dof_map.get_local_dof_map(vertex);
+      auto &vertex_dof_indices = vertex_ldof_map.dof_indices();
+
+      auto &data = vertex.get_vessel_tree_data();
+
+      std::vector<double> vertex_values(vertex_dof_indices.size());
+      extract_dof(vertex_dof_indices, *u, vertex_values);
+
+      auto &edge_ldof_map = dof_map.get_local_dof_map(edge);
+      std::vector<size_t> edge_dof_indices(edge_ldof_map.num_components());
+      edge_ldof_map.dof_indices(edge.get_adajcent_micro_edge_id(vertex), 0, edge_dof_indices);
+
+      const std::vector< double >& c_n = vertex_values;
+      std::vector< double >& V_n = vessel_tip_volume[vertex.get_id()];
+      // next volume
+      std::vector< double > V_np1 = V_n;
+
+      // pattern:
+      using BPT = BoundaryPointType;
+      auto boundary_type = edge.is_pointing_to(vertex.get_id()) ? BPT::Right : BPT::Left;
+      auto pattern = create_boundary(edge_ldof_map, boundary_type);
+
+      std::vector<double> p_c;
+      upwind_provider.get_0d_pressures(t, vertex, p_c);
+
+      const double sigma = edge.is_pointing_to(vertex.get_id()) ? +1. : -1.;
+
+      std::vector<double> A_up(1), Q_up(1);
+      upwind_provider.get_upwinded_values(t, vertex, A_up, Q_up);
+      Q_up[0] *= sigma;
+
+      const double R0 = calculate_R1(edge.get_physical_data());
+      const auto& R = vertex.get_vessel_tree_data().resistances;
+
+      for (size_t i=0; i < R.size(); i += 1)
+      {
+        const bool is_leftmost = (i == 0);
+        const bool is_rightmost = (i == R.size()-1);
+        const bool has_left_neighbor = (i >= 1);
+        const bool has_right_neighbor = (i <= R.size()-2);
+
+        if (is_leftmost)
+        {
+          V_np1[i] += tau * Q_up[0];
+        }
+        if (is_rightmost)
+        {
+          V_np1[i] -= tau * (p_c[i] - p_c[i+1]) / R[i];
+        }
+        if (has_left_neighbor)
+        {
+          const double Q_im1 = (p_c[i-1] - p_c[i]) / R[i-1];
+          V_np1[i] += tau * Q_im1;
+        }
+        if (has_right_neighbor)
+        {
+          const double Q_i = (p_c[i] - p_c[i+1]) / R[i];
+          V_np1[i] -= tau * Q_i;
+        }
+      }
+
+      for (size_t i=0; i < R.size(); i += 1)
+      {
+        const bool is_leftmost = (i == 0);
+        const bool is_rightmost = (i == R.size()-1);
+        const bool has_left_neighbor = (i >= 1);
+        const bool has_right_neighbor = (i <= R.size()-2);
+
+        {
+          Eigen::MatrixXd mat(1, 1);
+          mat << 1.;
+          A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat);
+        }
+
+        // if the volume is zero, the concentratino stays fixed:
+        if (V_np1[i] <= 1e-12)
+        {
+          rhs->set(vertex_dof_indices[i], p_c[i]);
+          continue;
+        }
+
+        rhs->set(vertex_dof_indices[i], (V_n[i] / V_np1[i]) * p_c[i]);
+
+        if (is_leftmost)
+        {
+          if (Q_up[0] >=0 ) {
+            Eigen::MatrixXd mat = - (tau / V_np1[i] * Q_up[0]/A_up[0]) * pattern;
+            A->add({ vertex_dof_indices[i]}, edge_dof_indices, mat);
+          } else {
+            Eigen::MatrixXd mat = + tau * Q_up[0] * pattern.transpose();
+            A->add({ vertex_dof_indices[i]}, edge_dof_indices, mat);
+          }
+        }
+        if (is_rightmost)
+        {
+          const double Q_i = (p_c[i] - p_c[i+1]) / R[i];
+          if (Q_i >= 0) {
+            Eigen::MatrixXd mat(1, 1);
+            mat << tau / (V_np1[i] * Q_i);
+            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat);
+          } else {
+            // do nothing - 3D coupling
+            // std::cerr << "rightmost point inflow" << std::endl;
+          }
+        }
+        if (has_left_neighbor)
+        {
+          const double Q_im1 = (p_c[i-1] - p_c[i]) / R[i-1];
+          Eigen::MatrixXd mat(1, 1);
+          mat << tau * Q_im1;
+          if (Q_im1 >= 0)  {
+            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i-1]}, mat);
+          } else {
+            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat);
+          }
+        }
+        if (has_right_neighbor)
+        {
+          const double Q_i = (p_c[i] - p_c[i+1]) / R[i];
+          if (Q_i >= 0) {
+            Eigen::MatrixXd mat(1, 1);
+            mat << tau * Q_i;
+            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat);
+          } else {
+            Eigen::MatrixXd mat(1, 1);
+            mat << -tau * Q_i;
+            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i+1]}, mat);
+          }
+        }
+      }
+
+      vessel_tip_volume[vertex.get_id()] = V_np1;
+    }
   }
 }
 
@@ -724,6 +862,7 @@ void ImplicitTransportSolver::apply_slope_limiter(double t) {
   for (int i = 0; i < d_graph.size(); i++) {
     apply_slope_limiter(d_graph[i], d_dof_map[i], d_upwind_provider[i], t);
   }
+  u->assemble();
 }
 
 void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t) {
@@ -783,6 +922,7 @@ void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> 
             new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
           }
 
+          // adaptive limiting:
           if (std::abs(dof_central - new_dof) > 1.0e-10)
             u->set(dof_indices[j], new_dof);
           else

@@ -24,6 +24,7 @@
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/linearized_flow_upwind_evaluator.hpp"
 #include "macrocirculation/petsc/petsc_vec.hpp"
+#include "macrocirculation/petsc/petsc_mat.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/right_hand_side_evaluator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
@@ -37,7 +38,7 @@ void output_tip_values (const mc::GraphStorage& graph, const mc::DofMap & dof_ma
   for (const auto &v_id : graph.get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
     auto &vertex = *graph.get_vertex(v_id);
     auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
-    if (vertex.is_windkessel_outflow()) {
+    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow()) {
       auto &vertex_dof_indices = dof_map.get_local_dof_map(vertex).dof_indices();
 
       std::vector<double> vertex_values(vertex_dof_indices.size());
@@ -88,8 +89,13 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
     flow_solver->solve(tau, t + tau);
     variable_upwind_provider->init(t + tau, flow_solver->get_solution());
     transport_solver.solve(tau, t + tau);
+    // transport_solver.apply_slope_limiter(t + tau);
 
     t += tau;
+
+    // transport_solver.get_rhs().print();
+    // transport_solver.get_mat().print();
+    // transport_solver.get_solution().print();
 
     if (it % output_interval == 0) {
       if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
@@ -239,24 +245,38 @@ int main(int argc, char *argv[]) {
   auto physical_data_short = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length / 2.);
   auto physical_data_long = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length / 2.);
 
+  const bool edge_2_forward = true;
+
   // create_for_node the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
   auto v0 = graph->create_vertex();
   auto v1 = graph->create_vertex();
+  auto v2 = graph->create_vertex();
 
-  auto edge_0 = graph->connect(*v0, *v1, num_micro_edges);
-  edge_0->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(1., 0, 0)}});
-  edge_0->add_physical_data(physical_data_short);
+  auto edge_1= graph->connect(*v0, *v1, num_micro_edges);
+  edge_1->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
+  edge_1->add_physical_data(physical_data_short);
+
+  std::shared_ptr< mc::Edge > edge_2;
+  if (edge_2_forward) {
+    edge_2 = graph->connect(*v1, *v2, num_micro_edges);
+    edge_2->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(1., 0, 0)}});
+  } else {
+    edge_2 = graph->connect(*v2, *v1, num_micro_edges);
+    edge_2->add_embedding_data({{mc::Point(1., 0, 0), mc::Point(0.5, 0, 0)}});
+  }
+  edge_2->add_physical_data(physical_data_long);
 
   v0->set_to_inflow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
-  v1->set_to_windkessel_outflow(18000., 3870);
+  // v2->set_to_windkessel_outflow(18000., 3870);
+  v2->set_to_vessel_tree_outflow(5 * (133.333) * 1e-2, {18000., 3600.}, {3870., 7740.}, 1);
 
   graph->finalize_bcs();
 
   // partition graph
   mc::naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
 
-  //implicit_transport_with_explicit_flow(tau, tau_out, t_end, graph);
+  // implicit_transport_with_explicit_flow(tau, tau_out, t_end, graph);
   implicit_transport_with_implicit_flow(tau, tau_out, t_end, graph);
 
   CHKERRQ(PetscFinalize());
