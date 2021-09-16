@@ -45,22 +45,24 @@ struct HeartToBreast3DSolverInputDeck {
   double d_rho_cap;
   /*! @brief Tissue blood density (g/cm^3). */
   double d_rho_tis;
-  /*! @brief Capillary hydraulic conductivity (cm^3 . s/g). */
+  /*! @brief Capillary hydraulic conductivity (cm^3 . s/g) (for single capillary). */
   double d_K_cap;
   /*! @brief Tissue hydraulic conductivity (cm^3 . s/g). */
   double d_K_tis;
   /*! @brief Artery - Capillary exchange permeability (cm^4 . s/g). */
   double d_Lp_art_cap;
-  /*! @brief Permeability of capillary surface (cm^2 . s/g). */
-  double d_Lc_cap;
-  /*! @brief Capillary nutrient diffusion coefficient (cm^2/s). */
+  /*! @brief Permeability of capillary surface (cm^2 . s/g) (for single capillary). */
+  double d_Lp_cap_tis;
+  /*! @brief Capillary nutrient diffusion coefficient (cm^2/s) (for single capillary). */
   double d_Dnut_cap;
   /*! @brief Tissue nutrient diffusion coefficient (cm^2/s). */
   double d_Dtis_cap;
-  /*! @brief Permeability of capillary surface for nutrient exchange (1/s). */
-  double d_Lnut_cap;
-  /*! @brief Average surface area of capillary per unit volume (1/cm). */
-  double d_Sc_cap;
+  /*! @brief Permeability of capillary surface for nutrient exchange (1/s) (for single capillary). */
+  double d_Lnut_cap_tis;
+  /*! @brief Average surface area of capillary per unit macroscopic volume (1/cm). */
+  double d_N_bar_cap;
+  /*! @brief Average cross-sectional area of capillary per unit macroscopic surface (1). */
+  double d_N_bar_surf_cap;
   /*! @brief reflection coefficient of capillary wall. */
   double d_rnut_cap;
   /*! @brief reflection coefficient for artery-capillary and vein-capillary exchange of nutrient. */
@@ -96,13 +98,10 @@ public:
                         lm::TransientLinearImplicitSystem &p_tis,
                         lm::TransientLinearImplicitSystem &nut_cap,
                         lm::TransientLinearImplicitSystem &nut_tis,
-                        lm::ExplicitSystem &K_cap_field,
                         lm::ExplicitSystem &K_tis_field,
-                        lm::ExplicitSystem &Lp_art_cap_field,
-                        lm::ExplicitSystem &Lp_cap_tis_field,
-                        lm::ExplicitSystem &Lnut_cap_tis_field,
-                        lm::ExplicitSystem &Dnut_cap_field,
                         lm::ExplicitSystem &Dnut_tis_field,
+                        lm::ExplicitSystem &N_bar_cap_field,
+                        lm::ExplicitSystem &N_bar_sruf_cap_field,
                         Logger &log);
 
   /*! @brief Setup 1D-3D coupled data in 3D solver. */
@@ -157,20 +156,14 @@ public:
   CapillaryNutrient d_nut_cap;
   /*! @brief Tissue nutrient assembly. */
   TissueNutrient d_nut_tis;
-  /*! @brief Capillary hydraulic conductivity parameter (spatially varying, may vary element-wise). */
-  lm::ExplicitSystem &d_K_cap_field;
   /*! @brief Tissue hydraulic conductivity parameter (spatially varying, may vary element-wise). */
   lm::ExplicitSystem &d_K_tis_field;
-  /*! @brief Artery - Capillary exchange permeability parameter (spatially varying, may vary element-wise). */
-  lm::ExplicitSystem &d_Lp_art_cap_field;
-  /*! @brief Capillary - Tissue exchange permeability parameter (spatially varying, may vary element-wise). */
-  lm::ExplicitSystem &d_Lp_cap_tis_field;
-  /*! @brief Artery - Capillary-tissue nutrient exchange permeability parameter (spatially varying, may vary element-wise). */
-  lm::ExplicitSystem &d_Lnut_cap_tis_field;
-  /*! @brief Capillary nutrient diffusion parameter (spatially varying, may vary element-wise). */
-  lm::ExplicitSystem &d_Dnut_cap_field;
   /*! @brief Tissue nutrient diffusion parameter (spatially varying, may vary element-wise). */
   lm::ExplicitSystem &d_Dnut_tis_field;
+  /*! @brief Total capillary surface area per unit macroscopic volume. */
+  lm::ExplicitSystem &d_N_bar_cap_field;
+  /*! @brief Total capillary cross-section area per unit macroscopic area. */
+  lm::ExplicitSystem &d_N_bar_surf_cap_field;
 
   /*!
    * @brief Coordinates of perfusion outlets.
