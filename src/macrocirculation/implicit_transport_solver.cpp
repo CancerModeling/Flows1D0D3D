@@ -356,7 +356,7 @@ void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage& graph, const 
     std::vector<std::size_t> dof_indices_left(local_dof_map.num_basis_functions());
     std::vector<std::size_t> dof_indices_right(local_dof_map.num_basis_functions());
 
-    Eigen::MatrixXd ones = Eigen::Matrix3d::Constant(local_dof_map.num_basis_functions(), local_dof_map.num_basis_functions(), 1.);
+    Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(local_dof_map.num_basis_functions(), local_dof_map.num_basis_functions(), 1.);
 
     // coupling between elements
     for (size_t micro_edge_id = 0; micro_edge_id < macro_edge->num_micro_edges(); micro_edge_id +=1 ) {
@@ -400,7 +400,7 @@ void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage& graph, const 
         std::vector<size_t> dof_indices_j(local_dof_map_j.num_basis_functions());
         local_dof_map_j.dof_indices(edges[j]->get_adajcent_micro_edge_id(vertex), 0, dof_indices_j);
 
-        Eigen::MatrixXd ones = Eigen::Matrix3d::Constant(local_dof_map_i.num_basis_functions(), local_dof_map_j.num_basis_functions(), 1.);
+        Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(local_dof_map_i.num_basis_functions(), local_dof_map_j.num_basis_functions(), 1.);
 
         mat.add(dof_indices_i, dof_indices_j, ones);
       }
@@ -418,7 +418,7 @@ void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage& graph, const 
 
       // exchange vertex-vertex
       {
-        Eigen::MatrixXd ones = Eigen::Matrix3d::Constant(local_dof_map_vertex.num_local_dof(), local_dof_map_vertex.num_local_dof(), 1.);
+        Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(local_dof_map_vertex.num_local_dof(), local_dof_map_vertex.num_local_dof(), 1.);
         mat.add(vertex_dof_indices, vertex_dof_indices, ones);
       }
 
@@ -430,8 +430,8 @@ void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage& graph, const 
         std::vector<size_t> dof_indices_edge(local_dof_map_edge.num_basis_functions());
         local_dof_map_edge.dof_indices(edge.get_adajcent_micro_edge_id(vertex), 0, dof_indices_edge);
 
-        Eigen::MatrixXd ones_ev = Eigen::Matrix3d::Constant(local_dof_map_edge.num_basis_functions(), local_dof_map_vertex.num_local_dof(), 1.);
-        Eigen::MatrixXd ones_ve = Eigen::Matrix3d::Constant(local_dof_map_vertex.num_local_dof(), local_dof_map_edge.num_local_dof(), 1.);
+        Eigen::MatrixXd ones_ev = Eigen::MatrixXd::Constant(local_dof_map_edge.num_basis_functions(), local_dof_map_vertex.num_local_dof(), 1.);
+        Eigen::MatrixXd ones_ve = Eigen::MatrixXd::Constant(local_dof_map_vertex.num_local_dof(), local_dof_map_edge.num_basis_functions(), 1.);
 
         mat.add(vertex_dof_indices, dof_indices_edge, ones_ve);
         mat.add(dof_indices_edge, vertex_dof_indices, ones_ev);
@@ -484,13 +484,13 @@ void ImplicitTransportSolver::sparsity_pattern_characteristics() {
 
       if (edge->rank() == mpi::rank(d_comm))
       {
-        Eigen::MatrixXd ones = Eigen::Matrix3d::Constant(dof_indices_list[0].size(), dof_indices_list[1].size(), 1.);
+        Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(dof_indices_list[0].size(), dof_indices_list[1].size(), 1.);
         A->add(dof_indices_list[0], dof_indices_list[1], ones);
       }
 
       if (adjacent_edge->rank() == mpi::rank(d_comm))
       {
-        Eigen::MatrixXd ones = Eigen::Matrix3d::Constant(dof_indices_list[1].size(), dof_indices_list[0].size(), 1.);
+        Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(dof_indices_list[1].size(), dof_indices_list[0].size(), 1.);
         A->add(dof_indices_list[1], dof_indices_list[0], ones);
       }
     }
@@ -611,7 +611,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
       extract_dof(vertex_dof_indices, *u, vertex_values);
 
       auto &edge_ldof_map = dof_map.get_local_dof_map(edge);
-      std::vector<size_t> edge_dof_indices(edge_ldof_map.num_components());
+      std::vector<size_t> edge_dof_indices(edge_ldof_map.num_basis_functions());
       edge_ldof_map.dof_indices(edge.get_adajcent_micro_edge_id(vertex), 0, edge_dof_indices);
 
       const double c_n = vertex_values[0];
@@ -699,6 +699,8 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
       }
 
       vessel_tip_volume[vertex.get_id()][0] = V_np1;
+
+      std::cout << vessel_tip_volume[vertex.get_id()] << std::endl;
     }
 
     // vessel tree start start
@@ -712,7 +714,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
       extract_dof(vertex_dof_indices, *u, vertex_values);
 
       auto &edge_ldof_map = dof_map.get_local_dof_map(edge);
-      std::vector<size_t> edge_dof_indices(edge_ldof_map.num_components());
+      std::vector<size_t> edge_dof_indices(edge_ldof_map.num_basis_functions());
       edge_ldof_map.dof_indices(edge.get_adajcent_micro_edge_id(vertex), 0, edge_dof_indices);
 
       const std::vector< double >& c_n = vertex_values;
@@ -789,11 +791,11 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
         if (is_leftmost)
         {
           if (Q_up[0] >=0 ) {
-            Eigen::MatrixXd mat = - (tau / V_np1[i] * Q_up[0]/A_up[0]) * pattern;
+            Eigen::MatrixXd mat = - (tau / V_np1[i] * Q_up[0]/A_up[0]) * pattern.transpose();
             A->add({ vertex_dof_indices[i]}, edge_dof_indices, mat);
           } else {
-            Eigen::MatrixXd mat = + tau * Q_up[0] * pattern.transpose();
-            A->add({ vertex_dof_indices[i]}, edge_dof_indices, mat);
+            Eigen::MatrixXd mat = + tau * Q_up[0] * pattern;
+            A->add(edge_dof_indices, { vertex_dof_indices[i]}, mat);
           }
         }
         if (is_rightmost)
@@ -835,6 +837,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
       }
 
       vessel_tip_volume[vertex.get_id()] = V_np1;
+      std::cout << vessel_tip_volume[vertex.get_id()] << std::endl;
     }
   }
 }

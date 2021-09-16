@@ -51,8 +51,8 @@ inline void nfurcation_boundary(const std::vector<double> &p,
   assert(p.size() == q.size());
   assert(p_up.size() == p.size());
   assert(q_up.size() == p.size());
-  assert(param.size() == p.size());
-  assert(in.size() == p.size());
+  assert(params.size() == p.size());
+  assert(sigma.size() == p.size());
 
   const size_t N = p.size();
 
