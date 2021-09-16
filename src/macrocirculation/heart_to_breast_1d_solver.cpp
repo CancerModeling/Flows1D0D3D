@@ -172,8 +172,9 @@ void HeartToBreast1DSolver::setup_graphs(BoundaryModel bmodel) {
   else
     throw std::runtime_error("Boundary model type was not implemented yet.");
 
-  coupling->add_coupled_vertices("cw_out_1_1", "bg_132");
-  coupling->add_coupled_vertices("cw_out_1_2", "bg_141");
+  coupling->add_coupled_vertices("cw_out_1_1", "bg_141");
+  coupling->add_coupled_vertices("cw_out_1_2", "bg_139");
+  coupling->add_coupled_vertices("cw_out_1_3", "bg_132");
   coupling->add_coupled_vertices("cw_out_2_1", "bg_135");
   coupling->add_coupled_vertices("cw_out_2_2", "bg_119");
 

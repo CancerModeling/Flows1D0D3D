@@ -7,10 +7,10 @@
 
 #include <chrono>
 #include <cxxopts.hpp>
-#include <macrocirculation/graph_csv_writer.hpp>
-#include <utility>
-#include <memory>
 #include <fmt/format.h>
+#include <macrocirculation/graph_csv_writer.hpp>
+#include <memory>
+#include <utility>
 
 #include "petsc.h"
 
@@ -22,12 +22,12 @@
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/heart_to_breast_1d_solver.hpp"
+#include "macrocirculation/heart_to_breast_3d_solver.hpp"
 #include "macrocirculation/implicit_linear_flow_solver.hpp"
+#include "macrocirculation/libmesh_utils.hpp"
 #include "macrocirculation/nonlinear_linear_coupling.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/libmesh_utils.hpp"
-#include "macrocirculation/heart_to_breast_3d_solver.hpp"
 
 namespace mc = macrocirculation;
 
@@ -40,20 +40,26 @@ int main(int argc, char *argv[]) {
   lm::Parallel::Communicator *comm = &init.comm();
 
   cxxopts::Options options(argv[0], "Fully coupled 1D-0D-3D solver.");
-  options.add_options()                                                                                               //
-    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.))) //
-    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                     //
-    ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("1e-3"))         //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("1.e-1"))                      //
+  options.add_options()                                                                                                         //
+    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))           //
+    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                               //
+    ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("1e-3"))                   //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("1.e-1"))                             //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
-    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                                   //
-    ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                         //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))                                                   //
-    ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                                                   //
+    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                            //
+    ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                 //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))           //
+    ("deactivate-3d-1d-coupling", "deactivates the 3d-1d coupling", cxxopts::value<bool>()->default_value("false"))             //
+    ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                           //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
 
   auto args = options.parse(argc, argv);
+
+  if (args.count("help")) {
+    std::cout << options.help() << std::endl;
+    exit(0);
+  }
 
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
 
@@ -66,6 +72,8 @@ int main(int argc, char *argv[]) {
     const auto tau_out = args["tau-out"].as<double>();
     const auto tau_coup = args["tau-coup"].as<double>();
     auto out_dir = args["output-directory"].as<std::string>();
+
+    const auto activate_3d_1d_coupling = !args["deactivate-3d-1d-coupling"].as<bool>();
 
     // const double tau_out = tau;
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
@@ -106,8 +114,7 @@ int main(int argc, char *argv[]) {
       //input.d_h = mc::get_min_nodal_spacing(mesh);
       input.d_h = mc::get_mesh_size_estimate_using_element_volume(mesh);
       log(fmt::format("mesh size = {}\n", input.d_h));
-    }
-    else {
+    } else {
       long N = long(1. / input.d_h);
       lm::MeshTools::Generation::build_cube(mesh, N, N, N, 0., 1., 0.,
                                             1., 0., 1., lm::HEX8);
@@ -167,7 +174,7 @@ int main(int argc, char *argv[]) {
         for (auto &d : data_1d) {
           // just return the values for now:
           if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-            std::cout << d.p.x << ", " << d.p.y << ", " << d.p.z << ", " << d.pressure << ", " << d.R2 << ", " << d.radius << std::endl;
+            std::cout << "v id = " << d.vertex_id << ", coordinates = (" << d.p.x << ", " << d.p.y << ", " << d.p.z << "), p = " << d.pressure << ", R = " << d.R2 << ", r = " << d.radius << std::endl;
         }
 
         // Some condition to solve the 3D system
@@ -181,7 +188,7 @@ int main(int argc, char *argv[]) {
           log("update 3d data for 1d systems\n");
           solver_3d.update_3d_data();
 
-          if (it % (4*coupling_interval) == 0)
+          if (it % (4 * coupling_interval) == 0)
             solver_3d.write_output();
 
           // TODO: since 3D pressures are modified, update the values in 1D solver
@@ -194,10 +201,23 @@ int main(int argc, char *argv[]) {
         // update the boundary conditions of the 1D system:
         {
           std::map<size_t, double> new_tip_pressures;
-          for (auto &d : data_1d) {
-            // TODO: Replace this with something more meaningful.
-            //       Note that 50 mmHg is much too much and just here to see the change from 30 mmHg which are the default.
-            new_tip_pressures[d.vertex_id] = 50 * 1.3333;
+
+          if (activate_3d_1d_coupling) {
+            std::cout << "size of 3D coupling data is " << data_3d.size() << ", size of 1D coupling data is " << data_1d.size() << std::endl;
+            if (data_3d.size() != data_1d.size()) {
+              std::cerr << "coupling data do not fit! :.(" << std::endl;
+              throw std::runtime_error("coupling data do not fit! :.(");
+            }
+          }
+
+          for (size_t k = 0; k < data_1d.size(); k += 1) {
+            auto &d = data_1d[k];
+            if (activate_3d_1d_coupling) {
+              new_tip_pressures[d.vertex_id] = data_3d.at(k).d_p_3d_w;
+            } else {
+              // constant 30 mmHg pressures
+              new_tip_pressures[d.vertex_id] = 30 * 1.3333;
+            }
           }
           solver_1d.update_vessel_tip_pressures(new_tip_pressures);
         }
