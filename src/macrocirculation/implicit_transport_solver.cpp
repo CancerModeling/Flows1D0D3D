@@ -70,9 +70,10 @@ Point vec_to_point (const Eigen::Vector3d & v) { return {v[0], v[1], v[2]}; }
 
 EmbeddedUpwindProvider::~EmbeddedUpwindProvider() = default;
 
-EmbeddedUpwindProvider::EmbeddedUpwindProvider(std::shared_ptr< GraphStorage > graph, std::function< double(double, const Point&)> field)
-: d_graph(std::move( graph )),
-  d_field(std::move(field))
+EmbeddedUpwindProvider::EmbeddedUpwindProvider(std::shared_ptr< GraphStorage > graph, std::function< double(double, const Point&)> field, std::function< void(double, const Vertex&, std::vector< double > &p_c)> field_0d)
+  : d_graph(std::move( graph )),
+    d_field(std::move(field)),
+    d_0d_pressure_field(std::move(field_0d))
 {}
 
 void EmbeddedUpwindProvider::get_values_at_qp(double t,
@@ -653,9 +654,9 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
 
       // case -> ->
       if (Q_up[0] >= 0 && (p_c[0] - p_c[1]) / R1 >= 0) {
-        A_c_c << 1. + tau / V_np1 * (Q_up[0] - 2 * (p_c[0] - p_c[1]) / R1);
+        A_c_c << 1. + tau / V_np1 * (p_c[0] - p_c[1]) / R1;
 
-        Eigen::MatrixXd A_c_gamma = -tau / V_np1 * pattern * Q_up[0] / A_up[0];
+        Eigen::MatrixXd A_c_gamma = -tau / V_np1 * pattern.transpose() * Q_up[0] / A_up[0];
 
         A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
         A->add(vertex_dof_indices, edge_dof_indices, A_c_gamma);
@@ -666,7 +667,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
       else if (Q_up[0] <= 0 && (p_c[0] - p_c[1]) / R1 <= 0) {
         A_c_c << 1 - tau / V_np1 * Q_up[0];
 
-        Eigen::MatrixXd A_gamma_c = -tau * pattern.transpose() * Q_up[0];
+        Eigen::MatrixXd A_gamma_c = +tau * pattern * Q_up[0];
 
         A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
         A->add(edge_dof_indices, vertex_dof_indices, A_gamma_c);
@@ -677,7 +678,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
       else if (Q_up[0] >= 0 && (p_c[0] - p_c[1]) / R1 <= 0) {
         A_c_c << 1;
 
-        Eigen::MatrixXd A_c_gamma = -tau / V_np1 * pattern * Q_up[0] / A_up[0];
+        Eigen::MatrixXd A_c_gamma = -tau / V_np1 * pattern.transpose() * Q_up[0] / A_up[0];
 
         A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
         A->add(vertex_dof_indices, edge_dof_indices, A_c_gamma);
@@ -700,7 +701,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
 
       vessel_tip_volume[vertex.get_id()][0] = V_np1;
 
-      std::cout << vessel_tip_volume[vertex.get_id()] << std::endl;
+      // std::cout << vessel_tip_volume[vertex.get_id()] << std::endl;
     }
 
     // vessel tree start start
@@ -744,7 +745,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
         const bool is_leftmost = (i == 0);
         const bool is_rightmost = (i == R.size()-1);
         const bool has_left_neighbor = (i >= 1);
-        const bool has_right_neighbor = (i <= R.size()-2);
+        const bool has_right_neighbor = (i < R.size()-1);
 
         if (is_leftmost)
         {
@@ -771,40 +772,39 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
         const bool is_leftmost = (i == 0);
         const bool is_rightmost = (i == R.size()-1);
         const bool has_left_neighbor = (i >= 1);
-        const bool has_right_neighbor = (i <= R.size()-2);
+        const bool has_right_neighbor = (i < R.size()-1);
 
-        {
-          Eigen::MatrixXd mat(1, 1);
-          mat << 1.;
-          A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat);
-        }
+        Eigen::MatrixXd mat_1x1 = Eigen::MatrixXd::Constant(1, 1, 1.);
+
+        A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat_1x1);
 
         // if the volume is zero, the concentratino stays fixed:
         if (V_np1[i] <= 1e-12)
         {
-          rhs->set(vertex_dof_indices[i], p_c[i]);
+          rhs->set(vertex_dof_indices[i], c_n[i]);
           continue;
         }
 
-        rhs->set(vertex_dof_indices[i], (V_n[i] / V_np1[i]) * p_c[i]);
+        rhs->set(vertex_dof_indices[i], (V_n[i] / V_np1[i]) * c_n[i]);
 
         if (is_leftmost)
         {
           if (Q_up[0] >=0 ) {
-            Eigen::MatrixXd mat = - (tau / V_np1[i] * Q_up[0]/A_up[0]) * pattern.transpose();
-            A->add({ vertex_dof_indices[i]}, edge_dof_indices, mat);
+            Eigen::MatrixXd mat_ve = - (tau / V_np1[i] * Q_up[0]/A_up[0]) * pattern.transpose();
+            A->add({ vertex_dof_indices[i]}, edge_dof_indices, mat_ve);
           } else {
-            Eigen::MatrixXd mat = + tau * Q_up[0] * pattern;
-            A->add(edge_dof_indices, { vertex_dof_indices[i]}, mat);
+            Eigen::MatrixXd mat_ev = + tau * Q_up[0] * pattern;
+            A->add(edge_dof_indices, { vertex_dof_indices[i]}, mat_ev);
+            Eigen::MatrixXd mat_vv = - tau / V_np1[i] * Q_up[0] * mat_1x1;
+            A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i]}, mat_vv);
           }
         }
         if (is_rightmost)
         {
           const double Q_i = (p_c[i] - p_c[i+1]) / R[i];
           if (Q_i >= 0) {
-            Eigen::MatrixXd mat(1, 1);
-            mat << tau / (V_np1[i] * Q_i);
-            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat);
+            Eigen::MatrixXd mat_vv = +(tau / V_np1[i]) * Q_i * mat_1x1;
+            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat_vv);
           } else {
             // do nothing - 3D coupling
             // std::cerr << "rightmost point inflow" << std::endl;
@@ -813,31 +813,29 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
         if (has_left_neighbor)
         {
           const double Q_im1 = (p_c[i-1] - p_c[i]) / R[i-1];
-          Eigen::MatrixXd mat(1, 1);
-          mat << tau * Q_im1;
           if (Q_im1 >= 0)  {
-            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i-1]}, mat);
+            Eigen::MatrixXd mat_vv = - tau * Q_im1 * mat_1x1;
+            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i-1]}, mat_vv);
           } else {
-            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat);
+            Eigen::MatrixXd mat_vv = + tau * Q_im1 * mat_1x1;
+            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat_vv);
           }
         }
         if (has_right_neighbor)
         {
           const double Q_i = (p_c[i] - p_c[i+1]) / R[i];
           if (Q_i >= 0) {
-            Eigen::MatrixXd mat(1, 1);
-            mat << tau * Q_i;
+            Eigen::MatrixXd mat = tau * Q_i * mat_1x1;
             A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat);
           } else {
-            Eigen::MatrixXd mat(1, 1);
-            mat << -tau * Q_i;
+            Eigen::MatrixXd mat = - tau * Q_i * mat_1x1;
             A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i+1]}, mat);
           }
         }
       }
 
       vessel_tip_volume[vertex.get_id()] = V_np1;
-      std::cout << vessel_tip_volume[vertex.get_id()] << std::endl;
+      // std::cout << vessel_tip_volume[vertex.get_id()] << std::endl;
     }
   }
 }

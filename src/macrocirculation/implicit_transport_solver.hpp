@@ -84,7 +84,7 @@ private:
 
 class EmbeddedUpwindProvider : public UpwindProvider {
 public:
-  explicit EmbeddedUpwindProvider(std::shared_ptr< GraphStorage > graph, std::function< double(double, const Point&)> field);
+  explicit EmbeddedUpwindProvider(std::shared_ptr< GraphStorage > graph, std::function< double(double, const Point&)> field, std::function< void(double, const Vertex&, std::vector< double > &p_c)> field_0d);
 
   ~EmbeddedUpwindProvider() override;
 
@@ -99,12 +99,14 @@ public:
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
 
-  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override { throw std::runtime_error("not implemented yet"); }
+  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override { d_0d_pressure_field(t, v, p_c); }
 
 private:
   std::shared_ptr< GraphStorage > d_graph;
 
   std::function< double(double, const Point&)> d_field;
+
+  std::function< void(double, const Vertex&, std::vector< double > &p_c)> d_0d_pressure_field;
 };
 
 class UpwindProviderNonlinearFlow : public UpwindProvider {
