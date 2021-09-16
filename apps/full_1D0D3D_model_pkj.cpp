@@ -122,6 +122,10 @@ int main(int argc, char *argv[]) {
     p_cap.add_variable("p_cap", lm::FIRST);
     auto &p_tis = eq_sys.add_system<lm::TransientLinearImplicitSystem>("Tissue_Pressure");
     p_tis.add_variable("p_tis", lm::FIRST);
+    auto &nut_cap = eq_sys.add_system<lm::TransientLinearImplicitSystem>("Capillary_Nutrient");
+    nut_cap.add_variable("nut_cap", lm::FIRST);
+    auto &nut_tis = eq_sys.add_system<lm::TransientLinearImplicitSystem>("Tissue_Nutrient");
+    nut_tis.add_variable("nut_tis", lm::FIRST);
 
     // create spatial field of hydraulic conductivity
     auto &K_cap = eq_sys.add_system<lm::ExplicitSystem>("Capillary_K");
@@ -132,11 +136,21 @@ int main(int argc, char *argv[]) {
     Lp_art_cap.add_variable("lp_art_cap", lm::CONSTANT, lm::MONOMIAL);
     auto &Lp_cap_tis = eq_sys.add_system<lm::ExplicitSystem>("Capillary_Tissue_Lp");
     Lp_cap_tis.add_variable("lp_cap_tis", lm::CONSTANT, lm::MONOMIAL);
+    auto &Lnut_cap_tis_field = eq_sys.add_system<lm::ExplicitSystem>("Capillary_Tissue_L_Nut");
+    Lnut_cap_tis_field.add_variable("lnut_cap_tis", lm::CONSTANT, lm::MONOMIAL);
+    auto &Dnut_cap_field = eq_sys.add_system<lm::ExplicitSystem>("Capillary_D_Nut");
+    Dnut_cap_field.add_variable("Dnut_cap", lm::CONSTANT, lm::MONOMIAL);
+    auto &Dnut_tis_field = eq_sys.add_system<lm::ExplicitSystem>("Tissue_D_Nut");
+    Dnut_tis_field.add_variable("Dtis_cap", lm::CONSTANT, lm::MONOMIAL);
 
     // create model that holds all essential variables
     log("creating model\n");
-    auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm, input, mesh, eq_sys, p_cap, p_tis,
-                                               K_cap, K_tis, Lp_art_cap, Lp_cap_tis, log);
+    auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm,
+                       input, mesh, eq_sys, p_cap, p_tis,
+                       nut_cap, nut_tis,
+                       K_cap, K_tis, Lp_art_cap, Lp_cap_tis,
+                       Lnut_cap_tis_field, Dnut_cap_field, Dnut_tis_field,
+                       log);
     eq_sys.init();
     solver_3d.set_conductivity_fields();
 

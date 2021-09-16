@@ -75,6 +75,49 @@ public:
   HeartToBreast3DSolver *d_model_p;
 };
 
+/*! @brief Class that handles assembly of matrix and right-hand side of capillary pressure system. */
+class CapillaryNutrient : public BaseAssembly {
+public:
+  CapillaryNutrient(HeartToBreast3DSolver *model, lm::MeshBase &mesh,
+                    lm::TransientLinearImplicitSystem &sys)
+    : BaseAssembly("Capillary_Nutrient", mesh, sys, 1,
+                   {sys.variable_number("nut_cap")}),
+      d_model_p(model) {
+    sys.attach_assemble_object(
+      *this);                     // attach this element assembly object
+    sys.attach_init_function(ic); // add ic
+  }
+
+  /*! @brief Assemble matrix and right-hand side. */
+  void assemble() override;
+
+  /*! @brief Assemble contribution to matrix and right-hand side from 1D system. */
+  void assemble_1d();
+
+  /*! @brief Pointer to the 3D model class to access relevant data and methods. */
+  HeartToBreast3DSolver *d_model_p;
+};
+
+/*! @brief Class that handles assembly of matrix and right-hand side of tissue pressure system. */
+class TissueNutrient : public BaseAssembly {
+public:
+  TissueNutrient(HeartToBreast3DSolver *model, lm::MeshBase &mesh,
+                 lm::TransientLinearImplicitSystem &sys)
+    : BaseAssembly("Tissue_Nutrient", mesh, sys, 1,
+                   {sys.variable_number("nut_tis")}),
+      d_model_p(model) {
+    sys.attach_assemble_object(
+      *this);                     // attach this element assembly object
+    sys.attach_init_function(ic); // add ic
+  }
+
+  /*! @brief Assemble matrix and right-hand side. */
+  void assemble() override;
+
+  /*! @brief Pointer to the 3D model class to access relevant data and methods. */
+  HeartToBreast3DSolver *d_model_p;
+};
+
 } // namespace macrocirculation
 
 
