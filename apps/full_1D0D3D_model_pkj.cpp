@@ -42,9 +42,9 @@ int main(int argc, char *argv[]) {
   cxxopts::Options options(argv[0], "Fully coupled 1D-0D-3D solver.");
   options.add_options()                                                                                                         //
     ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))           //
-    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                               //
-    ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("1e-3"))                   //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("1.e-1"))                             //
+    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("5e-1"))                               //
+    ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("5e-3"))                   //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("50."))                             //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                            //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                 //
@@ -200,7 +200,7 @@ int main(int argc, char *argv[]) {
           log("update 3d data for 1d systems\n");
           solver_3d.update_3d_data();
 
-          if (it % (4 * coupling_interval) == 0)
+          if (it % (20 * coupling_interval) == 0)
             solver_3d.write_output();
 
           // recompute avg 3d values at outlet tips

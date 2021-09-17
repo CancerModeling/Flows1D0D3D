@@ -174,6 +174,13 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E create_symlink
+            ${CMAKE_CURRENT_SOURCE_DIR}/plot_qoi_3d.py
+            $<TARGET_FILE_DIR:${TargetName}>/plot_qoi_3d.py
+            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_qoi_3d.py")
+
+    add_custom_command(
+            TARGET ${TargetName} PRE_BUILD
             COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessel_tips.py $<TARGET_FILE_DIR:${TargetName}>/plot_vessel_tips.py
             COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessel_tips.py")
 
