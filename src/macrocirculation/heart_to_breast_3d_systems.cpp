@@ -250,7 +250,8 @@ void CapillaryNutrient::assemble_1d() {
             d_Fe(i) += d_JxW[qp] * (1. - input.d_rnut_art_cap) * input.d_Lp_art_cap
                        * (pI - p_cap_qp) * (*out_fn_I)(d_qpoints[qp]) * nutI * d_phi[i][qp];
           }
-        } else {
+        }
+        else {
           // to lhs
           for (unsigned int i = 0; i < d_phi.size(); i++) {
             for (unsigned int j = 0; j < d_phi.size(); j++) {
