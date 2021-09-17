@@ -100,8 +100,8 @@ int main(int argc, char *argv[]) {
       input.d_debug_lvl = 1;
       input.d_perf_regularized = false;
       input.d_perf_fn_type = "const";
-      //input.d_perf_regularized = true;
-      //input.d_perf_fn_type = "linear";
+      input.d_perf_regularized = true;
+      input.d_perf_fn_type = "linear";
       input.d_perf_neigh_size = std::make_pair(4., 10.);
     }
     log("input data \n" + input.print_str() + "\n");
@@ -129,21 +129,30 @@ int main(int argc, char *argv[]) {
     p_cap.add_variable("p_cap", lm::FIRST);
     auto &p_tis = eq_sys.add_system<lm::TransientLinearImplicitSystem>("Tissue_Pressure");
     p_tis.add_variable("p_tis", lm::FIRST);
+    auto &nut_cap = eq_sys.add_system<lm::TransientLinearImplicitSystem>("Capillary_Nutrient");
+    nut_cap.add_variable("nut_cap", lm::FIRST);
+    auto &nut_tis = eq_sys.add_system<lm::TransientLinearImplicitSystem>("Tissue_Nutrient");
+    nut_tis.add_variable("nut_tis", lm::FIRST);
 
     // create spatial field of hydraulic conductivity
-    auto &K_cap = eq_sys.add_system<lm::ExplicitSystem>("Capillary_K");
-    K_cap.add_variable("k_cap", lm::CONSTANT, lm::MONOMIAL);
     auto &K_tis = eq_sys.add_system<lm::ExplicitSystem>("Tissue_K");
     K_tis.add_variable("k_tis", lm::CONSTANT, lm::MONOMIAL);
-    auto &Lp_art_cap = eq_sys.add_system<lm::ExplicitSystem>("Capillary_Artery_Lp");
-    Lp_art_cap.add_variable("lp_art_cap", lm::CONSTANT, lm::MONOMIAL);
-    auto &Lp_cap_tis = eq_sys.add_system<lm::ExplicitSystem>("Capillary_Tissue_Lp");
-    Lp_cap_tis.add_variable("lp_cap_tis", lm::CONSTANT, lm::MONOMIAL);
+    auto &Dnut_tis_field = eq_sys.add_system<lm::ExplicitSystem>("Tissue_D_Nut");
+    Dnut_tis_field.add_variable("Dnut_tis", lm::CONSTANT, lm::MONOMIAL);
+    auto &N_bar_cap_field = eq_sys.add_system<lm::ExplicitSystem>("Avg_Capillary_Surf_Area");
+    N_bar_cap_field.add_variable("n_bar_cap", lm::CONSTANT, lm::MONOMIAL);
+    auto &N_bar_surf_cap_field = eq_sys.add_system<lm::ExplicitSystem>("Avg_Capillary_Cross_Section_Area");
+    N_bar_surf_cap_field.add_variable("n_bar_surf_cap", lm::CONSTANT, lm::MONOMIAL);
+
 
     // create model that holds all essential variables
     log("creating model\n");
-    auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm, input, mesh, eq_sys, p_cap, p_tis,
-                                               K_cap, K_tis, Lp_art_cap, Lp_cap_tis, log);
+    auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm,
+                       input, mesh, eq_sys, p_cap, p_tis,
+                       nut_cap, nut_tis,
+                       K_tis, Dnut_tis_field,
+                       N_bar_cap_field, N_bar_surf_cap_field,
+                       log);
     eq_sys.init();
     solver_3d.set_conductivity_fields();
 
@@ -161,6 +170,9 @@ int main(int argc, char *argv[]) {
     // call get_vessel_tip_data_3d()
     // data_3d contains vector of coefficients a and b and also weighted avg of 3D pressure
     auto data_3d = solver_3d.get_vessel_tip_data_3d();
+    log("initial 3D data at outlet tips");
+    for (const auto &a: data_3d)
+      log(fmt::format("avg_p = {}, avg_nut = {}\n", a.d_p_3d_w, a.d_nut_3d_w));
 
     // time integration
     const auto begin_t = std::chrono::steady_clock::now();
@@ -191,10 +203,7 @@ int main(int argc, char *argv[]) {
           if (it % (4 * coupling_interval) == 0)
             solver_3d.write_output();
 
-          // TODO: since 3D pressures are modified, update the values in 1D solver
-          // Solver 1D may store vector (for each outlet) of coefficients a and b
-          // and also vector of weighted avg of 3D pressure
-          // ===> digest data_3d into solver_1d
+          // recompute avg 3d values at outlet tips
           data_3d = solver_3d.get_vessel_tip_data_3d();
         }
 

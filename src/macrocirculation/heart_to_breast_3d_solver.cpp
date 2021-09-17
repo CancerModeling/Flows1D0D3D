@@ -93,8 +93,11 @@ void set_perfusion_pts(std::string out_dir,
 // input class definitions
 
 HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string &filename)
-    : d_rho_cap(1.), d_rho_tis(1.), d_K_cap(1.e-9), d_K_tis(1.e-11),
-      d_Lp_art_cap(1.e-6), d_Lc_cap(1e-12), d_Sc_cap(1e2),
+    : d_rho_cap(1.), d_rho_tis(1.), d_K_cap(1.e-5), d_K_tis(1.e-11),
+      d_Lp_art_cap(1.e-6), d_Lp_vein_cap(1.e-7), d_Lp_cap_tis(1e-11),
+      d_Dnut_cap(1e-3), d_Dtis_cap(1.e-6), d_Lnut_cap_tis(0.01),
+      d_N_bar_cap(1e2), d_N_bar_surf_cap(1.e-2),
+      d_rnut_cap(0.), d_rnut_art_cap(0.), d_rnut_vein_cap(1.),
       d_T(1.), d_dt(0.01), d_h(0.1), d_mesh_file(""), d_out_dir(""),
       d_perf_regularized(false),
       d_perf_fn_type("const"), d_perf_neigh_size({1., 4.}),
@@ -110,8 +113,16 @@ void HeartToBreast3DSolverInputDeck::read_parameters(const std::string &filename
   d_K_cap = input("K_cap", 1.);
   d_K_tis = input("K_tis", 1.);
   d_Lp_art_cap = input("Lp_art_cap", 1.);
-  d_Lc_cap = input("Lc_cap", 1.);
-  d_Sc_cap = input("Sc_cap", 1.);
+  d_Lp_vein_cap = input("Lp_vein_cap", 1.);
+  d_Lp_cap_tis = input("Lp_cap_tis", 1.);
+  d_Dnut_cap = input("Dnut_cap", 1.);
+  d_Dtis_cap = input("Dtis_cap", 1.);
+  d_Lnut_cap_tis = input("Lnut_cap_tis", 1.);
+  d_N_bar_cap = input("N_bar_cap", 1.);
+  d_N_bar_surf_cap = input("N_bar_surf_cap", 1.);
+  d_rnut_cap = input("rnut_cap", 1.);
+  d_rnut_art_cap = input("rnut_art_cap", 1.);
+  d_rnut_vein_cap = input("rnut_vein_cap", 1.);
   d_T = input("T", 1.);
   d_dt = input("dt", 0.01);
   d_h = input("h", 0.1);
@@ -131,8 +142,8 @@ std::string HeartToBreast3DSolverInputDeck::print_str() {
   oss << "K_cap = " << d_K_cap << "\n";
   oss << "K_tis = " << d_K_tis << "\n";
   oss << "L_art_cap = " << d_Lp_art_cap << "\n";
-  oss << "Lc_cap = " << d_Lc_cap << "\n";
-  oss << "Sc_cap = " << d_Sc_cap << "\n";
+  oss << "Lp_cap_tis = " << d_Lp_cap_tis << "\n";
+  oss << "N_bar_cap = " << d_N_bar_cap << "\n";
   oss << "T = " << d_T << "\n";
   oss << "dt = " << d_dt << "\n";
   oss << "h = " << d_h << "\n";
@@ -149,19 +160,23 @@ HeartToBreast3DSolver::HeartToBreast3DSolver(MPI_Comm mpi_comm,
                                              lm::EquationSystems &eq_sys,
                                              lm::TransientLinearImplicitSystem &p_cap,
                                              lm::TransientLinearImplicitSystem &p_tis,
-                                             lm::ExplicitSystem &K_cap_field,
+                                             lm::TransientLinearImplicitSystem &nut_cap,
+                                             lm::TransientLinearImplicitSystem &nut_tis,
                                              lm::ExplicitSystem &K_tis_field,
-                                             lm::ExplicitSystem &Lp_art_cap_field,
-                                             lm::ExplicitSystem &Lp_cap_tis_field,
+                                             lm::ExplicitSystem &Dnut_tis_field,
+                                             lm::ExplicitSystem &N_bar_cap_field,
+                                             lm::ExplicitSystem &N_bar_sruf_cap_field,
                                              Logger &log)
     : BaseModel(libmesh_comm, mesh, eq_sys, log, "HeartToBreast3DSolver"),
       d_input(input),
       d_p_cap(this, d_mesh, p_cap),
       d_p_tis(this, d_mesh, p_tis),
-      d_K_cap_field(K_cap_field),
+      d_nut_cap(this, d_mesh, nut_cap),
+      d_nut_tis(this, d_mesh, nut_tis),
       d_K_tis_field(K_tis_field),
-      d_Lp_art_cap_field(Lp_art_cap_field),
-      d_Lp_cap_tis_field(Lp_cap_tis_field) {
+      d_Dnut_tis_field(Dnut_tis_field),
+      d_N_bar_cap_field(N_bar_cap_field),
+      d_N_bar_surf_cap_field(N_bar_sruf_cap_field) {
 
   d_dt = input.d_dt;
   d_log("created HeartToBreast3DSolver object\n");
@@ -173,8 +188,12 @@ void HeartToBreast3DSolver::write_perfusion_output(std::string out_file) {
   add_points(d_perf_pts, vtu_writer.d_d_p);
   add_array("Radius", d_perf_radii, vtu_writer.d_d_p);
   add_array("Ball_Radius", d_perf_ball_radii, vtu_writer.d_d_p);
-  add_array("pv", d_perf_pres, vtu_writer.d_d_p);
-  add_array("pcap", d_perf_p_3d_weighted, vtu_writer.d_d_p);
+  add_array("p_art_outlet", d_perf_pres, vtu_writer.d_d_p);
+  add_array("p_vein_outlet", d_perf_pres_vein, vtu_writer.d_d_p);
+  add_array("nut_art_outlet", d_perf_nut, vtu_writer.d_d_p);
+  add_array("nut_vein_outlet", d_perf_nut_vein, vtu_writer.d_d_p);
+  add_array("p_cap_outlet", d_perf_p_3d_weighted, vtu_writer.d_d_p);
+  add_array("nut_cap_outlet", d_perf_nut_3d_weighted, vtu_writer.d_d_p);
   vtu_writer.write();
 }
 
@@ -194,6 +213,14 @@ void HeartToBreast3DSolver::solve() {
   solve_clock = std::chrono::steady_clock::now();
   d_p_tis.solve();
   d_log("tissue pressure solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+
+  solve_clock = std::chrono::steady_clock::now();
+  d_nut_cap.solve();
+  d_log("capillary nutrient solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+
+  solve_clock = std::chrono::steady_clock::now();
+  d_nut_tis.solve();
+  d_log("tissue nutrient solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 }
 void HeartToBreast3DSolver::write_output() {
   static int out_n = 0;
@@ -221,15 +248,21 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
     exit(EXIT_FAILURE);
   }
 
+  auto &input = d_input;
+
   // step 1: copy relevant data
   for (const auto &a : data_1d) {
     d_perf_pts.push_back(lm::Point(a.p.x, a.p.y, a.p.z));
     d_perf_radii.push_back(a.radius);
     d_perf_pres.push_back(a.pressure);
+    d_perf_pres_vein.push_back(6666.); // FIXME
+    d_perf_nut.push_back(1.); // FIXME
+    d_perf_nut_vein.push_back(0.); // FIXME
     d_perf_ball_radii.push_back(0.);
     d_perf_coeff_a.push_back(0.);
     d_perf_coeff_b.push_back(0.);
     d_perf_p_3d_weighted.push_back(0.);
+    d_perf_nut_3d_weighted.push_back(0.);
   }
 
   //
@@ -242,8 +275,8 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
   // step 2: setup perfusion neighborhood
   // instead of point source, we have volume source supported over a ball.
   // radius of ball is proportional to the outlet radius^3 and varies from [ball_r_min, ball_r_max]
-  double ball_r_min = d_input.d_perf_neigh_size.first;  // * d_input.d_h; // avoid point sources
-  double ball_r_max = d_input.d_perf_neigh_size.second; // * d_input.d_h; // avoid too large neighborhood
+  double ball_r_min = input.d_perf_neigh_size.first;  // * d_input.d_h; // avoid point sources
+  double ball_r_max = input.d_perf_neigh_size.second; // * d_input.d_h; // avoid too large neighborhood
   std::cout << "ball r = ";
   for (size_t i = 0; i < num_perf_outlets; i++) {
     d_perf_ball_radii[i] = ball_r_min + (ball_r_max - ball_r_min) * (perf_flow_capacity[i] - min_r3) / (max_r3 - min_r3);
@@ -253,11 +286,11 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
 
   //  create outlet functions (we choose linear \phi(r) = 1 - r
   for (size_t i = 0; i < num_perf_outlets; i++) {
-    if (d_input.d_perf_fn_type == "const")
+    if (input.d_perf_fn_type == "const")
       d_perf_fns.push_back(std::make_unique<ConstOutletRadial>(d_perf_pts[i], d_perf_ball_radii[i]));
-    else if (d_input.d_perf_fn_type == "linear")
+    else if (input.d_perf_fn_type == "linear")
       d_perf_fns.push_back(std::make_unique<LinearOutletRadial>(d_perf_pts[i], d_perf_ball_radii[i]));
-    else if (d_input.d_perf_fn_type == "gaussian")
+    else if (input.d_perf_fn_type == "gaussian")
       d_perf_fns.push_back(std::make_unique<GaussianOutletRadial>(d_perf_pts[i], d_perf_ball_radii[i], 0.5 * d_perf_ball_radii[i]));
     else {
       std::cerr << "Error: input flag for outlet weight function is invalid.\n";
@@ -324,58 +357,35 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
   }
 
   // step 4: compute coefficients that we need to exchange with the network system
-  std::vector<unsigned int> Lp_cap_dof_indices;
   std::vector<double> local_out_coeff_a(num_perf_outlets, 0.);
-  std::vector<double> local_out_coeff_b(num_perf_outlets, 0.);
-  std::vector<double> local_out_p_3d_weighted(num_perf_outlets, 0.);
   for (size_t I = 0; I < num_perf_outlets; I++) {
     auto &out_fn_I = d_perf_fns[I];
     double a = 0.;
-    double b = 0.;
-    double p_3d_w = 0.; // 3D weighted pressure at outlet
     // loop over elements
     for (const auto &elem_id : d_perf_elems_3D[I]) {
       const auto &elem = d_mesh.elem_ptr(elem_id);
       // init dof map
       d_p_cap.init_dof(elem);
-      d_Lp_art_cap_field.get_dof_map().dof_indices(elem, Lp_cap_dof_indices);
 
       // init fe
       d_p_cap.init_fe(elem);
 
-      // get Lp at this element
-      double Lp_elem = d_Lp_art_cap_field.current_solution(Lp_cap_dof_indices[0]);
-
       // loop over quad points
       for (unsigned int qp = 0; qp < d_p_cap.d_qrule.n_points(); qp++) {
-        a += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * Lp_elem;
-
-        // get pressure at quad point
-        double p_qp = 0.;
-        for (unsigned int l = 0; l < d_p_cap.d_phi.size(); l++) {
-          p_qp += d_p_cap.d_phi[l][qp] * d_p_cap.get_current_sol(l);
-        }
-
-        b += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * Lp_elem * p_qp;
-
-        p_3d_w += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * p_qp;
+        a += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * input.d_Lp_art_cap;
       } // quad point loop
     }   // elem loop
 
     local_out_coeff_a[I] = a;
-    local_out_coeff_b[I] = b;
-    local_out_p_3d_weighted[I] = p_3d_w;
   } // outlet loop
   std::cout << std::endl;
 
   // sum distributed coefficients and sync with all processors
   comm_local_to_global(local_out_coeff_a, d_perf_coeff_a);
-  comm_local_to_global(local_out_coeff_b, d_perf_coeff_b);
-  comm_local_to_global(local_out_p_3d_weighted, d_perf_p_3d_weighted);
 
   // at this point, all processors must have
   // 1. same d_c for outlet weight function
-  // 2. same values of coefficients a and b
+  // 2. same values of coefficient a
 
   // to verify that all processor have same values of coefficients a and b and normalizing constant
   if (d_input.d_debug_lvl > 0) {
@@ -387,7 +397,7 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
       of << d_perf_pts[I](0) << ", " << d_perf_pts[I](1) << ", " << d_perf_pts[I](2) << ", "
          << d_perf_radii[I] << ", " << d_perf_ball_radii[I] << ", "
          << (*out_fn_I).d_c << ", " << d_perf_coeff_a[I] << ", "
-         << d_perf_coeff_b[I] << ", " << d_perf_p_3d_weighted[I] << "\n";
+         << d_perf_coeff_b[I] << ", " << d_perf_p_3d_weighted[I] << ", " << d_perf_nut_3d_weighted[I] << "\n";
     }
     of.close();
   }
@@ -401,20 +411,26 @@ void HeartToBreast3DSolver::setup_1d3d_partition(const std::vector<VesselTipCurr
     exit(EXIT_FAILURE);
   }
 
+  auto &input = d_input;
+
   // step 1: copy relevant data
   for (const auto &a : data_1d) {
     d_perf_pts.push_back(lm::Point(a.p.x, a.p.y, a.p.z));
     d_perf_radii.push_back(a.radius);
     d_perf_pres.push_back(a.pressure);
+    d_perf_pres_vein.push_back(6666.); // FIXME
+    d_perf_nut.push_back(1.); // FIXME
+    d_perf_nut_vein.push_back(0.); // FIXME
     d_perf_ball_radii.push_back(0.);
     d_perf_coeff_a.push_back(0.);
     d_perf_coeff_b.push_back(0.);
     d_perf_p_3d_weighted.push_back(0.);
+    d_perf_nut_3d_weighted.push_back(0.);
   }
 
   //  create outlet functions (for this case, it will be constant function)
   for (size_t i = 0; i < num_perf_outlets; i++) {
-    if (d_input.d_perf_fn_type == "const")
+    if (input.d_perf_fn_type == "const")
       d_perf_fns.push_back(std::make_unique<ConstOutletRadial>(d_perf_pts[i], DBL_MAX)); // so that it is practically 1 for any point
     else {
       std::cerr << "Error: input flag for outlet weight function is invalid for partitioned perfusion.\n";
@@ -472,57 +488,34 @@ void HeartToBreast3DSolver::setup_1d3d_partition(const std::vector<VesselTipCurr
   }
 
   // step 4: compute coefficients that we need to exchange with the network system
-  std::vector<unsigned int> Lp_cap_dof_indices;
   std::vector<double> local_out_coeff_a(num_perf_outlets, 0.);
-  std::vector<double> local_out_coeff_b(num_perf_outlets, 0.);
-  std::vector<double> local_out_p_3d_weighted(num_perf_outlets, 0.);
   for (size_t I = 0; I < num_perf_outlets; I++) {
     auto &out_fn_I = d_perf_fns[I];
     double a = 0.;
-    double b = 0.;
-    double p_3d_w = 0.; // 3D weighted pressure at outlet
     // loop over elements
     for (const auto &elem_id : d_perf_elems_3D[I]) {
       const auto &elem = d_mesh.elem_ptr(elem_id);
       // init dof map
       d_p_cap.init_dof(elem);
-      d_Lp_art_cap_field.get_dof_map().dof_indices(elem, Lp_cap_dof_indices);
 
       // init fe
       d_p_cap.init_fe(elem);
 
-      // get Lp at this element
-      double Lp_elem = d_Lp_art_cap_field.current_solution(Lp_cap_dof_indices[0]);
-
       // loop over quad points
       for (unsigned int qp = 0; qp < d_p_cap.d_qrule.n_points(); qp++) {
-        a += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * Lp_elem;
-
-        // get pressure at quad point
-        double p_qp = 0.;
-        for (unsigned int l = 0; l < d_p_cap.d_phi.size(); l++) {
-          p_qp += d_p_cap.d_phi[l][qp] * d_p_cap.get_current_sol(l);
-        }
-
-        b += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * Lp_elem * p_qp;
-
-        p_3d_w += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * p_qp;
+        a += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * input.d_Lp_art_cap;
       } // quad point loop
     }   // elem loop
 
     local_out_coeff_a[I] = a;
-    local_out_coeff_b[I] = b;
-    local_out_p_3d_weighted[I] = p_3d_w;
   } // outlet loop
 
   // sum distributed coefficients and sync with all processors
   comm_local_to_global(local_out_coeff_a, d_perf_coeff_a);
-  comm_local_to_global(local_out_coeff_b, d_perf_coeff_b);
-  comm_local_to_global(local_out_p_3d_weighted, d_perf_p_3d_weighted);
 
   // at this point, all processors must have
   // 1. same d_c for outlet weight function
-  // 2. same values of coefficients a and b
+  // 2. same values of coefficient a
 
   // to verify that all processor have same values of coefficients a and b and normalizing constant
   if (d_input.d_debug_lvl > 0) {
@@ -534,7 +527,7 @@ void HeartToBreast3DSolver::setup_1d3d_partition(const std::vector<VesselTipCurr
       of << d_perf_pts[I](0) << ", " << d_perf_pts[I](1) << ", " << d_perf_pts[I](2) << ", "
          << d_perf_radii[I] << ", " << d_perf_ball_radii[I] << ", "
          << (*out_fn_I).d_c << ", " << d_perf_coeff_a[I] << ", "
-         << d_perf_coeff_b[I] << ", " << d_perf_p_3d_weighted[I] << "\n";
+         << d_perf_coeff_b[I] << ", " << d_perf_p_3d_weighted[I] << ", " << d_perf_nut_3d_weighted[I] << "\n";
     }
     of.close();
   }
@@ -575,6 +568,8 @@ std::vector<VesselTipCurrentCouplingData3D> HeartToBreast3DSolver::get_vessel_ti
     d.d_a = d_perf_coeff_a[i];
     d.d_b = d_perf_coeff_b[i];
     d.d_p_3d_w = d_perf_p_3d_weighted[i];
+    d.d_nut_3d_w = d_perf_nut_3d_weighted[i];
+    data.push_back(d);
   }
 
   return data;
@@ -583,48 +578,53 @@ std::vector<VesselTipCurrentCouplingData3D> HeartToBreast3DSolver::get_vessel_ti
 void HeartToBreast3DSolver::update_3d_data() {
   auto num_perf_outlets = d_perf_pts.size();
 
+  auto &input = d_input;
+
   // recompute coefficients b and avg 3d pressure
-  std::vector<unsigned int> Lp_cap_dof_indices;
   std::vector<double> local_out_coeff_b(num_perf_outlets, 0.);
   std::vector<double> local_out_p_3d_weighted(num_perf_outlets, 0.);
+  std::vector<double> local_out_nut_3d_weighted(num_perf_outlets, 0.);
   for (size_t I = 0; I < num_perf_outlets; I++) {
     auto &out_fn_I = d_perf_fns[I];
     double b = 0.;
     double p_3d_w = 0.; // 3D weighted pressure at outlet
+    double nut_3d_w = 0.;
     // loop over elements
     for (const auto &elem_id : d_perf_elems_3D[I]) {
       const auto &elem = d_mesh.elem_ptr(elem_id);
       // init dof map
       d_p_cap.init_dof(elem);
-      d_Lp_art_cap_field.get_dof_map().dof_indices(elem, Lp_cap_dof_indices);
+      d_nut_cap.init_dof(elem);
 
       // init fe
       d_p_cap.init_fe(elem);
-
-      // get Lp at this element
-      double Lp_elem = d_Lp_art_cap_field.current_solution(Lp_cap_dof_indices[0]);
 
       // loop over quad points
       for (unsigned int qp = 0; qp < d_p_cap.d_qrule.n_points(); qp++) {
         // get pressure at quad point
         double p_qp = 0.;
+        double nut_qp = 0.;
         for (unsigned int l = 0; l < d_p_cap.d_phi.size(); l++) {
           p_qp += d_p_cap.d_phi[l][qp] * d_p_cap.get_current_sol(l);
+          nut_qp += d_p_cap.d_phi[l][qp] * d_nut_cap.get_current_sol(l);
         }
 
-        b += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * Lp_elem * p_qp;
+        b += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * input.d_Lp_art_cap * p_qp;
 
         p_3d_w += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * p_qp;
+        nut_3d_w += d_p_cap.d_JxW[qp] * (*out_fn_I)(d_p_cap.d_qpoints[qp]) * nut_qp;
       } // quad point loop
     }   // elem loop
 
     local_out_coeff_b[I] = b;
     local_out_p_3d_weighted[I] = p_3d_w;
+    local_out_nut_3d_weighted[I] = nut_3d_w;
   } // outlet loop
 
   // sum distributed coefficients and sync with all processors
   comm_local_to_global(local_out_coeff_b, d_perf_coeff_b);
   comm_local_to_global(local_out_p_3d_weighted, d_perf_p_3d_weighted);
+  comm_local_to_global(local_out_nut_3d_weighted, d_perf_nut_3d_weighted);
 }
 
 void HeartToBreast3DSolver::update_1d_data(const std::vector<VesselTipCurrentCouplingData> &data_1d) {
@@ -633,36 +633,42 @@ void HeartToBreast3DSolver::update_1d_data(const std::vector<VesselTipCurrentCou
     exit(EXIT_FAILURE);
   }
 
-  for (size_t i = 0; i < data_1d.size(); i++)
+  for (size_t i = 0; i < data_1d.size(); i++) {
     d_perf_pres[i] = data_1d[i].pressure;
+    d_perf_pres_vein[i] = 6666.; // FIXME
+    d_perf_nut[i] = 1.; // FIXME
+    d_perf_nut_vein[i] = 0.; // FIXME
+  }
 }
 
 void HeartToBreast3DSolver::set_conductivity_fields() {
   std::vector<unsigned int> dof_indices;
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
-    d_Lp_art_cap_field.get_dof_map().dof_indices(elem, dof_indices);
-    d_Lp_art_cap_field.solution->set(dof_indices[0], d_input.d_Lp_art_cap);
-
-    d_Lp_cap_tis_field.get_dof_map().dof_indices(elem, dof_indices);
-    d_Lp_cap_tis_field.solution->set(dof_indices[0], d_input.d_Lc_cap * d_input.d_Sc_cap);
-
-    d_K_cap_field.get_dof_map().dof_indices(elem, dof_indices);
-    d_K_cap_field.solution->set(dof_indices[0], d_input.d_K_cap);
 
     d_K_tis_field.get_dof_map().dof_indices(elem, dof_indices);
     d_K_tis_field.solution->set(dof_indices[0], d_input.d_K_tis);
+
+    d_Dnut_tis_field.get_dof_map().dof_indices(elem, dof_indices);
+    d_Dnut_tis_field.solution->set(dof_indices[0], d_input.d_Dtis_cap);
+
+    d_N_bar_cap_field.get_dof_map().dof_indices(elem, dof_indices);
+    d_N_bar_cap_field.solution->set(dof_indices[0], d_input.d_N_bar_cap);
+
+    d_N_bar_surf_cap_field.get_dof_map().dof_indices(elem, dof_indices);
+    d_N_bar_surf_cap_field.solution->set(dof_indices[0], d_input.d_N_bar_surf_cap);
   }
-  d_Lp_art_cap_field.solution->close();
-  d_Lp_art_cap_field.update();
-
-  d_Lp_cap_tis_field.solution->close();
-  d_Lp_cap_tis_field.update();
-
-  d_K_cap_field.solution->close();
-  d_K_cap_field.update();
 
   d_K_tis_field.solution->close();
   d_K_tis_field.update();
+
+  d_Dnut_tis_field.solution->close();
+  d_Dnut_tis_field.update();
+
+  d_N_bar_cap_field.solution->close();
+  d_N_bar_cap_field.update();
+
+  d_N_bar_surf_cap_field.solution->close();
+  d_N_bar_surf_cap_field.update();
 }
 
 } // namespace macrocirculation
