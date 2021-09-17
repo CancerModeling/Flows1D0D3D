@@ -94,10 +94,10 @@ void set_perfusion_pts(std::string out_dir,
 
 HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string &filename)
     : d_rho_cap(1.), d_rho_tis(1.), d_K_cap(1.e-9), d_K_tis(1.e-11),
-      d_Lp_art_cap(1.e-6), d_Lp_cap_tis(1e-12),
+      d_Lp_art_cap(1.e-6), d_Lp_vein_cap(1.e-7), d_Lp_cap_tis(1e-12),
       d_Dnut_cap(1e-6), d_Dtis_cap(1.e-6), d_Lnut_cap_tis(1.),
       d_N_bar_cap(1e2), d_N_bar_surf_cap(1.e-2),
-      d_rnut_cap(0.9), d_rnut_art_cap(0.9),
+      d_rnut_cap(0.), d_rnut_art_cap(0.), d_rnut_vein_cap(1.),
       d_T(1.), d_dt(0.01), d_h(0.1), d_mesh_file(""), d_out_dir(""),
       d_perf_regularized(false),
       d_perf_fn_type("const"), d_perf_neigh_size({1., 4.}),
@@ -113,6 +113,7 @@ void HeartToBreast3DSolverInputDeck::read_parameters(const std::string &filename
   d_K_cap = input("K_cap", 1.);
   d_K_tis = input("K_tis", 1.);
   d_Lp_art_cap = input("Lp_art_cap", 1.);
+  d_Lp_vein_cap = input("Lp_vein_cap", 1.);
   d_Lp_cap_tis = input("Lp_cap_tis", 1.);
   d_Dnut_cap = input("Dnut_cap", 1.);
   d_Dtis_cap = input("Dtis_cap", 1.);
@@ -121,6 +122,7 @@ void HeartToBreast3DSolverInputDeck::read_parameters(const std::string &filename
   d_N_bar_surf_cap = input("N_bar_surf_cap", 1.);
   d_rnut_cap = input("rnut_cap", 1.);
   d_rnut_art_cap = input("rnut_art_cap", 1.);
+  d_rnut_vein_cap = input("rnut_vein_cap", 1.);
   d_T = input("T", 1.);
   d_dt = input("dt", 0.01);
   d_h = input("h", 0.1);
@@ -188,6 +190,8 @@ void HeartToBreast3DSolver::write_perfusion_output(std::string out_file) {
   add_array("Ball_Radius", d_perf_ball_radii, vtu_writer.d_d_p);
   add_array("p_art_outlet", d_perf_pres, vtu_writer.d_d_p);
   add_array("p_vein_outlet", d_perf_pres_vein, vtu_writer.d_d_p);
+  add_array("nut_art_outlet", d_perf_nut, vtu_writer.d_d_p);
+  add_array("nut_vein_outlet", d_perf_nut_vein, vtu_writer.d_d_p);
   add_array("p_cap_outlet", d_perf_p_3d_weighted, vtu_writer.d_d_p);
   add_array("nut_cap_outlet", d_perf_nut_3d_weighted, vtu_writer.d_d_p);
   vtu_writer.write();
@@ -210,13 +214,13 @@ void HeartToBreast3DSolver::solve() {
   d_p_tis.solve();
   d_log("tissue pressure solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 
-//  solve_clock = std::chrono::steady_clock::now();
-//  d_nut_cap.solve();
-//  d_log("capillary nutrient solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
-//
-//  solve_clock = std::chrono::steady_clock::now();
-//  d_nut_tis.solve();
-//  d_log("tissue nutrient solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+  solve_clock = std::chrono::steady_clock::now();
+  d_nut_cap.solve();
+  d_log("capillary nutrient solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+
+  solve_clock = std::chrono::steady_clock::now();
+  d_nut_tis.solve();
+  d_log("tissue nutrient solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 }
 void HeartToBreast3DSolver::write_output() {
   static int out_n = 0;
@@ -640,47 +644,31 @@ void HeartToBreast3DSolver::update_1d_data(const std::vector<VesselTipCurrentCou
 void HeartToBreast3DSolver::set_conductivity_fields() {
   std::vector<unsigned int> dof_indices;
   for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
-    d_Lp_art_cap_field.get_dof_map().dof_indices(elem, dof_indices);
-    d_Lp_art_cap_field.solution->set(dof_indices[0], d_input.d_Lp_art_cap);
-
-    d_Lp_cap_tis_field.get_dof_map().dof_indices(elem, dof_indices);
-    d_Lp_cap_tis_field.solution->set(dof_indices[0], d_input.d_Lc_cap * d_input.d_Sc_cap);
-
-    d_K_cap_field.get_dof_map().dof_indices(elem, dof_indices);
-    d_K_cap_field.solution->set(dof_indices[0], d_input.d_K_cap);
 
     d_K_tis_field.get_dof_map().dof_indices(elem, dof_indices);
     d_K_tis_field.solution->set(dof_indices[0], d_input.d_K_tis);
 
-    d_Lnut_cap_tis_field.get_dof_map().dof_indices(elem, dof_indices);
-    d_Lnut_cap_tis_field.solution->set(dof_indices[0], d_input.d_Lnut_cap * d_input.d_Sc_cap);
-
-    d_Dnut_cap_field.get_dof_map().dof_indices(elem, dof_indices);
-    d_Dnut_cap_field.solution->set(dof_indices[0], d_input.d_Dnut_cap);
-
     d_Dnut_tis_field.get_dof_map().dof_indices(elem, dof_indices);
     d_Dnut_tis_field.solution->set(dof_indices[0], d_input.d_Dtis_cap);
+
+    d_N_bar_cap_field.get_dof_map().dof_indices(elem, dof_indices);
+    d_N_bar_cap_field.solution->set(dof_indices[0], d_input.d_N_bar_cap);
+
+    d_N_bar_surf_cap_field.get_dof_map().dof_indices(elem, dof_indices);
+    d_N_bar_surf_cap_field.solution->set(dof_indices[0], d_input.d_N_bar_surf_cap);
   }
-  d_Lp_art_cap_field.solution->close();
-  d_Lp_art_cap_field.update();
-
-  d_Lp_cap_tis_field.solution->close();
-  d_Lp_cap_tis_field.update();
-
-  d_K_cap_field.solution->close();
-  d_K_cap_field.update();
 
   d_K_tis_field.solution->close();
   d_K_tis_field.update();
 
-  d_Lnut_cap_tis_field.solution->close();
-  d_Lnut_cap_tis_field.update();
-
-  d_Dnut_cap_field.solution->close();
-  d_Dnut_cap_field.update();
-
   d_Dnut_tis_field.solution->close();
   d_Dnut_tis_field.update();
+
+  d_N_bar_cap_field.solution->close();
+  d_N_bar_cap_field.update();
+
+  d_N_bar_surf_cap_field.solution->close();
+  d_N_bar_surf_cap_field.update();
 }
 
 } // namespace macrocirculation

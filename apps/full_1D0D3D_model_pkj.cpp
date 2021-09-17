@@ -100,8 +100,8 @@ int main(int argc, char *argv[]) {
       input.d_debug_lvl = 1;
       input.d_perf_regularized = false;
       input.d_perf_fn_type = "const";
-      //input.d_perf_regularized = true;
-      //input.d_perf_fn_type = "linear";
+      input.d_perf_regularized = true;
+      input.d_perf_fn_type = "linear";
       input.d_perf_neigh_size = std::make_pair(4., 10.);
     }
     log("input data \n" + input.print_str() + "\n");
@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
     auto data_3d = solver_3d.get_vessel_tip_data_3d();
     log("initial 3D data at outlet tips");
     for (const auto &a: data_3d)
-      log(fmt::format("a = {}, b = {}, avg_p = {}, avg_nut = {}\n", a.d_a, a.d_b, a.d_p_3d_w, a.d_nut_3d_w));
+      log(fmt::format("avg_p = {}, avg_nut = {}\n", a.d_p_3d_w, a.d_nut_3d_w));
 
     // time integration
     const auto begin_t = std::chrono::steady_clock::now();

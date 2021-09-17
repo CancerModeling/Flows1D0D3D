@@ -51,6 +51,8 @@ struct HeartToBreast3DSolverInputDeck {
   double d_K_tis;
   /*! @brief Artery - Capillary exchange permeability (cm^4 . s/g). */
   double d_Lp_art_cap;
+  /*! @brief Vein - Capillary exchange permeability (cm^4 . s/g). */
+  double d_Lp_vein_cap;
   /*! @brief Permeability of capillary surface (cm^2 . s/g) (for single capillary). */
   double d_Lp_cap_tis;
   /*! @brief Capillary nutrient diffusion coefficient (cm^2/s) (for single capillary). */
@@ -67,6 +69,8 @@ struct HeartToBreast3DSolverInputDeck {
   double d_rnut_cap;
   /*! @brief reflection coefficient for artery-capillary and vein-capillary exchange of nutrient. */
   double d_rnut_art_cap;
+  /*! @brief reflection coefficient for vein-capillary and vein-capillary exchange of nutrient. */
+  double d_rnut_vein_cap;
   /*! @brief Final simulation time. */
   double d_T;
   /*! @brief Size of time step. */
