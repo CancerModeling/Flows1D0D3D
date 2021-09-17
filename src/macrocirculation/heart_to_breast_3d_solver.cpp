@@ -224,8 +224,40 @@ void HeartToBreast3DSolver::solve() {
 }
 void HeartToBreast3DSolver::write_output() {
   static int out_n = 0;
+  // out 3d data
   VTKIO(d_mesh).write_equation_systems(d_input.d_out_dir + "/output_3D_" + std::to_string(out_n) + ".pvtu", d_eq_sys);
+  // out 1d data
   write_perfusion_output(d_input.d_out_dir + "/output_3D_perf_" + std::to_string(out_n) + ".vtu");
+  // out 3d qoi data
+  std::vector<double> qoi;
+  qoi.push_back(d_p_cap.compute_qoi("linf"));
+  qoi.push_back(d_p_cap.compute_qoi("l1"));
+  qoi.push_back(d_p_cap.compute_qoi("l2"));
+  qoi.push_back(d_p_tis.compute_qoi("linf"));
+  qoi.push_back(d_p_tis.compute_qoi("l1"));
+  qoi.push_back(d_p_tis.compute_qoi("l2"));
+  qoi.push_back(d_nut_cap.compute_qoi("linf"));
+  qoi.push_back(d_nut_cap.compute_qoi("l1"));
+  qoi.push_back(d_nut_cap.compute_qoi("l2"));
+  qoi.push_back(d_nut_tis.compute_qoi("linf"));
+  qoi.push_back(d_nut_tis.compute_qoi("l1"));
+  qoi.push_back(d_nut_tis.compute_qoi("l2"));
+
+  if (d_procRank == 0) {
+    std::string fn = fmt::format("{}qoi_3d.txt", d_input.d_out_dir);
+    if (out_n == 0) {
+      std::ofstream of;
+      of.open(fn);
+      of << "p_cap_linf, p_cap_l1, p_cap_l2, p_tis_linf, p_tis_l1, p_tis_l2, nut_cap_linf, nut_cap_l1, "
+            "nut_cap_l2, nut_tis_linf, nut_tis_l1, nut_tis_l2\n";
+    }
+    std::ofstream of;
+    of.open(fn, std::ios_base::app);
+    for (size_t i = 0; i < qoi.size(); i++)
+      of << qoi[i] << (i < qoi.size() - 1 ? ", " : "\n");
+    of.close();
+  }
+
   out_n++;
 }
 void HeartToBreast3DSolver::set_output_folder(std::string output_dir) {
