@@ -40,6 +40,22 @@ namespace mc = macrocirculation;
 
 constexpr std::size_t degree = 2;
 
+template<typename SolverType>
+void output_tip_values(const mc::GraphStorage &graph, const mc::DofMap &dof_map, const SolverType &solver) {
+  for (const auto &v_id : graph.get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
+    auto &vertex = *graph.get_vertex(v_id);
+    auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
+    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow()) {
+      auto &vertex_dof_indices = dof_map.get_local_dof_map(vertex).dof_indices();
+
+      std::vector<double> vertex_values(vertex_dof_indices.size());
+      extract_dof(vertex_dof_indices, solver.get_solution(), vertex_values);
+
+      std::cout << "vertex id = " << vertex.get_id() << " has c = " << vertex_values << std::endl;
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
   cxxopts::Options options(argv[0], "Combined geometry with explicit implicit solver");
   options.add_options()                                                                              //
@@ -156,7 +172,7 @@ int main(int argc, char *argv[]) {
     // transport dofmap
     auto dof_map_transport_nl = std::make_shared<mc::DofMap>(*graph_nl);
     auto dof_map_transport_li = std::make_shared<mc::DofMap>(*graph_li);
-    mc::DofMap::create(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, 1, degree,  [](const mc::GraphStorage&, const mc::Vertex &v) { return 0; });
+    mc::DofMap::create_for_transport(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, degree);
 
     // upwind evaluators:
     auto upwind_evaluator_nl = std::make_shared<mc::NonlinearFlowUpwindEvaluator>(MPI_COMM_WORLD, graph_nl, dof_map_nl);
@@ -248,6 +264,8 @@ int main(int argc, char *argv[]) {
         pvd_writer.write(t);
 
         vessel_tip_writer.write(t, solver_li->get_solution());
+
+        output_tip_values(*graph_li, *dof_map_transport_li, transport_solver);
       }
 
       // break

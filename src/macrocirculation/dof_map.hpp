@@ -124,11 +124,16 @@ public:
               const std::function<size_t(const Vertex &)> &num_vertex_dofs);
 
   static void create(MPI_Comm comm,
-              const std::vector< std::shared_ptr< GraphStorage > > &graphs,
-              const std::vector< std::shared_ptr< DofMap > > &dof_maps,
-              std::size_t num_components,
-              std::size_t degree,
-              const std::function<size_t(const GraphStorage&, const Vertex &)> &num_vertex_dofs);
+                     const std::vector<std::shared_ptr<GraphStorage>> &graphs,
+                     const std::vector<std::shared_ptr<DofMap>> &dof_maps,
+                     std::size_t num_components,
+                     std::size_t degree,
+                     const std::function<size_t(const GraphStorage &, const Vertex &)> &num_vertex_dofs);
+
+  static void create_for_transport(MPI_Comm comm,
+                                   const std::vector<std::shared_ptr<GraphStorage>> &graphs,
+                                   const std::vector<std::shared_ptr<DofMap>> &dof_maps,
+                                   std::size_t degree);
 
   /*! @brief Returns the first global dof index in this dof map.
    *         If no global distribution is used the first local index (0) is returned. */
@@ -151,7 +156,6 @@ public:
   size_t num_owned_dofs() const;
 
 private:
-
   std::vector<std::unique_ptr<LocalEdgeDofMap>> d_local_dof_maps;
 
   std::vector<std::unique_ptr<LocalVertexDofMap>> d_local_vertex_dof_maps;
