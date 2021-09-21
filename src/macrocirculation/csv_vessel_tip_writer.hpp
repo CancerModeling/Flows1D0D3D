@@ -47,7 +47,10 @@ public:
    * @param comm The communicator used for the parallel communication.
    * @param output_directory The directory to which we output both the csv files as well as the json meta file.
    * @param filename The filename without extension. Results in a <filename>.json file, containing meta information about the vessel tips
-   *                 and a <filename>_<vertex_id>.csv file for each vessel tip containing the pressures at each capacitor (column direction)
+   *                 and <filename>_<vertex_id>_<type>.csv files for each vessel tip containing for
+   *                    <type> == p: the pressures,
+   *                    <type> == c: the concentrations and
+   *                    <type> == v: the the volumes at each capacitor (column direction)
    *                 for each time step (row direction).
    * @param graph A graph to which the 0D models are attached.
    * @param dofmap A dof map which contains the 0D models.
@@ -57,14 +60,29 @@ public:
     std::string output_directory,
     std::string filename,
     std::shared_ptr<GraphStorage> graph,
-    std::shared_ptr<DofMap> dofmap);
+    std::vector< std::shared_ptr<DofMap> > dofmaps,
+    std::vector< std::string > types );
+
+  CSVVesselTipWriter(
+    MPI_Comm comm,
+    std::string output_directory,
+    std::string filename,
+    std::shared_ptr<GraphStorage> graph,
+    std::shared_ptr<DofMap> dofmaps);
 
   /*! @brief Writes the dofs of a 0D-Model for a Petsc vector.
    *
    * @param t The current time step to write.
-   * @param u Dof-vector from which the degrees of freedom
+   * @param u Dof-vector with pressures.
    */
   void write(double t, const PetscVec &u);
+
+  /*! @brief Writes the dofs of a 0D-Model for a Petsc vector.
+   *
+   * @param t The current time step to write.
+   * @param u Dof-vector with quantities.
+   */
+  void write(double t, const std::vector< std::reference_wrapper< const PetscVec > > &u);
 
   /*! @brief Writes the dofs of a 0D-Model for a gmm vector.
    *
@@ -78,7 +96,8 @@ private:
   std::string d_output_directory;
   std::string d_filename;
   std::shared_ptr<GraphStorage> d_graph;
-  std::shared_ptr<DofMap> d_dofmap;
+  std::vector< std::shared_ptr<DofMap> > d_dofmaps;
+  std::vector< std::string > d_types;
 
   /*! @brief Writes the empty string to all csv files and thereby deleting previously recorded data. * */
   void reset_all_files();
@@ -89,11 +108,11 @@ private:
   /*! @brief Adds the given time to the meta json file. */
   void update_time(double t);
 
-  /*! @brief Returns the csv filepath for a vertex with the given vertex_id. */
-  std::string get_file_path(size_t vertex_id) const;
+  /*! @brief Returns the csv filepath for a vertex with the given vertex_id for the given data type. */
+  std::string get_file_path(size_t vertex_id, const std::string& type) const;
 
   /*! @brief Returns the csv filename for a vertex with the given vertex_id. */
-  std::string get_file_name(size_t vertex_id) const;
+  std::string get_file_name(size_t vertex_id, const std::string& type) const;
 
   /*! @brief Returns the json filepath for the meta file. */
   std::string get_meta_file_path() const;
@@ -105,7 +124,7 @@ private:
    * @param u Dof-vector from which the degrees of freedom
    */
   template< typename VectorType >
-  void write_generic(double t, const VectorType& u);
+  void write_generic(const DofMap& dof_map, const VectorType& u, const std::string& type);
 };
 
 }
