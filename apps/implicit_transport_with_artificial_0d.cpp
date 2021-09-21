@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
     const bool backward_orientation = args["backward-orientation"].as<bool>();
 
     // vessel parameters
-    const double vessel_length = 5.;
+    const double vessel_length = 1.;
     const double radius = 0.403;
     const double wall_thickness = 0.067;
     const double elastic_modulus = 400000.0;
@@ -123,12 +123,12 @@ int main(int argc, char *argv[]) {
     auto flow_inside = [backward_orientation](double t, const mc::Point &p) -> double {
       const double sgn = backward_orientation ? -1. : +1.;
       if (t < 2) {
-        return sgn * 5;
+        return sgn * 1;
       } else if (t < 2.75) {
         if (p.x <= 0.1)
           return sgn * 0;
         else
-          return sgn * (-5);
+          return sgn * (-1);
       }
       return sgn * 0.;
     };
