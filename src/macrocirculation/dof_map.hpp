@@ -135,6 +135,11 @@ public:
                                    const std::vector<std::shared_ptr<DofMap>> &dof_maps,
                                    std::size_t degree);
 
+  static void create_on_vertices(MPI_Comm comm,
+                                 const std::vector<std::shared_ptr<GraphStorage>> &graphs,
+                                 const std::vector<std::shared_ptr<DofMap>> &dof_maps,
+                                 const std::function<size_t(const GraphStorage &, const Vertex &)> &num_vertex_dofs);
+
   /*! @brief Returns the first global dof index in this dof map.
    *         If no global distribution is used the first local index (0) is returned. */
   size_t first_global_dof() const;

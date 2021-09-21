@@ -56,7 +56,7 @@ public:
 
   virtual void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const = 0;
 
-  virtual void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const = 0;
+  virtual void get_0d_pressures(double t, const Vertex &v, std::vector<double> &p_c) const = 0;
 };
 
 class ConstantUpwindProvider : public UpwindProvider {
@@ -76,7 +76,7 @@ public:
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
 
-  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override { throw std::runtime_error("not implemented yet"); }
+  void get_0d_pressures(double t, const Vertex &v, std::vector<double> &p_c) const override { throw std::runtime_error("not implemented yet"); }
 
 private:
   double d_speed;
@@ -84,7 +84,7 @@ private:
 
 class EmbeddedUpwindProvider : public UpwindProvider {
 public:
-  explicit EmbeddedUpwindProvider(std::shared_ptr< GraphStorage > graph, std::function< double(double, const Point&)> field, std::function< void(double, const Vertex&, std::vector< double > &p_c)> field_0d);
+  explicit EmbeddedUpwindProvider(std::shared_ptr<GraphStorage> graph, std::function<double(double, const Point &)> field, std::function<void(double, const Vertex &, std::vector<double> &p_c)> field_0d);
 
   ~EmbeddedUpwindProvider() override;
 
@@ -99,14 +99,14 @@ public:
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
 
-  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override { d_0d_pressure_field(t, v, p_c); }
+  void get_0d_pressures(double t, const Vertex &v, std::vector<double> &p_c) const override { d_0d_pressure_field(t, v, p_c); }
 
 private:
-  std::shared_ptr< GraphStorage > d_graph;
+  std::shared_ptr<GraphStorage> d_graph;
 
-  std::function< double(double, const Point&)> d_field;
+  std::function<double(double, const Point &)> d_field;
 
-  std::function< void(double, const Vertex&, std::vector< double > &p_c)> d_0d_pressure_field;
+  std::function<void(double, const Vertex &, std::vector<double> &p_c)> d_0d_pressure_field;
 };
 
 class UpwindProviderNonlinearFlow : public UpwindProvider {
@@ -128,7 +128,8 @@ public:
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
 
-  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override;
+  void get_0d_pressures(double t, const Vertex &v, std::vector<double> &p_c) const override;
+
 private:
   std::shared_ptr<NonlinearFlowUpwindEvaluator> d_evaluator;
   std::shared_ptr<ExplicitNonlinearFlowSolver> d_solver;
@@ -155,7 +156,7 @@ public:
 
   void get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const override;
 
-  void get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const override;
+  void get_0d_pressures(double t, const Vertex &v, std::vector<double> &p_c) const override;
 
 private:
   std::shared_ptr<GraphStorage> d_graph;
@@ -189,7 +190,7 @@ public:
   void solve(double tau, double t);
 
   const PetscVec &get_solution() const { return *u; }
-  
+
   void apply_slope_limiter(double t);
 
   const PetscMat &get_mat() const { return *A; }
@@ -197,6 +198,12 @@ public:
   const PetscVec &get_rhs() const { return *rhs; }
 
   void set_inflow_function(std::function<double(double)> inflow_function);
+
+  // TODO: move volumes into dedicated class
+  const PetscVec &get_volumes() const { return *d_volumes; }
+
+  // TODO: move volumes into dedicated class
+  const std::vector< std::shared_ptr< DofMap > > &get_dof_maps_volume() const { return d_dof_maps_volume; }
 
 private:
   /*! @brief Assembles the left-hand-side matrix for the given time step. */
@@ -209,7 +216,13 @@ private:
 
   void assemble_windkessel_rhs_and_matrix(double tau, double t);
 
-  void assemble_windkessel_rhs_and_matrix(double tau, double t, const GraphStorage& graph, const DofMap& dof_map, const UpwindProvider& upwind_provider, std::vector< std::vector< double > >& vessel_tip_volume);
+  void assemble_windkessel_rhs_and_matrix(double tau,
+                                          double t,
+                                          const GraphStorage &graph,
+                                          const DofMap &dof_map,
+                                          const DofMap &dof_map_volume,
+                                          const UpwindProvider &upwind_provider,
+                                          std::vector<std::vector<double>> &vessel_tip_volume);
 
   /*! @brief Assembles the matrix with different upwindings, so that the sparsity pattern does not change,
    *         when the velocity field changes.  */
@@ -236,7 +249,7 @@ private:
 
   std::shared_ptr<PetscKsp> linear_solver;
 
-  std::vector< std::vector< std::vector< double > > > d_vessel_tip_volume;
+  std::vector<std::vector<std::vector<double>>> d_vessel_tip_volume;
 
   // std::function<double(double)> inflow_function = [](double t) { return 0.5*std::sin(M_PI * t); };
   std::function<double(double)> inflow_function = [](double t) {
@@ -246,9 +259,12 @@ private:
     else
       return 1.;
   };
-  
+
+  std::vector<std::shared_ptr<DofMap>> d_dof_maps_volume;
+
+  std::shared_ptr<PetscVec> d_volumes;
+
   void apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t);
-  
 };
 
 namespace implicit_transport {

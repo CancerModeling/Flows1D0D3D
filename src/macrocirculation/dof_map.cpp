@@ -200,7 +200,6 @@ void DofMap::create(MPI_Comm comm,
                     std::size_t num_components,
                     std::size_t degree,
                     const std::function<size_t(const GraphStorage &, const Vertex &)> &num_vertex_dofs) {
-
   if (graphs.size() != dof_maps.size())
     throw std::runtime_error("dof map and graph list must have the same size");
 
@@ -270,6 +269,58 @@ void DofMap::create_for_transport(MPI_Comm comm,
     return 0;
   };
   create(comm, graphs, dof_maps, 1, degree, num_vertex_dof);
+}
+
+void DofMap::create_on_vertices(MPI_Comm comm,
+                               const std::vector<std::shared_ptr<GraphStorage>> &graphs,
+                               const std::vector<std::shared_ptr<DofMap>> &dof_maps,
+                               const std::function<size_t(const GraphStorage &, const Vertex &)> &num_vertex_dofs) {
+  if (graphs.size() != dof_maps.size())
+    throw std::runtime_error("dof map and graph list must have the same size");
+
+  for (auto &d : dof_maps)
+    d->d_first_global_dof = 0;
+
+  size_t total_number_of_dof = 0;
+
+  for (int rank = 0; rank < mpi::size(comm); rank += 1) {
+    const bool callingRank = (rank == mpi::rank(comm));
+
+    for (int k = 0; k < graphs.size(); k += 1) {
+      auto graph = graphs[k];
+      auto dof_map = dof_maps[k];
+
+      if (k == 0) {
+        dof_map->d_first_global_dof = total_number_of_dof;
+      }
+
+      // if we are the rank
+      if (callingRank && k == 0) {
+        dof_map->d_first_owned_global_dof = total_number_of_dof;
+      }
+
+      for (const auto &v_id : graph->get_active_vertex_ids(rank)) {
+        const auto vertex = graph->get_vertex(v_id);
+
+        // only initialize this primitive if it is owned!
+        if (!graph->owns_primitive(*vertex, rank))
+          continue;
+
+        if (!vertex->bc_finalized())
+          throw std::runtime_error(
+            "Boundary conditions have to be finalized before distributing the dof on primitives.\n"
+            "Please call GraphStorage::finalize_bcs() before.");
+
+        if (vertex->is_leaf()) {
+          dof_map->add_local_dof_map(*vertex, total_number_of_dof, num_vertex_dofs(*graph, *vertex));
+          total_number_of_dof += dof_map->get_local_dof_map(*vertex).num_local_dof();
+          if (callingRank) {
+            dof_map->d_num_owned_dofs += dof_map->get_local_dof_map(*vertex).num_local_dof();
+          }
+        }
+      }
+    }
+  }
 }
 
 const LocalVertexDofMap &DofMap::get_local_dof_map(const Vertex &v) const {
