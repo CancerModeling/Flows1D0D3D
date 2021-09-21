@@ -64,24 +64,22 @@ void ConstantUpwindProvider::get_upwinded_values(double t, const Vertex &v, std:
 }
 
 
-Eigen::Vector3d point_to_vec(const Point & p) { return {p.x, p.y, p.z}; }
+Eigen::Vector3d point_to_vec(const Point &p) { return {p.x, p.y, p.z}; }
 
-Point vec_to_point (const Eigen::Vector3d & v) { return {v[0], v[1], v[2]}; }
+Point vec_to_point(const Eigen::Vector3d &v) { return {v[0], v[1], v[2]}; }
 
 EmbeddedUpwindProvider::~EmbeddedUpwindProvider() = default;
 
-EmbeddedUpwindProvider::EmbeddedUpwindProvider(std::shared_ptr< GraphStorage > graph, std::function< double(double, const Point&)> field, std::function< void(double, const Vertex&, std::vector< double > &p_c)> field_0d)
-  : d_graph(std::move( graph )),
-    d_field(std::move(field)),
-    d_0d_pressure_field(std::move(field_0d))
-{}
+EmbeddedUpwindProvider::EmbeddedUpwindProvider(std::shared_ptr<GraphStorage> graph, std::function<double(double, const Point &)> field, std::function<void(double, const Vertex &, std::vector<double> &p_c)> field_0d)
+    : d_graph(std::move(graph)),
+      d_field(std::move(field)),
+      d_0d_pressure_field(std::move(field_0d)) {}
 
 void EmbeddedUpwindProvider::get_values_at_qp(double t,
-                      const Edge &edge,
-                      size_t micro_edge,
-                      const QuadratureFormula &qf,
-                      std::vector<double> &v_qp) const
-{
+                                              const Edge &edge,
+                                              size_t micro_edge,
+                                              const QuadratureFormula &qf,
+                                              std::vector<double> &v_qp) const {
   if (!edge.has_embedding_data())
     throw std::runtime_error("embedded upwind provider needs an embedding");
 
@@ -91,9 +89,8 @@ void EmbeddedUpwindProvider::get_values_at_qp(double t,
   Eigen::Vector3d vec = point_to_vec(b) - point_to_vec(a);
   vec /= vec.norm();
 
-  for (size_t qp = 0; qp < qf.size(); qp += 1)
-  {
-    double s = h*(qf.ref_points[qp]+1.)/2.;
+  for (size_t qp = 0; qp < qf.size(); qp += 1) {
+    double s = h * (qf.ref_points[qp] + 1.) / 2.;
     Point p = vec_to_point(point_to_vec(a) + vec * (h * micro_edge + s));
     v_qp[qp] = d_field(t, p);
   }
@@ -109,24 +106,21 @@ void EmbeddedUpwindProvider::get_upwinded_values(double t, const Edge &edge, std
   Eigen::Vector3d vec = point_to_vec(b) - point_to_vec(a);
   vec /= vec.norm();
 
-  for (size_t vid = 0; vid < edge.num_micro_vertices(); vid += 1)
-  {
+  for (size_t vid = 0; vid < edge.num_micro_vertices(); vid += 1) {
     Point p = vec_to_point(point_to_vec(a) + vec * (h * vid));
     v_qp[vid] = d_field(t, p);
   }
 }
 
-void EmbeddedUpwindProvider::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const
-{
-  auto& edge = *d_graph->get_edge(v.get_edge_neighbors()[0]);
+void EmbeddedUpwindProvider::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
+  auto &edge = *d_graph->get_edge(v.get_edge_neighbors()[0]);
 
   if (!edge.has_embedding_data())
     throw std::runtime_error("embedded upwind provider needs an embedding");
 
   Point p = edge.is_pointing_to(v.get_id()) ? edge.get_embedding_data().points.back() : edge.get_embedding_data().points.front();
 
-  for (size_t k = 0; k < A.size(); k+=1)
-  {
+  for (size_t k = 0; k < A.size(); k += 1) {
     A[k] = 1.;
     Q[k] = d_field(t, p);
   }
@@ -250,16 +244,13 @@ void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Vertex &v
   }
 }
 
-void UpwindProviderLinearizedFlow::get_0d_pressures(double t, const Vertex& v, std::vector< double > &p_c) const {
-  if (v.is_windkessel_outflow() || v.is_vessel_tree_outflow())
-  {
+void UpwindProviderLinearizedFlow::get_0d_pressures(double t, const Vertex &v, std::vector<double> &p_c) const {
+  if (v.is_windkessel_outflow() || v.is_vessel_tree_outflow()) {
     const auto &dof_map = d_solver->get_dof_map();
     auto dof_indices = dof_map.get_local_dof_map(v).dof_indices();
     p_c.resize(dof_indices.size());
     extract_dof(dof_indices, d_solver->get_solution(), p_c);
-  }
-  else
-  {
+  } else {
     throw std::runtime_error("UpwindProviderLinearizedFlow::get_0d_pressures: given boundary type not supported yet!");
   }
 
@@ -284,12 +275,9 @@ void initialize_vessels_tip_volume_vector(MPI_Comm comm, const GraphStorage &gra
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
     auto &vertex = *graph.get_vertex(v_id);
 
-    if (vertex.is_windkessel_outflow())
-    {
+    if (vertex.is_windkessel_outflow()) {
       vessel_tip_volumes[vertex.get_id()] = std::vector<double>(1, 0);
-    }
-    else if (vertex.is_vessel_tree_outflow())
-    {
+    } else if (vertex.is_vessel_tree_outflow()) {
       vessel_tip_volumes[vertex.get_id()] = std::vector<double>(vertex.get_vessel_tree_data().resistances.size(), 0);
     }
   }
@@ -317,7 +305,7 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
   if (d_graph.size() != d_upwind_provider.size())
     throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and upwind providers must coincide");
 
-  for (size_t k = 0; k < d_graph.size(); k+=1)
+  for (size_t k = 0; k < d_graph.size(); k += 1)
     initialize_vessels_tip_volume_vector(d_comm, *d_graph[k], d_vessel_tip_volume[k]);
 
   // TODO: preallocate the nonzeros properly!
@@ -348,8 +336,7 @@ void ImplicitTransportSolver::assemble(double tau, double t) {
   A->assemble();
 }
 
-void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, PetscMat& mat)
-{
+void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, PetscMat &mat) {
   // macro edge coupling
   for (const auto &e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
     const auto macro_edge = graph.get_edge(e_id);
@@ -362,14 +349,14 @@ void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage& graph, const 
     Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(local_dof_map.num_basis_functions(), local_dof_map.num_basis_functions(), 1.);
 
     // coupling between elements
-    for (size_t micro_edge_id = 0; micro_edge_id < macro_edge->num_micro_edges(); micro_edge_id +=1 ) {
+    for (size_t micro_edge_id = 0; micro_edge_id < macro_edge->num_micro_edges(); micro_edge_id += 1) {
       local_dof_map.dof_indices(micro_edge_id, 0, dof_indices_left);
       mat.add(dof_indices_left, dof_indices_left, ones);
     }
 
     // coupling between neighboring elements
-    for (size_t micro_vertex_id = 1; micro_vertex_id < macro_edge->num_micro_vertices()-1; micro_vertex_id +=1 ) {
-      size_t left_micro_edge_id = micro_vertex_id-1;
+    for (size_t micro_vertex_id = 1; micro_vertex_id < macro_edge->num_micro_vertices() - 1; micro_vertex_id += 1) {
+      size_t left_micro_edge_id = micro_vertex_id - 1;
       size_t right_micro_edge_id = micro_vertex_id;
       local_dof_map.dof_indices(left_micro_edge_id, 0, dof_indices_left);
       local_dof_map.dof_indices(right_micro_edge_id, 0, dof_indices_right);
@@ -414,10 +401,9 @@ void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage& graph, const 
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
     auto &vertex = *graph.get_vertex(v_id);
 
-    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow() || vertex.is_rcl_outflow())
-    {
-      auto& local_dof_map_vertex = dof_map.get_local_dof_map(vertex);
-      auto& vertex_dof_indices = local_dof_map_vertex.dof_indices();
+    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow() || vertex.is_rcl_outflow()) {
+      auto &local_dof_map_vertex = dof_map.get_local_dof_map(vertex);
+      auto &vertex_dof_indices = local_dof_map_vertex.dof_indices();
 
       // exchange vertex-vertex
       {
@@ -426,9 +412,8 @@ void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage& graph, const 
       }
 
       // exchange vertex-edge and edge-vertex
-      for (auto e_id : vertex.get_edge_neighbors())
-      {
-        auto& edge = *graph.get_edge(e_id);
+      for (auto e_id : vertex.get_edge_neighbors()) {
+        auto &edge = *graph.get_edge(e_id);
         auto &local_dof_map_edge = dof_map.get_local_dof_map(edge);
         std::vector<size_t> dof_indices_edge(local_dof_map_edge.num_basis_functions());
         local_dof_map_edge.dof_indices(edge.get_adajcent_micro_edge_id(vertex), 0, dof_indices_edge);
@@ -485,14 +470,12 @@ void ImplicitTransportSolver::sparsity_pattern_characteristics() {
         dof_indices_list.push_back(dof_indices);
       }
 
-      if (edge->rank() == mpi::rank(d_comm))
-      {
+      if (edge->rank() == mpi::rank(d_comm)) {
         Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(dof_indices_list[0].size(), dof_indices_list[1].size(), 1.);
         A->add(dof_indices_list[0], dof_indices_list[1], ones);
       }
 
-      if (adjacent_edge->rank() == mpi::rank(d_comm))
-      {
+      if (adjacent_edge->rank() == mpi::rank(d_comm)) {
         Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(dof_indices_list[1].size(), dof_indices_list[0].size(), 1.);
         A->add(dof_indices_list[1], dof_indices_list[0], ones);
       }
@@ -600,7 +583,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
 }
 
 
-void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t, const GraphStorage &graph, const DofMap &dof_map, const UpwindProvider &upwind_provider, std::vector< std::vector< double > >& vessel_tip_volume) {
+void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t, const GraphStorage &graph, const DofMap &dof_map, const UpwindProvider &upwind_provider, std::vector<std::vector<double>> &vessel_tip_volume) {
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *graph.get_vertex(v_id);
     auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
@@ -720,10 +703,10 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
       std::vector<size_t> edge_dof_indices(edge_ldof_map.num_basis_functions());
       edge_ldof_map.dof_indices(edge.get_adajcent_micro_edge_id(vertex), 0, edge_dof_indices);
 
-      const std::vector< double >& c_n = vertex_values;
-      std::vector< double >& V_n = vessel_tip_volume[vertex.get_id()];
+      const std::vector<double> &c_n = vertex_values;
+      std::vector<double> &V_n = vessel_tip_volume[vertex.get_id()];
       // next volume
-      std::vector< double > V_np1 = V_n;
+      std::vector<double> V_np1 = V_n;
 
       // pattern:
       using BPT = BoundaryPointType;
@@ -740,108 +723,103 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
       Q_up[0] *= sigma;
 
       const double R0 = calculate_R1(edge.get_physical_data());
-      const auto& R = vertex.get_vessel_tree_data().resistances;
+      const auto &R = vertex.get_vessel_tree_data().resistances;
       const auto alpha = vertex.get_vessel_tree_data().furcation_number;
 
-      for (size_t i=0; i < R.size(); i += 1)
-      {
+      for (size_t i = 0; i < R.size(); i += 1) {
         const bool is_leftmost = (i == 0);
-        const bool is_rightmost = (i == R.size()-1);
+        const bool is_rightmost = (i == R.size() - 1);
         const bool has_left_neighbor = (i >= 1);
-        const bool has_right_neighbor = (i < R.size()-1);
+        const bool has_right_neighbor = (i < R.size() - 1);
 
-        if (is_leftmost)
-        {
+        if (is_leftmost) {
           V_np1[i] += tau * Q_up[0];
         }
-        if (is_rightmost)
-        {
-          V_np1[i] -= tau * (p_c[i] - p_c[i+1]) / R[i];
+        if (is_rightmost) {
+          V_np1[i] -= tau * (p_c[i] - p_c[i + 1]) / R[i];
         }
-        if (has_left_neighbor)
-        {
-          const double Q_im1 = (p_c[i-1] - p_c[i]) / R[i-1];
+        if (has_left_neighbor) {
+          const double Q_im1 = (p_c[i - 1] - p_c[i]) / R[i - 1];
           if (Q_im1 >= 0)
             V_np1[i] += tau * Q_im1 / alpha;
           else
             V_np1[i] += tau * Q_im1;
         }
-        if (has_right_neighbor)
-        {
-          const double Q_i = (p_c[i] - p_c[i+1]) / R[i];
+        if (has_right_neighbor) {
+          const double Q_i = (p_c[i] - p_c[i + 1]) / R[i];
           V_np1[i] -= tau * Q_i;
         }
       }
 
-      for (size_t i=0; i < R.size(); i += 1)
-      {
+      for (size_t i = 0; i < R.size(); i += 1) {
         const bool is_leftmost = (i == 0);
-        const bool is_rightmost = (i == R.size()-1);
+        const bool is_rightmost = (i == R.size() - 1);
         const bool has_left_neighbor = (i >= 1);
-        const bool has_right_neighbor = (i < R.size()-1);
+        const bool has_right_neighbor = (i < R.size() - 1);
 
         Eigen::MatrixXd mat_1x1 = Eigen::MatrixXd::Constant(1, 1, 1.);
 
-        A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat_1x1);
+        A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i]}, mat_1x1);
 
         // if the volume is zero, the concentratino stays fixed:
-        if (V_np1[i] <= 1e-12)
-        {
+        if (V_np1[i] <= 1e-12) {
           rhs->set(vertex_dof_indices[i], c_n[i]);
           continue;
         }
 
         rhs->set(vertex_dof_indices[i], (V_n[i] / V_np1[i]) * c_n[i]);
 
-        if (is_leftmost)
-        {
-          if (Q_up[0] >=0 ) {
-            Eigen::MatrixXd mat_ve = - (tau / V_np1[i] * Q_up[0]/A_up[0]) * pattern.transpose();
-            A->add({ vertex_dof_indices[i]}, edge_dof_indices, mat_ve);
+        if (is_leftmost) {
+          if (Q_up[0] >= 0) {
+            Eigen::MatrixXd mat_ve = -(tau / V_np1[i] * Q_up[0] / A_up[0]) * pattern.transpose();
+            A->add({vertex_dof_indices[i]}, edge_dof_indices, mat_ve);
+
+            auto pattern_ee = edge.is_pointing_to(v_id)
+                                ? create_boundary(edge_ldof_map, BoundaryPointType::Right, BoundaryPointType::Right)
+                                : create_boundary(edge_ldof_map, BoundaryPointType::Left, BoundaryPointType::Left);
+            Eigen::MatrixXd mat_ee = tau * Q_up[0] / A_up[0] * pattern_ee;
+            A->add(edge_dof_indices, edge_dof_indices, mat_ee);
           } else {
-            Eigen::MatrixXd mat_ev = + tau * Q_up[0] * pattern;
-            A->add(edge_dof_indices, { vertex_dof_indices[i]}, mat_ev);
-            Eigen::MatrixXd mat_vv = - tau / V_np1[i] * Q_up[0] * mat_1x1;
+            Eigen::MatrixXd mat_ev = +tau * Q_up[0] * pattern;
+            A->add(edge_dof_indices, {vertex_dof_indices[i]}, mat_ev);
+            Eigen::MatrixXd mat_vv = -tau / V_np1[i] * Q_up[0] * mat_1x1;
             A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i]}, mat_vv);
           }
         }
-        if (is_rightmost)
-        {
-          const double Q_i = (p_c[i] - p_c[i+1]) / R[i];
+        if (is_rightmost) {
+          const double Q_i = (p_c[i] - p_c[i + 1]) / R[i];
           if (Q_i >= 0) {
             Eigen::MatrixXd mat_vv = +(tau / V_np1[i]) * Q_i * mat_1x1;
-            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat_vv);
+            A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i]}, mat_vv);
           } else {
             // do nothing - 3D coupling
             // std::cerr << "rightmost point inflow" << std::endl;
           }
         }
-        if (has_left_neighbor)
-        {
-          const double Q_im1 = (p_c[i-1] - p_c[i]) / R[i-1];
-          if (Q_im1 >= 0)  {
-            Eigen::MatrixXd mat_vv = - tau * Q_im1 * mat_1x1 / alpha;
-            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i-1]}, mat_vv);
+        if (has_left_neighbor) {
+          const double Q_im1 = (p_c[i - 1] - p_c[i]) / R[i - 1];
+          if (Q_im1 >= 0) {
+            Eigen::MatrixXd mat_vv = -tau / V_np1[i] * Q_im1 * mat_1x1 / alpha;
+            A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i - 1]}, mat_vv);
           } else {
-            Eigen::MatrixXd mat_vv = - tau * Q_im1 * mat_1x1;
-            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat_vv);
+            Eigen::MatrixXd mat_vv = -tau / V_np1[i] * Q_im1 * mat_1x1;
+            A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i]}, mat_vv);
           }
         }
-        if (has_right_neighbor)
-        {
-          const double Q_i = (p_c[i] - p_c[i+1]) / R[i];
+        if (has_right_neighbor) {
+          const double Q_i = (p_c[i] - p_c[i + 1]) / R[i];
           if (Q_i >= 0) {
-            Eigen::MatrixXd mat = tau * Q_i * mat_1x1;
-            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat);
+            Eigen::MatrixXd mat = tau / V_np1[i] * Q_i * mat_1x1;
+            A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i]}, mat);
           } else {
-            Eigen::MatrixXd mat = tau * Q_i * mat_1x1 * alpha;
-            A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i+1]}, mat);
+            Eigen::MatrixXd mat = tau / V_np1[i] * Q_i * mat_1x1 * alpha;
+            A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i + 1]}, mat);
           }
         }
       }
 
       vessel_tip_volume[vertex.get_id()] = V_np1;
-      // std::cout << vessel_tip_volume[vertex.get_id()] << std::endl;
+      std::cout << vessel_tip_volume[vertex.get_id()] << std::endl;
     }
   }
 }
@@ -1177,6 +1155,10 @@ void additively_assemble_matrix_outflow(MPI_Comm comm,
     if (vertex.is_linear_characteristic_inflow())
       continue;
     if (vertex.is_nonlinear_characteristic_inflow())
+      continue;
+    if (vertex.is_windkessel_outflow())
+      continue;
+    if (vertex.is_vessel_tree_outflow())
       continue;
 
     auto &neighbor_edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
