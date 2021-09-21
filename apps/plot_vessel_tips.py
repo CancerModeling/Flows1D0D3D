@@ -39,7 +39,8 @@ def reformat_data(d):
 def load_data(edge_id):
     v = find_vessel_by_edge_id(edge_id)
     d_list = {}
-    d_list['p'] = reformat_data(np.loadtxt(os.path.join(directory_name, v['filepaths']['filepath_p'])))
+    if 'filepath_p' in v['filepaths']:
+        d_list['p'] = reformat_data(np.loadtxt(os.path.join(directory_name, v['filepaths']['filepath_p'])))
     if 'filepath_c' in v['filepaths']:
         d_list['c'] = reformat_data(np.loadtxt(os.path.join(directory_name, v['filepaths']['filepath_c'])))
     if 'filepath_V' in v['filepaths']:
@@ -47,7 +48,7 @@ def load_data(edge_id):
     return d_list, v
 
 
-data,vessel = load_data(args.vessel_by_edge_id)
+data, vessel = load_data(args.vessel_by_edge_id)
 
 num_plot_rows = len(data)
 if vessel['outflow_type'] == 'rcl':
@@ -57,7 +58,8 @@ if 'c' in data and 'V' in data:
 
 fig, axes = plt.subplots(num_plot_rows, len(args.dofs), squeeze=False, sharey='row')
 
-indices = list(range(data['p'].shape[1]))
+arbitrary_data_element = next(iter(data.values()))
+indices = list(range(arbitrary_data_element.shape[1]))
 
 num_dofs = vessel['num_dofs']
 if vessel['outflow_type'] == 'rcl':
@@ -69,22 +71,24 @@ else:
 
 for i,dof in enumerate(args.dofs):
     next_ax_index = 0
-    ax = axes[next_ax_index, i]; next_ax_index += 1
-    ax.plot(t[start_index:], data['p'][start_index:,dof] / 1.3333, label='{}'.format(indices[dof]), linewidth=3)
-    ax.legend()
-    if i == 0:
-        ax.set_ylabel('$p_c$ [mmHg]')
-    ax.set_xlabel('$t$')
-    ax.grid(True)
 
-    if vessel['outflow_type'] == 'rcl':
+    if 'p' in data:
         ax = axes[next_ax_index, i]; next_ax_index += 1
-        ax.plot(t[start_index:], data['p'][start_index:,dof+num_p_dof], label='{}'.format(indices[dof]), linewidth=3)
+        ax.plot(t[start_index:], data['p'][start_index:,dof] / 1.3333, label='{}'.format(indices[dof]), linewidth=3)
         ax.legend()
         if i == 0:
-            ax.set_ylabel('$q_c [cm^3 s^{-1}]$')
+            ax.set_ylabel('$p_c$ [mmHg]')
         ax.set_xlabel('$t$')
         ax.grid(True)
+
+        if vessel['outflow_type'] == 'rcl':
+            ax = axes[next_ax_index, i]; next_ax_index += 1
+            ax.plot(t[start_index:], data['p'][start_index:,dof+num_p_dof], label='{}'.format(indices[dof]), linewidth=3)
+            ax.legend()
+            if i == 0:
+                ax.set_ylabel('$q_c [cm^3 s^{-1}]$')
+            ax.set_xlabel('$t$')
+            ax.grid(True)
 
     if 'c' in data:
         ax = axes[next_ax_index, i]; next_ax_index += 1
