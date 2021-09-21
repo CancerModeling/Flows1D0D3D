@@ -89,6 +89,7 @@ void EmbeddedUpwindProvider::get_values_at_qp(double t,
   auto b = edge.get_embedding_data().points[1];
   const double h = Point::distance(a, b) / edge.num_micro_edges();
   Eigen::Vector3d vec = point_to_vec(b) - point_to_vec(a);
+  vec /= vec.norm();
 
   for (size_t qp = 0; qp < qf.size(); qp += 1)
   {
@@ -106,6 +107,7 @@ void EmbeddedUpwindProvider::get_upwinded_values(double t, const Edge &edge, std
   auto b = edge.get_embedding_data().points[1];
   const double h = Point::distance(a, b) / edge.num_micro_edges();
   Eigen::Vector3d vec = point_to_vec(b) - point_to_vec(a);
+  vec /= vec.norm();
 
   for (size_t vid = 0; vid < edge.num_micro_vertices(); vid += 1)
   {
@@ -689,7 +691,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
       else if (Q_up[0] <= 0 && (p_c[0] - p_c[1]) / R1 >= 0) {
         A_c_c << 1 - tau / V_np1 * Q_up[0] + tau / V_np1 * (p_c[0] - p_c[1]) / R1;
 
-        Eigen::MatrixXd A_gamma_c = -tau * pattern.transpose() * Q_up[0];
+        Eigen::MatrixXd A_gamma_c = +tau * pattern * Q_up[0];
 
         A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
         A->add(edge_dof_indices, vertex_dof_indices, A_gamma_c);
@@ -739,6 +741,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
 
       const double R0 = calculate_R1(edge.get_physical_data());
       const auto& R = vertex.get_vessel_tree_data().resistances;
+      const auto alpha = vertex.get_vessel_tree_data().furcation_number;
 
       for (size_t i=0; i < R.size(); i += 1)
       {
@@ -758,7 +761,10 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
         if (has_left_neighbor)
         {
           const double Q_im1 = (p_c[i-1] - p_c[i]) / R[i-1];
-          V_np1[i] += tau * Q_im1;
+          if (Q_im1 >= 0)
+            V_np1[i] += tau * Q_im1 / alpha;
+          else
+            V_np1[i] += tau * Q_im1;
         }
         if (has_right_neighbor)
         {
@@ -814,10 +820,10 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
         {
           const double Q_im1 = (p_c[i-1] - p_c[i]) / R[i-1];
           if (Q_im1 >= 0)  {
-            Eigen::MatrixXd mat_vv = - tau * Q_im1 * mat_1x1;
+            Eigen::MatrixXd mat_vv = - tau * Q_im1 * mat_1x1 / alpha;
             A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i-1]}, mat_vv);
           } else {
-            Eigen::MatrixXd mat_vv = + tau * Q_im1 * mat_1x1;
+            Eigen::MatrixXd mat_vv = - tau * Q_im1 * mat_1x1;
             A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat_vv);
           }
         }
@@ -828,7 +834,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
             Eigen::MatrixXd mat = tau * Q_i * mat_1x1;
             A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i]}, mat);
           } else {
-            Eigen::MatrixXd mat = - tau * Q_i * mat_1x1;
+            Eigen::MatrixXd mat = tau * Q_i * mat_1x1 * alpha;
             A->add({ vertex_dof_indices[i]}, { vertex_dof_indices[i+1]}, mat);
           }
         }
