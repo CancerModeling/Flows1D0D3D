@@ -97,7 +97,10 @@ for i,dof in enumerate(args.dofs):
                 pressures_next = data['p'][start_index:, dof+1]
             else:
                 pressures_next = vessel['p_out'] * np.ones(len(data['p'][start_index:, dof]))
-            resistances = np.array(vessel['resistance'])
+            if 'resistances' in vessel:
+                resistances = np.array(vessel['resistance'])
+            else:
+                resistances = np.array([vessel['R2']])
             flows = (pressures_here - pressures_next) / resistances
             ax.plot(t[start_index:], flows, label='{}'.format(indices[dof]), linewidth=3)
             ax.legend()
