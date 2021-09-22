@@ -49,6 +49,7 @@ def load_data(edge_id):
 
 
 data, vessel = load_data(args.vessel_by_edge_id)
+print(vessel)
 
 num_plot_rows = len(data)
 if vessel['outflow_type'] == 'rcl':

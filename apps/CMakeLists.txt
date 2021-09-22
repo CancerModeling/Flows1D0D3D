@@ -75,6 +75,11 @@ target_link_libraries(${ProjectName}WindkesselTransportInOutTest ${ProjectLib})
 target_link_libraries(${ProjectName}WindkesselTransportInOutTest ${LIBMESH_LIBRARIES}) # libmesh for eigen
 target_link_libraries(${ProjectName}WindkesselTransportInOutTest cxxopts)
 
+add_executable(${ProjectName}WindkesselTransportThroughCompartments windkessel_transport_through_compartments.cpp)
+target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments ${ProjectLib})
+target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments ${LIBMESH_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments cxxopts)
+
 add_executable(${ProjectName}ExplicitImplicitScheme explicit_implicit_scheme.cpp)
 target_link_libraries(${ProjectName}ExplicitImplicitScheme ${ProjectLib})
 target_link_libraries(${ProjectName}ExplicitImplicitScheme ${LIBMESH_LIBRARIES}) # libmesh for eigen
