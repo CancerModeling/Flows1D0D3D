@@ -52,7 +52,7 @@ data, vessel = load_data(args.vessel_by_edge_id)
 print(vessel)
 
 num_plot_rows = len(data)
-if vessel['outflow_type'] == 'rcl':
+if 'p' in data:
     num_plot_rows += 1
 if 'c' in data and 'V' in data:
     num_plot_rows += 1
@@ -85,6 +85,21 @@ for i,dof in enumerate(args.dofs):
         if vessel['outflow_type'] == 'rcl':
             ax = axes[next_ax_index, i]; next_ax_index += 1
             ax.plot(t[start_index:], data['p'][start_index:,dof+num_p_dof], label='{}'.format(indices[dof]), linewidth=3)
+            ax.legend()
+            if i == 0:
+                ax.set_ylabel('$q_c [cm^3 s^{-1}]$')
+            ax.set_xlabel('$t$')
+            ax.grid(True)
+        else:
+            ax = axes[next_ax_index, i]; next_ax_index += 1
+            pressures_here = data['p'][start_index:, dof]
+            if data['p'].shape[1] < dof:
+                pressures_next = data['p'][start_index:, dof+1]
+            else:
+                pressures_next = vessel['p_out'] * np.ones(len(data['p'][start_index:, dof]))
+            resistances = np.array(vessel['resistance'])
+            flows = (pressures_here - pressures_next) / resistances
+            ax.plot(t[start_index:], flows, label='{}'.format(indices[dof]), linewidth=3)
             ax.legend()
             if i == 0:
                 ax.set_ylabel('$q_c [cm^3 s^{-1}]$')
