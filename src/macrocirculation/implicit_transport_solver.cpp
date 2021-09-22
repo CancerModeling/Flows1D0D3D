@@ -270,19 +270,6 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
                               std::vector<std::shared_ptr<DofMap>>({std::move(dof_map)}),
                               std::vector<std::shared_ptr<UpwindProvider>>({std::move(upwind_provider)}), degree) {}
 
-void initialize_vessels_tip_volume_vector(MPI_Comm comm, const GraphStorage &graph, std::vector<std::vector<double>> &vessel_tip_volumes) {
-  vessel_tip_volumes.resize(graph.num_vertices());
-  for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
-    auto &vertex = *graph.get_vertex(v_id);
-
-    if (vertex.is_windkessel_outflow()) {
-      vessel_tip_volumes[vertex.get_id()] = std::vector<double>(1, 0);
-    } else if (vertex.is_vessel_tree_outflow()) {
-      vessel_tip_volumes[vertex.get_id()] = std::vector<double>(vertex.get_vessel_tree_data().resistances.size(), 0);
-    }
-  }
-}
-
 ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
                                                  std::vector<std::shared_ptr<GraphStorage>> graph,
                                                  std::vector<std::shared_ptr<DofMap>> dof_map,
@@ -297,16 +284,12 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
       rhs(std::make_shared<PetscVec>("rhs", d_dof_map)),
       A(std::make_shared<PetscMat>("A", d_dof_map)),
       mass(std::make_shared<PetscVec>("mass", d_dof_map)),
-      linear_solver(PetscKsp::create_with_pc_ilu(*A)),
-      d_vessel_tip_volume(d_graph.size()) {
+      linear_solver(PetscKsp::create_with_pc_ilu(*A)) {
 
   if (d_graph.size() != d_dof_map.size())
     throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and dof maps must coincide");
   if (d_graph.size() != d_upwind_provider.size())
     throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and upwind providers must coincide");
-
-  for (size_t k = 0; k < d_graph.size(); k += 1)
-    initialize_vessels_tip_volume_vector(d_comm, *d_graph[k], d_vessel_tip_volume[k]);
 
   // initialize volumes
   for (size_t k = 0; k < d_graph.size(); k += 1)
@@ -595,122 +578,19 @@ void ImplicitTransportSolver::assemble_rhs(double tau, double t) {
 
 void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t) {
   for (size_t k = 0; k < d_graph.size(); k += 1)
-    assemble_windkessel_rhs_and_matrix(tau, t, *d_graph[k], *d_dof_map[k], *d_dof_maps_volume[k], *d_upwind_provider[k], d_vessel_tip_volume[k]);
+    assemble_windkessel_rhs_and_matrix(tau, t, *d_graph[k], *d_dof_map[k], *d_dof_maps_volume[k], *d_upwind_provider[k]);
 }
 
 
-void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t, const GraphStorage &graph, const DofMap &dof_map, const DofMap& dof_map_volume, const UpwindProvider &upwind_provider, std::vector<std::vector<double>> &vessel_tip_volume) {
+void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t, const GraphStorage &graph, const DofMap &dof_map, const DofMap& dof_map_volume, const UpwindProvider &upwind_provider) {
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *graph.get_vertex(v_id);
     auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
 
-    // windkessel start
-    if (vertex.is_windkessel_outflow()) {
-      auto &vertex_ldof_map = dof_map.get_local_dof_map(vertex);
-      auto &vertex_dof_indices = vertex_ldof_map.dof_indices();
-
-      std::vector<double> vertex_values(vertex_dof_indices.size());
-      extract_dof(vertex_dof_indices, *u, vertex_values);
-
-      auto &edge_ldof_map = dof_map.get_local_dof_map(edge);
-      std::vector<size_t> edge_dof_indices(edge_ldof_map.num_basis_functions());
-      edge_ldof_map.dof_indices(edge.get_adajcent_micro_edge_id(vertex), 0, edge_dof_indices);
-
-      const double c_n = vertex_values[0];
-      const double V_n = vessel_tip_volume[vertex.get_id()][0];
-
-      std::vector<double> p_c;
-      upwind_provider.get_0d_pressures(t, vertex, p_c);
-
-      const double sigma = edge.is_pointing_to(vertex.get_id()) ? +1. : -1.;
-
-      std::vector<double> A_up(1), Q_up(1);
-      upwind_provider.get_upwinded_values(t, vertex, A_up, Q_up);
-      Q_up[0] *= sigma;
-
-      const double R0 = calculate_R1(edge.get_physical_data());
-      const double R1 = vertex.get_peripheral_vessel_data().resistance - R0;
-
-      const double V_np1 = V_n + tau * (Q_up[0] - (p_c[0] - p_c[1]) / R1);
-
-      using BPT = BoundaryPointType;
-      auto boundary_type = edge.is_pointing_to(vertex.get_id()) ? BPT::Right : BPT::Left;
-      auto pattern = create_boundary(edge_ldof_map, boundary_type);
-
-      // if the future volume is too small we do not change the concentration
-      // Q: some concentration cannot leave?
-      if (V_np1 <= 1e-12) {
-        Eigen::MatrixXd A_c_c(1, 1);
-        A_c_c << 1.;
-
-        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
-
-        rhs->set(vertex_dof_indices[0], c_n);
-
-        vessel_tip_volume[vertex.get_id()][0] = V_np1;
-        continue;
-      }
-
-      Eigen::MatrixXd A_c_c(1, 1);
-
-      // case -> ->
-      if (Q_up[0] >= 0 && (p_c[0] - p_c[1]) / R1 >= 0) {
-        A_c_c << 1. + tau / V_np1 * (p_c[0] - p_c[1]) / R1;
-
-        Eigen::MatrixXd A_c_gamma = -tau / V_np1 * pattern.transpose() * Q_up[0] / A_up[0];
-
-        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
-        A->add(vertex_dof_indices, edge_dof_indices, A_c_gamma);
-
-        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
-      }
-      // case <- <-
-      else if (Q_up[0] <= 0 && (p_c[0] - p_c[1]) / R1 <= 0) {
-        A_c_c << 1 - tau / V_np1 * Q_up[0];
-
-        Eigen::MatrixXd A_gamma_c = +tau * pattern * Q_up[0];
-
-        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
-        A->add(edge_dof_indices, vertex_dof_indices, A_gamma_c);
-
-        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
-      }
-      // case -> <-
-      else if (Q_up[0] >= 0 && (p_c[0] - p_c[1]) / R1 <= 0) {
-        A_c_c << 1;
-
-        Eigen::MatrixXd A_c_gamma = -tau / V_np1 * pattern.transpose() * Q_up[0] / A_up[0];
-
-        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
-        A->add(vertex_dof_indices, edge_dof_indices, A_c_gamma);
-
-        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
-      }
-      // case <- ->
-      else if (Q_up[0] <= 0 && (p_c[0] - p_c[1]) / R1 >= 0) {
-        A_c_c << 1 - tau / V_np1 * Q_up[0] + tau / V_np1 * (p_c[0] - p_c[1]) / R1;
-
-        Eigen::MatrixXd A_gamma_c = +tau * pattern * Q_up[0];
-
-        A->add(vertex_dof_indices, vertex_dof_indices, A_c_c);
-        A->add(edge_dof_indices, vertex_dof_indices, A_gamma_c);
-
-        rhs->set(vertex_dof_indices[0], V_n / V_np1 * c_n);
-      } else {
-        throw std::runtime_error("not implemented yet");
-      }
-
-      vessel_tip_volume[vertex.get_id()][0] = V_np1;
-
-      // std::cout << vessel_tip_volume[vertex.get_id()] << std::endl;
-    }
-
     // vessel tree start start
-    if (vertex.is_vessel_tree_outflow()) {
+    if (vertex.is_vessel_tree_outflow() || vertex.is_windkessel_outflow()) {
       auto &vertex_ldof_map = dof_map.get_local_dof_map(vertex);
       auto &vertex_dof_indices = vertex_ldof_map.dof_indices();
-
-      auto &data = vertex.get_vessel_tree_data();
 
       std::vector<double> vertex_values(vertex_dof_indices.size());
       extract_dof(vertex_dof_indices, *u, vertex_values);
@@ -742,8 +622,11 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
       Q_up[0] *= sigma;
 
       const double R0 = calculate_R1(edge.get_physical_data());
-      const auto &R = vertex.get_vessel_tree_data().resistances;
-      const auto alpha = vertex.get_vessel_tree_data().furcation_number;
+
+      const auto &R = vertex.is_windkessel_outflow() ? std::vector<double>({vertex.get_peripheral_vessel_data().resistance - R0})
+                                                     : vertex.get_vessel_tree_data().resistances;
+
+      const auto alpha = vertex.is_windkessel_outflow() ? 1 : vertex.get_vessel_tree_data().furcation_number;
 
       for (size_t i = 0; i < R.size(); i += 1) {
         const bool is_leftmost = (i == 0);
@@ -780,7 +663,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
 
         A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i]}, mat_1x1);
 
-        // if the volume is zero, the concentratino stays fixed:
+        // if the volume is zero, the concentration stays fixed:
         if (V_np1[i] <= 1e-12) {
           rhs->set(vertex_dof_indices[i], c_n[i]);
           continue;

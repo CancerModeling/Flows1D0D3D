@@ -63,6 +63,19 @@ void CSVVesselTipWriter::write(double t, const std::vector<double> &u) {
   write_generic(*d_dofmaps.front(), u, d_types.front());
 }
 
+void CSVVesselTipWriter::write(double t,
+                               const std::vector<std::reference_wrapper<std::vector<double>>> &u_1,
+                               const std::vector<std::reference_wrapper<const PetscVec>> &u_2) {
+  if (d_dofmaps.size() != u_1.size() + u_2.size())
+    throw std::runtime_error("CSVVesselTipWriter::write: not all expected quantities provided");
+
+  update_time(t);
+  for (size_t k = 0; k < u_1.size(); k += 1)
+    write_generic(*d_dofmaps[k], u_1[k], d_types[k]);
+  for (size_t k = 0; k < u_2.size(); k += 1)
+    write_generic(*d_dofmaps[u_1.size() + k], u_2[k], d_types[u_1.size() + k]);
+}
+
 void CSVVesselTipWriter::write(double t, const std::vector<std::reference_wrapper<const PetscVec>> &quantities) {
   if (d_dofmaps.size() != quantities.size())
     throw std::runtime_error("CSVVesselTipWriter::write: not all expected quantities provided");

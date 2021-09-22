@@ -221,8 +221,7 @@ private:
                                           const GraphStorage &graph,
                                           const DofMap &dof_map,
                                           const DofMap &dof_map_volume,
-                                          const UpwindProvider &upwind_provider,
-                                          std::vector<std::vector<double>> &vessel_tip_volume);
+                                          const UpwindProvider &upwind_provider);
 
   /*! @brief Assembles the matrix with different upwindings, so that the sparsity pattern does not change,
    *         when the velocity field changes.  */
@@ -248,8 +247,6 @@ private:
   std::shared_ptr<PetscVec> mass;
 
   std::shared_ptr<PetscKsp> linear_solver;
-
-  std::vector<std::vector<std::vector<double>>> d_vessel_tip_volume;
 
   // std::function<double(double)> inflow_function = [](double t) { return 0.5*std::sin(M_PI * t); };
   std::function<double(double)> inflow_function = [](double t) {

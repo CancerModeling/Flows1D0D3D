@@ -10,8 +10,8 @@
 
 #include "mpi.h"
 
-#include <string>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace macrocirculation {
@@ -60,8 +60,8 @@ public:
     std::string output_directory,
     std::string filename,
     std::shared_ptr<GraphStorage> graph,
-    std::vector< std::shared_ptr<DofMap> > dofmaps,
-    std::vector< std::string > types );
+    std::vector<std::shared_ptr<DofMap>> dofmaps,
+    std::vector<std::string> types);
 
   CSVVesselTipWriter(
     MPI_Comm comm,
@@ -82,22 +82,26 @@ public:
    * @param t The current time step to write.
    * @param u Dof-vector with quantities.
    */
-  void write(double t, const std::vector< std::reference_wrapper< const PetscVec > > &u);
+  void write(double t, const std::vector<std::reference_wrapper<const PetscVec>> &u);
+
+  void write(double t,
+             const std::vector<std::reference_wrapper<std::vector<double>>> &u_1,
+             const std::vector<std::reference_wrapper<const PetscVec>> &u_2);
 
   /*! @brief Writes the dofs of a 0D-Model for a gmm vector.
    *
    * @param t The current time step to write.
    * @param u Dof-vector from which the degrees of freedom
    */
-  void write(double t, const std::vector< double > &u);
+  void write(double t, const std::vector<double> &u);
 
 private:
   MPI_Comm d_comm;
   std::string d_output_directory;
   std::string d_filename;
   std::shared_ptr<GraphStorage> d_graph;
-  std::vector< std::shared_ptr<DofMap> > d_dofmaps;
-  std::vector< std::string > d_types;
+  std::vector<std::shared_ptr<DofMap>> d_dofmaps;
+  std::vector<std::string> d_types;
 
   /*! @brief Writes the empty string to all csv files and thereby deleting previously recorded data. * */
   void reset_all_files();
@@ -109,10 +113,10 @@ private:
   void update_time(double t);
 
   /*! @brief Returns the csv filepath for a vertex with the given vertex_id for the given data type. */
-  std::string get_file_path(size_t vertex_id, const std::string& type) const;
+  std::string get_file_path(size_t vertex_id, const std::string &type) const;
 
   /*! @brief Returns the csv filename for a vertex with the given vertex_id. */
-  std::string get_file_name(size_t vertex_id, const std::string& type) const;
+  std::string get_file_name(size_t vertex_id, const std::string &type) const;
 
   /*! @brief Returns the json filepath for the meta file. */
   std::string get_meta_file_path() const;
@@ -123,10 +127,10 @@ private:
    * @param t The current time step to write.
    * @param u Dof-vector from which the degrees of freedom
    */
-  template< typename VectorType >
-  void write_generic(const DofMap& dof_map, const VectorType& u, const std::string& type);
+  template<typename VectorType>
+  void write_generic(const DofMap &dof_map, const VectorType &u, const std::string &type);
 };
 
-}
+} // namespace macrocirculation
 
 #endif //TUMORMODELS_CSV_VESSEL_TIP_WRITER_HPP
