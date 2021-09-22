@@ -70,10 +70,10 @@ target_link_libraries(${ProjectName}ImplicitTransportWith0D ${ProjectLib})
 target_link_libraries(${ProjectName}ImplicitTransportWith0D ${LIBMESH_LIBRARIES}) # libmesh for eigen
 target_link_libraries(${ProjectName}ImplicitTransportWith0D cxxopts)
 
-add_executable(${ProjectName}ImplicitTransportWithArtificial0D implicit_transport_with_artificial_0d.cpp)
-target_link_libraries(${ProjectName}ImplicitTransportWithArtificial0D ${ProjectLib})
-target_link_libraries(${ProjectName}ImplicitTransportWithArtificial0D ${LIBMESH_LIBRARIES}) # libmesh for eigen
-target_link_libraries(${ProjectName}ImplicitTransportWithArtificial0D cxxopts)
+add_executable(${ProjectName}WindkesselTransportInOutTest windkessel_transport_in_out_test.cpp)
+target_link_libraries(${ProjectName}WindkesselTransportInOutTest ${ProjectLib})
+target_link_libraries(${ProjectName}WindkesselTransportInOutTest ${LIBMESH_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}WindkesselTransportInOutTest cxxopts)
 
 add_executable(${ProjectName}ExplicitImplicitScheme explicit_implicit_scheme.cpp)
 target_link_libraries(${ProjectName}ExplicitImplicitScheme ${ProjectLib})

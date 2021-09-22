@@ -28,10 +28,11 @@
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/right_hand_side_evaluator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
+#include "macrocirculation/csv_vessel_tip_writer.hpp"
 
 namespace mc = macrocirculation;
 
-constexpr std::size_t degree = 2;
+constexpr std::size_t degree = 0;
 
 template<typename SolverType>
 void output_tip_values(const mc::GraphStorage &graph, const mc::DofMap &dof_map, const SolverType &solver) {
@@ -72,37 +73,50 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
   flow_solver->setup(tau);
 
   auto upwind_evaluator = std::make_shared<mc::LinearizedFlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
-  auto variable_upwind_provider = std::make_shared<mc::UpwindProviderLinearizedFlow>(graph, upwind_evaluator, flow_solver);
-//  auto flow_inside = [](double t, const mc::Point& p ) -> double {
-//    /*
-//    if (t < 1)
-//      return 5;
-//    else if (t >= 1 && t <= 2)
-//      return 10 - 20 * p.x * sin(M_PI * (t-1));
-//    else if (t > 2)
-//      return 5;
-//      */
-//    return 5;
-//    //return 10 * (p.x * cos(2*M_PI *t) + 0.5);
-//  };
-//  auto flow_outside = [&dof_map_transport](double t, const mc::Vertex& v, std::vector< double >& p_c ) {
-//    auto num_dof = dof_map_transport->get_local_dof_map(v).num_local_dof();
-//    p_c.resize(num_dof+1);
-//    for (size_t k = 0; k<num_dof+1; k+=1)
-//      p_c[k] = 40. - 20. * k;
-//    //p_c[k] = 40. + 20. * k;
-//  };
-//  auto variable_upwind_provider = std::make_shared<mc::EmbeddedUpwindProvider>(graph, flow_inside, flow_outside);
+  // auto variable_upwind_provider = std::make_shared<mc::UpwindProviderLinearizedFlow>(graph, upwind_evaluator, flow_solver);
+  auto flow_inside = [](double t, const mc::Point& p ) -> double {
+    if (t < 2)
+    {
+      if (p.x < 0.5)
+        return 5;
+      else
+        return -5;
+    }
+    else if (t < 2.75)
+    {
+      // return 5 * (1 - p.x) - 5 * p.x * sin(M_PI * (t-2));
+      if (p.x <= 0.1)
+        return 0;
+      else
+        return -5;
+    }
+    return 0.;
+  };
+  auto flow_outside = [&dof_map_transport](double t, const mc::Vertex& v, std::vector< double >& p_c ) {
+    auto num_dof = dof_map_transport->get_local_dof_map(v).num_local_dof();
+    p_c.resize(num_dof+1);
+    for (size_t k = 0; k<num_dof+1; k+=1)
+      p_c[k] = 0;
+    // p_c[k] = 40. + 20. * k;
+    //p_c[k] = 40. + 20. * k;
+  };
+  auto variable_upwind_provider = std::make_shared<mc::EmbeddedUpwindProvider>(graph, flow_inside, flow_outside);
 
   mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
 
   transport_solver.set_inflow_function([](double t) -> double {
-    if (t < 1.5)
+    if (t < 0.25)
       return 1.;
     return 0.;
   });
 
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "transport_solution");
+
+  mc::CSVVesselTipWriter vessel_tip_writer(MPI_COMM_WORLD,
+                                           "output", "implicit_transport_with_0d",
+                                           graph,
+                                           { dof_map_flow, dof_map_transport, transport_solver.get_dof_maps_volume().front() },
+                                           { "p", "c", "V" } );
 
   std::vector<mc::Point> points;
   std::vector<double> vessel_A0;
@@ -118,10 +132,6 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
     // transport_solver.apply_slope_limiter(t + tau);
 
     t += tau;
-
-    // transport_solver.get_rhs().print();
-    // transport_solver.get_mat().print();
-    // transport_solver.get_solution().print();
 
     if (it % output_interval == 0) {
       if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
@@ -144,6 +154,8 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
       pvd_writer.add_vertex_data("A", vessel_A0);
       pvd_writer.add_vertex_data("v", v_vertex_values);
       pvd_writer.write(t);
+
+      vessel_tip_writer.write(t, {flow_solver->get_solution(), transport_solver.get_solution(), transport_solver.get_volumes()});
 
       output_tip_values(*graph, *dof_map_transport, transport_solver);
     }
@@ -184,7 +196,7 @@ void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_
   mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
 
   transport_solver.set_inflow_function([](double t) -> double {
-    if (t < 1.5)
+    if (t < 0.5)
       return 1.;
     return 0.;
   });
@@ -241,7 +253,8 @@ int main(int argc, char *argv[]) {
 
   cxxopts::Options options(argv[0], "Implicit transport solver.");
   options.add_options()                                                                                              //
-    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 8.))) //
+    // ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 8.))) //
+    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(1e-2))) //
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                    //
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("6"))                      //
     ("h,help", "print usage");
@@ -262,7 +275,7 @@ int main(int argc, char *argv[]) {
 
   // vessel parameters
   //const double vessel_length = 20.5;
-  const double vessel_length = 10.;
+  const double vessel_length = 5.;
   const double radius = 0.403;
   const double wall_thickness = 0.067;
   const double elastic_modulus = 400000.0;
@@ -271,19 +284,19 @@ int main(int argc, char *argv[]) {
   auto physical_data_short = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length / 2.);
   auto physical_data_long = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length / 2.);
 
-  const bool edge_2_forward = true;
+  const bool edge_2_forward = false;
 
   // create_for_node the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
   auto v0 = graph->create_vertex();
   auto v1 = graph->create_vertex();
-  // auto v2 = graph->create_vertex();
+  auto v2 = graph->create_vertex();
+  //auto v3 = graph->create_vertex();
 
   auto edge_1 = graph->connect(*v0, *v1, num_micro_edges);
   edge_1->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.5, 0, 0)}});
   edge_1->add_physical_data(physical_data_short);
 
-  /*
   std::shared_ptr< mc::Edge > edge_2;
   if (edge_2_forward) {
     edge_2 = graph->connect(*v1, *v2, num_micro_edges);
@@ -293,13 +306,18 @@ int main(int argc, char *argv[]) {
     edge_2->add_embedding_data({{mc::Point(1., 0, 0), mc::Point(0.5, 0, 0)}});
   }
   edge_2->add_physical_data(physical_data_long);
-   */
+  // v2->set_to_vessel_tree_outflow(5 * (133.333) * 1e-2, {18., 18.}, {3.8, 3.8}, 1);
+  v2->set_to_vessel_tree_outflow(5 * (133.333) * 1e-2, {18000. - mc::calculate_R1(physical_data_short)}, {3870.}, 1);
+
+  //auto edge_3 = graph->connect(*v1, *v3, num_micro_edges);
+  //edge_3->add_embedding_data({{mc::Point(0.5, 0, 0), mc::Point(0.5, 0.5, 0)}});
+  //edge_3->add_physical_data(mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, 2., radius, vessel_length / 4.));
 
   v0->set_to_inflow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
   // v2->set_to_windkessel_outflow(18000., 3870);
-  v1->set_to_vessel_tree_outflow(5 * (133.333) * 1e-2, {18., 18.}, {3.8, 3.8}, 1);
+  //v3->set_to_vessel_tree_outflow(5 * (133.333) * 1e-2, {18., 18.}, {3.8, 3.8}, 1);
   // v1->set_to_vessel_tree_outflow(5 * (133.333) * 1e-2, {18000. - mc::calculate_R1(physical_data_short)}, {3870.}, 1);
-  // v2->set_to_windkessel_outflow(18000., 3870.);
+  // v1->set_to_windkessel_outflow(18000., 3870.);
 
   graph->finalize_bcs();
 
