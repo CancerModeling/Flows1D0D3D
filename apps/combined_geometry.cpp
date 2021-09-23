@@ -90,10 +90,9 @@ int main(int argc, char *argv[]) {
     graph_reader.append("data/meshes/coarse-network-geometry.json", *graph_li);
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-linear-part.json", *graph_li);
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-nonlinear-part.json", *graph_nl);
-    // mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
 
-    //
-    mc::convert_rcr_to_partitioned_tree_bcs(graph_li);
+    mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
+    // mc::convert_rcr_to_partitioned_tree_bcs(graph_li);
     // mc::convert_rcr_to_rcl_chain_bcs(graph_li);
 
     auto coupling = std::make_shared<mc::NonlinearLinearCoupling>(MPI_COMM_WORLD, graph_nl, graph_li);
