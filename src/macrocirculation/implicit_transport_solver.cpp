@@ -763,15 +763,13 @@ void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> 
     std::vector<std::size_t> dof_indices_left(local_dof_map.num_basis_functions());
     std::vector<std::size_t> dof_indices_right(local_dof_map.num_basis_functions());
 
-    for (size_t micro_vertex_id = 0; micro_vertex_id < macro_edge->num_micro_vertices(); micro_vertex_id += 1) {
+    for (size_t micro_edge_id = 0; micro_edge_id < macro_edge->num_micro_edges(); micro_edge_id += 1) {
 
-      auto edge_id = micro_vertex_id;
-
-      local_dof_map.dof_indices(edge_id, 0, dof_indices);
+      local_dof_map.dof_indices(micro_edge_id, 0, dof_indices);
       std::vector<double> dof_edge(local_dof_map.num_basis_functions());
       extract_dof(dof_indices, *u, dof_edge);
 
-      if (micro_vertex_id == 0) {
+      if (micro_edge_id == 0) {
         auto &vertex = *d_graph->get_vertex(macro_edge->get_vertex_neighbors()[0]);
 
         if (!vertex.is_leaf())
@@ -781,7 +779,7 @@ void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> 
         std::vector<double> Q_up(vertex.get_edge_neighbors().size());
         upwind_provider->get_upwinded_values(t, vertex, A_up, Q_up);
 
-        auto right_edge_id = micro_vertex_id + 1;
+        auto right_edge_id = micro_edge_id + 1;
         local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
         std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());
         extract_dof(dof_indices_right, *u, dof_right_edge);
@@ -815,9 +813,9 @@ void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> 
             break;
         }
 
-      } else if (micro_vertex_id == macro_edge->num_micro_vertices() - 1) {
+      } else if (micro_edge_id == macro_edge->num_micro_edges() - 1) {
 
-        auto left_edge_id = micro_vertex_id - 1;
+        auto left_edge_id = micro_edge_id - 1;
         local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
         std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
         extract_dof(dof_indices_left, *u, dof_left_edge);
@@ -845,8 +843,8 @@ void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> 
 
       } else {
 
-        auto left_edge_id = micro_vertex_id - 1;
-        auto right_edge_id = micro_vertex_id + 1;
+        auto left_edge_id = micro_edge_id - 1;
+        auto right_edge_id = micro_edge_id + 1;
 
         local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
         local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);

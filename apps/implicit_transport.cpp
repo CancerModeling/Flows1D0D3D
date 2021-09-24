@@ -33,7 +33,7 @@ namespace mc = macrocirculation;
 
 constexpr std::size_t degree = 2;
 
-void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_end, std::shared_ptr<mc::GraphStorage> graph) {
+void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_end, bool apply_slope_limiter, std::shared_ptr<mc::GraphStorage> graph) {
   const std::size_t max_iter = 1600000;
 
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
@@ -68,6 +68,8 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
     flow_solver->solve(tau, t + tau);
     variable_upwind_provider->init(t + tau, flow_solver->get_solution());
     transport_solver.solve(tau, t + tau);
+    if (apply_slope_limiter)
+      transport_solver.apply_slope_limiter(t + tau);
 
     t += tau;
 
@@ -104,7 +106,7 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
   std::cout << "time = " << elapsed_ms * 1e-6 << " s" << std::endl;
 }
 
-void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_end, std::shared_ptr<mc::GraphStorage> graph) {
+void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_end, bool apply_slope_limiter, std::shared_ptr<mc::GraphStorage> graph) {
   const std::size_t max_iter = 1600000;
 
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
@@ -137,6 +139,8 @@ void implicit_transport_with_explicit_flow(double tau, double tau_out, double t_
     flow_solver->solve(tau, t);
     variable_upwind_provider->init(t + tau, flow_solver->get_solution());
     transport_solver.solve(tau, t + tau);
+    if (apply_slope_limiter)
+      transport_solver.apply_slope_limiter(t + tau);
 
     t += tau;
 
@@ -204,6 +208,7 @@ int main(int argc, char *argv[]) {
     ("flip-right", "", cxxopts::value<bool>()->default_value("false"))              //
     ("flip-upper", "", cxxopts::value<bool>()->default_value("false"))              //
     ("flip-lower", "", cxxopts::value<bool>()->default_value("false"))              //
+    ("apply-slope-limiter", "Applies a slope limiter the the transport", cxxopts::value<bool>()->default_value("false"))              //
     ("explicit-flow", "Enables an explicit flow solver instead of the implicit one", cxxopts::value<bool>()->default_value("false")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
@@ -240,6 +245,8 @@ int main(int argc, char *argv[]) {
   const bool flip_upper = args["flip-upper"].as< bool >();
   const bool flip_lower = args["flip-lower"].as< bool >();
 
+  const bool apply_slope_limiter = args["apply-slope-limiter"].as< bool >();
+
   // create_for_node the geometry of the ascending aorta
   auto graph = std::make_shared<mc::GraphStorage>();
   auto v0 = graph->create_vertex();
@@ -252,14 +259,20 @@ int main(int argc, char *argv[]) {
   edge_0->add_physical_data(physical_data_short);
 
   auto edge_1 = add_embedded_edge(*graph, *v0m1, mc::Point(0.25, 0, 0), *v1, mc::Point(0.5, 0, 0), num_micro_edges, !flip_left);
+  if (flip_left)
+    std::cout << "flips left edge" << std::endl;
   edge_1->add_physical_data(physical_data_short);
 
   auto edge_2 = add_embedded_edge(*graph, *v1,mc::Point(0.5, 0, 0), *v2, mc::Point(1., 0, 0), num_micro_edges, !flip_right);
+  if (flip_right)
+    std::cout << "flips right edge" << std::endl;
   edge_2->add_physical_data(physical_data_long);
 
   if (!no_upper_vessel) {
     auto v3 = graph->create_vertex();
     auto edge_3 = add_embedded_edge(*graph, *v1,mc::Point(0.5, 0, 0), *v3, mc::Point(0.5, 0.5, 0), num_micro_edges, !flip_upper);
+    if (flip_upper)
+      std::cout << "flips upper edge" << std::endl;
     edge_3->add_physical_data(physical_data_long);
     v3->set_to_free_outflow();
   }
@@ -267,6 +280,8 @@ int main(int argc, char *argv[]) {
   if (!no_lower_vessel) {
     auto v4 = graph->create_vertex();
     auto edge_4 = add_embedded_edge(*graph, *v1, mc::Point(0.5, 0, 0), *v4, mc::Point(0.5, -0.5, 0), num_micro_edges, !flip_lower);
+    if (flip_lower)
+      std::cout << "flips lower edge" << std::endl;
     edge_4->add_physical_data(physical_data_long);
     v4->set_to_free_outflow();
   }
@@ -282,9 +297,9 @@ int main(int argc, char *argv[]) {
   const bool explicit_flow = args["explicit-flow"].as<bool>();
 
   if (explicit_flow) {
-    implicit_transport_with_explicit_flow(tau, tau_out, t_end, graph);
+    implicit_transport_with_explicit_flow(tau, tau_out, t_end, apply_slope_limiter, graph);
   } else {
-    implicit_transport_with_implicit_flow(tau, tau_out, t_end, graph);
+    implicit_transport_with_implicit_flow(tau, tau_out, t_end, apply_slope_limiter, graph);
   }
 
   CHKERRQ(PetscFinalize());
