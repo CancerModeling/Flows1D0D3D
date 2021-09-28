@@ -189,6 +189,7 @@ HeartToBreast3DSolver::HeartToBreast3DSolver(MPI_Comm mpi_comm,
       d_N_bar_cap_field(N_bar_cap_field),
       d_N_bar_surf_cap_field(N_bar_sruf_cap_field) {
 
+  d_nut_convert_factor = 5.550930*1.e-5;
   d_dt = input.d_dt;
   d_log("created HeartToBreast3DSolver object\n");
 }
@@ -232,9 +233,9 @@ void HeartToBreast3DSolver::solve() {
   d_nut_tis.solve();
   d_log("tissue nutrient solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 
-  solve_clock = std::chrono::steady_clock::now();
-  d_tum.solve();
-  d_log("tumor solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+  //  solve_clock = std::chrono::steady_clock::now();
+  //  d_tum.solve();
+  //  d_log("tumor solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 }
 void HeartToBreast3DSolver::write_output() {
   static int out_n = 0;
@@ -618,7 +619,7 @@ std::vector<VesselTipCurrentCouplingData3D> HeartToBreast3DSolver::get_vessel_ti
     d.d_a = d_perf_coeff_a[i];
     d.d_b = d_perf_coeff_b[i];
     d.d_p_3d_w = d_perf_p_3d_weighted[i];
-    d.d_nut_3d_w = d_perf_nut_3d_weighted[i];
+    d.d_nut_3d_w = d_nut_convert_factor * d_perf_nut_3d_weighted[i];
     data.push_back(d);
   }
 
@@ -685,7 +686,7 @@ void HeartToBreast3DSolver::update_1d_data(const std::vector<VesselTipCurrentCou
 
   for (size_t i = 0; i < data_1d.size(); i++) {
     d_perf_pres[i] = data_1d[i].pressure;
-    d_perf_pres_vein[i] = 6666.; // FIXME
+    d_perf_pres_vein[i] = 6666.;
     d_perf_nut[i] = 1.; // FIXME
     d_perf_nut_vein[i] = 0.; // FIXME
   }
