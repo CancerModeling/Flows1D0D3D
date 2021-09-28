@@ -94,7 +94,7 @@ void set_perfusion_pts(std::string out_dir,
 
 HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string &filename)
     : d_rho_cap(1.), d_rho_tis(1.), d_K_cap(1.e-5), d_K_tis(1.e-11),
-      d_Lp_art_cap(1.e-6), d_Lp_vein_cap(1.e-7), d_Lp_cap_tis(1e-11),
+      d_Lp_art_cap(1.e-6), d_Lp_vein_cap(1.e-8), d_Lp_cap_tis(1e-11),
       d_Dnut_cap(1e-3), d_Dtis_cap(1.e-6), d_Lnut_cap_tis(0.01),
       d_N_bar_cap(1e2), d_N_bar_surf_cap(1.e-2),
       d_rnut_cap(0.), d_rnut_art_cap(0.), d_rnut_vein_cap(1.),
@@ -248,11 +248,12 @@ void HeartToBreast3DSolver::write_output() {
     if (out_n == 0) {
       std::ofstream of;
       of.open(fn);
-      of << "p_cap_linf, p_cap_l1, p_cap_l2, p_tis_linf, p_tis_l1, p_tis_l2, nut_cap_linf, nut_cap_l1, "
+      of << "t, p_cap_linf, p_cap_l1, p_cap_l2, p_tis_linf, p_tis_l1, p_tis_l2, nut_cap_linf, nut_cap_l1, "
             "nut_cap_l2, nut_tis_linf, nut_tis_l1, nut_tis_l2\n";
     }
     std::ofstream of;
     of.open(fn, std::ios_base::app);
+    of << d_time << ", ";
     for (size_t i = 0; i < qoi.size(); i++)
       of << qoi[i] << (i < qoi.size() - 1 ? ", " : "\n");
     of.close();

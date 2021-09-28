@@ -106,6 +106,12 @@ public:
   /*! @brief Set output folder name. */
   void set_output_folder(std::string output_dir);
 
+  /*!
+   * @brief Set time
+   * FIXME - will this break 1d solver?
+   */
+  void set_time(double t_new);
+
 private:
   MPI_Comm d_comm;
 
