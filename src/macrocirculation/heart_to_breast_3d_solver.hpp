@@ -128,7 +128,7 @@ public:
   void setup();
 
   /*! @brief Solve 3D system; currently this includes capillary and tissue pressures. */
-  void solve();
+  void solve(bool solve_tum = false);
 
   /*! @brief Output 3D system to a .pvtu file. */
   void write_output();
