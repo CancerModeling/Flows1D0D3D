@@ -100,7 +100,7 @@ HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string
       d_Dnut_cap(1e-3), d_Dtis_cap(1.e-6), d_Lnut_cap_tis(0.01),
       d_N_bar_cap(1e2), d_N_bar_surf_cap(1.e-2),
       d_rnut_cap(0.), d_rnut_art_cap(0.), d_rnut_vein_cap(1.),
-      d_lambda_P(5.), d_lambda_A(0.005), d_tum_mob(1.),
+      d_lambda_P(5.), d_lambda_A(0.), d_tum_mob(1.),
       d_tum_dw(0.45), d_tum_eps(0.0158),
       d_T(1.), d_dt(0.01), d_h(0.1), d_mesh_file(""), d_out_dir(""),
       d_perf_regularized(false),
@@ -128,7 +128,7 @@ void HeartToBreast3DSolverInputDeck::read_parameters(const std::string &filename
   d_rnut_art_cap = input("rnut_art_cap", 1.);
   d_rnut_vein_cap = input("rnut_vein_cap", 1.);
   d_lambda_P = input("lambda_P", 1.);
-  d_lambda_A = input("lambda_A", 0.1);
+  d_lambda_A = input("lambda_A", 0.);
   d_tum_mob = input("tum_mob", 1.);
   d_tum_dw = input("tum_dw", 1.);
   d_tum_eps = input("tum_eps", 1.);
@@ -216,7 +216,7 @@ void HeartToBreast3DSolver::setup() {
 double HeartToBreast3DSolver::get_time() const {
   return d_time;
 }
-void HeartToBreast3DSolver::solve() {
+void HeartToBreast3DSolver::solve(bool solve_tum) {
   auto solve_clock = std::chrono::steady_clock::now();
   d_p_cap.solve();
   d_log("capillary pressure solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
@@ -233,9 +233,11 @@ void HeartToBreast3DSolver::solve() {
   d_nut_tis.solve();
   d_log("tissue nutrient solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 
-  //  solve_clock = std::chrono::steady_clock::now();
-  //  d_tum.solve();
-  //  d_log("tumor solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+  if (solve_tum) {
+    solve_clock = std::chrono::steady_clock::now();
+    d_tum.solve();
+    d_log("tumor solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+  }
 }
 void HeartToBreast3DSolver::write_output() {
   static int out_n = 0;

@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     ("tau-3d", "time step size for the 3D model", cxxopts::value<double>()->default_value("10."))                               //
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("1000."))                             //
     ("tau-out", "Simulation output interval", cxxopts::value<double>()->default_value("10."))                             //
-    ("t-3d-start", "Simulation start time for 3D model", cxxopts::value<double>()->default_value("10."))                             //
+    ("t-3d-start", "Simulation start time for 3D model", cxxopts::value<double>()->default_value("1."))                             //
     ("n-1d-solves", "Number of times 1D equation is solved per macroscale time", cxxopts::value<int>()->default_value("50"))                   //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_multiscale_time_3d1d0d/")) //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                 //
@@ -57,6 +57,12 @@ int main(int argc, char *argv[]) {
   options.allow_unrecognised_options(); // for petsc
 
   auto args = options.parse(argc, argv);
+
+  std::cout << "output-directory = " << args["output-directory"].as<std::string>() << std::endl;
+  std::cout << "mesh-file = " << args["mesh-file"].as<std::string>() << std::endl;
+  std::cout << "tumor-mesh-file = " << args["tumor-mesh-file"].as<std::string>() << std::endl;
+
+
 
   if (args.count("help")) {
     std::cout << options.help() << std::endl;
@@ -245,7 +251,7 @@ int main(int argc, char *argv[]) {
 
         log("solve 3d systems\n");
         solver_3d.d_time = t_now;
-        solver_3d.solve();
+        solver_3d.solve(true);
 
         log("update 3d data for 1d systems\n");
         solver_3d.update_3d_data();
