@@ -42,12 +42,12 @@ int main(int argc, char *argv[]) {
   cxxopts::Options options(argv[0], "Fully coupled 1D-0D-3D solver.");
   options.add_options()                                                                                                         //
     ("tau-1d", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))           //
-    ("tau-3d", "time step size for the 3D model", cxxopts::value<double>()->default_value("1."))                               //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("100."))                             //
-    ("tau-out", "Simulation output interval", cxxopts::value<double>()->default_value("1."))                             //
+    ("tau-3d", "time step size for the 3D model", cxxopts::value<double>()->default_value("10."))                               //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("1000."))                             //
+    ("tau-out", "Simulation output interval", cxxopts::value<double>()->default_value("10."))                             //
     ("t-3d-start", "Simulation start time for 3D model", cxxopts::value<double>()->default_value("10."))                             //
-    ("n-1d-solves", "Number of times 1D equation is solved per macroscale time", cxxopts::value<int>()->default_value("10"))                   //
-    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
+    ("n-1d-solves", "Number of times 1D equation is solved per macroscale time", cxxopts::value<int>()->default_value("50"))                   //
+    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_multiscale_time_3d1d0d/")) //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                 //
     ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))           //
     ("tumor-mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_tumor_cm.e"))           //
@@ -195,16 +195,19 @@ int main(int argc, char *argv[]) {
       // solve 1d systems n number of times and compute average values at tips
       {
         log("solve 1d system and get average tip data\n");
-        data_1d = solver_1d.get_vessel_tip_pressures();
-        data_3d = solver_3d.get_vessel_tip_data_3d();
+
+        // reset data_1d
+        for (auto &d : data_1d)
+          d.pressure = 0.;
 
         // set macroscale time as current time in 1d solver
         int n_half = int(n_1d_solves / 2);
         double t_macro = t_now - n_half * tau_1d;
-        solver_1d.set_time(t_macro); // FIXME
+        solver_1d.set_time(t_macro); // should be okay!
 
         // update the boundary conditions of the 1D system:
         log("update 3d average tip values in 1d system\n");
+        data_3d = solver_3d.get_vessel_tip_data_3d();
         {
           std::map<size_t, double> new_tip_pressures;
 
@@ -223,7 +226,10 @@ int main(int argc, char *argv[]) {
         // run 1d solver
         log("solve 1d system\n");
         for (int i = -n_half; i < n_half; i++) {
+          // solve 1d system
           solver_1d.solve();
+
+          // update pressure
           auto data_1d_now = solver_1d.get_vessel_tip_pressures();
           for (size_t j = 0; j < data_1d.size(); j++)
             data_1d[j].pressure += data_1d_now[j].pressure;
