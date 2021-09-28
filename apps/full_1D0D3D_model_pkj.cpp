@@ -41,14 +41,16 @@ int main(int argc, char *argv[]) {
 
   cxxopts::Options options(argv[0], "Fully coupled 1D-0D-3D solver.");
   options.add_options()                                                                                                         //
-    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))           //
-    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("5e-1"))                               //
-    ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("5e-3"))                   //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("50."))                             //
+    ("tau-1d", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))           //
+    ("tau-3d", "time step size for the 3D model", cxxopts::value<double>()->default_value("1."))                               //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("100."))                             //
+    ("tau-out", "Simulation output interval", cxxopts::value<double>()->default_value("1."))                             //
+    ("t-3d-start", "Simulation start time for 3D model", cxxopts::value<double>()->default_value("10."))                             //
+    ("n-1d-solves", "Number of times 1D equation is solved per macroscale time", cxxopts::value<int>()->default_value("10"))                   //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
-    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                            //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                 //
     ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))           //
+    ("tumor-mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_tumor_cm.e"))           //
     ("deactivate-3d-1d-coupling", "deactivates the 3d-1d coupling", cxxopts::value<bool>()->default_value("false"))             //
     ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                           //
     ("h,help", "print usage");
@@ -66,22 +68,20 @@ int main(int argc, char *argv[]) {
   {
     // setup 1D solver
     const double t_end = args["t-end"].as<double>();
-    const std::size_t max_iter = 160000000;
-
-    const auto tau = args["tau"].as<double>();
+    const auto t_3d_start = args["t-3d-start"].as<double>();
+    const auto n_1d_solves = args["n-1d-solves"].as<int>();
+    const auto tau_1d = args["tau-1d"].as<double>();
+    const auto tau_3d = args["tau-3d"].as<double>();
     const auto tau_out = args["tau-out"].as<double>();
-    const auto tau_coup = args["tau-coup"].as<double>();
+
+    const std::size_t max_iter = 160000000;
     auto out_dir = args["output-directory"].as<std::string>();
 
     const auto activate_3d_1d_coupling = !args["deactivate-3d-1d-coupling"].as<bool>();
 
-    // const double tau_out = tau;
-    const auto output_interval = static_cast<std::size_t>(tau_out / tau);
-    const auto coupling_interval = static_cast<std::size_t>(tau_coup / tau);
-
     mc::HeartToBreast1DSolver solver_1d(MPI_COMM_WORLD);
     solver_1d.set_output_folder(out_dir);
-    solver_1d.setup(degree, tau, mc::BoundaryModel::DiscreteRCRTree);
+    solver_1d.setup(degree, tau_1d, mc::BoundaryModel::DiscreteRCRTree);
 
     // create logger
     mc::Logger log(out_dir + "sim", comm->rank());
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
     mc::HeartToBreast3DSolverInputDeck input(filename);
     if (filename.empty()) {
       input.d_T = t_end;
-      input.d_dt = args["time-step"].as<double>();
+      input.d_dt = tau_3d;
       input.d_h = args["mesh-size"].as<double>();
       input.d_mesh_file = args["mesh-file"].as<std::string>();
       input.d_out_dir = out_dir;
@@ -133,6 +133,9 @@ int main(int argc, char *argv[]) {
     nut_cap.add_variable("nut_cap", lm::FIRST);
     auto &nut_tis = eq_sys.add_system<lm::TransientLinearImplicitSystem>("Tissue_Nutrient");
     nut_tis.add_variable("nut_tis", lm::FIRST);
+    auto &tum = eq_sys.add_system<lm::TransientLinearImplicitSystem>("Tumor");
+    tum.add_variable("tum", lm::FIRST);
+    tum.add_variable("mu_tum", lm::FIRST);
 
     // create spatial field of hydraulic conductivity
     auto &K_tis = eq_sys.add_system<lm::ExplicitSystem>("Tissue_K");
@@ -149,12 +152,14 @@ int main(int argc, char *argv[]) {
     log("creating model\n");
     auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm,
                        input, mesh, eq_sys, p_cap, p_tis,
-                       nut_cap, nut_tis,
+                       nut_cap, nut_tis, tum,
                        K_tis, Dnut_tis_field,
                        N_bar_cap_field, N_bar_surf_cap_field,
                        log);
     eq_sys.init();
     solver_3d.set_conductivity_fields();
+    auto tumor_mesh_file = args["tumor-mesh-file"].as<std::string>();
+    solver_3d.initialize_tumor_field(tumor_mesh_file);
 
     // setup the 1D pressure data in 3D solver
     log("setting 1D-3D coupling data in 3D solver\n");
@@ -170,54 +175,38 @@ int main(int argc, char *argv[]) {
     // call get_vessel_tip_data_3d()
     // data_3d contains vector of coefficients a and b and also weighted avg of 3D pressure
     auto data_3d = solver_3d.get_vessel_tip_data_3d();
-    log("initial 3D data at outlet tips");
-    for (const auto &a: data_3d)
-      log(fmt::format("avg_p = {}, avg_nut = {}\n", a.d_p_3d_w, a.d_nut_3d_w));
 
     // time integration
+
+    // step 1 - only solve 1d system
+    log("jump starting 1d systems\n");
     const auto begin_t = std::chrono::steady_clock::now();
-    for (std::size_t it = 0; it < max_iter; it += 1) {
+    double t_now = 0.;
+    while (t_now <= t_3d_start) {
       solver_1d.solve();
+      t_now = solver_1d.get_time();
+    }
 
-      if (it % coupling_interval == 0) {
-        std::cout << "calculates coupling " << std::endl;
+    // step 2 - solve 3d and 1d systems
+    log("starting to solve 1d-3d coupled system\n");
+    size_t time_step_3d = 0;
+    while (t_now <= t_end) {
+
+      // solve 1d systems n number of times and compute average values at tips
+      {
+        log("solve 1d system and get average tip data\n");
         data_1d = solver_1d.get_vessel_tip_pressures();
+        data_3d = solver_3d.get_vessel_tip_data_3d();
 
-        for (auto &d : data_1d) {
-          // just return the values for now:
-          if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-            std::cout << "v id = " << d.vertex_id << ", coordinates = (" << d.p.x << ", " << d.p.y << ", " << d.p.z << "), p = " << d.pressure << ", R = " << d.R2 << ", r = " << d.radius << std::endl;
-        }
-
-        // Some condition to solve the 3D system
-        {
-          log("update 1d data in 3d solver\n");
-          solver_3d.update_1d_data(data_1d);
-
-          log("solve 3d systems\n");
-          solver_3d.solve();
-
-          log("update 3d data for 1d systems\n");
-          solver_3d.update_3d_data();
-
-          if (it % (20 * coupling_interval) == 0)
-            solver_3d.write_output();
-
-          // recompute avg 3d values at outlet tips
-          data_3d = solver_3d.get_vessel_tip_data_3d();
-        }
+        // set macroscale time as current time in 1d solver
+        int n_half = int(n_1d_solves / 2);
+        double t_macro = t_now - n_half * tau_1d;
+        solver_1d.set_time(t_macro); // FIXME
 
         // update the boundary conditions of the 1D system:
+        log("update 3d average tip values in 1d system\n");
         {
           std::map<size_t, double> new_tip_pressures;
-
-          if (activate_3d_1d_coupling) {
-            std::cout << "size of 3D coupling data is " << data_3d.size() << ", size of 1D coupling data is " << data_1d.size() << std::endl;
-            if (data_3d.size() != data_1d.size()) {
-              std::cerr << "coupling data do not fit! :.(" << std::endl;
-              throw std::runtime_error("coupling data do not fit! :.(");
-            }
-          }
 
           for (size_t k = 0; k < data_1d.size(); k += 1) {
             auto &d = data_1d[k];
@@ -230,18 +219,41 @@ int main(int argc, char *argv[]) {
           }
           solver_1d.update_vessel_tip_pressures(new_tip_pressures);
         }
+
+        // run 1d solver
+        log("solve 1d system\n");
+        for (int i = -n_half; i < n_half; i++) {
+          solver_1d.solve();
+          auto data_1d_now = solver_1d.get_vessel_tip_pressures();
+          for (size_t j = 0; j < data_1d.size(); j++)
+            data_1d[j].pressure += data_1d_now[j].pressure;
+        }
+        for (auto & j : data_1d)
+          j.pressure = j.pressure / (2 * n_half);
       }
 
-      if (it % output_interval == 0) {
-        if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-          std::cout << "iter = " << it << ", t = " << solver_1d.get_time() << std::endl;
+      // solve 3d system
+      {
+        log("update 1d data in 3d solver\n");
+        solver_3d.update_1d_data(data_1d);
 
+        log("solve 3d systems\n");
+        solver_3d.d_time = t_now;
+        solver_3d.solve();
+
+        log("update 3d data for 1d systems\n");
+        solver_3d.update_3d_data();
+      }
+
+      if (time_step_3d % (int(tau_out / tau_3d)) == 0) {
+        log("output 3d and 1d results\n");
+        solver_3d.write_output();
         solver_1d.write_output();
       }
 
-      // break
-      if (solver_1d.get_time() > t_end + 1e-12)
-        break;
+      // increment time
+      t_now += tau_3d;
+      time_step_3d++;
     }
 
     const auto end_t = std::chrono::steady_clock::now();

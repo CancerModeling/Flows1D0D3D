@@ -22,7 +22,12 @@ class HeartToBreast3DSolver;
 /*! @brief Initial condition function for pressure systems. */
 inline lm::Number ic_p(const lm::Point &p, const lm::Parameters &es,
                 const std::string &system_name,
-                const std::string &var_name) { return 0.; }
+                const std::string &var_name) { return 40000.; }
+
+/*! @brief Initial condition function for tumor system. */
+inline lm::Number ic_tum(const lm::Point &p, const lm::Parameters &es,
+                       const std::string &system_name,
+                       const std::string &var_name) { return 0.; }
 
 /*! @brief Function that applies initial condition to pressure systems. */
 inline void ic(lm::EquationSystems &es, const std::string &system_name) {
@@ -105,6 +110,26 @@ public:
                  lm::TransientLinearImplicitSystem &sys)
     : BaseAssembly("Tissue_Nutrient", mesh, sys, 1,
                    {sys.variable_number("nut_tis")}),
+      d_model_p(model) {
+    sys.attach_assemble_object(
+      *this);                     // attach this element assembly object
+    sys.attach_init_function(ic); // add ic
+  }
+
+  /*! @brief Assemble matrix and right-hand side. */
+  void assemble() override;
+
+  /*! @brief Pointer to the 3D model class to access relevant data and methods. */
+  HeartToBreast3DSolver *d_model_p;
+};
+
+/*! @brief Class that handles assembly of matrix and right-hand side of tissue pressure system. */
+class Tumor : public BaseAssembly {
+public:
+  Tumor(HeartToBreast3DSolver *model, lm::MeshBase &mesh,
+                 lm::TransientLinearImplicitSystem &sys)
+    : BaseAssembly("Tumor", mesh, sys, 2,
+                   {sys.variable_number("tum"), sys.variable_number("mu_tum")}),
       d_model_p(model) {
     sys.attach_assemble_object(
       *this);                     // attach this element assembly object

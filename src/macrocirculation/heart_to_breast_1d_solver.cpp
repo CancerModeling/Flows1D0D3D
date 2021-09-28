@@ -280,4 +280,8 @@ double HeartToBreast1DSolver::get_time() const { return t; }
 
 void HeartToBreast1DSolver::set_output_folder(std::string output_dir) { output_folder_name = output_dir; }
 
+void HeartToBreast1DSolver::set_time(double t_new) {
+  t = t_new;
+}
+
 } // namespace macrocirculation

@@ -14,12 +14,15 @@ labels = [r'$||p_{c}||$', r'$||p_{t}||$', \
 norm_labels = [r'$_{\infty}$', r'$_{1}$', r'$_{2}$']
 titles = [r'Capillary pressure', r'Tissue pressure', \
           r'Capillary nutrients', r'Tissue nutrients']
+
+sindex = 1; # start from second element as first element is time
+
 for i in range(4):
     I = int(i/2)
     J = i%2
     ax = axes[I, J]
     for k in range(3):
-        ax.plot(qoi[:, i*3 + k], \
+        ax.plot(qoi[:, sindex + i*3 + k], \
                      label=labels[i] + norm_labels[k], \
                      linewidth = 3)
     ax.set_title(titles[i])

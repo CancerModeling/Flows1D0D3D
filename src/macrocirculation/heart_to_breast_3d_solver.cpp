@@ -11,6 +11,8 @@
 #include "tree_search.hpp"
 #include "vtk_io_libmesh.hpp"
 #include "vtk_writer.hpp"
+#include "libmesh_utils.hpp"
+#include "tree_search.hpp"
 #include <cfloat>
 #include <fmt/format.h>
 
@@ -94,10 +96,12 @@ void set_perfusion_pts(std::string out_dir,
 
 HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string &filename)
     : d_rho_cap(1.), d_rho_tis(1.), d_K_cap(1.e-5), d_K_tis(1.e-11),
-      d_Lp_art_cap(1.e-6), d_Lp_vein_cap(1.e-7), d_Lp_cap_tis(1e-11),
+      d_Lp_art_cap(1.e-6), d_Lp_vein_cap(1.e-8), d_Lp_cap_tis(1e-11),
       d_Dnut_cap(1e-3), d_Dtis_cap(1.e-6), d_Lnut_cap_tis(0.01),
       d_N_bar_cap(1e2), d_N_bar_surf_cap(1.e-2),
       d_rnut_cap(0.), d_rnut_art_cap(0.), d_rnut_vein_cap(1.),
+      d_lambda_P(5.), d_lambda_A(0.005), d_tum_mob(1.),
+      d_tum_dw(0.45), d_tum_eps(0.0158),
       d_T(1.), d_dt(0.01), d_h(0.1), d_mesh_file(""), d_out_dir(""),
       d_perf_regularized(false),
       d_perf_fn_type("const"), d_perf_neigh_size({1., 4.}),
@@ -123,6 +127,11 @@ void HeartToBreast3DSolverInputDeck::read_parameters(const std::string &filename
   d_rnut_cap = input("rnut_cap", 1.);
   d_rnut_art_cap = input("rnut_art_cap", 1.);
   d_rnut_vein_cap = input("rnut_vein_cap", 1.);
+  d_lambda_P = input("lambda_P", 1.);
+  d_lambda_A = input("lambda_A", 0.1);
+  d_tum_mob = input("tum_mob", 1.);
+  d_tum_dw = input("tum_dw", 1.);
+  d_tum_eps = input("tum_eps", 1.);
   d_T = input("T", 1.);
   d_dt = input("dt", 0.01);
   d_h = input("h", 0.1);
@@ -162,6 +171,7 @@ HeartToBreast3DSolver::HeartToBreast3DSolver(MPI_Comm mpi_comm,
                                              lm::TransientLinearImplicitSystem &p_tis,
                                              lm::TransientLinearImplicitSystem &nut_cap,
                                              lm::TransientLinearImplicitSystem &nut_tis,
+                                             lm::TransientLinearImplicitSystem &tum,
                                              lm::ExplicitSystem &K_tis_field,
                                              lm::ExplicitSystem &Dnut_tis_field,
                                              lm::ExplicitSystem &N_bar_cap_field,
@@ -173,6 +183,7 @@ HeartToBreast3DSolver::HeartToBreast3DSolver(MPI_Comm mpi_comm,
       d_p_tis(this, d_mesh, p_tis),
       d_nut_cap(this, d_mesh, nut_cap),
       d_nut_tis(this, d_mesh, nut_tis),
+      d_tum(this, d_mesh, tum),
       d_K_tis_field(K_tis_field),
       d_Dnut_tis_field(Dnut_tis_field),
       d_N_bar_cap_field(N_bar_cap_field),
@@ -205,7 +216,6 @@ double HeartToBreast3DSolver::get_time() const {
   return d_time;
 }
 void HeartToBreast3DSolver::solve() {
-  // solve for capillary and tissue pressure
   auto solve_clock = std::chrono::steady_clock::now();
   d_p_cap.solve();
   d_log("capillary pressure solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
@@ -221,6 +231,10 @@ void HeartToBreast3DSolver::solve() {
   solve_clock = std::chrono::steady_clock::now();
   d_nut_tis.solve();
   d_log("tissue nutrient solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
+
+  solve_clock = std::chrono::steady_clock::now();
+  d_tum.solve();
+  d_log("tumor solve time = " + std::to_string(time_diff(solve_clock, std::chrono::steady_clock::now())) + "\n");
 }
 void HeartToBreast3DSolver::write_output() {
   static int out_n = 0;
@@ -242,17 +256,21 @@ void HeartToBreast3DSolver::write_output() {
   qoi.push_back(d_nut_tis.compute_qoi("linf"));
   qoi.push_back(d_nut_tis.compute_qoi("l1"));
   qoi.push_back(d_nut_tis.compute_qoi("l2"));
+  qoi.push_back(d_tum.compute_qoi("linf", 0));
+  qoi.push_back(d_tum.compute_qoi("l1", 0));
+  qoi.push_back(d_tum.compute_qoi("l2", 0));
 
   if (d_procRank == 0) {
     std::string fn = fmt::format("{}qoi_3d.txt", d_input.d_out_dir);
     if (out_n == 0) {
       std::ofstream of;
       of.open(fn);
-      of << "p_cap_linf, p_cap_l1, p_cap_l2, p_tis_linf, p_tis_l1, p_tis_l2, nut_cap_linf, nut_cap_l1, "
-            "nut_cap_l2, nut_tis_linf, nut_tis_l1, nut_tis_l2\n";
+      of << "t, p_cap_linf, p_cap_l1, p_cap_l2, p_tis_linf, p_tis_l1, p_tis_l2, nut_cap_linf, nut_cap_l1, "
+            "nut_cap_l2, nut_tis_linf, nut_tis_l1, nut_tis_l2, tum_linf, tum_l1, tum_l2\n";
     }
     std::ofstream of;
     of.open(fn, std::ios_base::app);
+    of << d_time << ", ";
     for (size_t i = 0; i < qoi.size(); i++)
       of << qoi[i] << (i < qoi.size() - 1 ? ", " : "\n");
     of.close();
@@ -703,4 +721,50 @@ void HeartToBreast3DSolver::set_conductivity_fields() {
   d_N_bar_surf_cap_field.update();
 }
 
+void HeartToBreast3DSolver::initialize_tumor_field(std::string tumor_mesh_file) {
+  d_log("creating tumor mesh\n");
+  lm::ReplicatedMesh tum_mesh(*d_comm_p);
+  tum_mesh.read(tumor_mesh_file);
+  auto tum_mesh_h = get_mesh_size_estimate_using_element_volume(tum_mesh);
+  d_log(fmt::format("tumor mesh size = {}\n", tum_mesh_h));
+
+  // create list of tissue mesh element centers
+  int nelems = d_mesh.n_elem();
+  std::vector<lm::Point> elem_centers(nelems, lm::Point());
+  for (const auto &elem : d_mesh.element_ptr_range()) {
+    elem_centers[elem->id()] = elem->centroid();
+  }
+
+  // create tree for search
+  std::unique_ptr<NFlannSearchKd> tree = std::make_unique<NFlannSearchKd>(elem_centers);
+  tree->set_input_cloud();
+
+  // loop over elements in tumor mesh and find the closest point in the tree
+  for (const auto &tum_elem: tum_mesh.element_ptr_range()) {
+    auto xc = tum_elem->centroid();
+
+    // find elements whose center is within radi distance of outlet point
+    std::vector<size_t> neighs;
+    std::vector<double> sqr_dist;
+    auto search_status =
+      tree->nearest_search(xc, 5, neighs, sqr_dist);
+    for (size_t i=0; i<neighs.size(); i++) {
+      if (sqr_dist[i] < 2. * d_input.d_h) {
+        // element is initialized with 1 tumor
+        size_t tissue_elem_id = neighs[i];
+        auto tissue_elem = d_mesh.elem_ptr(tissue_elem_id);
+
+        // set value
+        d_tum.init_dof(tissue_elem);
+        auto &dof = d_tum.d_dof_indices_sys_var;
+        for (size_t j=0; j<dof[0].size(); j++)
+          d_tum.d_sys.solution->set(dof[0][j], 1.);
+      }
+    }
+  }
+  d_tum.d_sys.solution->close();
+  d_tum.d_sys.update();
+}
+
 } // namespace macrocirculation
+
