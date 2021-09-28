@@ -43,9 +43,9 @@ int main(int argc, char *argv[]) {
   options.add_options()                                                                                                         //
     ("tau-1d", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))           //
     ("tau-3d", "time step size for the 3D model", cxxopts::value<double>()->default_value("1."))                               //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10."))                             //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("100."))                             //
     ("tau-out", "Simulation output interval", cxxopts::value<double>()->default_value("1."))                             //
-    ("t-3d-start", "Simulation start time for 3D model", cxxopts::value<double>()->default_value("1."))                             //
+    ("t-3d-start", "Simulation start time for 3D model", cxxopts::value<double>()->default_value("10."))                             //
     ("n-1d-solves", "Number of times 1D equation is solved per macroscale time", cxxopts::value<int>()->default_value("10"))                   //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                 //

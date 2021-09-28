@@ -100,8 +100,8 @@ HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string
       d_Dnut_cap(1e-3), d_Dtis_cap(1.e-6), d_Lnut_cap_tis(0.01),
       d_N_bar_cap(1e2), d_N_bar_surf_cap(1.e-2),
       d_rnut_cap(0.), d_rnut_art_cap(0.), d_rnut_vein_cap(1.),
-      d_lambda_P(1.), d_lambda_A(0.1), d_tum_mob(1.),
-      d_tum_dw(1.), d_tum_eps(1.),
+      d_lambda_P(5.), d_lambda_A(0.005), d_tum_mob(1.),
+      d_tum_dw(0.45), d_tum_eps(0.0158),
       d_T(1.), d_dt(0.01), d_h(0.1), d_mesh_file(""), d_out_dir(""),
       d_perf_regularized(false),
       d_perf_fn_type("const"), d_perf_neigh_size({1., 4.}),
@@ -256,6 +256,9 @@ void HeartToBreast3DSolver::write_output() {
   qoi.push_back(d_nut_tis.compute_qoi("linf"));
   qoi.push_back(d_nut_tis.compute_qoi("l1"));
   qoi.push_back(d_nut_tis.compute_qoi("l2"));
+  qoi.push_back(d_tum.compute_qoi("linf", 0));
+  qoi.push_back(d_tum.compute_qoi("l1", 0));
+  qoi.push_back(d_tum.compute_qoi("l2", 0));
 
   if (d_procRank == 0) {
     std::string fn = fmt::format("{}qoi_3d.txt", d_input.d_out_dir);
@@ -263,7 +266,7 @@ void HeartToBreast3DSolver::write_output() {
       std::ofstream of;
       of.open(fn);
       of << "t, p_cap_linf, p_cap_l1, p_cap_l2, p_tis_linf, p_tis_l1, p_tis_l2, nut_cap_linf, nut_cap_l1, "
-            "nut_cap_l2, nut_tis_linf, nut_tis_l1, nut_tis_l2\n";
+            "nut_cap_l2, nut_tis_linf, nut_tis_l1, nut_tis_l2, tum_linf, tum_l1, tum_l2\n";
     }
     std::ofstream of;
     of.open(fn, std::ios_base::app);
