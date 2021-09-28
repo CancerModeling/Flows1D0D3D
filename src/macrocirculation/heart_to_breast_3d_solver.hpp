@@ -25,9 +25,9 @@ struct VesselTipCurrentCouplingData3D {
   double d_a;
   /*! @brief Coefficient b. */
   double d_b;
-  /*! @brief Weighted average of 3D pressure at outlet. */
+  /*! @brief Weighted average of 3D pressure at outlet [Ba]. */
   double d_p_3d_w;
-  /*! @brief Weighted average of 3D nutrient at outlet. */
+  /*! @brief Weighted average of 3D nutrient at outlet [millimole/cm^3]. */
   double d_nut_3d_w;
 };
 
@@ -183,6 +183,15 @@ public:
   lm::ExplicitSystem &d_N_bar_cap_field;
   /*! @brief Total capillary cross-section area per unit macroscopic area. */
   lm::ExplicitSystem &d_N_bar_surf_cap_field;
+
+  /*! @brief Nutrient volume fraction to millimole/cm^3 factor
+   * 1. concentration in gram/cm^3 = rho * phi where rho is gram/cm^3 and phi is volume fraction
+   * 2. concentration in millimole/cm^3 = 5.550930*1.e-5*rho*phi = 5.550930*1.e-5*phi,
+   * where we assume nutrient molecule is similar to water H2O, and also assume rho = 1 g/cm^3.
+   * Therefore, the factor is 5.550930*1.e-5
+   * Source: https://planetcalc.com/6777/
+   */
+  double d_nut_convert_factor;
 
   /*!
    * @brief Coordinates of perfusion outlets.
