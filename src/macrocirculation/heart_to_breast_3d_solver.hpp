@@ -71,6 +71,16 @@ struct HeartToBreast3DSolverInputDeck {
   double d_rnut_art_cap;
   /*! @brief reflection coefficient for vein-capillary and vein-capillary exchange of nutrient. */
   double d_rnut_vein_cap;
+  /*! @brief Tumor growth rate. */
+  double d_lambda_P;
+  /*! @brief Tumor apotosis rate. */
+  double d_lambda_A;
+  /*! @brief Tumor mobility. */
+  double d_tum_mob;
+  /*! @brief Double well constant. */
+  double d_tum_dw;
+  /*! @brief Interfacial width. */
+  double d_tum_eps;
   /*! @brief Final simulation time. */
   double d_T;
   /*! @brief Size of time step. */
@@ -102,6 +112,7 @@ public:
                         lm::TransientLinearImplicitSystem &p_tis,
                         lm::TransientLinearImplicitSystem &nut_cap,
                         lm::TransientLinearImplicitSystem &nut_tis,
+                        lm::TransientLinearImplicitSystem &tum,
                         lm::ExplicitSystem &K_tis_field,
                         lm::ExplicitSystem &Dnut_tis_field,
                         lm::ExplicitSystem &N_bar_cap_field,
@@ -145,6 +156,8 @@ public:
 
   void set_conductivity_fields();
 
+  void initialize_tumor_field(std::string tumor_mesh_file);
+
 public:
   /*! @brief MPI comm. (Note that we have another comm from libmesh defined in BaseModel class) */
   MPI_Comm d_mpi_comm;
@@ -160,6 +173,8 @@ public:
   CapillaryNutrient d_nut_cap;
   /*! @brief Tissue nutrient assembly. */
   TissueNutrient d_nut_tis;
+  /*! @brief Tumor assembly. */
+  Tumor d_tum;
   /*! @brief Tissue hydraulic conductivity parameter (spatially varying, may vary element-wise). */
   lm::ExplicitSystem &d_K_tis_field;
   /*! @brief Tissue nutrient diffusion parameter (spatially varying, may vary element-wise). */

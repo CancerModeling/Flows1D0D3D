@@ -43,13 +43,14 @@ int main(int argc, char *argv[]) {
   options.add_options()                                                                                                         //
     ("tau-1d", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))           //
     ("tau-3d", "time step size for the 3D model", cxxopts::value<double>()->default_value("1."))                               //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("100."))                             //
-    ("tau-out", "Simulation output interval", cxxopts::value<double>()->default_value("5."))                             //
-    ("t-3d-start", "Simulation start time for 3D model", cxxopts::value<double>()->default_value("10."))                             //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10."))                             //
+    ("tau-out", "Simulation output interval", cxxopts::value<double>()->default_value("1."))                             //
+    ("t-3d-start", "Simulation start time for 3D model", cxxopts::value<double>()->default_value("1."))                             //
     ("n-1d-solves", "Number of times 1D equation is solved per macroscale time", cxxopts::value<int>()->default_value("10"))                   //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                 //
     ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))           //
+    ("tumor-mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_tumor_cm.e"))           //
     ("deactivate-3d-1d-coupling", "deactivates the 3d-1d coupling", cxxopts::value<bool>()->default_value("false"))             //
     ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                           //
     ("h,help", "print usage");
@@ -132,6 +133,9 @@ int main(int argc, char *argv[]) {
     nut_cap.add_variable("nut_cap", lm::FIRST);
     auto &nut_tis = eq_sys.add_system<lm::TransientLinearImplicitSystem>("Tissue_Nutrient");
     nut_tis.add_variable("nut_tis", lm::FIRST);
+    auto &tum = eq_sys.add_system<lm::TransientLinearImplicitSystem>("Tumor");
+    tum.add_variable("tum", lm::FIRST);
+    tum.add_variable("mu_tum", lm::FIRST);
 
     // create spatial field of hydraulic conductivity
     auto &K_tis = eq_sys.add_system<lm::ExplicitSystem>("Tissue_K");
@@ -148,12 +152,14 @@ int main(int argc, char *argv[]) {
     log("creating model\n");
     auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm,
                        input, mesh, eq_sys, p_cap, p_tis,
-                       nut_cap, nut_tis,
+                       nut_cap, nut_tis, tum,
                        K_tis, Dnut_tis_field,
                        N_bar_cap_field, N_bar_surf_cap_field,
                        log);
     eq_sys.init();
     solver_3d.set_conductivity_fields();
+    auto tumor_mesh_file = args["tumor-mesh-file"].as<std::string>();
+    solver_3d.initialize_tumor_field(tumor_mesh_file);
 
     // setup the 1D pressure data in 3D solver
     log("setting 1D-3D coupling data in 3D solver\n");
@@ -240,6 +246,7 @@ int main(int argc, char *argv[]) {
       }
 
       if (time_step_3d % (int(tau_out / tau_3d)) == 0) {
+        log("output 3d and 1d results\n");
         solver_3d.write_output();
         solver_1d.write_output();
       }
