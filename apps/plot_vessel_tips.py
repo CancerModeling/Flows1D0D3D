@@ -71,7 +71,7 @@ if 'c' in data and 'V' in data:
 if 'c' in data and 'V' in data and 'furcation_number' in vessel and vessel['furcation_number'] > 1 and show_N_total:
     num_plot_rows += 1
 
-fig, axes = plt.subplots(num_plot_rows, len(args.dofs), squeeze=False, sharey='row')
+fig, axes = plt.subplots(num_plot_rows, len(args.dofs), squeeze=False, sharey='row', sharex='col')
 
 arbitrary_data_element = next(iter(data.values()))
 indices = list(range(arbitrary_data_element.shape[1]))
@@ -93,7 +93,8 @@ for i,dof in enumerate(args.dofs):
         ax.legend()
         if i == 0:
             ax.set_ylabel('$p_c$ [mmHg]')
-        ax.set_xlabel('$t$')
+        if next_ax_index == num_plot_rows:
+            ax.set_xlabel('$t$')
         ax.grid(True)
 
         if vessel['outflow_type'] == 'rcl':
@@ -109,14 +110,17 @@ for i,dof in enumerate(args.dofs):
             if 'resistance' in vessel:
                 resistances = np.array(vessel['resistance'])
             else:
+                print('r2')
                 resistances = np.array([vessel['R2']])
             flows = (pressures_here - pressures_next) / resistances[dof]
+            print(resistances[dof])
         ax = axes[next_ax_index, i]; next_ax_index += 1
         ax.plot(t[start_index:stop_index], flows, label='{}'.format(indices[dof]), linewidth=3)
         ax.legend()
         if i == 0:
             ax.set_ylabel('$q_c [cm^3 s^{-1}]$')
-        ax.set_xlabel('$t$')
+        if next_ax_index == num_plot_rows:
+            ax.set_xlabel('$t$')
         ax.grid(True)
 
         if 'furcation_number' in vessel and vessel['furcation_number'] > 1 and show_Q_total:
@@ -125,7 +129,8 @@ for i,dof in enumerate(args.dofs):
             ax.legend()
             if i == 0:
                 ax.set_ylabel('$q_{c,total} [cm^3 s^{-1}]$')
-            ax.set_xlabel('$t$')
+            if next_ax_index == num_plot_rows:
+                ax.set_xlabel('$t$')
             ax.grid(True)
 
     if 'c' in data:
@@ -134,7 +139,8 @@ for i,dof in enumerate(args.dofs):
         ax.legend()
         if i == 0:
             ax.set_ylabel('$c [mmol cm^{-3}]$')
-        ax.set_xlabel('$t$')
+        if next_ax_index == num_plot_rows:
+            ax.set_xlabel('$t$')
         ax.grid(True)
 
     if 'V' in data:
@@ -145,7 +151,8 @@ for i,dof in enumerate(args.dofs):
         ax.legend()
         if i == 0:
             ax.set_ylabel('$V [cm^3]$')
-        ax.set_xlabel('$t$')
+        if next_ax_index == num_plot_rows:
+            ax.set_xlabel('$t$')
         ax.grid(True)
 
     if 'c' in data and 'V' in data:
@@ -154,7 +161,8 @@ for i,dof in enumerate(args.dofs):
         ax.legend()
         if i == 0:
             ax.set_ylabel('$N [mmol]$')
-        ax.set_xlabel('$t$')
+        if next_ax_index == num_plot_rows:
+            ax.set_xlabel('$t$')
         ax.grid(True)
 
     if 'c' in data and 'V' in data and 'furcation_number' in vessel and vessel['furcation_number'] > 1 and show_N_total:
@@ -163,7 +171,8 @@ for i,dof in enumerate(args.dofs):
         ax.legend()
         if i == 0:
             ax.set_ylabel('$N_{total} [mmol]$')
-        ax.set_xlabel('$t$')
+        if next_ax_index == num_plot_rows:
+            ax.set_xlabel('$t$')
         ax.grid(True)
 
 plt.show()
