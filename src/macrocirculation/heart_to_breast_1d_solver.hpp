@@ -64,6 +64,9 @@ struct VesselTipCurrentCouplingData {
   /*! @brief Pressure value in the arterioles in [Ba]. */
   double pressure;
 
+  /*! @brief Concentration value at the tip in [mmol cm^{-3}]. */
+  double concentration;
+
   /*! @brief Second resistance of the arteriole compartment in [cm^{-4} g s^{-1}]. */
   double R2;
 

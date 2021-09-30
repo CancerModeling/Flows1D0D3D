@@ -231,6 +231,7 @@ int main(int argc, char *argv[]) {
           std::cout << "vertex with id = " << d.vertex_id << ", "
                     << "coordinates = (" << d.p.x << ", " << d.p.y << ", " << d.p.z << "), "
                     << "p = " << d.pressure << ", "
+                    << "c = " << d.concentration << ", "
                     << "R = " << d.R2 << ", "
                     << "r = " << d.radius << std::endl;
       }

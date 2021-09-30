@@ -114,9 +114,13 @@ std::map<size_t, double> get_vessel_tip_dof_values(MPI_Comm comm,
 }
 
 std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_pressures() {
-  auto &dof_map = *solver->get_implicit_dof_map();
-  auto &u = solver->get_implicit_solver()->get_solution();
-  auto values = get_vessel_tip_dof_values(d_comm, *graph_li, dof_map, u);
+  auto &dof_map_flow = *solver->get_implicit_dof_map();
+  auto &u_flow = solver->get_implicit_solver()->get_solution();
+  auto pressure_values = get_vessel_tip_dof_values(d_comm, *graph_li, dof_map_flow, u_flow);
+
+  auto &dof_map_transport = *transport_solver->get_dof_maps_transport().back();
+  auto &u_transport = transport_solver->get_solution();
+  auto concentration_values = get_vessel_tip_dof_values(d_comm, *graph_li, dof_map_transport, u_transport);
 
   std::vector<VesselTipCurrentCouplingData> results;
 
@@ -134,14 +138,16 @@ std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_
       Point p = e.is_pointing_to(v_id) ? e.get_embedding_data().points.back() : e.get_embedding_data().points.front();
 
       // 1e3 since we have to convert kg -> g:
-      auto p_out = values[v_id] * 1e3;
+      auto p_out = pressure_values[v_id] * 1e3;
 
       // 1e3 since we have to convert kg -> g:
       auto R2 = R.back() * 1e3;
 
       auto radius = calculate_edge_tree_parameters(e).radii.back();
 
-      results.push_back({p, v.get_id(), p_out, R2, radius, R.size()});
+      auto concentration = concentration_values[v_id];
+
+      results.push_back({p, v.get_id(), p_out, concentration, R2, radius, R.size()});
     }
   }
 
