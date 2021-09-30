@@ -6,6 +6,7 @@
 
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <utility>
 
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
@@ -20,32 +21,78 @@ CSVVesselTipWriter::CSVVesselTipWriter(
   std::string output_directory,
   std::string filename,
   std::shared_ptr<GraphStorage> graph,
-  std::shared_ptr<DofMap> dofmap)
+  std::vector<std::shared_ptr<DofMap>> dofmaps,
+  std::vector<std::string> types)
     : d_comm(comm),
       d_output_directory(std::move(output_directory)),
       d_filename(std::move(filename)),
       d_graph(std::move(graph)),
-      d_dofmap(std::move(dofmap)) {
+      d_dofmaps(std::move(dofmaps)),
+      d_types(std::move(types)) {
+  if (d_dofmaps.size() != d_types.size())
+    throw std::runtime_error("number of types and dofmaps must coincide");
+
   reset_all_files();
 }
 
+CSVVesselTipWriter::CSVVesselTipWriter(MPI_Comm comm,
+                                       std::string output_directory,
+                                       std::string filename,
+                                       std::shared_ptr<GraphStorage> graph,
+                                       std::shared_ptr<DofMap> dofmaps)
+    : CSVVesselTipWriter(comm,
+                         std::move(output_directory),
+                         std::move(filename),
+                         std::move(graph),
+                         std::vector<std::shared_ptr<DofMap>>({std::move(dofmaps)}),
+                         std::vector<std::string>({"p"})) {}
+
 void CSVVesselTipWriter::write(double t, const PetscVec &u) {
-  write_generic(t, u);
+  if (d_dofmaps.size() > 1)
+    throw std::runtime_error("CSVVesselTipWriter::write: method supported only for one substance");
+
+  update_time(t);
+  write_generic(*d_dofmaps.front(), u, d_types.front());
 }
 
 void CSVVesselTipWriter::write(double t, const std::vector<double> &u) {
-  write_generic(t, u);
+  if (d_dofmaps.size() > 1)
+    throw std::runtime_error("CSVVesselTipWriter::write: method supported only for one substance");
+
+  update_time(t);
+  write_generic(*d_dofmaps.front(), u, d_types.front());
+}
+
+void CSVVesselTipWriter::write(double t,
+                               const std::vector<std::reference_wrapper<std::vector<double>>> &u_1,
+                               const std::vector<std::reference_wrapper<const PetscVec>> &u_2) {
+  if (d_dofmaps.size() != u_1.size() + u_2.size())
+    throw std::runtime_error("CSVVesselTipWriter::write: not all expected quantities provided");
+
+  update_time(t);
+  for (size_t k = 0; k < u_1.size(); k += 1)
+    write_generic(*d_dofmaps[k], u_1[k], d_types[k]);
+  for (size_t k = 0; k < u_2.size(); k += 1)
+    write_generic(*d_dofmaps[u_1.size() + k], u_2[k], d_types[u_1.size() + k]);
+}
+
+void CSVVesselTipWriter::write(double t, const std::vector<std::reference_wrapper<const PetscVec>> &quantities) {
+  if (d_dofmaps.size() != quantities.size())
+    throw std::runtime_error("CSVVesselTipWriter::write: not all expected quantities provided");
+
+  update_time(t);
+  for (size_t k = 0; k < quantities.size(); k += 1)
+    write_generic(*d_dofmaps[k], quantities[k], d_types[k]);
 }
 
 template<typename VectorType>
-void CSVVesselTipWriter::write_generic(double t, const VectorType &u) {
-  update_time(t);
+void CSVVesselTipWriter::write_generic(const DofMap &dof_map, const VectorType &u, const std::string &type) {
   for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto v = *d_graph->get_vertex(v_id);
 
     if (v.is_vessel_tree_outflow() || v.is_windkessel_outflow() || v.is_rcl_outflow()) {
-      std::ofstream f(get_file_path(v_id), std::ios::app);
-      auto local_dof_map = d_dofmap->get_local_dof_map(v);
+      std::ofstream f(get_file_path(v_id, type), std::ios::app);
+      auto local_dof_map = dof_map.get_local_dof_map(v);
       const auto &dofs = local_dof_map.dof_indices();
       std::vector<double> values(dofs.size());
       extract_dof(dofs, u, values);
@@ -60,8 +107,10 @@ void CSVVesselTipWriter::reset_all_files() {
   // reset all the files
   write_meta_file();
   for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
-    std::ofstream f(get_file_path(v_id), std::ios::out);
-    f << "";
+    for (auto &type : d_types) {
+      std::ofstream f(get_file_path(v_id, type), std::ios::out);
+      f << "";
+    }
   }
 }
 
@@ -87,21 +136,25 @@ void CSVVesselTipWriter::write_meta_file() {
         outflow_type += "unknown";
 
       // get number of dofs:
-      int num_dofs = mpi::rank(d_comm) == e->rank() ? static_cast<int>(d_dofmap->get_local_dof_map(*v).num_local_dof()) : 0;
+      int num_dofs = mpi::rank(d_comm) == e->rank() ? static_cast<int>(d_dofmaps.front()->get_local_dof_map(*v).num_local_dof()) : 0;
       // only the master process has to know the number of dof.
-      if (e->rank() != 0)
-      {
+      if (e->rank() != 0) {
         if (mpi::rank(d_comm) == e->rank())
           MPI_Send(&num_dofs, 1, MPI_INT, 0, 101, d_comm);
         if (mpi::rank(d_comm) == 0)
-          MPI_Recv(&num_dofs, 1, MPI_INT, static_cast< int > (e->rank()), 101, d_comm, nullptr);
+          MPI_Recv(&num_dofs, 1, MPI_INT, static_cast<int>(e->rank()), 101, d_comm, nullptr);
+      }
+
+      std::map<std::string, std::string> filepaths;
+      for (size_t k = 0; k < d_types.size(); k += 1) {
+        filepaths["filepath_" + d_types[k]] = get_file_name(v_id, d_types[k]);
       }
 
       json vessel_obj = {
         {"vertex_id", v_id},
         {"name", v->get_name()},
         {"neighbor_edge_id", v->get_edge_neighbors()[0]},
-        {"filepath", get_file_name(v_id)},
+        {"filepaths", filepaths},
         {"outflow_type", outflow_type},
         {"num_dofs", num_dofs},
       };
@@ -156,12 +209,12 @@ void CSVVesselTipWriter::update_time(double t) {
   }
 }
 
-std::string CSVVesselTipWriter::get_file_path(size_t vertex_id) const {
-  return d_output_directory + "/" + get_file_name(vertex_id);
+std::string CSVVesselTipWriter::get_file_path(size_t vertex_id, const std::string &type) const {
+  return d_output_directory + "/" + get_file_name(vertex_id, type);
 }
 
-std::string CSVVesselTipWriter::get_file_name(size_t vertex_id) const {
-  return d_filename + "_" + std::to_string(vertex_id) + ".csv";
+std::string CSVVesselTipWriter::get_file_name(size_t vertex_id, const std::string &type) const {
+  return d_filename + "_" + std::to_string(vertex_id) + "_" + type + ".csv";
 }
 
 std::string CSVVesselTipWriter::get_meta_file_path() const {

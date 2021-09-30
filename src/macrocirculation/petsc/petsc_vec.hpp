@@ -41,14 +41,22 @@ public:
     CHKERRABORT(PETSC_COMM_WORLD, VecDestroy(&d_vec));
   }
 
-  void add(const std::vector<size_t> &dofs, const std::vector<double> &values) {
+  void set_with_mode(const std::vector<size_t> &dofs, const std::vector<double> &values, InsertMode mode) {
     assert(dofs.size() == values.size());
 
     std::vector<PetscInt> dofs_(dofs.size(), 0);
     for (int r = 0; r < dofs.size(); r += 1)
       dofs_[r] = static_cast<PetscInt>(dofs[r]);
 
-    CHKERRABORT(PETSC_COMM_WORLD, VecSetValues(d_vec, static_cast<PetscInt>(dofs_.size()), dofs_.data(), values.data(), ADD_VALUES));
+    CHKERRABORT(PETSC_COMM_WORLD, VecSetValues(d_vec, static_cast<PetscInt>(dofs_.size()), dofs_.data(), values.data(), mode));
+  }
+
+  void add(const std::vector<size_t> &dofs, const std::vector<double> &values) {
+    set_with_mode(dofs, values, ADD_VALUES);
+  }
+
+  void set(const std::vector<size_t> &dofs, const std::vector<double> &values) {
+    set_with_mode(dofs, values, INSERT_VALUES);
   }
 
   void set(PetscInt idx, double value) {

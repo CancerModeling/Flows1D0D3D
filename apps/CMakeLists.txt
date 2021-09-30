@@ -41,7 +41,7 @@ target_link_libraries(${ProjectName}CombinedGeometry cxxopts)
 
 add_executable(${ProjectName}Full1D0D3DModel full_1D0D3D_model.cpp)
 target_link_libraries(${ProjectName}Full1D0D3DModel ${ProjectLib})
-target_link_libraries(${ProjectName}Full1D0D3DModel cxxopts)
+target_link_libraries(${ProjectName}Full1D0D3DModel cxxopts fmt)
 
 add_executable(${ProjectName}Full1D0D3DModelPKJ full_1D0D3D_model_pkj.cpp)
 target_link_libraries(${ProjectName}Full1D0D3DModelPKJ ${ProjectLib})
@@ -69,6 +69,16 @@ add_executable(${ProjectName}ImplicitTransportWith0D implicit_transport_with_0d.
 target_link_libraries(${ProjectName}ImplicitTransportWith0D ${ProjectLib})
 target_link_libraries(${ProjectName}ImplicitTransportWith0D ${LIBMESH_LIBRARIES}) # libmesh for eigen
 target_link_libraries(${ProjectName}ImplicitTransportWith0D cxxopts)
+
+add_executable(${ProjectName}WindkesselTransportInOutTest windkessel_transport_in_out_test.cpp)
+target_link_libraries(${ProjectName}WindkesselTransportInOutTest ${ProjectLib})
+target_link_libraries(${ProjectName}WindkesselTransportInOutTest ${LIBMESH_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}WindkesselTransportInOutTest cxxopts)
+
+add_executable(${ProjectName}WindkesselTransportThroughCompartments windkessel_transport_through_compartments.cpp)
+target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments ${ProjectLib})
+target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments ${LIBMESH_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments cxxopts)
 
 add_executable(${ProjectName}ExplicitImplicitScheme explicit_implicit_scheme.cpp)
 target_link_libraries(${ProjectName}ExplicitImplicitScheme ${ProjectLib})

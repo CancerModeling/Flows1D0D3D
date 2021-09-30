@@ -179,15 +179,18 @@ int main(int argc, char *argv[]) {
     for (const auto &a: data_3d)
       log(fmt::format("avg_p = {}, avg_nut = {}\n", a.d_p_3d_w, a.d_nut_3d_w));
 
+    double t = 0;
+
     // time integration
     const auto begin_t = std::chrono::steady_clock::now();
     for (std::size_t it = 0; it < max_iter; it += 1) {
-      solver_1d.solve();
+      solver_1d.solve_flow(tau, t);
+      t += tau;
 
       // Some condition to solve the 3D system
-      if ((solver_1d.get_time() >= 2-1e-12) && it % coupling_interval == 0) {
+      if ((t >= 2-1e-12) && it % coupling_interval == 0) {
         if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-          std::cout << "iter = " << it << ", t = " << solver_1d.get_time() << std::endl;
+          std::cout << "iter = " << it << ", t = " << t << std::endl;
 
         std::cout << "calculates coupling " << std::endl;
         data_1d = solver_1d.get_vessel_tip_pressures();
@@ -197,7 +200,7 @@ int main(int argc, char *argv[]) {
           solver_3d.update_1d_data(data_1d);
 
           log("solve 3d systems\n");
-          solver_3d.d_time = solver_1d.get_time();
+          solver_3d.d_time = t;
           solver_3d.solve();
 
           log("update 3d data for 1d systems\n");
@@ -237,13 +240,13 @@ int main(int argc, char *argv[]) {
 
       if (it % output_interval == 0) {
         if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-          std::cout << "iter = " << it << ", t = " << solver_1d.get_time() << std::endl;
+          std::cout << "iter = " << it << ", t = " << t << std::endl;
 
-        solver_1d.write_output();
+        solver_1d.write_output(t);
       }
 
       // break
-      if (solver_1d.get_time() > t_end + 1e-12)
+      if (t > t_end + 1e-12)
         break;
     }
 

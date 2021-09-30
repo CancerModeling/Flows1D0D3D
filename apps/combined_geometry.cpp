@@ -12,10 +12,6 @@
 
 #include "petsc.h"
 
-#include "macrocirculation/graph_csv_writer.hpp"
-#include "macrocirculation/implicit_transport_solver.hpp"
-#include "macrocirculation/interpolate_to_vertices.hpp"
-#include "macrocirculation/nonlinear_flow_upwind_evaluator.hpp"
 #include "macrocirculation/0d_boundary_conditions.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/coupled_explicit_implicit_1d_solver.hpp"
@@ -23,31 +19,51 @@
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
+#include "macrocirculation/graph_csv_writer.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/implicit_linear_flow_solver.hpp"
+#include "macrocirculation/implicit_transport_solver.hpp"
+#include "macrocirculation/interpolate_to_vertices.hpp"
+#include "macrocirculation/linearized_flow_upwind_evaluator.hpp"
+#include "macrocirculation/nonlinear_flow_upwind_evaluator.hpp"
 #include "macrocirculation/nonlinear_linear_coupling.hpp"
+#include "macrocirculation/petsc/petsc_mat.hpp"
+#include "macrocirculation/petsc/petsc_vec.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/rcr_estimator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
-#include "macrocirculation/linearized_flow_upwind_evaluator.hpp"
-#include "macrocirculation/nonlinear_flow_upwind_evaluator.hpp"
-#include "macrocirculation/petsc/petsc_vec.hpp"
-#include "macrocirculation/petsc/petsc_mat.hpp"
 
 namespace mc = macrocirculation;
 
 constexpr std::size_t degree = 2;
 
+template<typename SolverType>
+void output_tip_values(const mc::GraphStorage &graph, const mc::DofMap &dof_map, const SolverType &solver) {
+  for (const auto &v_id : graph.get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
+    auto &vertex = *graph.get_vertex(v_id);
+    auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
+    if (vertex.is_windkessel_outflow() || vertex.is_vessel_tree_outflow()) {
+      auto &vertex_dof_indices = dof_map.get_local_dof_map(vertex).dof_indices();
+
+      std::vector<double> vertex_values(vertex_dof_indices.size());
+      extract_dof(vertex_dof_indices, solver.get_solution(), vertex_values);
+
+      std::cout << "vertex id = " << vertex.get_id() << " has c = " << vertex_values << std::endl;
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
   cxxopts::Options options(argv[0], "Combined geometry with explicit implicit solver");
-  options.add_options()                                                                              //
-    ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.))) //
-    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))    //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10"))     //
-    ("calibration", "starts a calibration run", cxxopts::value<bool>()->default_value("false"))      //
+  options.add_options()                                                                                                                                           //
+    ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                                                              //
+    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                                                                 //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("10"))                                                                  //
+    ("calibration", "starts a calibration run", cxxopts::value<bool>()->default_value("false"))                                                                   //
     ("update-interval-transport", "transport is only updated every nth flow step, where n is the update-interval?", cxxopts::value<size_t>()->default_value("5")) //
+    ("no-slope-limiter", "Disables the slope limiter", cxxopts::value<bool>()->default_value("false"))                                                            //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
@@ -57,6 +73,8 @@ int main(int argc, char *argv[]) {
   }
 
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
+
+  const bool slope_limiter_active = !args["no-slope-limiter"].as<bool>();
 
   {
     // create_for_node the ascending aorta
@@ -72,10 +90,9 @@ int main(int argc, char *argv[]) {
     graph_reader.append("data/meshes/coarse-network-geometry.json", *graph_li);
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-linear-part.json", *graph_li);
     graph_reader.set_boundary_data("data/meshes/boundary-combined-geometry-nonlinear-part.json", *graph_nl);
-    // mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
 
-    //
-    mc::convert_rcr_to_partitioned_tree_bcs(graph_li);
+    mc::set_0d_tree_boundary_conditions(graph_li, "bg_");
+    // mc::convert_rcr_to_partitioned_tree_bcs(graph_li);
     // mc::convert_rcr_to_rcl_chain_bcs(graph_li);
 
     auto coupling = std::make_shared<mc::NonlinearLinearCoupling>(MPI_COMM_WORLD, graph_nl, graph_li);
@@ -156,7 +173,7 @@ int main(int argc, char *argv[]) {
     // transport dofmap
     auto dof_map_transport_nl = std::make_shared<mc::DofMap>(*graph_nl);
     auto dof_map_transport_li = std::make_shared<mc::DofMap>(*graph_li);
-    mc::DofMap::create(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, 1, degree,  [](const mc::GraphStorage&, const mc::Vertex &v) { return 0; });
+    mc::DofMap::create_for_transport(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, degree);
 
     // upwind evaluators:
     auto upwind_evaluator_nl = std::make_shared<mc::NonlinearFlowUpwindEvaluator>(MPI_COMM_WORLD, graph_nl, dof_map_nl);
@@ -184,7 +201,17 @@ int main(int argc, char *argv[]) {
 
     mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution");
 
-    mc::CSVVesselTipWriter vessel_tip_writer(MPI_COMM_WORLD, "output", "combined_geometry_solution_tips", graph_li, dof_map_li);
+    mc::CSVVesselTipWriter vessel_tip_writer_li(MPI_COMM_WORLD,
+                                                "output", "combined_geometry_solution_tips_li",
+                                                graph_li,
+                                                {dof_map_li, dof_map_transport_li, transport_solver.get_dof_maps_volume().back()},
+                                                {"p", "c", "V"});
+
+    mc::CSVVesselTipWriter vessel_tip_writer_nl(MPI_COMM_WORLD,
+                                                "output", "combined_geometry_solution_tips_nl",
+                                                graph_nl,
+                                                {dof_map_nl, dof_map_transport_nl, transport_solver.get_dof_maps_volume().front()},
+                                                {"p", "c", "V"});
 
     const size_t transport_update_interval = args["update-interval-transport"].as<size_t>();
     if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
@@ -201,6 +228,8 @@ int main(int argc, char *argv[]) {
         upwind_evaluator_nl->init(t_transport + transport_update_interval * tau, solver.get_explicit_solver()->get_solution());
         upwind_evaluator_li->init(t_transport + transport_update_interval * tau, solver.get_implicit_solver()->get_solution());
         transport_solver.solve(transport_update_interval * tau, t_transport + transport_update_interval * tau);
+        if (slope_limiter_active)
+          transport_solver.apply_slope_limiter(t_transport + transport_update_interval * tau);
         t_transport += transport_update_interval * tau;
         // std::cout << "transport sol-norm" << transport_solver.get_solution().norm2() << std::endl;
         // std::cout << "transport mat-norm" << transport_solver.get_mat().norm1() << std::endl;
@@ -247,7 +276,8 @@ int main(int argc, char *argv[]) {
         pvd_writer.add_vertex_data("A", vessel_A0_li);
         pvd_writer.write(t);
 
-        vessel_tip_writer.write(t, solver_li->get_solution());
+        vessel_tip_writer_nl.write(t, {solver_nl->get_solution()}, {transport_solver.get_solution(), transport_solver.get_volumes()});
+        vessel_tip_writer_li.write(t, {solver_li->get_solution(), transport_solver.get_solution(), transport_solver.get_volumes()});
       }
 
       // break

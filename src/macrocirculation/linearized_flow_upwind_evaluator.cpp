@@ -57,10 +57,10 @@ LinearizedFlowUpwindEvaluator::LinearizedFlowUpwindEvaluator(MPI_Comm comm, std:
       d_dof_map(std::move(dof_map)),
       d_q_boundary_evaluator(comm, d_graph, d_dof_map, 1),
       d_p_boundary_evaluator(comm, d_graph, d_dof_map, 0),
-      d_q_macro_edge_flux_l(d_graph->num_edges()),
-      d_q_macro_edge_flux_r(d_graph->num_edges()),
-      d_p_macro_edge_flux_l(d_graph->num_edges()),
-      d_p_macro_edge_flux_r(d_graph->num_edges()),
+      d_q_macro_edge_flux_l(d_graph->num_edges(), NAN),
+      d_q_macro_edge_flux_r(d_graph->num_edges(), NAN),
+      d_p_macro_edge_flux_l(d_graph->num_edges(), NAN),
+      d_p_macro_edge_flux_r(d_graph->num_edges(), NAN),
       d_current_t(NAN) {}
 
 void LinearizedFlowUpwindEvaluator::init(double t, const std::vector<double> &u_prev) {
@@ -98,6 +98,10 @@ void LinearizedFlowUpwindEvaluator::get_fluxes_on_nfurcation(double t, const Ver
       q_up[neighbor_edge_idx] = d_q_macro_edge_flux_l[edge.get_id()];
     }
   }
+
+  //std::cout << t << " " << v.get_id() << " " << p_up << " " << q_up << std::endl;
+  //std::cout << t << " " << v.get_id() << " q_l = " << d_q_macro_edge_flux_l << std::endl;
+  //std::cout << t << " " << v.get_id() << " q_r = " << d_q_macro_edge_flux_r << std::endl;
 }
 
 template<typename VectorType>
@@ -149,7 +153,7 @@ void LinearizedFlowUpwindEvaluator::get_fluxes_on_macro_edge_generic(double t, c
 
 template<typename VectorType>
 void LinearizedFlowUpwindEvaluator::calculate_nfurcation_fluxes(const VectorType &u_prev) {
-  for (const auto &v_id : d_graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
+  for (const auto &v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 
     // we only handle bifurcations

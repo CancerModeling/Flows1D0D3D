@@ -40,19 +40,19 @@ int main(int argc, char *argv[]) {
   lm::Parallel::Communicator *comm = &init.comm();
 
   cxxopts::Options options(argv[0], "Fully coupled 1D-0D-3D solver.");
-  options.add_options()                                                                                                         //
-    ("tau-1d", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))           //
-    ("tau-3d", "time step size for the 3D model", cxxopts::value<double>()->default_value("10."))                               //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("1000."))                             //
-    ("tau-out", "Simulation output interval", cxxopts::value<double>()->default_value("10."))                             //
-    ("t-3d-start", "Simulation start time for 3D model", cxxopts::value<double>()->default_value("1."))                             //
-    ("n-1d-solves", "Number of times 1D equation is solved per macroscale time", cxxopts::value<int>()->default_value("50"))                   //
+  options.add_options()                                                                                                                //
+    ("tau-1d", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))               //
+    ("tau-3d", "time step size for the 3D model", cxxopts::value<double>()->default_value("10."))                                      //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("1000."))                                    //
+    ("tau-out", "Simulation output interval", cxxopts::value<double>()->default_value("10."))                                          //
+    ("t-3d-start", "Simulation start time for 3D model", cxxopts::value<double>()->default_value("1."))                                //
+    ("n-1d-solves", "Number of times 1D equation is solved per macroscale time", cxxopts::value<int>()->default_value("50"))           //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_multiscale_time_3d1d0d/")) //
-    ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                 //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))           //
-    ("tumor-mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_tumor_cm.e"))           //
-    ("deactivate-3d-1d-coupling", "deactivates the 3d-1d coupling", cxxopts::value<bool>()->default_value("false"))             //
-    ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                           //
+    ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                        //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))                  //
+    ("tumor-mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_tumor_cm.e"))      //
+    ("deactivate-3d-1d-coupling", "deactivates the 3d-1d coupling", cxxopts::value<bool>()->default_value("false"))                    //
+    ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                                  //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
 
@@ -61,7 +61,6 @@ int main(int argc, char *argv[]) {
   std::cout << "output-directory = " << args["output-directory"].as<std::string>() << std::endl;
   std::cout << "mesh-file = " << args["mesh-file"].as<std::string>() << std::endl;
   std::cout << "tumor-mesh-file = " << args["tumor-mesh-file"].as<std::string>() << std::endl;
-
 
 
   if (args.count("help")) {
@@ -157,11 +156,11 @@ int main(int argc, char *argv[]) {
     // create model that holds all essential variables
     log("creating model\n");
     auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm,
-                       input, mesh, eq_sys, p_cap, p_tis,
-                       nut_cap, nut_tis, tum,
-                       K_tis, Dnut_tis_field,
-                       N_bar_cap_field, N_bar_surf_cap_field,
-                       log);
+                                               input, mesh, eq_sys, p_cap, p_tis,
+                                               nut_cap, nut_tis, tum,
+                                               K_tis, Dnut_tis_field,
+                                               N_bar_cap_field, N_bar_surf_cap_field,
+                                               log);
     eq_sys.init();
     solver_3d.set_conductivity_fields();
     auto tumor_mesh_file = args["tumor-mesh-file"].as<std::string>();
@@ -189,8 +188,8 @@ int main(int argc, char *argv[]) {
     const auto begin_t = std::chrono::steady_clock::now();
     double t_now = 0.;
     while (t_now <= t_3d_start) {
-      solver_1d.solve();
-      t_now = solver_1d.get_time();
+      solver_1d.solve_flow(tau_1d, t_now);
+      t_now += tau_1d;
     }
 
     // step 2 - solve 3d and 1d systems
@@ -209,7 +208,7 @@ int main(int argc, char *argv[]) {
         // set macroscale time as current time in 1d solver
         int n_half = int(n_1d_solves / 2);
         double t_macro = t_now - n_half * tau_1d;
-        solver_1d.set_time(t_macro); // should be okay!
+        t_now = t_macro;
 
         // update the boundary conditions of the 1D system:
         log("update 3d average tip values in 1d system\n");
@@ -233,14 +232,15 @@ int main(int argc, char *argv[]) {
         log("solve 1d system\n");
         for (int i = -n_half; i < n_half; i++) {
           // solve 1d system
-          solver_1d.solve();
+          solver_1d.solve_flow(tau_1d, t_now);
+          t_now += tau_1d;
 
           // update pressure
           auto data_1d_now = solver_1d.get_vessel_tip_pressures();
           for (size_t j = 0; j < data_1d.size(); j++)
             data_1d[j].pressure += data_1d_now[j].pressure;
         }
-        for (auto & j : data_1d)
+        for (auto &j : data_1d)
           j.pressure = j.pressure / (2 * n_half);
       }
 
@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
       if (time_step_3d % (int(tau_out / tau_3d)) == 0) {
         log("output 3d and 1d results\n");
         solver_3d.write_output();
-        solver_1d.write_output();
+        solver_1d.write_output(t_now);
       }
 
       // increment time
