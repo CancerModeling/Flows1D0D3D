@@ -25,9 +25,9 @@ struct VesselTipCurrentCouplingData3D {
   double d_a;
   /*! @brief Coefficient b. */
   double d_b;
-  /*! @brief Weighted average of 3D pressure at outlet. */
+  /*! @brief Weighted average of 3D pressure at outlet [Ba]. */
   double d_p_3d_w;
-  /*! @brief Weighted average of 3D nutrient at outlet. */
+  /*! @brief Weighted average of 3D nutrient at outlet [millimole/cm^3]. */
   double d_nut_3d_w;
 };
 
@@ -71,6 +71,16 @@ struct HeartToBreast3DSolverInputDeck {
   double d_rnut_art_cap;
   /*! @brief reflection coefficient for vein-capillary and vein-capillary exchange of nutrient. */
   double d_rnut_vein_cap;
+  /*! @brief Tumor growth rate. */
+  double d_lambda_P;
+  /*! @brief Tumor apotosis rate. */
+  double d_lambda_A;
+  /*! @brief Tumor mobility. */
+  double d_tum_mob;
+  /*! @brief Double well constant. */
+  double d_tum_dw;
+  /*! @brief Interfacial width. */
+  double d_tum_eps;
   /*! @brief Final simulation time. */
   double d_T;
   /*! @brief Size of time step. */
@@ -102,6 +112,7 @@ public:
                         lm::TransientLinearImplicitSystem &p_tis,
                         lm::TransientLinearImplicitSystem &nut_cap,
                         lm::TransientLinearImplicitSystem &nut_tis,
+                        lm::TransientLinearImplicitSystem &tum,
                         lm::ExplicitSystem &K_tis_field,
                         lm::ExplicitSystem &Dnut_tis_field,
                         lm::ExplicitSystem &N_bar_cap_field,
@@ -117,7 +128,7 @@ public:
   void setup();
 
   /*! @brief Solve 3D system; currently this includes capillary and tissue pressures. */
-  void solve();
+  void solve(bool solve_tum = false);
 
   /*! @brief Output 3D system to a .pvtu file. */
   void write_output();
@@ -145,6 +156,8 @@ public:
 
   void set_conductivity_fields();
 
+  void initialize_tumor_field(std::string tumor_mesh_file);
+
 public:
   /*! @brief MPI comm. (Note that we have another comm from libmesh defined in BaseModel class) */
   MPI_Comm d_mpi_comm;
@@ -160,6 +173,8 @@ public:
   CapillaryNutrient d_nut_cap;
   /*! @brief Tissue nutrient assembly. */
   TissueNutrient d_nut_tis;
+  /*! @brief Tumor assembly. */
+  Tumor d_tum;
   /*! @brief Tissue hydraulic conductivity parameter (spatially varying, may vary element-wise). */
   lm::ExplicitSystem &d_K_tis_field;
   /*! @brief Tissue nutrient diffusion parameter (spatially varying, may vary element-wise). */
@@ -168,6 +183,15 @@ public:
   lm::ExplicitSystem &d_N_bar_cap_field;
   /*! @brief Total capillary cross-section area per unit macroscopic area. */
   lm::ExplicitSystem &d_N_bar_surf_cap_field;
+
+  /*! @brief Nutrient volume fraction to millimole/cm^3 factor
+   * 1. concentration in gram/cm^3 = rho * phi where rho is gram/cm^3 and phi is volume fraction
+   * 2. concentration in millimole/cm^3 = 5.550930*1.e-5*rho*phi = 5.550930*1.e-5*phi,
+   * where we assume nutrient molecule is similar to water H2O, and also assume rho = 1 g/cm^3.
+   * Therefore, the factor is 5.550930*1.e-5
+   * Source: https://planetcalc.com/6777/
+   */
+  double d_nut_convert_factor;
 
   /*!
    * @brief Coordinates of perfusion outlets.

@@ -41,7 +41,7 @@ target_link_libraries(${ProjectName}CombinedGeometry cxxopts)
 
 add_executable(${ProjectName}Full1D0D3DModel full_1D0D3D_model.cpp)
 target_link_libraries(${ProjectName}Full1D0D3DModel ${ProjectLib})
-target_link_libraries(${ProjectName}Full1D0D3DModel cxxopts)
+target_link_libraries(${ProjectName}Full1D0D3DModel cxxopts fmt)
 
 add_executable(${ProjectName}Full1D0D3DModelPKJ full_1D0D3D_model_pkj.cpp)
 target_link_libraries(${ProjectName}Full1D0D3DModelPKJ ${ProjectLib})
@@ -127,6 +127,11 @@ add_executable(${ProjectName}DarcyRegOutlets darcy_flow_regularized_outlets.cpp)
 target_link_libraries(${ProjectName}DarcyRegOutlets ${ProjectLib})
 target_link_libraries(${ProjectName}DarcyRegOutlets cxxopts nanoflann fmt)
 
+# multiscale in time full simulation
+add_executable(${ProjectName}MultiscaleTime3D1D0D multiscale_time_3d1d0d.cpp)
+target_link_libraries(${ProjectName}MultiscaleTime3D1D0D ${ProjectLib})
+target_link_libraries(${ProjectName}MultiscaleTime3D1D0D cxxopts fmt)
+
 foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
                    ${ProjectName}ConvergenceStudy
@@ -143,7 +148,8 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}VoxelsToMesh
                    ${ProjectName}DarcyRegOutlets
                    ${ProjectName}Full1D0D3DModel
-                   ${ProjectName}Full1D0D3DModelPKJ)
+                   ${ProjectName}Full1D0D3DModelPKJ
+                   ${ProjectName}MultiscaleTime3D1D0D)
     add_custom_command(
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
@@ -171,6 +177,10 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
             TARGET ${TargetName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory
             $<TARGET_FILE_DIR:${TargetName}>/output_full_1d0d3d_pkj)
+    add_custom_command(
+            TARGET ${TargetName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+            $<TARGET_FILE_DIR:${TargetName}>/output_multiscale_time_3d1d0d)
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD

@@ -477,4 +477,72 @@ void TissueNutrient::assemble() {
   d_sys.rhs->close();
 }
 
+void Tumor::assemble() {
+  // assemble and close the matrix and rhs vector
+  auto &eq_sys = d_model_p->get_system();
+  const auto &input = d_model_p->d_input;
+
+  auto &nut_tis_field = d_model_p->d_nut_tis;
+  const double dt = d_model_p->d_dt;
+
+  double nut_tis_cur = 0.;
+  double tum_old = 0.;
+
+  // assemble
+  for (const auto &elem : d_mesh.active_local_element_ptr_range()) {
+
+    // init dof map
+    init_dof(elem);
+    nut_tis_field.init_dof(elem);
+
+    // init fe
+    init_fe(elem);
+
+    for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
+
+      // get current values
+      nut_tis_cur = 0.;
+      tum_old = 0.;
+      for (unsigned int l = 0; l < d_phi.size(); l++) {
+        nut_tis_cur += d_phi[l][qp] * nut_tis_field.get_current_sol(l);
+        tum_old += d_phi[l][qp] * get_old_sol_var(l, 0);
+      }
+
+      double mobility = input.d_tum_mob * std::pow(tum_old*(1. - tum_old), 2) + 1.e-8;
+
+      // Assembling matrix
+      for (unsigned int i = 0; i < d_phi.size(); i++) {
+
+        d_Fe_var[0](i) += d_JxW[qp] * tum_old * d_phi[i][qp];
+
+        d_Fe_var[1](i) += d_JxW[qp] * input.d_tum_dw * (4. * std::pow(tum_old, 3) - 6 * std::pow(tum_old, 2) - tum_old) * d_phi[i][qp];
+
+        for (unsigned int j = 0; j < d_phi.size(); j++) {
+
+          d_Ke_var[0][0](i, j) += d_JxW[qp] * d_phi[j][qp] * d_phi[i][qp];
+          d_Ke_var[0][0](i, j) += d_JxW[qp] * dt * (input.d_lambda_A - input.d_lambda_P * (1. - tum_old) * nut_tis_cur) * d_phi[j][qp] * d_phi[i][qp];
+
+          d_Ke_var[0][1](i, j) += d_JxW[qp] * dt * mobility *  d_dphi[j][qp] * d_dphi[i][qp];
+
+          d_Ke_var[1][1](i, j) += d_JxW[qp] * d_phi[j][qp] * d_phi[i][qp];
+
+          d_Ke_var[1][0](i, j) += d_JxW[qp] * (-input.d_tum_dw * 3.) * d_phi[j][qp] * d_phi[i][qp];
+
+          d_Ke_var[1][0](i, j) += d_JxW[qp] * (-input.d_tum_eps * input.d_tum_eps) * d_dphi[j][qp] * d_dphi[i][qp];
+        }
+
+      }
+    } // loop over quad points
+
+    d_dof_map_sys.heterogenously_constrain_element_matrix_and_vector(d_Ke, d_Fe,
+                                                                     d_dof_indices_sys);
+    d_sys.matrix->add_matrix(d_Ke, d_dof_indices_sys);
+    d_sys.rhs->add_vector(d_Fe, d_dof_indices_sys);
+  } // elem loop
+
+  // finish
+  d_sys.matrix->close();
+  d_sys.rhs->close();
+}
+
 } // namespace macrocirculation
