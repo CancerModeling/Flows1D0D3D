@@ -22,7 +22,7 @@ class HeartToBreast3DSolver;
 /*! @brief Initial condition function for pressure systems. */
 inline lm::Number ic_p(const lm::Point &p, const lm::Parameters &es,
                 const std::string &system_name,
-                const std::string &var_name) { return 0.; }
+                const std::string &var_name) { return 40000.; }
 
 /*! @brief Function that applies initial condition to pressure systems. */
 inline void ic(lm::EquationSystems &es, const std::string &system_name) {

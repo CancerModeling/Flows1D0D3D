@@ -94,7 +94,7 @@ void set_perfusion_pts(std::string out_dir,
 
 HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string &filename)
     : d_rho_cap(1.), d_rho_tis(1.), d_K_cap(1.e-5), d_K_tis(1.e-11),
-      d_Lp_art_cap(1.e-6), d_Lp_vein_cap(1.e-7), d_Lp_cap_tis(1e-11),
+      d_Lp_art_cap(1.e-6), d_Lp_vein_cap(1.e-8), d_Lp_cap_tis(1e-11),
       d_Dnut_cap(1e-3), d_Dtis_cap(1.e-6), d_Lnut_cap_tis(0.01),
       d_N_bar_cap(1e2), d_N_bar_surf_cap(1.e-2),
       d_rnut_cap(0.), d_rnut_art_cap(0.), d_rnut_vein_cap(1.),
@@ -108,31 +108,31 @@ HeartToBreast3DSolverInputDeck::HeartToBreast3DSolverInputDeck(const std::string
 
 void HeartToBreast3DSolverInputDeck::read_parameters(const std::string &filename) {
   GetPot input(filename);
-  d_rho_cap = input("rho_cap", 1.);
-  d_rho_tis = input("rho_tis", 1.);
-  d_K_cap = input("K_cap", 1.);
-  d_K_tis = input("K_tis", 1.);
-  d_Lp_art_cap = input("Lp_art_cap", 1.);
-  d_Lp_vein_cap = input("Lp_vein_cap", 1.);
-  d_Lp_cap_tis = input("Lp_cap_tis", 1.);
-  d_Dnut_cap = input("Dnut_cap", 1.);
-  d_Dtis_cap = input("Dtis_cap", 1.);
-  d_Lnut_cap_tis = input("Lnut_cap_tis", 1.);
-  d_N_bar_cap = input("N_bar_cap", 1.);
-  d_N_bar_surf_cap = input("N_bar_surf_cap", 1.);
-  d_rnut_cap = input("rnut_cap", 1.);
-  d_rnut_art_cap = input("rnut_art_cap", 1.);
-  d_rnut_vein_cap = input("rnut_vein_cap", 1.);
-  d_T = input("T", 1.);
-  d_dt = input("dt", 0.01);
-  d_h = input("h", 0.1);
-  d_mesh_file = input("mesh_file", "");
-  d_out_dir = input("out_dir", "");
+  d_rho_cap = input("rho_cap", d_rho_cap);
+  d_rho_tis = input("rho_tis", d_rho_tis);
+  d_K_cap = input("K_cap", d_K_cap);
+  d_K_tis = input("K_tis", d_K_tis);
+  d_Lp_art_cap = input("Lp_art_cap", d_Lp_art_cap);
+  d_Lp_vein_cap = input("Lp_vein_cap", d_Lp_vein_cap);
+  d_Lp_cap_tis = input("Lp_cap_tis", d_Lp_cap_tis);
+  d_Dnut_cap = input("Dnut_cap", d_Dnut_cap);
+  d_Dtis_cap = input("Dtis_cap", d_Dtis_cap);
+  d_Lnut_cap_tis = input("Lnut_cap_tis", d_Lnut_cap_tis);
+  d_N_bar_cap = input("N_bar_cap", d_N_bar_cap);
+  d_N_bar_surf_cap = input("N_bar_surf_cap", d_N_bar_surf_cap);
+  d_rnut_cap = input("rnut_cap", d_rnut_cap);
+  d_rnut_art_cap = input("rnut_art_cap", d_rnut_art_cap);
+  d_rnut_vein_cap = input("rnut_vein_cap", d_rnut_vein_cap);
+  d_T = input("T", d_T);
+  d_dt = input("dt", d_dt);
+  d_h = input("h", d_h);
+  d_mesh_file = input("mesh_file", d_mesh_file);
+  d_out_dir = input("out_dir", d_out_dir);
   d_perf_regularized = input("regularized_source", 1) == 0;
-  d_perf_fn_type = input("perf_fn_type", "linear");
-  d_perf_neigh_size.first = input("perf_neigh_size_min", 1.);
-  d_perf_neigh_size.second = input("perf_neigh_size_max", 4.);
-  d_debug_lvl = input("debug_lvl", 0);
+  d_perf_fn_type = input("perf_fn_type", d_perf_fn_type);
+  d_perf_neigh_size.first = input("perf_neigh_size_min", d_perf_neigh_size.first);
+  d_perf_neigh_size.second = input("perf_neigh_size_max", d_perf_neigh_size.second);
+  d_debug_lvl = input("debug_lvl", d_debug_lvl);
 }
 
 std::string HeartToBreast3DSolverInputDeck::print_str() {
