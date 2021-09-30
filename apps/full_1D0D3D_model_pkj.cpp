@@ -44,6 +44,7 @@ int main(int argc, char *argv[]) {
     ("tau-transport", "time step size for the 1D transport", cxxopts::value<double>()->default_value("1.5625e-04"))             //
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("5e-1"))                               //
     ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("5e-3"))                   //
+    ("t-coup-start", "The time when the 3D coupling gets activated", cxxopts::value<double>()->default_value("2"))              //
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("50."))                               //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                            //
@@ -63,6 +64,7 @@ int main(int argc, char *argv[]) {
 
   // setup 1D solver
   const double t_end = args["t-end"].as<double>();
+  const double t_coup_start = args["t-coup-start"].as<double>();
   const std::size_t max_iter = 160000000;
 
   const auto tau = args["tau"].as<double>();
@@ -215,14 +217,18 @@ int main(int argc, char *argv[]) {
     }
 
     // solve 3D system:
-    if (it % coupling_interval == 0) {
+    if ((t >= t_coup_start - 1e-12) && (it % coupling_interval == 0)) {
       std::cout << "calculates coupling " << std::endl;
       auto data_1d = solver_1d.get_vessel_tip_pressures();
 
       for (auto &d : data_1d) {
         // just return the values for now:
         if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-          std::cout << "v id = " << d.vertex_id << ", coordinates = (" << d.p.x << ", " << d.p.y << ", " << d.p.z << "), p = " << d.pressure << ", R = " << d.R2 << ", r = " << d.radius << std::endl;
+          std::cout << "vertex with id = " << d.vertex_id << ", "
+                    << "coordinates = (" << d.p.x << ", " << d.p.y << ", " << d.p.z << "), "
+                    << "p = " << d.pressure << ", "
+                    << "R = " << d.R2 << ", "
+                    << "r = " << d.radius << std::endl;
       }
 
       // Some condition to solve the 3D system
