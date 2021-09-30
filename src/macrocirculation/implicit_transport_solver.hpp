@@ -205,6 +205,8 @@ public:
   // TODO: move volumes into dedicated class
   const std::vector< std::shared_ptr< DofMap > > &get_dof_maps_volume() const { return d_dof_maps_volume; }
 
+  const std::vector< std::shared_ptr< DofMap > > &get_dof_maps_transport() const { return d_dof_map; }
+
 private:
   /*! @brief Assembles the left-hand-side matrix for the given time step. */
   void assemble_matrix(double tau, double t);

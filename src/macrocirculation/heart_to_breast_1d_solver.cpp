@@ -7,6 +7,8 @@
 
 #include "heart_to_breast_1d_solver.hpp"
 
+#include <utility>
+
 #include "0d_boundary_conditions.hpp"
 #include "communication/mpi.hpp"
 #include "coupled_explicit_implicit_1d_solver.hpp"
@@ -19,7 +21,10 @@
 #include "graph_pvd_writer.hpp"
 #include "graph_storage.hpp"
 #include "implicit_linear_flow_solver.hpp"
+#include "implicit_transport_solver.hpp"
 #include "interpolate_to_vertices.hpp"
+#include "linearized_flow_upwind_evaluator.hpp"
+#include "nonlinear_flow_upwind_evaluator.hpp"
 #include "nonlinear_linear_coupling.hpp"
 #include "tip_vertex_dof_integrator.hpp"
 #include "vessel_formulas.hpp"
@@ -33,8 +38,7 @@ HeartToBreast1DSolver::HeartToBreast1DSolver(MPI_Comm comm)
       graph_nl{std::make_shared<GraphStorage>()},
       graph_li{std::make_shared<GraphStorage>()},
       coupling{std::make_shared<NonlinearLinearCoupling>(d_comm, graph_nl, graph_li)},
-      d_tau(NAN),
-      t(0),
+      d_tau_flow{NAN},
       solver{nullptr},
       d_integrator_running(false) {}
 
@@ -149,7 +153,7 @@ void HeartToBreast1DSolver::update_vessel_tip_pressures(const std::map<size_t, d
     auto &v = *graph_li->get_vertex(v_id);
     if (v.is_vessel_tree_outflow())
       // convert [Ba] to [kg / cm / s^2]
-      v.update_vessel_tip_pressures(pressures_at_outlets.at(v_id)*1e-3);
+      v.update_vessel_tip_pressures(pressures_at_outlets.at(v_id) * 1e-3);
   }
 }
 
@@ -198,15 +202,43 @@ ExplicitNonlinearFlowSolver &HeartToBreast1DSolver::get_solver_nl() {
   return *solver->get_explicit_solver();
 }
 
-void HeartToBreast1DSolver::setup_solver(size_t degree, double tau) {
+void HeartToBreast1DSolver::setup_solver_flow(size_t degree, double tau_flow) {
   d_degree = degree;
-  d_tau = tau;
+  d_tau_flow = tau_flow;
   solver = std::make_shared<CoupledExplicitImplicit1DSolver>(d_comm, coupling, graph_nl, graph_li, d_degree, d_degree);
-  solver->setup(tau);
+  solver->setup(tau_flow);
   solver->get_explicit_solver()->use_ssp_method();
 
   auto dof_map_li = solver->get_implicit_dof_map();
   integrator = std::make_shared<TipVertexDofIntegrator>(d_comm, graph_li, dof_map_li);
+}
+
+void HeartToBreast1DSolver::setup_solver(size_t degree, double tau) {
+  setup_solver_flow(degree, tau);
+  setup_solver_transport(degree);
+}
+
+void HeartToBreast1DSolver::setup_solver_transport(size_t degree) {
+  auto dof_map_li = solver->get_implicit_dof_map();
+  auto dof_map_nl = solver->get_explicit_dof_map();
+
+  // upwind evaluators:
+  upwind_evaluator_nl = std::make_shared<NonlinearFlowUpwindEvaluator>(MPI_COMM_WORLD, graph_nl, dof_map_nl);
+  upwind_provider_nl = std::make_shared<UpwindProviderNonlinearFlow>(upwind_evaluator_nl, solver->get_explicit_solver());
+
+  // upwind evaluators:
+  upwind_evaluator_li = std::make_shared<LinearizedFlowUpwindEvaluator>(MPI_COMM_WORLD, graph_li, dof_map_li);
+  upwind_provider_li = std::make_shared<UpwindProviderLinearizedFlow>(graph_li, upwind_evaluator_li, solver->get_implicit_solver());
+
+  auto dof_map_transport_nl = std::make_shared<DofMap>(*graph_nl);
+  auto dof_map_transport_li = std::make_shared<DofMap>(*graph_li);
+  DofMap::create_for_transport(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, degree);
+
+  transport_solver = std::make_shared<ImplicitTransportSolver>(MPI_COMM_WORLD,
+                                                               std::vector<std::shared_ptr<GraphStorage>>({graph_nl, graph_li}),
+                                                               std::vector<std::shared_ptr<DofMap>>({dof_map_transport_nl, dof_map_transport_li}),
+                                                               std::vector<std::shared_ptr<UpwindProvider>>({upwind_provider_nl, upwind_provider_li}),
+                                                               degree);
 }
 
 void HeartToBreast1DSolver::setup_output() {
@@ -228,14 +260,27 @@ void HeartToBreast1DSolver::setup_output() {
 
   graph_pvd_writer = std::make_shared<GraphPVDWriter>(d_comm, output_folder_name, filename_pvd);
 
-  vessel_tip_writer = std::make_shared<CSVVesselTipWriter>(d_comm, output_folder_name, filename_csv_tips, graph_li, dof_map_li);
+  auto dof_map_transport_nl = transport_solver->get_dof_maps_transport().at(0);
+  auto dof_map_transport_li = transport_solver->get_dof_maps_transport().at(1);
+
+  vessel_tip_writer_nl = std::make_shared<CSVVesselTipWriter>(MPI_COMM_WORLD,
+                                                              output_folder_name, filename_csv_tips_nl,
+                                                              graph_nl,
+                                                              std::vector<std::shared_ptr<DofMap>>({dof_map_nl, dof_map_transport_nl, transport_solver->get_dof_maps_volume().front()}),
+                                                              std::vector<std::string>({"p", "c", "V"}));
+
+  vessel_tip_writer_li = std::make_shared<CSVVesselTipWriter>(MPI_COMM_WORLD,
+                                                              output_folder_name, filename_csv_tips_li,
+                                                              graph_li,
+                                                              std::vector<std::shared_ptr<DofMap>>({dof_map_li, dof_map_transport_li, transport_solver->get_dof_maps_volume().back()}),
+                                                              std::vector<std::string>({"p", "c", "V"}));
 
   // vessels ids and radii do not change, thus we can precalculate them
   fill_with_vessel_id(d_comm, *graph_li, points, vessel_ids_li);
   fill_with_radius(d_comm, *graph_li, points, vessel_radii_li);
 }
 
-void HeartToBreast1DSolver::write_output() {
+void HeartToBreast1DSolver::write_output(double t) {
   if (solver == nullptr)
     throw std::runtime_error("solver must be initialized before output");
 
@@ -260,7 +305,8 @@ void HeartToBreast1DSolver::write_output() {
   graph_pvd_writer->add_vertex_data("r", vessel_radii_li);
   graph_pvd_writer->write(t);
 
-  vessel_tip_writer->write(t, get_solver_li().get_solution());
+  vessel_tip_writer_nl->write(t, {get_solver_nl().get_solution()}, {transport_solver->get_solution(), transport_solver->get_volumes()});
+  vessel_tip_writer_li->write(t, {get_solver_li().get_solution(), transport_solver->get_solution(), transport_solver->get_volumes()});
 }
 
 void HeartToBreast1DSolver::setup(size_t degree, double tau, BoundaryModel boundary_model) {
@@ -269,15 +315,21 @@ void HeartToBreast1DSolver::setup(size_t degree, double tau, BoundaryModel bound
   setup_output();
 }
 
-void HeartToBreast1DSolver::solve() {
+void HeartToBreast1DSolver::solve_flow(double tau, double t) {
+  if (std::abs(tau - d_tau_flow) > 1e-12)
+    throw std::runtime_error("changing time step width not supported yet.");
+
   if (d_integrator_running)
-    integrator->update_vertex_dof(get_solver_li().get_solution(), d_tau);
-  solver->solve(d_tau, t);
-  t += d_tau;
+    integrator->update_vertex_dof(get_solver_li().get_solution(), tau);
+  solver->solve(tau, t);
 }
 
-double HeartToBreast1DSolver::get_time() const { return t; }
+void HeartToBreast1DSolver::solve_transport(double tau, double t) {
+  upwind_evaluator_nl->init(t, solver->get_explicit_solver()->get_solution());
+  upwind_evaluator_li->init(t, solver->get_implicit_solver()->get_solution());
+  transport_solver->solve(tau, t);
+}
 
-void HeartToBreast1DSolver::set_output_folder(std::string output_dir) { output_folder_name = output_dir; }
+void HeartToBreast1DSolver::set_output_folder(std::string output_dir) { output_folder_name = std::move(output_dir); }
 
 } // namespace macrocirculation

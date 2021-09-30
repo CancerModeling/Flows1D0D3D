@@ -27,6 +27,12 @@ class GraphCSVWriter;
 class GraphPVDWriter;
 class CSVVesselTipWriter;
 class TipVertexDofIntegrator;
+class UpwindProvider;
+class ImplicitTransportSolver;
+class UpwindProviderLinearizedFlow;
+class UpwindProviderNonlinearFlow;
+class LinearizedFlowUpwindEvaluator;
+class NonlinearFlowUpwindEvaluator;
 
 struct VesselTipAverageCouplingData {
   /*! @brief Coordinates of the vessel tip. */
@@ -82,11 +88,11 @@ public:
 
   void setup(size_t degree, double tau, BoundaryModel boundary_model);
 
-  void solve();
+  void solve_flow(double tau, double t);
 
-  void write_output();
+  void solve_transport(double tau, double t);
 
-  double get_time() const;
+  void write_output(double t);
 
   void start_0d_pressure_integrator();
 
@@ -116,9 +122,7 @@ private:
 
   std::shared_ptr<NonlinearLinearCoupling> coupling;
 
-  double d_tau;
-
-  double t;
+  double d_tau_flow;
 
   std::string path_nonlinear_geometry{"data/meshes/network-33-vessels-extended.json"};
   std::string path_linear_geometry{"data/meshes/coarse-network-geometry.json"};
@@ -127,10 +131,11 @@ private:
   std::string path_boundary_linear{"data/meshes/boundary-combined-geometry-linear-part.json"};
 
   std::string output_folder_name{"output"};
-  std::string filename_csv_nl{"combined_geometry_solution_nl"};
-  std::string filename_csv_li{"combined_geometry_solution_li"};
-  std::string filename_csv_tips{"combined_geometry_solution_tips"};
-  std::string filename_pvd{"combined_geometry_solution"};
+  std::string filename_csv_nl{"heart_to_breast_1d_solution_nl"};
+  std::string filename_csv_li{"heart_to_breast_1d_solution_li"};
+  std::string filename_csv_tips_nl{"heart_to_breast_1d_solution_tips_nl"};
+  std::string filename_csv_tips_li{"heart_to_breast_1d_solution_tips_li"};
+  std::string filename_pvd{"heart_to_breast_1d_solution"};
 
   std::shared_ptr<CoupledExplicitImplicit1DSolver> solver;
 
@@ -142,7 +147,8 @@ private:
 
   std::shared_ptr<GraphCSVWriter> csv_writer_nl;
   std::shared_ptr<GraphCSVWriter> csv_writer_li;
-  std::shared_ptr<CSVVesselTipWriter> vessel_tip_writer;
+  std::shared_ptr<CSVVesselTipWriter> vessel_tip_writer_nl;
+  std::shared_ptr<CSVVesselTipWriter> vessel_tip_writer_li;
   std::shared_ptr<GraphPVDWriter> graph_pvd_writer;
 
   std::vector<Point> points;
@@ -152,6 +158,14 @@ private:
   std::vector<double> vessel_ids_li;
   std::vector<double> vessel_radii_li;
 
+  std::shared_ptr<NonlinearFlowUpwindEvaluator> upwind_evaluator_nl;
+  std::shared_ptr<LinearizedFlowUpwindEvaluator> upwind_evaluator_li;
+
+  std::shared_ptr<UpwindProviderNonlinearFlow> upwind_provider_nl;
+  std::shared_ptr<UpwindProviderLinearizedFlow> upwind_provider_li;
+
+  std::shared_ptr<ImplicitTransportSolver> transport_solver;
+
   bool d_integrator_running;
 
   ImplicitLinearFlowSolver &get_solver_li();
@@ -160,6 +174,10 @@ private:
   void setup_graphs(BoundaryModel boundary_model);
 
   void setup_solver(size_t degree, double tau);
+
+  void setup_solver_flow(size_t degree, double tau);
+
+  void setup_solver_transport(size_t degree);
 
   void setup_output();
 };
