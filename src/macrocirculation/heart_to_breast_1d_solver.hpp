@@ -64,6 +64,9 @@ struct VesselTipCurrentCouplingData {
   /*! @brief Pressure value in the arterioles in [Ba]. */
   double pressure;
 
+  /*! @brief Concentration value at the tip in [mmol cm^{-3}]. */
+  double concentration;
+
   /*! @brief Second resistance of the arteriole compartment in [cm^{-4} g s^{-1}]. */
   double R2;
 
@@ -108,6 +111,12 @@ public:
    *         The pressure unit has to be [Ba].
    */
   void update_vessel_tip_pressures(const std::map<size_t, double> &pressures_at_outlets);
+
+  /*! @brief Updates the boundary concentrations at the vessel outlets of the linearized regime.
+   *         The keys of the given map are the vertex ids of the boundary values, while the values correspond to the concentration values.
+   *         The concentration is given in [mmol cm^{-3}]
+   */
+  void update_vessel_tip_concentrations(const std::map<size_t, double> &concentrations_at_outlets);
 
   /*! @brief Set output folder name. */
   void set_output_folder(std::string output_dir);
@@ -154,9 +163,11 @@ private:
   std::vector<Point> points;
   std::vector<double> p_vertex_values;
   std::vector<double> q_vertex_values;
+  std::vector<double> c_vertex_values;
 
   std::vector<double> vessel_ids_li;
   std::vector<double> vessel_radii_li;
+  std::vector<double> vessel_A_li;
 
   std::shared_ptr<NonlinearFlowUpwindEvaluator> upwind_evaluator_nl;
   std::shared_ptr<LinearizedFlowUpwindEvaluator> upwind_evaluator_li;

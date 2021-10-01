@@ -53,20 +53,31 @@ def load_data(edge_id):
         d_list['V'] = reformat_data(np.loadtxt(os.path.join(directory_name, v['filepaths']['filepath_V'])))
     return d_list, v
 
-show_Q_total = True 
-show_N_total = True 
+show_Q_total = False 
+show_N_total = False 
+show_p = True 
+show_Q = False
+show_V = False
+show_c = True 
+show_N = False
 
 show_V_from_p = False 
 
 data, vessel = load_data(args.vessel_by_edge_id)
 print(vessel)
 
-num_plot_rows = len(data)
-if 'p' in data:
+num_plot_rows = 0 
+if 'p' in data and show_p:
+    num_plot_rows += 1
+if 'p' in data and show_Q:
     num_plot_rows += 1
 if 'p' in data and 'furcation_number' in vessel and vessel['furcation_number'] > 1 and show_Q_total:
     num_plot_rows += 1
-if 'c' in data and 'V' in data:
+if 'V' in data and show_V:
+    num_plot_rows += 1
+if 'c' in data and show_c:
+    num_plot_rows += 1
+if 'c' in data and 'V' in data and show_N:
     num_plot_rows += 1
 if 'c' in data and 'V' in data and 'furcation_number' in vessel and vessel['furcation_number'] > 1 and show_N_total:
     num_plot_rows += 1
@@ -88,14 +99,15 @@ for i,dof in enumerate(args.dofs):
     next_ax_index = 0
 
     if 'p' in data:
-        ax = axes[next_ax_index, i]; next_ax_index += 1
-        ax.plot(t[start_index:stop_index], data['p'][start_index:stop_index,dof] / 1.3333, label='{}'.format(indices[dof]), linewidth=3)
-        ax.legend()
-        if i == 0:
-            ax.set_ylabel('$p_c$ [mmHg]')
-        if next_ax_index == num_plot_rows:
-            ax.set_xlabel('$t$')
-        ax.grid(True)
+        if show_p:
+            ax = axes[next_ax_index, i]; next_ax_index += 1
+            ax.plot(t[start_index:stop_index], data['p'][start_index:stop_index,dof] / 1.3333, label='{}'.format(indices[dof]), linewidth=3)
+            ax.legend()
+            if i == 0:
+                ax.set_ylabel('$p_c$ [mmHg]')
+            if next_ax_index == num_plot_rows:
+                ax.set_xlabel('$t$')
+            ax.grid(True)
 
         if vessel['outflow_type'] == 'rcl':
             flows = data['p'][start_index:stop_index,dof+num_p_dof]
@@ -114,14 +126,16 @@ for i,dof in enumerate(args.dofs):
                 resistances = np.array([vessel['R2']])
             flows = (pressures_here - pressures_next) / resistances[dof]
             print(resistances[dof])
-        ax = axes[next_ax_index, i]; next_ax_index += 1
-        ax.plot(t[start_index:stop_index], flows, label='{}'.format(indices[dof]), linewidth=3)
-        ax.legend()
-        if i == 0:
-            ax.set_ylabel('$q_c [cm^3 s^{-1}]$')
-        if next_ax_index == num_plot_rows:
-            ax.set_xlabel('$t$')
-        ax.grid(True)
+
+        if show_Q:
+            ax = axes[next_ax_index, i]; next_ax_index += 1
+            ax.plot(t[start_index:stop_index], flows, label='{}'.format(indices[dof]), linewidth=3)
+            ax.legend()
+            if i == 0:
+                ax.set_ylabel('$q_c [cm^3 s^{-1}]$')
+            if next_ax_index == num_plot_rows:
+                ax.set_xlabel('$t$')
+            ax.grid(True)
 
         if 'furcation_number' in vessel and vessel['furcation_number'] > 1 and show_Q_total:
             ax = axes[next_ax_index, i]; next_ax_index += 1
@@ -133,7 +147,7 @@ for i,dof in enumerate(args.dofs):
                 ax.set_xlabel('$t$')
             ax.grid(True)
 
-    if 'c' in data:
+    if 'c' in data and show_c:
         ax = axes[next_ax_index, i]; next_ax_index += 1
         ax.plot(t[start_index:stop_index], data['c'][start_index:stop_index, dof], label='{}'.format(indices[dof]), linewidth=3)
         ax.legend()
@@ -143,7 +157,7 @@ for i,dof in enumerate(args.dofs):
             ax.set_xlabel('$t$')
         ax.grid(True)
 
-    if 'V' in data:
+    if 'V' in data and show_V:
         ax = axes[next_ax_index, i]; next_ax_index += 1
         ax.plot(t[start_index:stop_index], data['V'][start_index:stop_index, dof], label='{}'.format(indices[dof]), linewidth=3)
         if show_V_from_p:
@@ -155,7 +169,7 @@ for i,dof in enumerate(args.dofs):
             ax.set_xlabel('$t$')
         ax.grid(True)
 
-    if 'c' in data and 'V' in data:
+    if 'c' in data and 'V' in data and show_N:
         ax = axes[next_ax_index, i]; next_ax_index += 1
         ax.plot(t[start_index:stop_index], data['c'][start_index:stop_index, dof] * data['V'][start_index:stop_index, dof], label='{}'.format(indices[dof]), linewidth=3)
         ax.legend()
