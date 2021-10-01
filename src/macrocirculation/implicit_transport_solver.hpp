@@ -15,6 +15,7 @@
 #include <memory>
 #include <random>
 #include <vector>
+#include <map>
 
 #include "petsc_assembly_blocks.hpp"
 
@@ -199,6 +200,10 @@ public:
 
   void set_inflow_function(std::function<double(double)> inflow_function);
 
+  void set_inflow_value(const GraphStorage& graph, const Vertex& vertex, double value);
+
+  void set_inflow_function(const GraphStorage& graph, const Vertex& vertex, std::function< double(double) > f);
+
   // TODO: move volumes into dedicated class
   const PetscVec &get_volumes() const { return *d_volumes; }
 
@@ -223,13 +228,16 @@ private:
                                           const GraphStorage &graph,
                                           const DofMap &dof_map,
                                           const DofMap &dof_map_volume,
-                                          const UpwindProvider &upwind_provider);
+                                          const UpwindProvider &upwind_provider,
+                                          const std::map< size_t, std::function< double(double) > > &inflow_functions);
 
   /*! @brief Assembles the matrix with different upwindings, so that the sparsity pattern does not change,
    *         when the velocity field changes.  */
   void sparsity_pattern();
 
   void sparsity_pattern_characteristics();
+
+  size_t get_graph_index(const GraphStorage& graph) const;
 
 private:
   MPI_Comm d_comm;
@@ -258,6 +266,8 @@ private:
     else
       return 1.;
   };
+
+  std::vector< std::map< size_t, std::function< double(double) > > > d_inflow_functions;
 
   std::vector<std::shared_ptr<DofMap>> d_dof_maps_volume;
 

@@ -284,7 +284,8 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
       rhs(std::make_shared<PetscVec>("rhs", d_dof_map)),
       A(std::make_shared<PetscMat>("A", d_dof_map)),
       mass(std::make_shared<PetscVec>("mass", d_dof_map)),
-      linear_solver(PetscKsp::create_with_pc_ilu(*A)) {
+      linear_solver(PetscKsp::create_with_pc_ilu(*A)),
+      d_inflow_functions(d_graph.size()) {
 
   if (d_graph.size() != d_dof_map.size())
     throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and dof maps must coincide");
@@ -293,7 +294,7 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
 
   // initialize volumes
   for (size_t k = 0; k < d_graph.size(); k += 1)
-    d_dof_maps_volume.push_back(std::make_shared< DofMap > ( *d_graph[k] ));
+    d_dof_maps_volume.push_back(std::make_shared<DofMap>(*d_graph[k]));
 
   auto num_vertex_dof = [](auto, const Vertex &v) -> size_t {
     if (v.is_windkessel_outflow())
@@ -305,7 +306,21 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
 
   DofMap::create_on_vertices(d_comm, d_graph, d_dof_maps_volume, num_vertex_dof);
 
-  d_volumes = std::make_shared< PetscVec>("volumes", d_dof_maps_volume);
+  // initialize the inflow functions
+  for (size_t k = 0; k < d_graph.size(); k += 1) {
+    auto &g = d_graph.at(k);
+    for (size_t v_idx : g->get_vertex_ids()) {
+      auto &vertex = *g->get_vertex(v_idx);
+
+      if (vertex.is_inflow()) {
+        d_inflow_functions[k][vertex.get_id()] = inflow_function;
+      } else if (vertex.is_leaf()) {
+        d_inflow_functions[k][vertex.get_id()] = [](double t) { return 0.; };
+      }
+    }
+  }
+
+  d_volumes = std::make_shared<PetscVec>("volumes", d_dof_maps_volume);
 
   // TODO: preallocate the nonzeros properly!
   // MatSetOption(A->get_mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
@@ -323,6 +338,26 @@ void ImplicitTransportSolver::set_inflow_function(std::function<double(double)> 
 void ImplicitTransportSolver::solve(double tau, double t) {
   assemble(tau, t);
   linear_solver->solve(*rhs, *u);
+}
+
+size_t ImplicitTransportSolver::get_graph_index(const GraphStorage &graph) const {
+  for (size_t k = 0; k < d_graph.size(); k += 1) {
+    if (&graph == d_graph[k].get())
+      return k;
+  }
+  throw std::runtime_error("Cannot find the given graph index.");
+}
+
+void ImplicitTransportSolver::set_inflow_value(const GraphStorage &graph, const Vertex &vertex, double value) {
+  set_inflow_function(graph, vertex, [value](double) { return value; });
+}
+
+void ImplicitTransportSolver::set_inflow_function(const GraphStorage &graph, const Vertex &vertex, std::function<double(double)> f) {
+  if (!vertex.is_leaf())
+    throw std::runtime_error("inflow function for nonleaf vertices was called. This is most probably a bug!");
+
+  auto graph_idx = get_graph_index(graph);
+  d_inflow_functions.at(graph_idx).at(vertex.get_id()) = std::move(f);
 }
 
 void ImplicitTransportSolver::assemble(double tau, double t) {
@@ -445,10 +480,7 @@ void ImplicitTransportSolver::sparsity_pattern_characteristics() {
       auto &adjacent_vertex = conn[0].get_vertex();
       auto adjacent_edge = adjacent_graph.get_edge(adjacent_vertex.get_edge_neighbors()[0]);
 
-      auto adjacent_graph_index = -1;
-      for (size_t j = 0; j < d_graph.size(); j += 1)
-        if (d_graph[j].get() == &adjacent_graph)
-          adjacent_graph_index = j;
+      auto adjacent_graph_index = get_graph_index(adjacent_graph);
 
       // we only assemble once with the smaller index!
       if (adjacent_graph_index < graph_index)
@@ -578,11 +610,17 @@ void ImplicitTransportSolver::assemble_rhs(double tau, double t) {
 
 void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t) {
   for (size_t k = 0; k < d_graph.size(); k += 1)
-    assemble_windkessel_rhs_and_matrix(tau, t, *d_graph[k], *d_dof_map[k], *d_dof_maps_volume[k], *d_upwind_provider[k]);
+    assemble_windkessel_rhs_and_matrix(tau, t, *d_graph[k], *d_dof_map[k], *d_dof_maps_volume[k], *d_upwind_provider[k], d_inflow_functions[k]);
 }
 
 
-void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, double t, const GraphStorage &graph, const DofMap &dof_map, const DofMap& dof_map_volume, const UpwindProvider &upwind_provider) {
+void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau,
+                                                                 double t,
+                                                                 const GraphStorage &graph,
+                                                                 const DofMap &dof_map,
+                                                                 const DofMap &dof_map_volume,
+                                                                 const UpwindProvider &upwind_provider,
+                                                                 const std::map<size_t, std::function<double(double)>> &inflow_functions) {
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *graph.get_vertex(v_id);
     auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
@@ -602,7 +640,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
       const std::vector<double> &c_n = vertex_values;
 
       auto dof_indices_volume = dof_map_volume.get_local_dof_map(vertex).dof_indices();
-      std::vector<double> V_n (dof_indices_volume.size(), 0);
+      std::vector<double> V_n(dof_indices_volume.size(), 0);
       extract_dof(dof_indices_volume, *d_volumes, V_n);
 
       std::vector<double> V_np1 = V_n;
@@ -627,6 +665,8 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
                                                      : vertex.get_vessel_tree_data().resistances;
 
       const auto alpha = vertex.is_windkessel_outflow() ? 1 : vertex.get_vessel_tree_data().furcation_number;
+
+      double c_out = inflow_functions.at(v_id)(t);
 
       for (size_t i = 0; i < R.size(); i += 1) {
         const bool is_leftmost = (i == 0);
@@ -669,7 +709,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
           continue;
         }
 
-        rhs->set(vertex_dof_indices[i], (V_n[i] / V_np1[i]) * c_n[i]);
+        double rhs_value = (V_n[i] / V_np1[i]) * c_n[i];
 
         if (is_leftmost) {
           if (Q_up[0] >= 0) {
@@ -694,8 +734,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
             Eigen::MatrixXd mat_vv = +(tau / V_np1[i]) * Q_i * mat_1x1;
             A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i]}, mat_vv);
           } else {
-            // do nothing - 3D coupling
-            // std::cerr << "rightmost point inflow" << std::endl;
+            rhs_value -= Q_i * c_out / V_np1[i];
           }
         }
         if (has_left_neighbor) {
@@ -718,6 +757,8 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau, dou
             A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i + 1]}, mat);
           }
         }
+
+        rhs->set(vertex_dof_indices[i], rhs_value);
       }
 
       d_volumes->set(dof_indices_volume, V_np1);

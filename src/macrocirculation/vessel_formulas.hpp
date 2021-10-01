@@ -195,6 +195,22 @@ private:
   double d_t_systole;
 };
 
+class smoothed_constant_concentration {
+public:
+  explicit smoothed_constant_concentration(double delta = 0.05)
+    : d_delta(delta) {}
+
+  double operator()(double t) const {
+    if (t < d_delta)
+      return -2 * std::pow(t / d_delta, 3) + 3 * std::pow(t / d_delta, 2);
+    else
+      return 1.;
+  }
+
+private:
+  double d_delta;
+};
+
 /*! @brief Solves for the forward propagating characteristic W2, given the
  *         back propagating characteristic W1 and a prescribed flow Q_star,
  *         with a Newton iteration.

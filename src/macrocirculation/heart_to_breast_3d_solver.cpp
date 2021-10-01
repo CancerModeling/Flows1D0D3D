@@ -689,8 +689,8 @@ void HeartToBreast3DSolver::update_1d_data(const std::vector<VesselTipCurrentCou
   for (size_t i = 0; i < data_1d.size(); i++) {
     d_perf_pres[i] = data_1d[i].pressure;
     d_perf_pres_vein[i] = 6666.;
-    d_perf_nut[i] = 1.; // FIXME
-    d_perf_nut_vein[i] = 0.; // FIXME
+    d_perf_nut[i] = data_1d[i].concentration; // FIXME: Check units
+    d_perf_nut_vein[i] = 0.;
   }
 }
 

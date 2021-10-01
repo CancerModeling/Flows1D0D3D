@@ -187,8 +187,10 @@ int main(int argc, char *argv[]) {
 
   // setup the 1D pressure data in 3D solver
   log("setting 1D-3D coupling data in 3D solver\n");
-  auto data_1d = solver_1d.get_vessel_tip_pressures();
-  solver_3d.setup_1d3d(data_1d);
+  {
+    auto data_1d = solver_1d.get_vessel_tip_pressures();
+    solver_3d.setup_1d3d(data_1d);
+  }
 
   // finalize 3D solver setup
   log("finalizing setup of 3D solver\n");
@@ -257,6 +259,7 @@ int main(int argc, char *argv[]) {
       // update the boundary conditions of the 1D system:
       {
         std::map<size_t, double> new_tip_pressures;
+        std::map<size_t, double> new_tip_concentrations;
 
         if (activate_3d_1d_coupling) {
           std::cout << "size of 3D coupling data is " << data_3d.size() << ", size of 1D coupling data is " << data_1d.size() << std::endl;
@@ -266,12 +269,15 @@ int main(int argc, char *argv[]) {
           auto &d = data_1d[k];
           if (activate_3d_1d_coupling) {
             new_tip_pressures[d.vertex_id] = data_3d.at(k).d_p_3d_w;
+            new_tip_concentrations[d.vertex_id] = data_3d.at(k).d_nut_3d_w; // FIXME: Gets units right
           } else {
             // constant 30 mmHg pressures
             new_tip_pressures[d.vertex_id] = 30 * 1333.3;
+            new_tip_concentrations[d.vertex_id] = 0.;
           }
         }
         solver_1d.update_vessel_tip_pressures(new_tip_pressures);
+        solver_1d.update_vessel_tip_concentrations(new_tip_concentrations);
       }
     }
 

@@ -163,6 +163,14 @@ void HeartToBreast1DSolver::update_vessel_tip_pressures(const std::map<size_t, d
   }
 }
 
+void HeartToBreast1DSolver::update_vessel_tip_concentrations(const std::map<size_t, double> &concentrations_at_outlets) {
+  for (auto v_id : graph_li->get_active_vertex_ids(mpi::rank(d_comm))) {
+    auto &v = *graph_li->get_vertex(v_id);
+    if (v.is_vessel_tree_outflow())
+      transport_solver->set_inflow_value(*graph_li, v, concentrations_at_outlets.at(v_id));
+  }
+}
+
 void HeartToBreast1DSolver::setup_graphs(BoundaryModel bmodel) {
   EmbeddedGraphReader graph_reader;
 
@@ -284,6 +292,7 @@ void HeartToBreast1DSolver::setup_output() {
   // vessels ids and radii do not change, thus we can precalculate them
   fill_with_vessel_id(d_comm, *graph_li, points, vessel_ids_li);
   fill_with_radius(d_comm, *graph_li, points, vessel_radii_li);
+  fill_with_vessel_A0(d_comm, *graph_li, points, vessel_A_li);
 }
 
 void HeartToBreast1DSolver::write_output(double t) {
@@ -292,6 +301,8 @@ void HeartToBreast1DSolver::write_output(double t) {
 
   auto dof_map_li = solver->get_implicit_dof_map();
   auto dof_map_nl = solver->get_explicit_dof_map();
+
+  auto dof_map_transport_li = transport_solver->get_dof_maps_transport().back();
 
   csv_writer_nl->add_data("a", get_solver_nl().get_solution());
   csv_writer_nl->add_data("q", get_solver_nl().get_solution());
@@ -303,12 +314,15 @@ void HeartToBreast1DSolver::write_output(double t) {
 
   interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, get_solver_li().p_component, get_solver_li().get_solution(), points, p_vertex_values);
   interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, get_solver_li().q_component, get_solver_li().get_solution(), points, q_vertex_values);
+  interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_transport_li, 0, transport_solver->get_solution(), points, c_vertex_values);
 
   graph_pvd_writer->set_points(points);
   graph_pvd_writer->add_vertex_data("p", p_vertex_values);
   graph_pvd_writer->add_vertex_data("q", q_vertex_values);
+  graph_pvd_writer->add_vertex_data("c", c_vertex_values);
   graph_pvd_writer->add_vertex_data("vessel_id", vessel_ids_li);
   graph_pvd_writer->add_vertex_data("r", vessel_radii_li);
+  graph_pvd_writer->add_vertex_data("A", vessel_A_li);
   graph_pvd_writer->write(t);
 
   vessel_tip_writer_nl->write(t, {get_solver_nl().get_solution()}, {transport_solver->get_solution(), transport_solver->get_volumes()});
