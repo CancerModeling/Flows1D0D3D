@@ -217,6 +217,8 @@ void CapillaryNutrient::assemble_1d() {
   auto &out_nut_vein = d_model_p->d_perf_nut_vein;
   auto &p_cap_field = d_model_p->d_p_cap;
 
+  const double dt = d_model_p->d_dt;
+
   for (size_t I = 0; I < out_pres.size(); I++) {
     auto &out_fn_I = out_fns[I];
     const auto &pI = out_pres[I];
@@ -247,7 +249,7 @@ void CapillaryNutrient::assemble_1d() {
         if (pI - p_cap_qp > 0.) {
           // to rhs
           for (unsigned int i = 0; i < d_phi.size(); i++) {
-            d_Fe(i) += d_JxW[qp] * (1. - input.d_rnut_art_cap) * input.d_Lp_art_cap
+            d_Fe(i) += d_JxW[qp] * dt * (1. - input.d_rnut_art_cap) * input.d_Lp_art_cap
                        * (pI - p_cap_qp) * (*out_fn_I)(d_qpoints[qp]) * nutI * d_phi[i][qp];
           }
         }
@@ -255,7 +257,7 @@ void CapillaryNutrient::assemble_1d() {
           // to lhs
           for (unsigned int i = 0; i < d_phi.size(); i++) {
             for (unsigned int j = 0; j < d_phi.size(); j++) {
-              d_Ke(i, j) += -d_JxW[qp] * (1. - input.d_rnut_art_cap) * input.d_Lp_art_cap
+              d_Ke(i, j) += -d_JxW[qp] * dt * (1. - input.d_rnut_art_cap) * input.d_Lp_art_cap
                 * (pI - p_cap_qp) * (*out_fn_I)(d_qpoints[qp]) * d_phi[j][qp] *d_phi[i][qp];
             }
           }
@@ -265,14 +267,14 @@ void CapillaryNutrient::assemble_1d() {
         if (pvI - p_cap_qp > 0.) {
           // to rhs
           for (unsigned int i = 0; i < d_phi.size(); i++) {
-            d_Fe(i) += d_JxW[qp] * (1. - input.d_rnut_vein_cap) * input.d_Lp_vein_cap
+            d_Fe(i) += d_JxW[qp] * dt * (1. - input.d_rnut_vein_cap) * input.d_Lp_vein_cap
               * (pvI - p_cap_qp) * (*out_fn_I)(d_qpoints[qp]) * nutvI * d_phi[i][qp];
           }
         } else {
           // to lhs
           for (unsigned int i = 0; i < d_phi.size(); i++) {
             for (unsigned int j = 0; j < d_phi.size(); j++) {
-              d_Ke(i, j) += -d_JxW[qp] * (1. - input.d_rnut_vein_cap) * input.d_Lp_vein_cap
+              d_Ke(i, j) += -d_JxW[qp] * dt * (1. - input.d_rnut_vein_cap) * input.d_Lp_vein_cap
                 * (pvI - p_cap_qp) * (*out_fn_I)(d_qpoints[qp]) * d_phi[j][qp] *d_phi[i][qp];
             }
           }
