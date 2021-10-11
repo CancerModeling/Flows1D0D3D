@@ -182,35 +182,35 @@ int main(int argc, char *argv[]) {
 
 
   // create model that holds all essential variables
-//  log("creating model\n");
-//  auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm,
-//                                             input, mesh, eq_sys, p_cap, p_tis,
-//                                             nut_cap, nut_tis, tum,
-//                                             K_tis, Dnut_tis_field,
-//                                             N_bar_cap_field, N_bar_surf_cap_field,
-//                                             log);
-//  eq_sys.init();
-//  solver_3d.set_conductivity_fields();
+  log("creating model\n");
+  auto solver_3d = mc::HeartToBreast3DSolver(MPI_COMM_WORLD, comm,
+                                             input, mesh, eq_sys, p_cap, p_tis,
+                                             nut_cap, nut_tis, tum,
+                                             K_tis, Dnut_tis_field,
+                                             N_bar_cap_field, N_bar_surf_cap_field,
+                                             log);
+  eq_sys.init();
+  solver_3d.set_conductivity_fields();
 
-//  // setup the 1D pressure data in 3D solver
-//  log("setting 1D-3D coupling data in 3D solver\n");
-//  {
-//    auto data_1d = solver_1d.get_vessel_tip_pressures();
-//    solver_3d.setup_1d3d(data_1d);
-//  }
-//
-//  // finalize 3D solver setup
-//  log("finalizing setup of 3D solver\n");
-//  solver_3d.setup();
-//  solver_3d.write_output();
-//
-//  // NOTE to get relevant values from 3D system to solve 1D system
-//  // call get_vessel_tip_data_3d()
-//  // data_3d contains vector of coefficients a and b and also weighted avg of 3D pressure
-//  auto data_3d = solver_3d.get_vessel_tip_data_3d();
-//  log("initial 3D data at outlet tips");
-//  for (const auto &a : data_3d)
-//    log(fmt::format("avg_p = {}, avg_nut = {}\n", a.d_p_3d_w, a.d_nut_3d_w));
+  // setup the 1D pressure data in 3D solver
+  log("setting 1D-3D coupling data in 3D solver\n");
+  {
+    auto data_1d = solver_1d.get_vessel_tip_pressures();
+    solver_3d.setup_1d3d(data_1d);
+  }
+
+  // finalize 3D solver setup
+  log("finalizing setup of 3D solver\n");
+  solver_3d.setup();
+  solver_3d.write_output();
+
+  // NOTE to get relevant values from 3D system to solve 1D system
+  // call get_vessel_tip_data_3d()
+  // data_3d contains vector of coefficients a and b and also weighted avg of 3D pressure
+  auto data_3d = solver_3d.get_vessel_tip_data_3d();
+  log("initial 3D data at outlet tips");
+  for (const auto &a : data_3d)
+    log(fmt::format("avg_p = {}, avg_nut = {}\n", a.d_p_3d_w, a.d_nut_3d_w));
 
   double t = 0;
   double t_transport = 0;
@@ -249,46 +249,46 @@ int main(int argc, char *argv[]) {
       }
 
       // Some condition to solve the 3D system
-//      {
-//        log("update 1d data in 3d solver\n");
-//        solver_3d.update_1d_data(data_1d);
-//
-//        log("solve 3d systems\n");
-//        solver_3d.solve();
-//
-//        log("update 3d data for 1d systems\n");
-//        solver_3d.update_3d_data();
-//
-//        if (it % (20 * coupling_interval) == 0)
-//          solver_3d.write_output();
-//
-//        // recompute avg 3d values at outlet tips
-//        data_3d = solver_3d.get_vessel_tip_data_3d();
-//      }
+      {
+        log("update 1d data in 3d solver\n");
+        solver_3d.update_1d_data(data_1d);
+
+        log("solve 3d systems\n");
+        solver_3d.solve();
+
+        log("update 3d data for 1d systems\n");
+        solver_3d.update_3d_data();
+
+        if (it % (20 * coupling_interval) == 0)
+          solver_3d.write_output();
+
+        // recompute avg 3d values at outlet tips
+        data_3d = solver_3d.get_vessel_tip_data_3d();
+      }
 
       // update the boundary conditions of the 1D system:
-//      {
-//        std::map<size_t, double> new_tip_pressures;
-//        std::map<size_t, double> new_tip_concentrations;
-//
-//        if (activate_3d_1d_coupling) {
-//          std::cout << "size of 3D coupling data is " << data_3d.size() << ", size of 1D coupling data is " << data_1d.size() << std::endl;
-//        }
-//
-//        for (size_t k = 0; k < data_1d.size(); k += 1) {
-//          auto &d = data_1d[k];
-//          if (activate_3d_1d_coupling) {
-//            new_tip_pressures[d.vertex_id] = data_3d.at(k).d_p_3d_w;
-//            new_tip_concentrations[d.vertex_id] = data_3d.at(k).d_nut_3d_w; // FIXME: Gets units right
-//          } else {
-//            // constant 30 mmHg pressures
-//            new_tip_pressures[d.vertex_id] = 30 * 1333.3;
-//            new_tip_concentrations[d.vertex_id] = 0.;
-//          }
-//        }
-//        solver_1d.update_vessel_tip_pressures(new_tip_pressures);
-//        solver_1d.update_vessel_tip_concentrations(new_tip_concentrations);
-//      }
+      {
+        std::map<size_t, double> new_tip_pressures;
+        std::map<size_t, double> new_tip_concentrations;
+
+        if (activate_3d_1d_coupling) {
+          std::cout << "size of 3D coupling data is " << data_3d.size() << ", size of 1D coupling data is " << data_1d.size() << std::endl;
+        }
+
+        for (size_t k = 0; k < data_1d.size(); k += 1) {
+          auto &d = data_1d[k];
+          if (activate_3d_1d_coupling) {
+            new_tip_pressures[d.vertex_id] = data_3d.at(k).d_p_3d_w;
+            new_tip_concentrations[d.vertex_id] = data_3d.at(k).d_nut_3d_w; // FIXME: Gets units right
+          } else {
+            // constant 30 mmHg pressures
+            new_tip_pressures[d.vertex_id] = 30 * 1333.3;
+            new_tip_concentrations[d.vertex_id] = 0.;
+          }
+        }
+        solver_1d.update_vessel_tip_pressures(new_tip_pressures);
+        solver_1d.update_vessel_tip_concentrations(new_tip_concentrations);
+      }
     }
 
     if (it % output_interval == 0) {
