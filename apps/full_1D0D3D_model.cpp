@@ -29,6 +29,7 @@
 #include "macrocirculation/nonlinear_linear_coupling.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
+#include "macrocirculation/vessel_tree_flow_integrator.hpp"
 
 namespace mc = macrocirculation;
 
@@ -39,6 +40,10 @@ int main(int argc, char *argv[]) {
   lm::LibMeshInit init(argc, argv);
   lm::Parallel::Communicator *comm = &init.comm();
 
+  char petsc_version[1000];
+  PetscGetVersion(petsc_version, 1000);
+  std::cout << petsc_version << std::endl;
+
   cxxopts::Options options(argv[0], "Fully coupled 1D-0D-3D solver.");
   options.add_options()                                                                                                         //
     ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value("1.5625e-05"))                           //
@@ -47,6 +52,7 @@ int main(int argc, char *argv[]) {
     ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("5e-3"))                   //
     ("t-coup-start", "The time when the 3D coupling gets activated", cxxopts::value<double>()->default_value("2"))              //
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("50."))                               //
+    ("t-start-averaging-flow", "When should the averaging of the flow start?", cxxopts::value<double>()->default_value("10."))                               //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                            //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                 //
@@ -66,6 +72,7 @@ int main(int argc, char *argv[]) {
   // setup 1D solver
   const double t_end = args["t-end"].as<double>();
   const double t_coup_start = args["t-coup-start"].as<double>();
+  const double t_start_averaging_flow = args["t-start-averaging-flow"].as<double>();
   const std::size_t max_iter = 160000000;
 
   const auto tau = args["tau"].as<double>();
@@ -214,6 +221,9 @@ int main(int argc, char *argv[]) {
     // solve flow:
     solver_1d.solve_flow(tau, t);
 
+    if (t-0.5*tau < t_start_averaging_flow && t + 1.5 * tau > t_start_averaging_flow)
+      solver_1d.start_0d_flow_integrator();
+
     t += tau;
 
     // solve transport:
@@ -292,6 +302,9 @@ int main(int argc, char *argv[]) {
     if (t > t_end + 1e-12)
       break;
   }
+
+  if (t > t_start_averaging_flow)
+    solver_1d.stop_0d_flow_integrator_and_write();
 
   const auto end_t = std::chrono::steady_clock::now();
   const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();

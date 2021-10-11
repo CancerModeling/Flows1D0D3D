@@ -28,6 +28,7 @@
 #include "nonlinear_linear_coupling.hpp"
 #include "tip_vertex_dof_integrator.hpp"
 #include "vessel_formulas.hpp"
+#include "vessel_tree_flow_integrator.hpp"
 
 namespace macrocirculation {
 
@@ -40,11 +41,27 @@ HeartToBreast1DSolver::HeartToBreast1DSolver(MPI_Comm comm)
       coupling{std::make_shared<NonlinearLinearCoupling>(d_comm, graph_nl, graph_li)},
       d_tau_flow{NAN},
       solver{nullptr},
-      d_integrator_running(false) {}
+      d_integrator_running(false),
+      d_flow_integrator_running(false) {}
 
 void HeartToBreast1DSolver::start_0d_pressure_integrator() {
   integrator->reset();
   d_integrator_running = true;
+}
+
+void HeartToBreast1DSolver::start_0d_flow_integrator() {
+  flow_integrator->reset();
+  d_flow_integrator_running = true;
+}
+
+std::vector<VesselTreeFlowIntegratorResult> HeartToBreast1DSolver::stop_0d_flow_integrator() {
+  d_flow_integrator_running = false;
+  return flow_integrator->calculate();
+}
+
+void HeartToBreast1DSolver::stop_0d_flow_integrator_and_write() {
+  d_flow_integrator_running = false;
+  flow_integrator->write(output_folder_name, "0d_averaged_flows");
 }
 
 std::vector<VesselTipAverageCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integrator() {
@@ -225,6 +242,7 @@ void HeartToBreast1DSolver::setup_solver_flow(size_t degree, double tau_flow) {
 
   auto dof_map_li = solver->get_implicit_dof_map();
   integrator = std::make_shared<TipVertexDofIntegrator>(d_comm, graph_li, dof_map_li);
+  flow_integrator = std::make_shared<VesselTreeFlowIntegrator>(d_comm, graph_li, dof_map_li);
 }
 
 void HeartToBreast1DSolver::setup_solver(size_t degree, double tau) {
@@ -341,6 +359,8 @@ void HeartToBreast1DSolver::solve_flow(double tau, double t) {
 
   if (d_integrator_running)
     integrator->update_vertex_dof(get_solver_li().get_solution(), tau);
+  if (d_flow_integrator_running)
+    flow_integrator->add(get_solver_li().get_solution(), tau);
   solver->solve(tau, t);
 }
 
