@@ -27,12 +27,14 @@ class GraphCSVWriter;
 class GraphPVDWriter;
 class CSVVesselTipWriter;
 class TipVertexDofIntegrator;
+class VesselTreeFlowIntegrator;
 class UpwindProvider;
 class ImplicitTransportSolver;
 class UpwindProviderLinearizedFlow;
 class UpwindProviderNonlinearFlow;
 class LinearizedFlowUpwindEvaluator;
 class NonlinearFlowUpwindEvaluator;
+class VesselTreeFlowIntegratorResult;
 
 struct VesselTipAverageCouplingData {
   /*! @brief Coordinates of the vessel tip. */
@@ -98,9 +100,14 @@ public:
   void write_output(double t);
 
   void start_0d_pressure_integrator();
+  void start_0d_flow_integrator();
 
   /*! @brief Returns the *averaged* pressures at the vessel tips in CGS units. */
   std::vector<VesselTipAverageCouplingData> stop_0d_pressure_integrator();
+
+  std::vector<VesselTreeFlowIntegratorResult> stop_0d_flow_integrator();
+
+  void stop_0d_flow_integrator_and_write();
 
   /*! @brief Returns the *current* pressures at the vessel tips in CGS units. */
   std::vector<VesselTipCurrentCouplingData> get_vessel_tip_pressures();
@@ -149,6 +156,7 @@ private:
   std::shared_ptr<CoupledExplicitImplicit1DSolver> solver;
 
   std::shared_ptr<TipVertexDofIntegrator> integrator;
+  std::shared_ptr<VesselTreeFlowIntegrator> flow_integrator;
 
   size_t last_arterial_tip_index{7};
   size_t capillary_tip_index{8};
@@ -178,6 +186,7 @@ private:
   std::shared_ptr<ImplicitTransportSolver> transport_solver;
 
   bool d_integrator_running;
+  bool d_flow_integrator_running;
 
   ImplicitLinearFlowSolver &get_solver_li();
   ExplicitNonlinearFlowSolver &get_solver_nl();
