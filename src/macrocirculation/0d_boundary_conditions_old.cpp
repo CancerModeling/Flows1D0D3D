@@ -49,6 +49,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     const auto alpha = 1. / std::pow(2, 1 / 3.);
     std::vector<double> list_C;
     std::vector<double> list_R;
+    std::vector<double> list_radius;
     double r = r_0 * alpha;
     double l = 0.2; // 2mm is the average vessel length
     for (size_t k = 0; k < N; k += 1) {
@@ -56,10 +57,11 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
       const double R = 2 * (param.gamma + 2) * param.viscosity * l / (std::pow(r, 2));
       list_C.push_back(C);
       list_R.push_back(R);
+      list_radius.push_back(r);
       r *= alpha;
     }
 
-    vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 2);
+    vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, list_radius, 2);
   }
 }
 
@@ -117,7 +119,11 @@ void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &gr
       // small veins
       list_R.push_back(R2*0.05);
 
-      vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 1);
+      std::vector< double > radii;
+      for (auto x : list_R)
+        radii.push_back(NAN);
+
+      vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, radii, 1);
     }
   }
 }

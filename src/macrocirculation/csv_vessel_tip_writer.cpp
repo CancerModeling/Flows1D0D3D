@@ -162,6 +162,7 @@ void CSVVesselTipWriter::write_meta_file() {
       if (v->is_vessel_tree_outflow()) {
         vessel_obj["resistance"] = v->get_vessel_tree_data().resistances;
         vessel_obj["capacitances"] = v->get_vessel_tree_data().capacitances;
+        vessel_obj["radii"] = v->get_vessel_tree_data().radii;
         vessel_obj["R1"] = calculate_R1(e->get_physical_data());
         vessel_obj["furcation_number"] = v->get_vessel_tree_data().furcation_number;
         vessel_obj["p_out"] = v->get_vessel_tree_data().p_out;

@@ -98,6 +98,7 @@ struct PeripheralVesselData {
 struct VesselTreeData {
   std::vector<double> resistances;
   std::vector<double> capacitances;
+  std::vector<double> radii;
   double p_out;
 
   /*! @brief The number of furcations at each level. 2 gives a symmetric binary tree, 1 a line. */
@@ -255,7 +256,7 @@ public:
   /*! @brief Marks the given vertex as part of the free outflow boundary. */
   void set_to_windkessel_outflow(double r, double c);
 
-  void set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, size_t furcation_number);
+  void set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, const std::vector<double> &radii, size_t furcation_number);
 
   void set_to_vessel_rcl_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, const std::vector<double> &inductances);
 

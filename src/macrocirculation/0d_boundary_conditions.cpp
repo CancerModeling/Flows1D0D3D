@@ -84,6 +84,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     const int N = static_cast<int>(std::ceil(gamma * std::log(r_0 / r_cap) / std::log(2)));
     const auto alpha = 1. / std::pow(2, 1 / gamma);
     const auto beta = 3./4.;
+    std::vector<double> list_radius;
     std::vector<double> list_C;
     std::vector<double> list_R;
     double r = r_0 * alpha;
@@ -102,12 +103,13 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
       R *= 2; // muscles?
       list_C.push_back(C);
       list_R.push_back(R);
+      list_radius.push_back(r);
       r *= alpha;
       // l *= beta;
     }
     std::cout << "vessel stop" << std::endl;
 
-    vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 2);
+    vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, list_radius, 2);
   }
 }
 
@@ -163,7 +165,11 @@ void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &gr
       // small veins
       list_R.push_back(R2 * 0.025);
 
-      vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 1);
+      std::vector< double > radii;
+      for (auto x : list_R)
+        radii.push_back(NAN);
+
+      vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, radii, 1);
     }
   }
 }
