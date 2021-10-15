@@ -232,6 +232,13 @@ int main(int argc, char *argv[]) {
       t_transport += tau_transport;
     }
 
+    if (it % output_interval == 0) {
+      if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
+        std::cout << "iter = " << it << ", t = " << t << std::endl;
+
+      solver_1d.write_output(t);
+    }
+
     // solve 3D system:
     if ((t >= t_coup_start - 1e-12) && (it % coupling_interval == 0)) {
       std::cout << "calculates coupling " << std::endl;
@@ -289,13 +296,6 @@ int main(int argc, char *argv[]) {
         solver_1d.update_vessel_tip_pressures(new_tip_pressures);
         solver_1d.update_vessel_tip_concentrations(new_tip_concentrations);
       }
-    }
-
-    if (it % output_interval == 0) {
-      if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-        std::cout << "iter = " << it << ", t = " << t << std::endl;
-
-      solver_1d.write_output(t);
     }
 
     // break

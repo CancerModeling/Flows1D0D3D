@@ -52,6 +52,7 @@ void CSVVesselTipWriter::write(double t, const PetscVec &u) {
     throw std::runtime_error("CSVVesselTipWriter::write: method supported only for one substance");
 
   update_time(t);
+  write_p_out();
   write_generic(*d_dofmaps.front(), u, d_types.front());
 }
 
@@ -60,6 +61,7 @@ void CSVVesselTipWriter::write(double t, const std::vector<double> &u) {
     throw std::runtime_error("CSVVesselTipWriter::write: method supported only for one substance");
 
   update_time(t);
+  write_p_out();
   write_generic(*d_dofmaps.front(), u, d_types.front());
 }
 
@@ -70,6 +72,7 @@ void CSVVesselTipWriter::write(double t,
     throw std::runtime_error("CSVVesselTipWriter::write: not all expected quantities provided");
 
   update_time(t);
+  write_p_out();
   for (size_t k = 0; k < u_1.size(); k += 1)
     write_generic(*d_dofmaps[k], u_1[k], d_types[k]);
   for (size_t k = 0; k < u_2.size(); k += 1)
@@ -81,6 +84,7 @@ void CSVVesselTipWriter::write(double t, const std::vector<std::reference_wrappe
     throw std::runtime_error("CSVVesselTipWriter::write: not all expected quantities provided");
 
   update_time(t);
+  write_p_out();
   for (size_t k = 0; k < quantities.size(); k += 1)
     write_generic(*d_dofmaps[k], quantities[k], d_types[k]);
 }
@@ -103,12 +107,37 @@ void CSVVesselTipWriter::write_generic(const DofMap &dof_map, const VectorType &
   }
 }
 
+void CSVVesselTipWriter::write_p_out() {
+  for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+    auto v = *d_graph->get_vertex(v_id);
+
+    double p_out = 0;
+    if (v.is_windkessel_outflow())
+      p_out = v.get_peripheral_vessel_data().p_out;
+    else if (v.is_vessel_tree_outflow())
+      p_out = v.get_vessel_tree_data().p_out;
+    else
+      continue;
+
+    if (v.is_vessel_tree_outflow() || v.is_windkessel_outflow() || v.is_rcl_outflow()) {
+      std::ofstream f(get_file_path(v_id, "p_out"), std::ios::app);
+      f << p_out << " " << std::endl;
+    }
+  }
+}
+
 void CSVVesselTipWriter::reset_all_files() {
   // reset all the files
   write_meta_file();
   for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
+    auto &vertex = *d_graph->get_vertex(v_id);
     for (auto &type : d_types) {
       std::ofstream f(get_file_path(v_id, type), std::ios::out);
+      f << "";
+    }
+    // write special file for p_out
+    if (vertex.is_vessel_tree_outflow() || vertex.is_windkessel_outflow()) {
+      std::ofstream f(get_file_path(v_id, "p_out"), std::ios::out);
       f << "";
     }
   }
@@ -165,13 +194,13 @@ void CSVVesselTipWriter::write_meta_file() {
         vessel_obj["radii"] = v->get_vessel_tree_data().radii;
         vessel_obj["R1"] = calculate_R1(e->get_physical_data());
         vessel_obj["furcation_number"] = v->get_vessel_tree_data().furcation_number;
-        vessel_obj["p_out"] = v->get_vessel_tree_data().p_out;
+        vessel_obj["filepath_p_out"] = get_file_name(v_id, "p_out");
       }
 
       if (v->is_windkessel_outflow()) {
         vessel_obj["R2"] = v->get_peripheral_vessel_data().resistance - calculate_R1(e->get_physical_data());
-        vessel_obj["p_out"] = v->get_peripheral_vessel_data().p_out;
         vessel_obj["C"] = v->get_peripheral_vessel_data().compliance;
+        vessel_obj["filepath_p_out"] = get_file_name(v_id, "p_out");
       }
 
       if (v->is_rcl_outflow()) {

@@ -31,6 +31,8 @@ def load_data_by_vessel(directory_name, v):
         d_list['c'] = reformat_data(np.loadtxt(os.path.join(directory_name, v['filepaths']['filepath_c'])))
     if 'filepath_V' in v['filepaths']:
         d_list['V'] = reformat_data(np.loadtxt(os.path.join(directory_name, v['filepaths']['filepath_V'])))
+    if 'filepath_p_out' in v:
+        d_list['p_out'] = reformat_data(np.loadtxt(os.path.join(directory_name, v['filepath_p_out'])))
     return d_list, v
 
 
@@ -60,13 +62,13 @@ if __name__ == '__main__':
     else:
         stop_index = len(t)
 
-    show_Q_total = False
-    show_N_total = False
+    show_Q_total = True 
+    show_N_total = False 
     show_p = True
-    show_Q = False
+    show_Q = True 
     show_V = False
-    show_c = False
-    show_N = False
+    show_c = False 
+    show_N = False 
 
     show_V_from_p = False
 
@@ -120,19 +122,20 @@ if __name__ == '__main__':
                 flows = data['p'][start_index:stop_index,dof+num_p_dof]
             else:
                 pressures_here = data['p'][start_index:stop_index, dof]
-                print('shape', data['p'].shape)
+
                 if dof+1 < data['p'].shape[1]:
                     pressures_next = data['p'][start_index:stop_index, dof+1]
+                elif 'p_out' in data:
+                    pressures_next = data['p_out'][start_index:stop_index].squeeze()
                 else:
-                    print(dof)
                     pressures_next = vessel['p_out'] * np.ones(len(data['p'][start_index:stop_index, dof]))
+
                 if 'resistance' in vessel:
                     resistances = np.array(vessel['resistance'])
                 else:
                     print('r2')
                     resistances = np.array([vessel['R2']])
                 flows = (pressures_here - pressures_next) / resistances[dof]
-                print(resistances[dof])
 
             if show_Q:
                 ax = axes[next_ax_index, i]; next_ax_index += 1
