@@ -97,6 +97,8 @@ public:
 
   void solve_transport(double tau, double t);
 
+  void apply_slope_limiter_transport(double t);
+
   void write_output(double t);
 
   void start_0d_pressure_integrator();

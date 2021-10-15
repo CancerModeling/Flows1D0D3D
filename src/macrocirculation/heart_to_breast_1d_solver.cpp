@@ -370,6 +370,10 @@ void HeartToBreast1DSolver::solve_transport(double tau, double t) {
   transport_solver->solve(tau, t);
 }
 
+void HeartToBreast1DSolver::apply_slope_limiter_transport(double t) {
+  transport_solver->apply_slope_limiter(t);
+}
+
 void HeartToBreast1DSolver::set_output_folder(std::string output_dir) { output_folder_name = std::move(output_dir); }
 
 } // namespace macrocirculation
