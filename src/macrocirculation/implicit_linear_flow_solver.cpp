@@ -155,6 +155,8 @@ ImplicitLinearFlowSolver::ImplicitLinearFlowSolver(MPI_Comm comm, std::shared_pt
 
 const DofMap &ImplicitLinearFlowSolver::get_dof_map() const { return *d_dof_map; }
 
+PetscKsp &ImplicitLinearFlowSolver::get_solver() { return *linear_solver; }
+
 void ImplicitLinearFlowSolver::setup(double tau) {
   d_tau = tau;
   assemble_matrix(tau);
@@ -959,6 +961,10 @@ void ImplicitLinearFlowSolver::evaluate_1d_pq_values(const Edge &e, double s, do
 
 void ImplicitLinearFlowSolver::use_pc_jacobi() {
   linear_solver = PetscKsp::create_with_pc_jacobi(*A);
+}
+
+void ImplicitLinearFlowSolver::use_named_solver(const std::string &name) {
+  linear_solver = PetscKsp::create_named_from_options(*A, name);
 }
 
 } // namespace macrocirculation

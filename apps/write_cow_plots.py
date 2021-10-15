@@ -42,6 +42,9 @@ for idx, vessel_id in enumerate(args.vessels):
     q = q[:]
     q = q[:, int(q.shape[1]/2)]
 
+    if q.mean() < 0:
+        q *= -1
+
     if ('a' in vessel_info['filepaths']):
         path = os.path.join(directory, vessel_info['filepaths']['a'])
         print('loading {}'.format(path))
@@ -55,8 +58,11 @@ for idx, vessel_id in enumerate(args.vessels):
         path = os.path.join(directory, vessel_info['filepaths']['p'])
         print('loading {}'.format(path))
         p = np.loadtxt(path, delimiter=',') / 1.333332
+        print ('a', p)
         p = p[:]
+        print ('b', p)
         p = p[:, int(p.shape[1]/2)]
+        print ('c', p)
     else:
         p = vessel_info['G0'] * (np.sqrt(a/vessel_info['A0']) - 1) / 1.33332
 
@@ -77,27 +83,56 @@ list_q = np.array(list_q)
 max_p, min_p = list_p.max(), list_p.min()
 max_q, min_q = list_q.max(), list_q.min()
 
-fig = plt.figure()
-fig.tight_layout()
 
-for idx, vessel_id in enumerate(args.vessels):
-    plt.clf()
-    ax = plt.gca()
-    ax.plot(list_t[idx], list_p[idx], label='$p_{' + str(vessel_id+1) + '}$', linewidth=4)
-    ax.legend()
-    ax.set_xlabel('t [s]')
-    ax.set_ylabel('p [mmHg]')
-    ax.set_ylim(top=max_p+5, bottom=min_p-5)
-    ax.grid(True)
-    plt.savefig(os.path.join(args.output_folder, '{}_p_{}.pdf'.format(args.dataset_name, vessel_id)))
+if True:
+    fig = plt.figure()
 
-for idx, vessel_id in enumerate(args.vessels):
-    plt.clf()
-    ax = plt.gca()
-    ax.plot(list_t[idx], list_q[idx], label='$q_{' + str(vessel_id+1) + '}$', linewidth=4)
-    ax.legend()
-    ax.set_xlabel('t [s]')
-    ax.set_ylabel(r'q [$cm^{3}/s$]')
-    #ax.set_ylim(top=max_q+5, bottom=min_q-5)
-    ax.grid(True)
-    plt.savefig(os.path.join(args.output_folder, '{}_q_{}.pdf'.format(args.dataset_name, vessel_id)))
+    for idx, vessel_id in enumerate(args.vessels):
+        plt.clf()
+        ax = fig.add_subplot(111,aspect=1.) 
+        ax.plot(list_t[idx], list_p[idx], label='$p_{' + str(vessel_id+1) + '}$', linewidth=4)
+        ax.legend()
+        ax.set_xlabel('t [s]')
+        ax.set_ylabel('p [mmHg]')
+        ax.set_ylim(top=max_p+5, bottom=min_p-5)
+        ax.grid(True)
+        plt.savefig(os.path.join(args.output_folder, '{}_p_{}.pdf'.format(args.dataset_name, vessel_id)))
+
+    for idx, vessel_id in enumerate(args.vessels):
+        plt.clf()
+        ax = fig.add_subplot(111,aspect=0.5) 
+        ax.plot(list_t[idx], list_q[idx], label='$q_{' + str(vessel_id+1) + '}$', linewidth=4)
+        ax.legend()
+        ax.set_xlabel('t [s]')
+        ax.set_ylabel(r'q [$cm^{3}/s$]')
+        #ax.set_ylim(top=max_q+5, bottom=min_q-5)
+        ax.grid(True)
+        plt.savefig(os.path.join(args.output_folder, '{}_q_{}.pdf'.format(args.dataset_name, vessel_id)))
+
+if True:
+    plt.clf() 
+    fig, axes = plt.subplots(2, len(args.vessels), squeeze=False, sharey='row', sharex='col')
+
+    row_idx = 0
+    for idx, vessel_id in enumerate(args.vessels):
+        ax = axes[row_idx,idx] 
+        ax.plot(list_t[idx], list_p[idx], label='$p_{' + str(vessel_id+1) + '}$')
+        #ax.legend()
+        #ax.set_xlabel('t [s]')
+        if idx == 0:
+            ax.set_ylabel('p [mmHg]')
+        ax.set_ylim(top=max_p+5, bottom=min_p-5)
+        ax.grid(True)
+
+    row_idx += 1
+
+    for idx, vessel_id in enumerate(args.vessels):
+        ax = axes[row_idx,idx] 
+        ax.plot(list_t[idx], list_q[idx], label='$q_{' + str(vessel_id+1) + '}$')
+        #ax.legend()
+        ax.set_xlabel('t [s]')
+        if idx == 0:
+            ax.set_ylabel(r'q [$cm^{3}/s$]')
+        #ax.set_ylim(top=max_q+5, bottom=min_q-5)
+        ax.grid(True)
+    plt.show()
