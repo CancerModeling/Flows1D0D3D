@@ -36,7 +36,7 @@ EdgeTreeParameters calculate_edge_tree_parameters(const Edge& edge)
     const double C = 3 * std::pow(r, 3) * M_PI * l / (2 * E * h_0);
     const double viscosity = viscosity_bloodplasma(r);
     double R = 2 * (param.gamma + 2) * viscosity * l / (std::pow(r, 2));
-    R *= 2; // muscles?
+    // R *= 2; // muscles?
     list_C.push_back(C);
     list_R.push_back(R);
     list_radii.push_back(r);
@@ -100,7 +100,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
       // const double viscosity = param.viscosity;
       double R = 2 * (param.gamma + 2) * viscosity * l / (std::pow(r, 2));
       // R *= 1.15; // muscles?
-      R *= 2; // muscles?
+      // R *= 2; // muscles?
       list_C.push_back(C);
       list_R.push_back(R);
       list_radius.push_back(r);
