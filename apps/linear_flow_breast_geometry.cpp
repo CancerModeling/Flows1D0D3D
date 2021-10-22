@@ -76,10 +76,10 @@ int main(int argc, char *argv[]) {
     mc::EmbeddedGraphReader graph_reader;
     graph_reader.append(args["mesh"].as<std::string>(), *graph);
 
-    graph->find_vertex_by_name("bg_132")->set_to_inflow(mc::heart_beat_inflow(0.035));
-    graph->find_vertex_by_name("bg_135")->set_to_inflow(mc::heart_beat_inflow(0.035));
-    graph->find_vertex_by_name("bg_141")->set_to_inflow(mc::heart_beat_inflow(0.035));
-    graph->find_vertex_by_name("bg_119")->set_to_inflow(mc::heart_beat_inflow(0.035));
+    graph->find_vertex_by_name("bg_132")->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(0.035));
+    graph->find_vertex_by_name("bg_135")->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(0.035));
+    graph->find_vertex_by_name("bg_141")->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(0.035));
+    graph->find_vertex_by_name("bg_119")->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(0.035));
     // mc::set_0d_tree_boundary_conditions(graph, "bg_");
     graph_reader.set_boundary_data("./data/meshes/boundary-combined-geometry-linear-part.json", *graph);
 

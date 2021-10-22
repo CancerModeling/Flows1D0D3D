@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
     graph_reader.append("data/meshes/network-33-vessels-extended.json", *graph_nl);
 
     auto &v_in = *graph_nl->find_vertex_by_name("cw_in");
-    v_in.set_to_inflow(mc::heart_beat_inflow(485.0));
+    v_in.set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(485.0));
 
     auto graph_li = std::make_shared<mc::GraphStorage>();
     graph_reader.append("data/meshes/coarse-network-geometry.json", *graph_li);
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
         auto v = graph_li->get_vertex(v_id);
         if (!v->is_leaf())
           continue;
-        if (v->is_inflow() || v->is_nonlinear_characteristic_inflow() || v->is_linear_characteristic_inflow())
+        if (v->is_inflow_with_fixed_flow() || v->is_nonlinear_characteristic_inflow() || v->is_linear_characteristic_inflow())
           continue;
         v->set_to_free_outflow();
         std::cout << "setting  " << v->get_name() << " to free outflow." << std::endl;
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
         auto v = graph_nl->get_vertex(v_id);
         if (!v->is_leaf())
           continue;
-        if (v->is_inflow() || v->is_nonlinear_characteristic_inflow() || v->is_linear_characteristic_inflow())
+        if (v->is_inflow_with_fixed_flow() || v->is_nonlinear_characteristic_inflow() || v->is_linear_characteristic_inflow())
           continue;
         v->set_to_free_outflow();
         std::cout << "setting  " << v->get_name() << " to free outflow." << std::endl;

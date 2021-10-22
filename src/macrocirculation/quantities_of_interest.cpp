@@ -108,8 +108,8 @@ void calculate_static_pressure(const MPI_Comm comm,
       extract_dof(dof_indices, dof_vector, dof_vector_local);
       const auto A = fe.evaluate_dof_at_boundary_points(dof_vector_local);
 
-      interpolated.push_back(calculate_static_p(A.left, param.G0, param.A0));
-      interpolated.push_back(calculate_static_p(A.right, param.G0, param.A0));
+      interpolated.push_back(nonlinear::get_p_from_A(A.left, param.G0, param.A0));
+      interpolated.push_back(nonlinear::get_p_from_A(A.right, param.G0, param.A0));
     }
   }
 }

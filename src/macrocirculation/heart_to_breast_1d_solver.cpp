@@ -194,7 +194,7 @@ void HeartToBreast1DSolver::setup_graphs(BoundaryModel bmodel) {
   graph_reader.append(path_nonlinear_geometry, *graph_nl);
 
   auto &v_in = *graph_nl->find_vertex_by_name("cw_in");
-  v_in.set_to_inflow(heart_beat_inflow(485.0));
+  v_in.set_to_inflow_with_fixed_flow(heart_beat_inflow(485.0));
 
   graph_reader.append(path_linear_geometry, *graph_li);
   graph_reader.set_boundary_data(path_boundary_linear, *graph_li);

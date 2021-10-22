@@ -69,7 +69,8 @@ int main(int argc, char *argv[]) {
   end->set_to_free_outflow();
 
   // set inflow boundary conditions
-  start->set_to_inflow(mc::heart_beat_inflow(4.));
+  // start->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(4.));
+  start->set_to_inflow_with_fixed_pressure(mc::heart_beat_inflow(4.));
 
   graph->finalize_bcs();
 
@@ -95,8 +96,8 @@ int main(int argc, char *argv[]) {
   p_static_vertex_values.reserve(graph->num_edges() * 2);
 
   mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph);
-  csv_writer.add_setup_data(dof_map, solver.A_component, "A");
-  csv_writer.add_setup_data(dof_map, solver.Q_component, "Q");
+  csv_writer.add_setup_data(dof_map, solver.A_component, "a");
+  csv_writer.add_setup_data(dof_map, solver.Q_component, "q");
   csv_writer.setup();
 
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "line_solution");
@@ -110,8 +111,8 @@ int main(int argc, char *argv[]) {
       if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
         std::cout << "iter = " << it << ", time = " << t << std::endl;
 
-      csv_writer.add_data("A", solver.get_solution());
-      csv_writer.add_data("Q", solver.get_solution());
+      csv_writer.add_data("a", solver.get_solution());
+      csv_writer.add_data("q", solver.get_solution());
       csv_writer.write(t+tau);
 
       // save solution

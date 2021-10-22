@@ -296,7 +296,7 @@ void ImplicitLinearFlowSolver::assemble_matrix_inner_boundaries(double tau) {
 void ImplicitLinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *d_graph->get_vertex(v_idx);
-    if (!vertex.is_inflow())
+    if (!vertex.is_inflow_with_fixed_flow())
       continue;
     const auto q_in = vertex.get_inflow_value(t);
     auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
@@ -329,7 +329,7 @@ void ImplicitLinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
 void ImplicitLinearFlowSolver::assemble_matrix_inflow(double tau) {
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *d_graph->get_vertex(v_idx);
-    if (!vertex.is_inflow())
+    if (!vertex.is_inflow_with_fixed_flow())
       continue;
     auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
     auto &local_dof_map = d_dof_map->get_local_dof_map(neighbor_edge);

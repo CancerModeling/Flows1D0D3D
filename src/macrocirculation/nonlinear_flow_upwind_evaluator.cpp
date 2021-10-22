@@ -232,7 +232,7 @@ void calculate_windkessel_upwind_values(const PhysicalData &param, bool is_point
 
   const double sgn = is_pointing_to ? +1 : -1;
 
-  Q_out = sgn * (calculate_static_p(A_out, param.G0, param.A0) - p_c) / R1;
+  Q_out = sgn * (nonlinear::get_p_from_A(A_out, param.G0, param.A0) - p_c) / R1;
 }
 
 void NonlinearFlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::vector<double> &u_prev) {
@@ -256,15 +256,27 @@ void NonlinearFlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::v
       const double A = d_A_boundary_evaluator(*vertex, *edge);
 
       // inflow boundary
-      if (vertex->is_inflow()) {
+      if (vertex->is_inflow_with_fixed_flow()) {
         const double Q_star = (in ? -1 : +1) * vertex->get_inflow_value(t);
-        const double A_up = assemble_in_flow(Q, A, in, Q_star, param.G0, param.rho, param.A0);
+        const double A_up = nonlinear::inflow::get_upwinded_A_from_Q(Q, A, in, Q_star, param.G0, param.rho, param.A0);
 
         if (in) {
           d_Q_macro_edge_flux_r[edge->get_id()] = Q_star;
           d_A_macro_edge_flux_r[edge->get_id()] = A_up;
         } else {
           d_Q_macro_edge_flux_l[edge->get_id()] = Q_star;
+          d_A_macro_edge_flux_l[edge->get_id()] = A_up;
+        }
+      } else if (vertex->is_inflow_with_fixed_pressure()) {
+        const double p_up = vertex->get_inflow_value(t);
+        const double A_up = nonlinear::get_A_from_p(p_up, param.G0, param.A0);
+        const double Q_up = nonlinear::inflow::get_upwinded_Q_from_A(Q, A, (in ? +1 : -1), A_up, param.G0, param.rho, param.A0);
+
+        if (in) {
+          d_Q_macro_edge_flux_r[edge->get_id()] = Q_up;
+          d_A_macro_edge_flux_r[edge->get_id()] = A_up;
+        } else {
+          d_Q_macro_edge_flux_l[edge->get_id()] = Q_up;
           d_A_macro_edge_flux_l[edge->get_id()] = A_up;
         }
       } else if (vertex->is_free_outflow()) {

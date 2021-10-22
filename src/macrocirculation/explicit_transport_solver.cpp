@@ -259,7 +259,7 @@ void ExplicitTransportSolver::calculate_fluxes_at_nfurcations(double t, const st
       const bool is_inflow = (v > 0 && !edge.is_pointing_to(vertex.get_id())) || (v < 0 && edge.is_pointing_to(vertex.get_id()));
 
       auto inflow_function = [=](double t) {
-        if (vertex.is_inflow())
+        if (vertex.is_inflow_with_fixed_flow())
           return current_inflow(t);
         else
           return 0.;

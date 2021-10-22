@@ -312,7 +312,7 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
     for (size_t v_idx : g->get_vertex_ids()) {
       auto &vertex = *g->get_vertex(v_idx);
 
-      if (vertex.is_inflow()) {
+      if (vertex.is_inflow_with_fixed_flow()) {
         d_inflow_functions[k][vertex.get_id()] = inflow_function;
       } else if (vertex.is_leaf()) {
         d_inflow_functions[k][vertex.get_id()] = [](double t) { return 0.; };
@@ -1044,7 +1044,7 @@ void additively_assemble_rhs_inflow(MPI_Comm comm,
 
   for (const auto &v_id : graph.get_active_vertex_ids(mpi::rank(comm))) {
     auto &vertex = *graph.get_vertex(v_id);
-    if (!vertex.is_inflow())
+    if (!vertex.is_inflow_with_fixed_flow())
       continue;
 
     auto &neighbor_edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
@@ -1089,7 +1089,7 @@ void additively_assemble_matrix_outflow(MPI_Comm comm,
 
     if (!vertex.is_leaf())
       continue;
-    if (vertex.is_inflow())
+    if (vertex.is_inflow_with_fixed_flow())
       continue;
 
     if (vertex.is_linear_characteristic_inflow())

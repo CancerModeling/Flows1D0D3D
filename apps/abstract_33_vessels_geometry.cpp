@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
       graph_reader.set_boundary_data(boundary_file_path, *graph);
     }
 
-    graph->find_vertex_by_name(args["inlet-name"].as<std::string>())->set_to_inflow(mc::heart_beat_inflow(args["heart-amplitude"].as<double>()));
+    graph->find_vertex_by_name(args["inlet-name"].as<std::string>())->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(args["heart-amplitude"].as<double>()));
 
     // set_0d_tree_boundary_conditions(graph, "bg_");
     graph->finalize_bcs();

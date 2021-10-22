@@ -89,8 +89,8 @@ double run_scenario(std::size_t num_micro_edges_per_segment, double tau, bool us
   vessel->add_physical_data(mc::PhysicalData{0., G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0 / M_PI)});
 
   // set inflow boundary conditions
-  start->set_to_inflow([](auto) { return 0.; });
-  end->set_to_inflow([](auto) { return 0.; });
+  start->set_to_inflow_with_fixed_flow([](auto) { return 0.; });
+  end->set_to_inflow_with_fixed_flow([](auto) { return 0.; });
 
   graph->finalize_bcs();
 
@@ -166,8 +166,8 @@ void run_temporal_convergence_study(std::size_t num_micro_edges_per_segment, std
   vessel->add_physical_data(mc::PhysicalData{0, G0, A0, rho, length, 4.5e-2, 9, std::sqrt(A0 / M_PI)});
 
   // set inflow boundary conditions
-  start->set_to_inflow([](auto) { return 0.; });
-  end->set_to_inflow([](auto) { return 0.; });
+  start->set_to_inflow_with_fixed_flow([](auto) { return 0.; });
+  end->set_to_inflow_with_fixed_flow([](auto) { return 0.; });
 
   graph->finalize_bcs();
 

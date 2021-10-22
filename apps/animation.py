@@ -11,6 +11,10 @@ parser = argparse.ArgumentParser(description='Animator for the vessel data.')
 parser.add_argument('--vessels', type=int, nargs='+', help='A list of ids of the vessels to plot.', default=[0])
 parser.add_argument('--filepath', type=str, required=True)
 parser.add_argument('--t-start', type=float, default=0)
+parser.add_argument('--start-paused', help='start in a paused mode', action='store_true')
+parser.add_argument('--no-q', help='disables plotting of flow', action='store_true')
+parser.add_argument('--no-p', help='disables plotting of pressures', action='store_true')
+parser.add_argument('--no-c', help='disables plotting of concentration', action='store_true')
 
 args = parser.parse_args()
 
@@ -68,65 +72,112 @@ data_sets = [load_vessel(index) for index in list(args.vessels) ]
 
 fig = plt.figure()
 fig.tight_layout()
-axes = fig.subplots(3, len(data_sets), sharey='row', sharex='col', squeeze=False)
+
+show_Q = not args.no_q
+show_p = not args.no_p
+show_c = not args.no_c
+
+num_axes = np.sum(np.array([show_Q, show_p, show_c]))
+print(num_axes)
+axes = fig.subplots(num_axes, len(data_sets), sharey='row', sharex='col', squeeze=False)
 
 lines = []
-t_index = 0 
+t_index = 0
 for dset_index in range(len(data_sets)):
-    ax_Q = axes[0, dset_index]
-    ax_p = axes[1, dset_index]
-    ax_c = axes[2, dset_index]
-    data_Q = data_sets[dset_index]['q'][t_index]
-    data_p = data_sets[dset_index]['p'][t_index]
-    data_c = data_sets[dset_index]['c/a'][t_index]
+    if show_Q and 'q' in data_sets[dset_index]:
+        data_Q = data_sets[dset_index]['q'][t_index]
+
+    if show_p and 'p' in data_sets[dset_index]:
+        data_p = data_sets[dset_index]['p'][t_index]
+
+    if show_c and 'c/a' in data_sets[dset_index]:
+        data_c = data_sets[dset_index]['c/a'][t_index]
+
     grid = data_sets[dset_index]['grid']
-    ax_Q.clear()
-    l1, = ax_Q.plot(grid, data_Q, label='Q')
-    ax_Q.legend()
-    ax_Q.grid(True)
-    ax_p.clear()
-    l2, = ax_p.plot(grid, data_p, label='p')
-    ax_p.legend()
-    ax_p.grid(True)
-    ax_c.clear()
-    l3, = ax_c.plot(grid, data_c, label='c/a')
-    ax_c.legend()
-    ax_c.grid(True)
-    lines.append([l1, l2, l3])
+
+    d_lines = []
+
+    axes_idx = 0
+
+    if show_Q and 'q' in data_sets[dset_index]:
+        ax_Q = axes[axes_idx, dset_index]; axes_idx += 1
+        ax_Q.clear()
+        l1, = ax_Q.plot(grid, data_Q, label='Q')
+        ax_Q.legend()
+        ax_Q.grid(True)
+        d_lines.append(l1)
+
+    if show_p and 'p' in data_sets[dset_index]:
+        ax_p = axes[axes_idx, dset_index]; axes_idx += 1
+        ax_p.clear()
+        l2, = ax_p.plot(grid, data_p, label='p')
+        ax_p.legend()
+        ax_p.grid(True)
+        d_lines.append(l2)
+
+    if show_c and 'c/a' in data_sets[dset_index]:
+        ax_c = axes[axes_idx, dset_index]; axes_idx += 1
+        ax_c.clear()
+        l3, = ax_c.plot(grid, data_c, label=r'$\frac{\Gamma}{A}$')
+        ax_c.legend()
+        ax_c.grid(True)
+        d_lines.append(l3)
+
+    lines.append(d_lines)
+
 fig.suptitle('t={}'.format(times[start_index+t_index]))
 
 for ax_id, vid in enumerate(args.vessels):
-    axes[0,ax_id].set_title('vessel {}'.format(vid))
+    axes[0,ax_id].set_title('Vessel {}'.format(vid))
 
 def animate(i):
     t_index = i % len(times[start_index:])
     for dset_index in range(len(data_sets)):
-        ax_Q = axes[0, dset_index]
-        ax_p = axes[1, dset_index]
-        ax_c = axes[2, dset_index]
-        data_Q = data_sets[dset_index]['q'][t_index]
-        data_p = data_sets[dset_index]['p'][t_index]
-        data_c = data_sets[dset_index]['c/a'][t_index]
-        lQ = lines[dset_index][0]
-        lp = lines[dset_index][1]
-        lc = lines[dset_index][2]
-        grid = data_sets[dset_index]['grid'] 
-        lQ.set_ydata(data_Q)
-        lp.set_ydata(data_p)
-        lc.set_ydata(data_c)
-        ax_Q.relim()
-        ax_p.relim()
-        ax_c.set_ylim([0, 1.05])
-        ax_Q.autoscale_view()
-        ax_p.autoscale_view()
-        ax_c.autoscale_view()
+        grid = data_sets[dset_index]['grid']
+
+        axes_idx = 0
+
+        if show_Q and 'q' in data_sets[dset_index]:
+            ax_Q = axes[axes_idx, dset_index]
+            data_Q = data_sets[dset_index]['q'][t_index]
+            lQ = lines[dset_index][axes_idx]
+            lQ.set_ydata(data_Q)
+            ax_Q.relim()
+            ax_Q.autoscale_view()
+            axes_idx += 1
+
+        if show_p and 'p' in data_sets[dset_index]:
+            ax_p = axes[axes_idx, dset_index]
+            data_p = data_sets[dset_index]['p'][t_index]
+            lp = lines[dset_index][axes_idx]
+            lp.set_ydata(data_p)
+            ax_p.relim()
+            ax_p.autoscale_view()
+            axes_idx += 1
+
+        if show_c and 'c/a' in data_sets[dset_index]:
+            ax_c = axes[axes_idx, dset_index]
+            data_c = data_sets[dset_index]['c/a'][t_index]
+            lc = lines[dset_index][axes_idx]
+            lc.set_ydata(data_c)
+            ax_c.set_ylim([0, 1.05])
+            ax_c.autoscale_view()
+            axes_idx += 1
+
+    # deactivate at the beginning
+    global is_running
+    print(is_running)
+    if not is_running:
+        anim.event_source.stop()
+
     fig.suptitle('t={}'.format(times[start_index+t_index]))
 
 num_frames = len(times[start_index:])
 
+is_running = not args.start_paused
+
 anim = FuncAnimation(fig, animate, interval=20)
 
-is_running = True 
 def toggle_animation(event):
     global is_running
     if is_running:
@@ -136,7 +187,7 @@ def toggle_animation(event):
     is_running = not is_running
 
 fig.canvas.mpl_connect('button_press_event', toggle_animation)
-                            
+
 plt.show()
 
 

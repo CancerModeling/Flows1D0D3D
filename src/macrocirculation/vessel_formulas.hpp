@@ -13,6 +13,13 @@
 
 namespace macrocirculation {
 
+// forward definitions:
+double calculate_W1_value(double Q, double A, double G0, double rho, double A0);
+double calculate_W2_value(double Q, double A, double G0, double rho, double A0);
+double solve_for_W1(double W1, double W2, double Q_star, double A_0, double c_0);
+double solve_for_W2(double W1, double W2, double Q_star, double A_0, double c_0);
+double calculate_c0(double G0, double rho, double A0);
+
 /*! @brief Calculates c0. */
 template<typename PhysicalParameters>
 inline double calculate_c0(const PhysicalParameters &param) {
@@ -35,16 +42,74 @@ struct VesselParameters {
 namespace nonlinear {
 
 /*! @brief Converts the vessel area A to the static pressure p. */
+inline double get_p_from_A(double A, double G0, double A0) {
+  return G0 * (std::sqrt(A / A0) - 1);
+}
+
+/*! @brief Converts the static pressure p to the vessel area A. */
+inline double get_A_from_p(double p, double G0, double A0) {
+  return A0 * std::pow(p / G0 + 1, 2);
+}
+
+/*! @brief Converts the vessel area A to the static pressure p. */
 template<typename PhysicalParameters>
 inline double get_p_from_A(const PhysicalParameters &param, double A) {
-  return param.G0 * (std::sqrt(A / param.A0) - 1);
+  return get_p_from_A(A, param.G0, param.A0);
 }
 
 /*! @brief Converts the static pressure p to the vessel area A. */
 template<typename PhysicalParameters>
 inline double get_A_from_p(const PhysicalParameters &param, double p) {
-  return param.A0 * std::pow(p / param.G0 + 1, 2);
+  return get_A_from_p(p, param.G0, param.A0);
 }
+
+namespace inflow {
+
+/*! @brief Assembles the inflow boundary condition.
+*
+* @param Q  The value of Q inside the cell.
+* @param A  The value of A inside the cell.
+* @param in True, if the vessel points towards the vertex, false if it points away.
+* @param Q_star The Q value at the boundary
+* @param G0  TODO:
+* @param rho The blood density.
+* @param A0  The area at p=0.
+* @return
+*/
+inline double get_upwinded_A_from_Q(const double Q,
+                                    const double A,
+                                    const bool in,
+                                    const double Q_star,
+                                    const double G0,
+                                    const double rho,
+                                    const double A0) {
+  const double c0 = sqrt(G0 / (2 * rho));
+  double W1 = calculate_W1_value(Q, A, G0, rho, A0);
+  double W2 = calculate_W2_value(Q, A, G0, rho, A0);
+  if (in)
+    W1 = solve_for_W1(W1, W2, Q_star, A0, c0);
+  else
+    W2 = solve_for_W2(W1, W2, Q_star, A0, c0);
+  const double A_star = A0 * std::pow(1. / (8 * c0) * (W2 + W1), 4);
+  return A_star;
+}
+
+inline double get_upwinded_Q_from_A(const double Q_DG,
+                                    const double A_DG,
+                                    const double sigma,
+                                    const double A_star,
+                                    const double G0,
+                                    const double rho,
+                                    const double A0) {
+  const double c0 = calculate_c0(G0, rho, A0);
+  // we choose the outgoing characteristic, which depends on the orientation and hence the normal:
+  double w = sigma < 0 ? calculate_W1_value(Q_DG, A_DG, G0, rho, A0) : calculate_W2_value(Q_DG, A_DG, G0, rho, A0);
+  // we convert it to the upwinded flow:
+  double Q_star = sigma * (w - 4 * c0 * std::pow(A_star / A0, 0.25)) * A_star;
+  return Q_star;
+}
+
+} // namespace inflow
 
 } // namespace nonlinear
 
@@ -118,10 +183,6 @@ inline double calculate_p_from_w1w2(double w1, double w2, double G0, double rho,
 
 inline double calculate_p_from_QA(double Q, double A, double G0, double rho, double A0) {
   return 0.5 * rho * std::pow(Q / A, 2) + G0 * (std::sqrt(A / A0) - 1);
-}
-
-inline double calculate_static_p(double A, double G0, double A0) {
-  return G0 * (std::sqrt(A / A0) - 1);
 }
 
 /*! @brief Derivative of the total pressure with respect to the backward characteristic. */
@@ -198,7 +259,7 @@ private:
 class smoothed_constant_concentration {
 public:
   explicit smoothed_constant_concentration(double delta = 0.05)
-    : d_delta(delta) {}
+      : d_delta(delta) {}
 
   double operator()(double t) const {
     if (t < d_delta)
@@ -263,35 +324,6 @@ inline double solve_for_W1(const double W1_init, const double W2, const double Q
     W1_prev = W1;
   }
   return W1;
-}
-
-/*! @brief Assembles the inflow boundary condition.
- *
- * @param Q  The value of Q inside the cell.
- * @param A  The value of A inside the cell.
- * @param in True, if the vessel points towards the vertex, false if it points away.
- * @param Q_star The Q value at the boundary
- * @param G0  TODO:
- * @param rho The blood density.
- * @param A0  The area at p=0.
- * @return
- */
-inline double assemble_in_flow(const double Q,
-                               const double A,
-                               const bool in,
-                               const double Q_star,
-                               const double G0,
-                               const double rho,
-                               const double A0) {
-  const double c0 = sqrt(G0 / (2 * rho));
-  double W1 = calculate_W1_value(Q, A, G0, rho, A0);
-  double W2 = calculate_W2_value(Q, A, G0, rho, A0);
-  if (in)
-    W1 = solve_for_W1(W1, W2, Q_star, A0, c0);
-  else
-    W2 = solve_for_W2(W1, W2, Q_star, A0, c0);
-  const double A_star = A0 * std::pow(1. / (8 * c0) * (W2 + W1), 4);
-  return A_star;
 }
 
 /*! @brief Evaluates the bifurcation equation at a vertex, for n vessels meeting at that point.

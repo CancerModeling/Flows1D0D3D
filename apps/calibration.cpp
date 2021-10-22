@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
   if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
     std::cout << "heart amplitude = " << heart_amplitude << " period = " << heart_period << " systole-period = " << heart_systole_period << std::endl;
   auto heart = mc::heart_beat_inflow(heart_amplitude, heart_period, heart_systole_period);
-  graph->find_vertex_by_name(args["inflow-vertex-name"].as<std::string>())->set_to_inflow(heart);
+  graph->find_vertex_by_name(args["inflow-vertex-name"].as<std::string>())->set_to_inflow_with_fixed_flow(heart);
 
   // set all vertices to free-outflow
   for (auto v_id : graph->get_vertex_ids()) {

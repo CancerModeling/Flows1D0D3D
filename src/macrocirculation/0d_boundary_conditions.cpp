@@ -52,7 +52,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     if (!vertex.is_leaf())
       continue;
 
-    if (vertex.is_inflow()) {
+    if (vertex.is_inflow_with_fixed_flow()) {
       std::cout << "rank = " << mpi::rank(MPI_COMM_WORLD) << " found inflow " << vertex.get_name() << std::endl;
       continue;
     }

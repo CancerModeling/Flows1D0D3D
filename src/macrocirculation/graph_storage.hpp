@@ -9,12 +9,12 @@
 #define TUMORMODELS_GRAPH_STORAGE_H
 
 #include <cassert>
+#include <cmath>
 #include <functional>
 #include <map>
 #include <memory>
 #include <utility>
 #include <vector>
-#include <cmath>
 
 namespace macrocirculation {
 
@@ -29,8 +29,8 @@ struct Point {
 
   double x, y, z;
 
-  static double distance(const Point& a, const Point& b) {
-    return std::sqrt(std::pow(a.x-b.x, 2) + std::pow(a.y-b.y, 2) + std::pow(a.z-b.z, 2));
+  static double distance(const Point &a, const Point &b) {
+    return std::sqrt(std::pow(a.x - b.x, 2) + std::pow(a.y - b.y, 2) + std::pow(a.z - b.z, 2));
   }
 };
 
@@ -220,13 +220,14 @@ protected:
 // TODO: add securicty assertion to Vertex for a flow type
 enum class FlowType {
   Undefined,
-  Inflow,
+  InflowFixedFlow,
   FreeOutflow,
   Windkessel,
   VesselTree,
   LinearCharacteristic,
   NonlinearCharacteristic,
-  RCLModel
+  RCLModel,
+  InflowFixedPressure
 };
 
 class Vertex : public Primitive {
@@ -248,7 +249,10 @@ public:
   void finalize_bcs();
 
   /*! @brief Marks the given vertex as part of the inflow boundary, where the given time dependent function provides the boundary values. */
-  void set_to_inflow(std::function<double(double)> inflow_value);
+  void set_to_inflow_with_fixed_flow(std::function<double(double)> inflow_value);
+
+  /*! @brief Marks the given vertex as part of the inflow boundary, where the given time dependent function provides the boundary values. */
+  void set_to_inflow_with_fixed_pressure(std::function<double(double)> pressure_value);
 
   /*! @brief Marks the given vertex as part of the free outflow boundary. */
   void set_to_free_outflow();
@@ -273,8 +277,11 @@ public:
 
   void update_nonlinear_characteristic_inflow(double p, double q);
 
-  /*! @brief Returns whether the given vertex is part of the inflow boundary. */
-  bool is_inflow() const;
+  /*! @brief Returns whether the given vertex is part of the inflow boundary where the flow is given. */
+  bool is_inflow_with_fixed_flow() const;
+
+  /*! @brief Returns whether the given vertex is part of the inflow boundary where the pressure is given. */
+  bool is_inflow_with_fixed_pressure() const;
 
   /*! @brief Returns the inflow value at the given vertex. */
   double get_inflow_value(double time) const;
@@ -357,7 +364,7 @@ public:
   void add_discretization_data(const DiscretizationData &data);
   void add_embedding_data(const EmbeddingData &data);
 
-  std::size_t get_adajcent_micro_edge_id(const Vertex& vertex) const;
+  std::size_t get_adajcent_micro_edge_id(const Vertex &vertex) const;
 
   bool has_physical_data() const;
   bool has_discretization_data() const;
@@ -450,7 +457,7 @@ public:
 
   std::vector<std::size_t> get_active_and_connected_vertex_ids(int rank) const;
 
-  bool owns_primitive(const Vertex & vertex, size_t rank) const;
+  bool owns_primitive(const Vertex &vertex, size_t rank) const;
 
   void assign_edge_to_rank(Edge &edge, int rank);
 
