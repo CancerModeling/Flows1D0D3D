@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
       graph_reader.set_boundary_data(boundary_file_path, *graph);
     }
 
-    graph->find_vertex_by_name(args["inlet-name"].as<std::string>())->set_to_inflow(mc::heart_beat_inflow(args["heart-amplitude"].as<double>()));
+    graph->find_vertex_by_name(args["inlet-name"].as<std::string>())->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(args["heart-amplitude"].as<double>()));
 
     // set_0d_tree_boundary_conditions(graph, "bg_");
     graph->finalize_bcs();
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     const double t_end = args["t-end"].as<double>();
     const std::size_t max_iter = 160000000;
 
-    const auto tau = 2.0e-6; //args["tau"].as<double>();
+    const auto tau = args["tau"].as<double>();
     const auto tau_out = args["tau-out"].as<double>();
 
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);

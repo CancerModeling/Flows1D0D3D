@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 
   // set inflow boundary conditions
   // start->set_to_inflow(mc::heart_beat_inflow());
-  start->set_to_inflow(mc::heart_beat_inflow(4.));
+  start->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(4.));
   //start->set_to_inflow([](double t) { return 1.;});
 
   graph->finalize_bcs();

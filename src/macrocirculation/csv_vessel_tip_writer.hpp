@@ -129,6 +129,8 @@ private:
    */
   template<typename VectorType>
   void write_generic(const DofMap &dof_map, const VectorType &u, const std::string &type);
+
+  void write_p_out();
 };
 
 } // namespace macrocirculation

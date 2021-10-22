@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
     edge_1_li->add_embedding_data({{mc::Point(1.5, 0, 0), mc::Point(2, 0, 0)}});
     edge_1_li->add_physical_data(physical_data_2);
 
-    v0_nl->set_to_inflow(mc::heart_beat_inflow(4));
+    v0_nl->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(4));
     v2_nl->set_name("nl_out");
 
     v0_li->set_name("li_in");

@@ -34,11 +34,12 @@ int main(int argc, char *argv[]) {
   const std::size_t degree = 2;
 
   cxxopts::Options options(argv[0], "Linearized solver for breast geometry");
-  options.add_options()                                                                                                             //
-    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))                     //
-    ("tau", "time step size", cxxopts::value<double>()->default_value("1e-4"))                                //
-    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                                   //
-    ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("10"))                                               //
+  options.add_options()                                                                                                                //
+    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))                        //
+    ("mesh", "filepath to the given mesh", cxxopts::value<std::string>()->default_value("./data/meshes/coarse-network-geometry.json")) //
+    ("tau", "time step size", cxxopts::value<double>()->default_value("1e-4"))                                                         //
+    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                                      //
+    ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("10"))                                                 //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
   auto args = options.parse(argc, argv);
@@ -73,12 +74,12 @@ int main(int argc, char *argv[]) {
     auto graph = std::make_shared<mc::GraphStorage>();
 
     mc::EmbeddedGraphReader graph_reader;
-    graph_reader.append("./data/meshes/coarse-network-geometry.json", *graph);
+    graph_reader.append(args["mesh"].as<std::string>(), *graph);
 
-    graph->find_vertex_by_name("bg_132")->set_to_inflow(mc::heart_beat_inflow(0.035));
-    graph->find_vertex_by_name("bg_135")->set_to_inflow(mc::heart_beat_inflow(0.035));
-    graph->find_vertex_by_name("bg_141")->set_to_inflow(mc::heart_beat_inflow(0.035));
-    graph->find_vertex_by_name("bg_119")->set_to_inflow(mc::heart_beat_inflow(0.035));
+    graph->find_vertex_by_name("bg_132")->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(0.035));
+    graph->find_vertex_by_name("bg_135")->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(0.035));
+    graph->find_vertex_by_name("bg_141")->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(0.035));
+    graph->find_vertex_by_name("bg_119")->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(0.035));
     // mc::set_0d_tree_boundary_conditions(graph, "bg_");
     graph_reader.set_boundary_data("./data/meshes/boundary-combined-geometry-linear-part.json", *graph);
 
@@ -90,8 +91,13 @@ int main(int argc, char *argv[]) {
     auto dof_map = std::make_shared<mc::DofMap>(graph->num_vertices(), graph->num_edges());
     dof_map->create(PETSC_COMM_WORLD, *graph, 2, degree, true);
 
+    if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
+      std::cout << "num_1d_dof = " << dof_map->num_dof() << std::endl;
+    std::cout << mc::mpi::rank(MPI_COMM_WORLD) <<  " owns " << dof_map->num_owned_dofs() << " dof" << std::endl;
+
     mc::ImplicitLinearFlowSolver solver(PETSC_COMM_WORLD, graph, dof_map, degree);
     solver.setup(tau);
+    solver.use_named_solver("ilf_");
 
     mc::GraphPVDWriter writer(MPI_COMM_WORLD, args["output-directory"].as<std::string>(), "breast_geometry_linearized");
 
@@ -104,6 +110,7 @@ int main(int argc, char *argv[]) {
 
       if (t_idx % output_interval == 0) {
         std::cout << "iter = " << t_idx << ", t = " << t << std::endl;
+        std::cout << "solver iterations = " << solver.get_solver().get_iterations() << std::endl;
 
         std::vector<mc::Point> points;
         std::vector<double> p_vertex_values;

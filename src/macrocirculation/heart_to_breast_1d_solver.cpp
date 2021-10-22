@@ -194,7 +194,7 @@ void HeartToBreast1DSolver::setup_graphs(BoundaryModel bmodel) {
   graph_reader.append(path_nonlinear_geometry, *graph_nl);
 
   auto &v_in = *graph_nl->find_vertex_by_name("cw_in");
-  v_in.set_to_inflow(heart_beat_inflow(485.0));
+  v_in.set_to_inflow_with_fixed_flow(heart_beat_inflow(485.0));
 
   graph_reader.append(path_linear_geometry, *graph_li);
   graph_reader.set_boundary_data(path_boundary_linear, *graph_li);
@@ -280,20 +280,22 @@ void HeartToBreast1DSolver::setup_output() {
   auto dof_map_li = solver->get_implicit_dof_map();
   auto dof_map_nl = solver->get_explicit_dof_map();
 
+  auto dof_map_transport_nl = transport_solver->get_dof_maps_transport().at(0);
+  auto dof_map_transport_li = transport_solver->get_dof_maps_transport().at(1);
+
   csv_writer_nl = std::make_shared<GraphCSVWriter>(d_comm, output_folder_name, filename_csv_nl, graph_nl);
   csv_writer_nl->add_setup_data(dof_map_nl, get_solver_nl().A_component, "a");
   csv_writer_nl->add_setup_data(dof_map_nl, get_solver_nl().Q_component, "q");
+  csv_writer_nl->add_setup_data(dof_map_transport_nl, 0, "c");
   csv_writer_nl->setup();
 
   csv_writer_li = std::make_shared<GraphCSVWriter>(d_comm, output_folder_name, filename_csv_li, graph_li);
   csv_writer_li->add_setup_data(dof_map_li, get_solver_li().p_component, "p");
   csv_writer_li->add_setup_data(dof_map_li, get_solver_li().q_component, "q");
+  csv_writer_li->add_setup_data(dof_map_transport_li, 0, "c");
   csv_writer_li->setup();
 
   graph_pvd_writer = std::make_shared<GraphPVDWriter>(d_comm, output_folder_name, filename_pvd);
-
-  auto dof_map_transport_nl = transport_solver->get_dof_maps_transport().at(0);
-  auto dof_map_transport_li = transport_solver->get_dof_maps_transport().at(1);
 
   vessel_tip_writer_nl = std::make_shared<CSVVesselTipWriter>(MPI_COMM_WORLD,
                                                               output_folder_name, filename_csv_tips_nl,
@@ -320,14 +322,16 @@ void HeartToBreast1DSolver::write_output(double t) {
   auto dof_map_li = solver->get_implicit_dof_map();
   auto dof_map_nl = solver->get_explicit_dof_map();
 
-  auto dof_map_transport_li = transport_solver->get_dof_maps_transport().back();
+  auto dof_map_transport_li = transport_solver->get_dof_maps_transport().at(1);
 
   csv_writer_nl->add_data("a", get_solver_nl().get_solution());
   csv_writer_nl->add_data("q", get_solver_nl().get_solution());
+  csv_writer_nl->add_data("c", transport_solver->get_solution());
   csv_writer_nl->write(t);
 
   csv_writer_li->add_data("p", get_solver_li().get_solution());
   csv_writer_li->add_data("q", get_solver_li().get_solution());
+  csv_writer_li->add_data("c", transport_solver->get_solution());
   csv_writer_li->write(t);
 
   interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, get_solver_li().p_component, get_solver_li().get_solution(), points, p_vertex_values);
@@ -368,6 +372,10 @@ void HeartToBreast1DSolver::solve_transport(double tau, double t) {
   upwind_evaluator_nl->init(t, solver->get_explicit_solver()->get_solution());
   upwind_evaluator_li->init(t, solver->get_implicit_solver()->get_solution());
   transport_solver->solve(tau, t);
+}
+
+void HeartToBreast1DSolver::apply_slope_limiter_transport(double t) {
+  transport_solver->apply_slope_limiter(t);
 }
 
 void HeartToBreast1DSolver::set_output_folder(std::string output_dir) { output_folder_name = std::move(output_dir); }

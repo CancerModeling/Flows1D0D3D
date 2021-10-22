@@ -64,6 +64,9 @@ public:
   /*! @brief Requests the Jacobi preconditioner for the linear solver, which yields (more) reproducible results for unit-testing. */
   void use_pc_jacobi();
 
+  /*! @brief Requests the Jacobi preconditioner for the linear solver, which yields (more) reproducible results for unit-testing. */
+  void use_named_solver(const std::string & name);
+
   /*! @brief Sets the initial constant value of p and q. */
   void set_initial_value(double p, double q);
 
@@ -101,6 +104,8 @@ public:
   size_t get_degree() const;
   
   void applySlopeLimiter();
+
+  PetscKsp& get_solver();
 
 private:
   void assemble_matrix_cells(double tau);

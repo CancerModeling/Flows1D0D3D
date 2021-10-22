@@ -113,13 +113,22 @@ bool Vertex::is_bifurcation() const {
   return p_neighbors.size() > 1;
 }
 
-void Vertex::set_to_inflow(std::function<double(double)> value) {
+void Vertex::set_to_inflow_with_fixed_flow(std::function<double(double)> inflow_value) {
   if (!is_leaf())
     throw std::runtime_error("inflow bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
   if (d_bcs_finalized)
     throw std::runtime_error("finalized boundary conditions cannot be changed.");
-  p_flow_type = FlowType::Inflow;
-  p_inflow_value = std::move(value);
+  p_flow_type = FlowType::InflowFixedFlow;
+  p_inflow_value = std::move(inflow_value);
+}
+
+void Vertex::set_to_inflow_with_fixed_pressure(std::function<double(double)> pressure_value) {
+  if (!is_leaf())
+    throw std::runtime_error("inflow bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
+  if (d_bcs_finalized)
+    throw std::runtime_error("finalized boundary conditions cannot be changed.");
+  p_flow_type = FlowType::InflowFixedPressure;
+  p_inflow_value = std::move(pressure_value);
 }
 
 void Vertex::set_to_free_outflow() {
@@ -143,7 +152,7 @@ void Vertex::set_to_windkessel_outflow(double r, double c) {
   p_peripheral_vessel_data.p_out = 5.0 * 1.333322;
 }
 
-void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, size_t furcation_number) {
+void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &resistances, const std::vector<double> &capacitances, const std::vector<double> &radii, size_t furcation_number) {
   if (!is_leaf())
     throw std::runtime_error("tree bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
   if (d_bcs_finalized)
@@ -152,6 +161,7 @@ void Vertex::set_to_vessel_tree_outflow(double p, const std::vector<double> &res
   p_vessel_tree_data.p_out = p;
   p_vessel_tree_data.resistances = resistances;
   p_vessel_tree_data.capacitances = capacitances;
+  p_vessel_tree_data.radii = radii;
   p_vessel_tree_data.furcation_number = furcation_number;
 }
 
@@ -159,7 +169,7 @@ bool Vertex::bc_finalized() const { return d_bcs_finalized; }
 
 void Vertex::finalize_bcs() { d_bcs_finalized = true; }
 
-void Vertex::update_vessel_tip_pressures(double p){
+void Vertex::update_vessel_tip_pressures(double p) {
   if (is_vessel_tree_outflow())
     p_vessel_tree_data.p_out = p;
   else if (is_rcl_outflow())
@@ -205,8 +215,12 @@ bool Vertex::is_windkessel_outflow() const { return p_flow_type == FlowType::Win
 
 bool Vertex::is_vessel_tree_outflow() const { return p_flow_type == FlowType::VesselTree; };
 
-bool Vertex::is_inflow() const {
-  return p_flow_type == FlowType::Inflow;
+bool Vertex::is_inflow_with_fixed_flow() const {
+  return p_flow_type == FlowType::InflowFixedFlow;
+}
+
+bool Vertex::is_inflow_with_fixed_pressure() const {
+  return p_flow_type == FlowType::InflowFixedPressure;
 }
 
 bool Vertex::is_linear_characteristic_inflow() const {
@@ -413,8 +427,7 @@ const MicroVertex &Edge::right_micro_vertex() const {
   return d_micro_vertices.back();
 }
 
-std::size_t Edge::get_adajcent_micro_edge_id(const Vertex& vertex) const
-{
+std::size_t Edge::get_adajcent_micro_edge_id(const Vertex &vertex) const {
   if (vertex.get_id() != get_vertex_neighbors()[0] && vertex.get_id() != get_vertex_neighbors()[1])
     throw std::runtime_error("Edge::get_adjacent_micro_edge_id: edge is not adjacent to given vertex");
 
@@ -548,12 +561,11 @@ bool GraphStorage::edge_is_neighbor_of_rank(const Edge &e, int rank) const {
 }
 
 bool GraphStorage::vertex_is_connected_to_rank(const Vertex &vertex, int rank) const {
-  for (auto& con: vertex.get_inter_graph_connections() )
-  {
-    auto& connected_graph = con.get_graph();
-    auto& connected_vertex = con.get_vertex();
+  for (auto &con : vertex.get_inter_graph_connections()) {
+    auto &connected_graph = con.get_graph();
+    auto &connected_vertex = con.get_vertex();
 
-    if ( connected_graph.vertex_is_neighbor_of_rank(connected_vertex, rank) )
+    if (connected_graph.vertex_is_neighbor_of_rank(connected_vertex, rank))
       return true;
   }
   return false;
@@ -647,7 +659,7 @@ void GraphStorage::finalize_bcs() {
   }
 }
 
-bool GraphStorage::owns_primitive(const Vertex & vertex, size_t rank) const{
+bool GraphStorage::owns_primitive(const Vertex &vertex, size_t rank) const {
   return vertex_is_neighbor_of_rank(vertex, rank);
 }
 

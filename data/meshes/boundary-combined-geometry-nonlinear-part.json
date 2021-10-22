@@ -2,58 +2,58 @@
     "vertices": [
         {
             "name": "cw_out_8",
-            "peripheral_compliance": 0.7601869119030015,
-            "peripheral_resistance": 1.6657745280671457
+            "peripheral_compliance": 0.3870393491737245,
+            "peripheral_resistance": 1.7866666666666668
         },
         {
             "name": "cw_out_10",
-            "peripheral_compliance": 0.004920127339406303,
-            "peripheral_resistance": 257.3713863614846
+            "peripheral_compliance": 0.01574580565871583,
+            "peripheral_resistance": 43.91711156896442
         },
         {
             "name": "cw_out_13",
-            "peripheral_compliance": 0.004968236099798458,
-            "peripheral_resistance": 254.87919031654155
+            "peripheral_compliance": 0.015899749792381686,
+            "peripheral_resistance": 43.491898481848395
         },
         {
             "name": "cw_out_15",
-            "peripheral_compliance": 0.08029059894119624,
-            "peripheral_resistance": 15.771460309387708
+            "peripheral_compliance": 0.0258026232782483,
+            "peripheral_resistance": 26.8
         },
         {
             "name": "cw_out_16",
-            "peripheral_compliance": 0.08010428039338294,
-            "peripheral_resistance": 15.808143936870653
+            "peripheral_compliance": 0.0258026232782483,
+            "peripheral_resistance": 26.8
         },
         {
             "name": "cw_out_23",
-            "peripheral_compliance": 0.003287617610543949,
-            "peripheral_resistance": 385.1725305147423
+            "peripheral_compliance": 0.010521261772727714,
+            "peripheral_resistance": 65.72503553229008
         },
         {
             "name": "cw_out_24",
-            "peripheral_compliance": 0.003305631056185353,
-            "peripheral_resistance": 383.0736016497055
+            "peripheral_compliance": 0.010578916678096748,
+            "peripheral_resistance": 65.36683527234888
         },
         {
             "name": "cw_out_29",
-            "peripheral_compliance": 0.0021602070035488057,
-            "peripheral_resistance": 586.193819544958
+            "peripheral_compliance": 0.006913248178180678,
+            "peripheral_resistance": 100.02683051934574
         },
         {
             "name": "cw_out_30",
-            "peripheral_compliance": 0.002167005744135716,
-            "peripheral_resistance": 584.3547013407162
+            "peripheral_compliance": 0.006935008842825568,
+            "peripheral_resistance": 99.71296641855594
         },
         {
             "name": "cw_out_32",
-            "peripheral_compliance": 0.0016892101762345326,
-            "peripheral_resistance": 749.6402829165932
+            "peripheral_compliance": 0.005405944053678224,
+            "peripheral_resistance": 127.91665932734693
         },
         {
             "name": "cw_out_33",
-            "peripheral_compliance": 0.001689832213736892,
-            "peripheral_resistance": 749.3643357749405
+            "peripheral_compliance": 0.00540793485813843,
+            "peripheral_resistance": 127.86956980748332
         }
     ]
 }

@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
       std::cerr << "expected to find a single vertex, not " << std::to_string(inflow_vertices.size()) << " vertices" << std::endl;
       exit(-1);
     }
-    inflow_vertices[0]->set_to_inflow(mc::heart_beat_inflow(4.85 / 8.));
+    inflow_vertices[0]->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(4.85 / 8.));
   }
 
   graph->finalize_bcs();

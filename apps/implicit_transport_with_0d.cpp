@@ -77,7 +77,7 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
     variable_upwind_provider->init(t + tau, flow_solver->get_solution());
     transport_solver.solve(tau, t + tau);
     if (apply_slope_limiter)
-        transport_solver.apply_slope_limiter(t + tau);
+      transport_solver.apply_slope_limiter(t + tau);
 
     t += tau;
 
@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("6"))                                      //
     ("explicit-flow", "Enables an explicit flow solver instead of the implicit one", cxxopts::value<bool>()->default_value("false")) //
     ("edge-2-forward", "The second edge of the line points in forward direction", cxxopts::value<bool>()->default_value("false"))    //
-    ("apply-slope-limiter", "Adds the slope limiter", cxxopts::value<bool>()->default_value("false"))    //
+    ("apply-slope-limiter", "Adds the slope limiter", cxxopts::value<bool>()->default_value("false"))                                //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
 
@@ -259,9 +259,9 @@ int main(int argc, char *argv[]) {
   if (explicit_flow)
     v2->set_to_windkessel_outflow(18000., 3870);
   else
-    v2->set_to_vessel_tree_outflow(5 * (133.333) * 1e-2, {18000. - mc::calculate_R1(physical_data_short)}, {3870.}, 1);
+    v2->set_to_vessel_tree_outflow(5 * (133.333) * 1e-2, {18000. - mc::calculate_R1(physical_data_short)}, {3870.}, {radius}, 1);
 
-  v0->set_to_inflow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
+  v0->set_to_inflow_with_fixed_flow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
 
   graph->finalize_bcs();
 

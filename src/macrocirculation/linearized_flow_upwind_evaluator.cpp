@@ -225,7 +225,7 @@ void LinearizedFlowUpwindEvaluator::calculate_inout_fluxes(double t, const Vecto
     double p_up = NAN;
     double q_up = NAN;
 
-    if (vertex->is_inflow()) {
+    if (vertex->is_inflow_with_fixed_flow()) {
       q_up = -sigma * vertex->get_inflow_value(t);
       p_up = p_value[0] + 1. / alpha * (q_value[0] - q_up);
     } else if (vertex->is_free_outflow()) {

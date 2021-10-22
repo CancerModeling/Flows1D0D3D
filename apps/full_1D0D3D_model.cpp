@@ -52,12 +52,13 @@ int main(int argc, char *argv[]) {
     ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("5e-3"))                   //
     ("t-coup-start", "The time when the 3D coupling gets activated", cxxopts::value<double>()->default_value("2"))              //
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("50."))                               //
-    ("t-start-averaging-flow", "When should the averaging of the flow start?", cxxopts::value<double>()->default_value("10."))                               //
+    ("t-start-averaging-flow", "When should the averaging of the flow start?", cxxopts::value<double>()->default_value("10."))  //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                            //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                 //
     ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))           //
     ("deactivate-3d-1d-coupling", "deactivates the 3d-1d coupling", cxxopts::value<bool>()->default_value("false"))             //
+    ("no-slope-limiter", "Disables the slope limiter", cxxopts::value<bool>()->default_value("false"))                          //
     ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                           //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
@@ -68,6 +69,8 @@ int main(int argc, char *argv[]) {
     std::cout << options.help() << std::endl;
     exit(0);
   }
+
+  const bool slope_limiter_active = !args["no-slope-limiter"].as<bool>();
 
   // setup 1D solver
   const double t_end = args["t-end"].as<double>();
@@ -221,7 +224,7 @@ int main(int argc, char *argv[]) {
     // solve flow:
     solver_1d.solve_flow(tau, t);
 
-    if (t-0.5*tau < t_start_averaging_flow && t + 1.5 * tau > t_start_averaging_flow)
+    if (t - 0.5 * tau < t_start_averaging_flow && t + 1.5 * tau > t_start_averaging_flow)
       solver_1d.start_0d_flow_integrator();
 
     t += tau;
@@ -229,7 +232,16 @@ int main(int argc, char *argv[]) {
     // solve transport:
     if (it % transport_update_interval == 0) {
       solver_1d.solve_transport(tau_transport, t_transport + tau_transport);
+      if (slope_limiter_active)
+        solver_1d.apply_slope_limiter_transport(t_transport + transport_update_interval * tau);
       t_transport += tau_transport;
+    }
+
+    if (it % output_interval == 0) {
+      if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
+        std::cout << "iter = " << it << ", t = " << t << std::endl;
+
+      solver_1d.write_output(t);
     }
 
     // solve 3D system:
@@ -289,13 +301,6 @@ int main(int argc, char *argv[]) {
         solver_1d.update_vessel_tip_pressures(new_tip_pressures);
         solver_1d.update_vessel_tip_concentrations(new_tip_concentrations);
       }
-    }
-
-    if (it % output_interval == 0) {
-      if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
-        std::cout << "iter = " << it << ", t = " << t << std::endl;
-
-      solver_1d.write_output(t);
     }
 
     // break

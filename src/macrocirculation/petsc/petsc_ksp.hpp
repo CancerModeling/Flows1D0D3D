@@ -29,6 +29,20 @@ public:
     return ksp;
   }
 
+  static std::shared_ptr<PetscKsp> create_named_from_options(PetscMat &mat, const std::string & name) {
+    std::shared_ptr<PetscKsp> ksp(new PetscKsp(mat));
+
+    PC pc;
+    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
+    CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
+
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(ksp->d_ksp));
+
+    CHKERRABORT(PETSC_COMM_WORLD, PetscObjectSetName((PetscObject) ksp->d_ksp, (name).c_str()));
+
+    return ksp;
+  }
+
   static std::shared_ptr<PetscKsp> create_with_pc_ilu(PetscMat &mat) {
     std::shared_ptr<PetscKsp> ksp(new PetscKsp(mat));
 
@@ -77,6 +91,12 @@ public:
   }
 
   KSP &get_ksp() { return d_ksp; }
+
+  PetscInt get_iterations() const {
+    PetscInt its;
+    CHKERRABORT(PETSC_COMM_WORLD, KSPGetIterationNumber(d_ksp, &its));
+    return its;
+  }
 
 protected:
   PetscKsp(PetscMat &mat) {

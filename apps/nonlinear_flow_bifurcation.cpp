@@ -77,7 +77,7 @@ std::shared_ptr<mc::GraphStorage> create_3_vessel_network() {
   e1.add_physical_data(data_1);
   e2.add_physical_data(data_2);
 
-  v0.set_to_inflow(mc::heart_beat_inflow(485.));
+  v0.set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(485.));
 
   v2.set_to_windkessel_outflow(1.718414143839568, 0.7369003586207183);
   v3.set_to_windkessel_outflow(6.085065767841017, 0.20809964052427588);

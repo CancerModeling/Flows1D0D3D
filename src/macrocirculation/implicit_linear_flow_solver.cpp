@@ -155,6 +155,8 @@ ImplicitLinearFlowSolver::ImplicitLinearFlowSolver(MPI_Comm comm, std::shared_pt
 
 const DofMap &ImplicitLinearFlowSolver::get_dof_map() const { return *d_dof_map; }
 
+PetscKsp &ImplicitLinearFlowSolver::get_solver() { return *linear_solver; }
+
 void ImplicitLinearFlowSolver::setup(double tau) {
   d_tau = tau;
   assemble_matrix(tau);
@@ -294,7 +296,7 @@ void ImplicitLinearFlowSolver::assemble_matrix_inner_boundaries(double tau) {
 void ImplicitLinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *d_graph->get_vertex(v_idx);
-    if (!vertex.is_inflow())
+    if (!vertex.is_inflow_with_fixed_flow())
       continue;
     const auto q_in = vertex.get_inflow_value(t);
     auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
@@ -327,7 +329,7 @@ void ImplicitLinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
 void ImplicitLinearFlowSolver::assemble_matrix_inflow(double tau) {
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *d_graph->get_vertex(v_idx);
-    if (!vertex.is_inflow())
+    if (!vertex.is_inflow_with_fixed_flow())
       continue;
     auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
     auto &local_dof_map = d_dof_map->get_local_dof_map(neighbor_edge);
@@ -959,6 +961,10 @@ void ImplicitLinearFlowSolver::evaluate_1d_pq_values(const Edge &e, double s, do
 
 void ImplicitLinearFlowSolver::use_pc_jacobi() {
   linear_solver = PetscKsp::create_with_pc_jacobi(*A);
+}
+
+void ImplicitLinearFlowSolver::use_named_solver(const std::string &name) {
+  linear_solver = PetscKsp::create_named_from_options(*A, name);
 }
 
 } // namespace macrocirculation

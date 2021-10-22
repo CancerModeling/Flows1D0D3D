@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
     v4->set_to_free_outflow();
   }
 
-  v0->set_to_inflow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
+  v0->set_to_inflow_with_fixed_flow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
   v2->set_to_free_outflow();
 
   graph->finalize_bcs();

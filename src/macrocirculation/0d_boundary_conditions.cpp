@@ -36,7 +36,7 @@ EdgeTreeParameters calculate_edge_tree_parameters(const Edge& edge)
     const double C = 3 * std::pow(r, 3) * M_PI * l / (2 * E * h_0);
     const double viscosity = viscosity_bloodplasma(r);
     double R = 2 * (param.gamma + 2) * viscosity * l / (std::pow(r, 2));
-    R *= 2; // muscles?
+    // R *= 2; // muscles?
     list_C.push_back(C);
     list_R.push_back(R);
     list_radii.push_back(r);
@@ -52,7 +52,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     if (!vertex.is_leaf())
       continue;
 
-    if (vertex.is_inflow()) {
+    if (vertex.is_inflow_with_fixed_flow()) {
       std::cout << "rank = " << mpi::rank(MPI_COMM_WORLD) << " found inflow " << vertex.get_name() << std::endl;
       continue;
     }
@@ -84,6 +84,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     const int N = static_cast<int>(std::ceil(gamma * std::log(r_0 / r_cap) / std::log(2)));
     const auto alpha = 1. / std::pow(2, 1 / gamma);
     const auto beta = 3./4.;
+    std::vector<double> list_radius;
     std::vector<double> list_C;
     std::vector<double> list_R;
     double r = r_0 * alpha;
@@ -99,15 +100,16 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
       // const double viscosity = param.viscosity;
       double R = 2 * (param.gamma + 2) * viscosity * l / (std::pow(r, 2));
       // R *= 1.15; // muscles?
-      R *= 2; // muscles?
+      // R *= 2; // muscles?
       list_C.push_back(C);
       list_R.push_back(R);
+      list_radius.push_back(r);
       r *= alpha;
       // l *= beta;
     }
     std::cout << "vessel stop" << std::endl;
 
-    vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 2);
+    vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, list_radius, 2);
   }
 }
 
@@ -163,7 +165,11 @@ void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &gr
       // small veins
       list_R.push_back(R2 * 0.025);
 
-      vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, 1);
+      std::vector< double > radii;
+      for (auto x : list_R)
+        radii.push_back(NAN);
+
+      vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, radii, 1);
     }
   }
 }

@@ -28,6 +28,7 @@ double macrocirculation::BaseAssembly::compute_qoi(const std::string &type, unsi
     init_fe(elem);
 
     if (var_fe_type == lm::CONSTANT) {
+      std::cout << "constant" << std::endl;
       cur_sol = get_current_sol(0);
       if (type == "mass" and cur_sol < 0.)
         cur_sol = 0.;
@@ -39,6 +40,7 @@ double macrocirculation::BaseAssembly::compute_qoi(const std::string &type, unsi
       else if (type == "l2")
         qoi += elem->volume() * cur_sol * cur_sol;
     } else {
+      //std::cout << "variable" << std::endl;
       for (unsigned int qp = 0; qp < d_qrule.n_points(); qp++) {
         cur_sol = 0.;
         for (unsigned int l = 0; l < d_phi.size(); l++) {
@@ -59,6 +61,8 @@ double macrocirculation::BaseAssembly::compute_qoi(const std::string &type, unsi
           qoi += d_JxW[qp] * std::abs(cur_sol);
         else if (type == "l2")
           qoi += d_JxW[qp] * cur_sol * cur_sol;
+        else
+          throw std::runtime_error("unknown norm");
       } // loop over quadrature points
     }
   } // loop over elements
