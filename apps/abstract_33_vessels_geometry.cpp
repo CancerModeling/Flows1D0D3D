@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     const double t_end = args["t-end"].as<double>();
     const std::size_t max_iter = 160000000;
 
-    const auto tau = 2.0e-6; //args["tau"].as<double>();
+    const auto tau = args["tau"].as<double>();
     const auto tau_out = args["tau-out"].as<double>();
 
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
