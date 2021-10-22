@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <gmm.h>
+#include <utility>
 
 namespace macrocirculation {
 
@@ -18,9 +19,9 @@ struct VesselParameters;
 
 namespace nonlinear {
 template<typename PhysicalParameters = VesselParameters>
-double get_w1_from_QA(double Q, double A, PhysicalParameters& param);
+double get_w1_from_QA(double Q, double A, PhysicalParameters &param);
 template<typename PhysicalParameters = VesselParameters>
-double get_w2_from_QA(double Q, double A, PhysicalParameters& param);
+double get_w2_from_QA(double Q, double A, PhysicalParameters &param);
 } // namespace nonlinear
 
 double solve_for_W1(double W1, double W2, double Q_star, double A_0, double c_0);
@@ -96,6 +97,11 @@ inline double get_w2_from_QA(double Q, double A, const PhysicalParameters &param
   return +Q / A + 4 * std::sqrt(param.G0 / (2 * param.rho)) * std::pow(A / param.A0, 1. / 4.);
 }
 
+template<typename PhysicalParameters = VesselParameters>
+inline double get_p_from_QA(double Q, double A, const PhysicalParameters &param) {
+  return 0.5 * param.rho * std::pow(Q / A, 2) + param.G0 * (std::sqrt(A / param.A0) - 1);
+}
+
 namespace inflow {
 
 /*! @brief Assembles the inflow boundary condition.
@@ -114,7 +120,7 @@ inline double get_upwinded_A_from_Q(const double Q,
                                     const double A,
                                     const bool in,
                                     const double Q_star,
-                                    const PhysicalParameters& param) {
+                                    const PhysicalParameters &param) {
   const double c0 = calculate_c0(param);
   double W1 = get_w1_from_QA(Q, A, param);
   double W2 = get_w2_from_QA(Q, A, param);
@@ -131,7 +137,7 @@ inline double get_upwinded_Q_from_A(const double Q_DG,
                                     const double A_DG,
                                     const double sigma,
                                     const double A_star,
-                                    const PhysicalParameters& param) {
+                                    const PhysicalParameters &param) {
   const double c0 = calculate_c0(param);
   // we choose the outgoing characteristic, which depends on the orientation and hence the normal:
   double w = sigma < 0 ? get_w1_from_QA(Q_DG, A_DG, param) : get_w2_from_QA(Q_DG, A_DG, param);
@@ -198,10 +204,6 @@ inline double calculate_diff_Q_w2(double w1, double w2, double G0, double rho, d
   const double c0 = calculate_c0(G0, rho, A0);
   return +0.5 * std::pow((w1 + w2) / (8 * c0), 4) * A0 +
          2 * A0 * (w2 - w1) * std::pow(w2 + w1, 3) / std::pow(8 * c0, 4);
-}
-
-inline double get_p_from_QA(double Q, double A, double G0, double rho, double A0) {
-  return 0.5 * rho * std::pow(Q / A, 2) + G0 * (std::sqrt(A / A0) - 1);
 }
 
 /*! @brief Derivative of the total pressure with respect to the backward characteristic. */
@@ -279,6 +281,37 @@ public:
 
 private:
   double d_delta;
+};
+
+class piecewise_linear_source_function {
+public:
+  piecewise_linear_source_function(std::vector<double> t_list, std::vector<double> value_list)
+      : d_t_list(std::move(t_list)), d_value_list(std::move(value_list)) {
+    if (!std::is_sorted(d_t_list.begin(), d_t_list.end()))
+      throw std::runtime_error("piecewise_linear_source_function only accepts sorted time arrays");
+    if (d_t_list.size() != d_value_list.size())
+      throw std::runtime_error("both lists to piecewise_linear_source_function must have the same size");
+  }
+
+  double operator()(double t) const {
+    auto lower_t_it = std::lower_bound(d_t_list.begin(), d_t_list.end(), t);
+    const auto idx = std::distance(d_t_list.begin(), lower_t_it);
+
+    // if we are the last element:
+    if (idx == d_t_list.size() - 1 && std::abs(d_t_list.back() - t) < 1e-12)
+      return d_value_list.back();
+
+    const double t_next = d_t_list[idx + 1];
+    const double t_prev = d_t_list[idx];
+    const double tau = t_next - t_prev;
+    const double theta = (t - t_prev) / tau;
+
+    return d_value_list[idx] * (1 - theta) + d_value_list[idx + 1] * theta;
+  }
+
+private:
+  std::vector<double> d_t_list;
+  std::vector<double> d_value_list;
 };
 
 /*! @brief Solves for the forward propagating characteristic W2, given the
