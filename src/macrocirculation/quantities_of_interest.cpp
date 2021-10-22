@@ -61,8 +61,8 @@ void calculate_total_pressure(const MPI_Comm comm,
       extract_dof(dof_indices, dof_vector, dof_vector_local);
       const auto A = fe.evaluate_dof_at_boundary_points(dof_vector_local);
 
-      interpolated.push_back(calculate_p_from_QA(Q.left, A.left, param.G0, param.rho, param.A0));
-      interpolated.push_back(calculate_p_from_QA(Q.right, A.right, param.G0, param.rho, param.A0));
+      interpolated.push_back(get_p_from_QA(Q.left, A.left, param.G0, param.rho, param.A0));
+      interpolated.push_back(get_p_from_QA(Q.right, A.right, param.G0, param.rho, param.A0));
     }
   }
 }

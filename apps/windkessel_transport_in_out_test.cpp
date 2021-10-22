@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
     edge_2->add_physical_data(physical_data_long);
     edge_1->add_physical_data(physical_data_short);
 
-    v2->set_to_vessel_tree_outflow(5 * (133.333) * 1e-2, {18000. - mc::calculate_R1(physical_data_short)}, {3870.}, 1);
+    v2->set_to_vessel_tree_outflow(5 * (133.333) * 1e-2, {18000. - mc::calculate_R1(physical_data_short)}, {3870.}, {radius}, 1);
     v0->set_to_inflow_with_fixed_flow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
 
     graph->finalize_bcs();

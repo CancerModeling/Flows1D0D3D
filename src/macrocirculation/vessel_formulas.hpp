@@ -14,17 +14,18 @@
 namespace macrocirculation {
 
 // forward definitions:
-double calculate_W1_value(double Q, double A, double G0, double rho, double A0);
-double calculate_W2_value(double Q, double A, double G0, double rho, double A0);
+struct VesselParameters;
+
+namespace nonlinear {
+template<typename PhysicalParameters = VesselParameters>
+double get_w1_from_QA(double Q, double A, PhysicalParameters& param);
+template<typename PhysicalParameters = VesselParameters>
+double get_w2_from_QA(double Q, double A, PhysicalParameters& param);
+} // namespace nonlinear
+
 double solve_for_W1(double W1, double W2, double Q_star, double A_0, double c_0);
 double solve_for_W2(double W1, double W2, double Q_star, double A_0, double c_0);
 double calculate_c0(double G0, double rho, double A0);
-
-/*! @brief Calculates c0. */
-template<typename PhysicalParameters>
-inline double calculate_c0(const PhysicalParameters &param) {
-  return std::sqrt(param.G0 / (2 * param.rho));
-}
 
 /*! @brief Saves the material constants on a vessel. */
 struct VesselParameters {
@@ -37,6 +38,12 @@ struct VesselParameters {
   double A0{};
   double rho{};
 };
+
+/*! @brief Calculates c0. */
+template<typename PhysicalParameters = VesselParameters>
+inline double calculate_c0(const PhysicalParameters &param) {
+  return std::sqrt(param.G0 / (2 * param.rho));
+}
 
 /*! @brief Formulas especially for the nonlinear flow model. */
 namespace nonlinear {
@@ -52,15 +59,41 @@ inline double get_A_from_p(double p, double G0, double A0) {
 }
 
 /*! @brief Converts the vessel area A to the static pressure p. */
-template<typename PhysicalParameters>
+template<typename PhysicalParameters = VesselParameters>
 inline double get_p_from_A(const PhysicalParameters &param, double A) {
   return get_p_from_A(A, param.G0, param.A0);
 }
 
 /*! @brief Converts the static pressure p to the vessel area A. */
-template<typename PhysicalParameters>
+template<typename PhysicalParameters = VesselParameters>
 inline double get_A_from_p(const PhysicalParameters &param, double p) {
   return get_A_from_p(p, param.G0, param.A0);
+}
+
+/*! @brief Calculates the flow Q from the characteristics. */
+template<typename PhysicalParameters = VesselParameters>
+inline double get_Q_from_w1w2(double w1, double w2, const PhysicalParameters &param) {
+  const double c0 = calculate_c0(param);
+  return 0.5 * (w2 - w1) * std::pow((w1 + w2) / (8 * c0), 4) * param.A0;
+}
+
+/*! @brief Calculates the total pressure from the characteristics. */
+template<typename PhysicalParameters = VesselParameters>
+inline double get_p_from_w1w2(double w1, double w2, const PhysicalParameters &param) {
+  const double c0 = calculate_c0(param);
+  return 0.5 * param.rho * std::pow(0.5 * (w2 - w1), 2) + param.G0 * (std::pow((w1 + w2) / (8 * c0), 2) - 1);
+}
+
+/*! @brief Evaluates the back propagating wave from Q and A. */
+template<typename PhysicalParameters = VesselParameters>
+inline double get_w1_from_QA(const double Q, const double A, const PhysicalParameters &param) {
+  return -Q / A + 4 * std::sqrt(param.G0 / (2 * param.rho)) * std::pow(A / param.A0, 1. / 4.);
+}
+
+/*! @brief Evaluates the forward propagating wave from Q and A. */
+template<typename PhysicalParameters = VesselParameters>
+inline double get_w2_from_QA(double Q, double A, const PhysicalParameters &param) {
+  return +Q / A + 4 * std::sqrt(param.G0 / (2 * param.rho)) * std::pow(A / param.A0, 1. / 4.);
 }
 
 namespace inflow {
@@ -76,36 +109,34 @@ namespace inflow {
 * @param A0  The area at p=0.
 * @return
 */
+template<typename PhysicalParameters = VesselParameters>
 inline double get_upwinded_A_from_Q(const double Q,
                                     const double A,
                                     const bool in,
                                     const double Q_star,
-                                    const double G0,
-                                    const double rho,
-                                    const double A0) {
-  const double c0 = sqrt(G0 / (2 * rho));
-  double W1 = calculate_W1_value(Q, A, G0, rho, A0);
-  double W2 = calculate_W2_value(Q, A, G0, rho, A0);
+                                    const PhysicalParameters& param) {
+  const double c0 = calculate_c0(param);
+  double W1 = get_w1_from_QA(Q, A, param);
+  double W2 = get_w2_from_QA(Q, A, param);
   if (in)
-    W1 = solve_for_W1(W1, W2, Q_star, A0, c0);
+    W1 = solve_for_W1(W1, W2, Q_star, param.A0, c0);
   else
-    W2 = solve_for_W2(W1, W2, Q_star, A0, c0);
-  const double A_star = A0 * std::pow(1. / (8 * c0) * (W2 + W1), 4);
+    W2 = solve_for_W2(W1, W2, Q_star, param.A0, c0);
+  const double A_star = param.A0 * std::pow(1. / (8 * c0) * (W2 + W1), 4);
   return A_star;
 }
 
+template<typename PhysicalParameters = VesselParameters>
 inline double get_upwinded_Q_from_A(const double Q_DG,
                                     const double A_DG,
                                     const double sigma,
                                     const double A_star,
-                                    const double G0,
-                                    const double rho,
-                                    const double A0) {
-  const double c0 = calculate_c0(G0, rho, A0);
+                                    const PhysicalParameters& param) {
+  const double c0 = calculate_c0(param);
   // we choose the outgoing characteristic, which depends on the orientation and hence the normal:
-  double w = sigma < 0 ? calculate_W1_value(Q_DG, A_DG, G0, rho, A0) : calculate_W2_value(Q_DG, A_DG, G0, rho, A0);
+  double w = sigma < 0 ? get_w1_from_QA(Q_DG, A_DG, param) : get_w2_from_QA(Q_DG, A_DG, param);
   // we convert it to the upwinded flow:
-  double Q_star = sigma * (w - 4 * c0 * std::pow(A_star / A0, 0.25)) * A_star;
+  double Q_star = sigma * (w - 4 * c0 * std::pow(A_star / param.A0, 0.25)) * A_star;
   return Q_star;
 }
 
@@ -155,12 +186,6 @@ inline double calculate_c0(double G0, double rho, double A0) {
   return std::sqrt(G0 / (2 * rho));
 }
 
-/*! @brief Calculates the flow Q from the characteristics. */
-inline double calculate_Q(double w1, double w2, double G0, double rho, double A0) {
-  const double c0 = calculate_c0(G0, rho, A0);
-  return 0.5 * (w2 - w1) * std::pow((w1 + w2) / (8 * c0), 4) * A0;
-}
-
 /*! @brief Calculates the derivative of Q w.r.t. w1, the back propagating characteristic. */
 inline double calculate_diff_Q_w1(double w1, double w2, double G0, double rho, double A0) {
   const double c0 = calculate_c0(G0, rho, A0);
@@ -175,13 +200,7 @@ inline double calculate_diff_Q_w2(double w1, double w2, double G0, double rho, d
          2 * A0 * (w2 - w1) * std::pow(w2 + w1, 3) / std::pow(8 * c0, 4);
 }
 
-/*! @brief Calculates the total pressure from the characteristics. */
-inline double calculate_p_from_w1w2(double w1, double w2, double G0, double rho, double A0) {
-  const double c0 = calculate_c0(G0, rho, A0);
-  return 0.5 * rho * std::pow(0.5 * (w2 - w1), 2) + G0 * (std::pow((w1 + w2) / (8 * c0), 2) - 1);
-}
-
-inline double calculate_p_from_QA(double Q, double A, double G0, double rho, double A0) {
+inline double get_p_from_QA(double Q, double A, double G0, double rho, double A0) {
   return 0.5 * rho * std::pow(Q / A, 2) + G0 * (std::sqrt(A / A0) - 1);
 }
 
@@ -195,16 +214,6 @@ inline double calculate_diff_p_w1(double w1, double w2, double G0, double rho, d
 inline double calculate_diff_p_w2(double w1, double w2, double G0, double rho, double A0) {
   const double c0 = calculate_c0(G0, rho, A0);
   return +0.25 * rho * (w2 - w1) + 2 * G0 * (w1 + w2) / std::pow((8 * c0), 2);
-}
-
-/*! @brief Evaluates the back propagating wave from Q and A. */
-inline double calculate_W1_value(const double Q, const double A, const double G0, const double rho, const double A0) {
-  return -Q / A + 4 * std::sqrt(G0 / (2 * rho)) * std::pow(A / A0, 1. / 4.);
-}
-
-/*! @brief Evaluates the forward propagating wave from Q and A. */
-inline double calculate_W2_value(double Q, double A, double G0, double rho, double A0) {
-  return +Q / A + 4 * std::sqrt(G0 / (2 * rho)) * std::pow(A / A0, 1. / 4.);
 }
 
 /*! @brief Convertes the characteristic variables to flow Q and area A. */
@@ -353,13 +362,13 @@ inline void nfurcation_equation(const std::vector<double> &w1,
   // flow equation (all flows add up to zero):
   double eq_Q = 0;
   for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1)
-    eq_Q += (in[vessel_idx] ? -1 : +1) * calculate_Q(w1[vessel_idx], w2[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
+    eq_Q += (in[vessel_idx] ? -1 : +1) * nonlinear::get_Q_from_w1w2(w1[vessel_idx], w2[vessel_idx], p[vessel_idx]);
   out[0] = eq_Q;
 
   // pressure equation (all pressures are equal):
   for (size_t vessel_idx = 1; vessel_idx < num_vessels; vessel_idx += 1)
-    out[vessel_idx] = calculate_p_from_w1w2(w1[0], w2[0], p[0].G0, p[0].rho, p[0].A0) -
-                      calculate_p_from_w1w2(w1[vessel_idx], w2[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
+    out[vessel_idx] = nonlinear::get_p_from_w1w2(w1[0], w2[0], p[0]) -
+                      nonlinear::get_p_from_w1w2(w1[vessel_idx], w2[vessel_idx], p[vessel_idx]);
 }
 
 /*! @brief Evaluates the jacobian nxn of the bifurcation equation system at a vertex,
@@ -505,8 +514,8 @@ inline std::size_t solve_at_nfurcation(const std::vector<double> &Q,
   std::vector<double> w1(num_vessels, 0);
   std::vector<double> w2(num_vessels, 0);
   for (size_t vessel_idx = 0; vessel_idx < num_vessels; vessel_idx += 1) {
-    w1[vessel_idx] = calculate_W1_value(Q[vessel_idx], A[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
-    w2[vessel_idx] = calculate_W2_value(Q[vessel_idx], A[vessel_idx], p[vessel_idx].G0, p[vessel_idx].rho, p[vessel_idx].A0);
+    w1[vessel_idx] = nonlinear::get_w1_from_QA(Q[vessel_idx], A[vessel_idx], p[vessel_idx]);
+    w2[vessel_idx] = nonlinear::get_w2_from_QA(Q[vessel_idx], A[vessel_idx], p[vessel_idx]);
   }
 
   // solve for w1, w2 with a newton iteration

@@ -45,15 +45,15 @@ TEST_CASE("PressureAndFluxInflowBCAreConsistent", "[VesselFormulas]") {
   const double Q_up = 12.;
 
   {
-    const double A_up = mc::nonlinear::inflow::get_upwinded_A_from_Q(Q_DG, A_DG, true, Q_up, G0, rho, A0);
-    const double recreated_Q_up = mc::nonlinear::inflow::get_upwinded_Q_from_A(Q_DG, A_DG, +1., A_up, G0, rho, A0);
+    const double A_up = mc::nonlinear::inflow::get_upwinded_A_from_Q(Q_DG, A_DG, true, Q_up, {G0, A0, rho});
+    const double recreated_Q_up = mc::nonlinear::inflow::get_upwinded_Q_from_A(Q_DG, A_DG, +1., A_up, {G0, A0, rho});
 
     REQUIRE(recreated_Q_up == Approx(Q_up).epsilon(1e-8));
   }
 
   {
-    const double A_up = mc::nonlinear::inflow::get_upwinded_A_from_Q(-Q_DG, A_DG, false, -Q_up, G0, rho, A0);
-    const double recreated_Q_up = mc::nonlinear::inflow::get_upwinded_Q_from_A(-Q_DG, A_DG, -1., A_up, G0, rho, A0);
+    const double A_up = mc::nonlinear::inflow::get_upwinded_A_from_Q(-Q_DG, A_DG, false, -Q_up, {G0, A0, rho});
+    const double recreated_Q_up = mc::nonlinear::inflow::get_upwinded_Q_from_A(-Q_DG, A_DG, -1., A_up, {G0, A0, rho});
 
     REQUIRE(recreated_Q_up == Approx(-Q_up).epsilon(1e-8));
   }
