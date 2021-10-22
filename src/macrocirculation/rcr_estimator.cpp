@@ -14,8 +14,8 @@
 
 #include "communication/mpi.hpp"
 #include "explicit_nonlinear_flow_solver.hpp"
-#include "implicit_linear_flow_solver.hpp"
 #include "graph_storage.hpp"
+#include "implicit_linear_flow_solver.hpp"
 #include "vessel_formulas.hpp"
 
 namespace macrocirculation {
@@ -47,7 +47,7 @@ void FlowIntegrator::update_flow_abstract(const Solver &solver, double tau) {
   for (auto v_id : d_graph->get_active_vertex_ids(mpi::rank(MPI_COMM_WORLD))) {
     auto v = d_graph->get_vertex(v_id);
     if (v->is_leaf()) {
-      auto& edge = *d_graph->get_edge(v->get_edge_neighbors()[0]);
+      auto &edge = *d_graph->get_edge(v->get_edge_neighbors()[0]);
       double sigma = edge.is_pointing_to(v_id) ? +1. : -1;
       double p, q;
       solver.get_1d_pq_values_at_vertex(*v, p, q);
@@ -86,7 +86,7 @@ double get_total_edge_capacitance(const std::shared_ptr<GraphStorage> &graph) {
     double c0 = calculate_c0(data.G0, data.rho, data.A0); // [cm/s]
 
     // in meter
-    double C_e = (1e-2 * data.length) * (1e-4 * data.A0) / (1060 * std::pow(1e-2 * c0, 2));
+    double C_e = data.length * data.A0 / (data.rho * std::pow(c0, 2));
 
     total_C_edge += C_e;
   }
@@ -126,6 +126,14 @@ void RCREstimator::reset() {
 void RCREstimator::set_total_C(double C) { d_total_C = C; }
 
 void RCREstimator::set_total_R(double R) { d_total_R = R; }
+
+double RCREstimator::resistance_to_distribute() const { return d_total_R; }
+
+double RCREstimator::capacitance_to_distribute() const { return d_total_C - d_total_C_edge; };
+
+double RCREstimator::resistance_from_flow(double R, double flow) { return R / flow; }
+
+double RCREstimator::capacitance_from_flow(double C, double flow) { return flow * C; };
 
 std::map<size_t, RCRData> RCREstimator::estimate_parameters(const std::map<size_t, double> &flows, double total_flow) {
   std::map<size_t, RCRData> resistances;

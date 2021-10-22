@@ -89,7 +89,7 @@ if True:
 
     for idx, vessel_id in enumerate(args.vessels):
         plt.clf()
-        ax = fig.add_subplot(111,aspect=1.) 
+        ax = fig.add_subplot(111) 
         ax.plot(list_t[idx], list_p[idx], label='$p_{' + str(vessel_id+1) + '}$', linewidth=4)
         ax.legend()
         ax.set_xlabel('t [s]')
@@ -100,7 +100,7 @@ if True:
 
     for idx, vessel_id in enumerate(args.vessels):
         plt.clf()
-        ax = fig.add_subplot(111,aspect=0.5) 
+        ax = fig.add_subplot(111) 
         ax.plot(list_t[idx], list_q[idx], label='$q_{' + str(vessel_id+1) + '}$', linewidth=4)
         ax.legend()
         ax.set_xlabel('t [s]')

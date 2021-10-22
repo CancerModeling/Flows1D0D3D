@@ -62,10 +62,10 @@ if __name__ == '__main__':
     else:
         stop_index = len(t)
 
-    show_Q_total = True 
+    show_Q_total = False 
     show_N_total = False 
-    show_p = True
-    show_Q = True 
+    show_p = True 
+    show_Q = False 
     show_V = False
     show_c = False 
     show_N = False 

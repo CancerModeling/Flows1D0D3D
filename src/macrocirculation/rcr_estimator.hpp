@@ -93,6 +93,12 @@ public:
   /*! @brief Sets the total (known) resistance of the whole body/network. */
   void set_total_R(double R);
 
+  double resistance_to_distribute() const;
+  double capacitance_to_distribute() const;
+
+  static double resistance_from_flow(double total_R, double flow);
+  static double capacitance_from_flow(double total_C, double flow);
+
 protected:
   std::vector<std::shared_ptr<GraphStorage>> d_graph_list;
 
