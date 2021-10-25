@@ -211,6 +211,11 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
+            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/write_cow_plots_comparison.py $<TARGET_FILE_DIR:${TargetName}>/write_cow_plots_comparison.py
+            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/write_cow_plots_comparison.py")
+
+    add_custom_command(
+            TARGET ${TargetName} PRE_BUILD
             COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_pressure_amplitudes_in_1d0d_models.py $<TARGET_FILE_DIR:${TargetName}>/plot_pressure_amplitudes_in_1d0d_models.py
             COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_pressure_amplitudes_in_1d0d_models.py")
 
