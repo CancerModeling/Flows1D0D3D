@@ -1,0 +1,142 @@
+{
+  "vertices": [
+    {
+      "id":0,
+      "name": "cw_right_branch_start_in"
+    },
+    {
+      "id": 1,
+      "name": "cw_left_branch_start_in"
+    },
+    {
+      "id": 2,
+      "name": "cw_mp_1_2"
+    },
+    {
+      "id": 3,
+      "name": "cw_mp_1_2"
+    },
+    {
+      "id": 4,
+      "name": "cw_out_1_3"
+    },
+    {
+      "id": 5,
+      "name": "cw_mp2"
+    },
+    {
+      "id": 6,
+      "name": "cw_out_2_1"
+    },
+    {
+      "id": 7,
+      "name": "cw_out_2_2"
+    },
+    {
+      "id": 8,
+      "name": "cw_out_1_1"
+    },
+    {
+      "id": 9,
+      "name": "cw_out_1_2"
+    }
+  ],
+  "vessels": [
+    {
+      "id": 0,
+      "name": "cw_right_branch_start",
+      "vessel_length": 2.5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 5,
+      "left_vertex_id": 0,
+      "right_vertex_id": 2
+    },
+    {
+      "id": 1,
+      "name": "cw_right_branch_short_start",
+      "vessel_length": 2.0,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 5,
+      "left_vertex_id": 2,
+      "right_vertex_id": 3
+    },
+    {
+      "id": 2,
+      "name": "cw_right_branch_short_end_1",
+      "vessel_length": 0.5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 5,
+      "left_vertex_id": 3,
+      "right_vertex_id": 8
+    },
+    {
+      "id": 3,
+      "name": "cw_right_branch_short_end_2",
+      "vessel_length": 0.5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 5,
+      "left_vertex_id": 3,
+      "right_vertex_id": 9
+    },
+    {
+      "id": 4,
+      "name": "cw_right_branch_long",
+      "vessel_length": 5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 10,
+      "left_vertex_id": 2,
+      "right_vertex_id": 4
+    },
+    {
+      "id": 5,
+      "name": "cw_left_branch_start",
+      "vessel_length": 2.5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 5,
+      "left_vertex_id": 1,
+      "right_vertex_id": 5
+    },
+    {
+      "id": 6,
+      "name": "cw_left_branch_short",
+      "vessel_length": 2.5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 5,
+      "left_vertex_id": 5,
+      "right_vertex_id": 6
+    },
+    {
+      "id": 7,
+      "name": "cw_left_branch_long",
+      "vessel_length": 7,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 10,
+      "left_vertex_id": 5,
+      "right_vertex_id": 7
+    }
+  ]
+}
