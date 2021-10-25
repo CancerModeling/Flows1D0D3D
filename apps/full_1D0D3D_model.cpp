@@ -45,21 +45,23 @@ int main(int argc, char *argv[]) {
   std::cout << petsc_version << std::endl;
 
   cxxopts::Options options(argv[0], "Fully coupled 1D-0D-3D solver.");
-  options.add_options()                                                                                                         //
-    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value("1.5625e-05"))                           //
-    ("tau-transport", "time step size for the 1D transport", cxxopts::value<double>()->default_value("1.5625e-04"))             //
-    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("5e-1"))                               //
-    ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("5e-3"))                   //
-    ("t-coup-start", "The time when the 3D coupling gets activated", cxxopts::value<double>()->default_value("2"))              //
-    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("50."))                               //
-    ("t-start-averaging-flow", "When should the averaging of the flow start?", cxxopts::value<double>()->default_value("10."))  //
-    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/")) //
-    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                            //
-    ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                 //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))           //
-    ("deactivate-3d-1d-coupling", "deactivates the 3d-1d coupling", cxxopts::value<bool>()->default_value("false"))             //
-    ("no-slope-limiter", "Disables the slope limiter", cxxopts::value<bool>()->default_value("false"))                          //
-    ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                           //
+  options.add_options()                                                                                                                          //
+    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value("1.5625e-05"))                                            //
+    ("tau-transport", "time step size for the 1D transport", cxxopts::value<double>()->default_value("1.5625e-04"))                              //
+    ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("5e-1"))                                                //
+    ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("5e-3"))                                    //
+    ("t-coup-start", "The time when the 3D coupling gets activated", cxxopts::value<double>()->default_value("2"))                               //
+    ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("50."))                                                //
+    ("t-start-averaging-flow", "When should the averaging of the flow start?", cxxopts::value<double>()->default_value("10."))                   //
+    ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/"))                  //
+    ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                                             //
+    ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                                  //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))                            //
+    ("deactivate-3d-1d-coupling", "deactivates the 3d-1d coupling", cxxopts::value<bool>()->default_value("false"))                              //
+    ("no-slope-limiter", "Disables the slope limiter", cxxopts::value<bool>()->default_value("false"))                                           //
+    ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                                            //
+    ("input-file-pressures", "file containing the pressures at the input", cxxopts::value<std::string>()->default_value(""))                     //
+    ("input-file-1d-nonlinear-geometry", "file containing the nonlinear part of our geometry", cxxopts::value<std::string>()->default_value("")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
 
@@ -83,6 +85,9 @@ int main(int argc, char *argv[]) {
   const auto tau_coup = args["tau-coup"].as<double>();
   const auto tau_transport = args["tau-transport"].as<double>();
   auto out_dir = args["output-directory"].as<std::string>();
+
+  const auto input_file_pressures = args["input-file-pressures"].as<std::string>();
+  const auto input_file_nonlinear_geometry = args["input-file-1d-nonlinear-geometry"].as<std::string>();
 
   if (tau > tau_coup || tau > tau_transport) {
     std::cerr << "flow time step width too large" << std::endl;
@@ -113,6 +118,14 @@ int main(int argc, char *argv[]) {
   }
 
   mc::HeartToBreast1DSolver solver_1d(MPI_COMM_WORLD);
+  if (!input_file_pressures.empty()) {
+    std::cout << "Using input pressures from " << input_file_pressures << std::endl;
+    solver_1d.set_path_inflow_pressures(input_file_pressures);
+  }
+  if (!input_file_nonlinear_geometry.empty()) {
+    std::cout << "Using custom nonlinear geometry at " << input_file_nonlinear_geometry << std::endl;
+    solver_1d.set_path_nonlinear_geometry(input_file_nonlinear_geometry);
+  }
   solver_1d.set_output_folder(out_dir);
   solver_1d.setup(degree, tau, mc::BoundaryModel::DiscreteRCRTree);
 

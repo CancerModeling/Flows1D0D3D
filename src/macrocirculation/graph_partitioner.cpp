@@ -62,7 +62,7 @@ void priority_mesh_partitioner(MPI_Comm comm, GraphStorage &graph, const std::fu
 
   // largest edges first
   std::sort(edges.begin(), edges.end(), [](const auto &l, const auto &r) {
-    return l.total_priority >= r.total_priority;
+    return l.total_priority > r.total_priority;
   });
 
   for (auto pedge : edges) {

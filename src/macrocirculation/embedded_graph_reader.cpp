@@ -131,4 +131,24 @@ void EmbeddedGraphReader::set_boundary_data(const std::string &filepath, GraphSt
   }
 }
 
+std::vector<InputPressuresResults> read_input_pressures(const std::string &filepath) {
+  using json = nlohmann::json;
+
+  std::fstream file(filepath, std::ios::in);
+  json j;
+  file >> j;
+
+  std::vector< InputPressuresResults > results;
+  for (auto d : j)
+  {
+    InputPressuresResults result;
+    result.name = d["name"].get<std::string>();
+    result.t = d["t"].get<std::vector<double>>();
+    result.p = d["p"].get<std::vector<double>>();
+    results.push_back(result);
+  }
+
+  return results;
+}
+
 } // namespace macrocirculation

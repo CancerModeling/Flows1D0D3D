@@ -36,6 +36,7 @@ namespace macrocirculation {
 HeartToBreast1DSolver::HeartToBreast1DSolver(MPI_Comm comm)
     : d_comm(comm),
       d_degree(2),
+      d_is_setup(false),
       graph_nl{std::make_shared<GraphStorage>()},
       graph_li{std::make_shared<GraphStorage>()},
       coupling{std::make_shared<NonlinearLinearCoupling>(d_comm, graph_nl, graph_li)},
@@ -130,6 +131,20 @@ std::map<size_t, double> get_vessel_tip_dof_values(MPI_Comm comm,
   return data;
 }
 
+void HeartToBreast1DSolver::set_path_inflow_pressures(const std::string &path){
+  if (d_is_setup)
+    throw std::runtime_error("HeartToBreast1DSolver::set_path_inflow_pressures: cannot be called after setup.");
+
+  path_inflow_pressures = path;
+}
+
+void HeartToBreast1DSolver::set_path_nonlinear_geometry(const std::string& path) {
+  if (d_is_setup)
+    throw std::runtime_error("HeartToBreast1DSolver::set_path_nonlinear_geometry: cannot be called after setup.");
+
+  path_nonlinear_geometry = path;
+}
+
 std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_pressures() {
   auto &dof_map_flow = *solver->get_implicit_dof_map();
   auto &u_flow = solver->get_implicit_solver()->get_solution();
@@ -193,12 +208,22 @@ void HeartToBreast1DSolver::setup_graphs(BoundaryModel bmodel) {
 
   graph_reader.append(path_nonlinear_geometry, *graph_nl);
 
-  auto &v_in = *graph_nl->find_vertex_by_name("cw_in");
-  v_in.set_to_inflow_with_fixed_flow(heart_beat_inflow(485.0));
+  graph_reader.append(path_nonlinear_geometry, *graph_nl);
+  if (!path_inflow_pressures.empty()) {
+    auto inflow_pressures = read_input_pressures(path_inflow_pressures);
+    for (const auto& inflow_pressure : inflow_pressures)
+    {
+      auto &v_in = *graph_nl->find_vertex_by_name(inflow_pressure.name);
+      v_in.set_to_inflow_with_fixed_pressure(piecewise_linear_source_function(inflow_pressure.t, inflow_pressure.p));
+    }
+  } else {
+    auto &v_in = *graph_nl->find_vertex_by_name("cw_in");
+    v_in.set_to_inflow_with_fixed_flow(heart_beat_inflow(485.0));
+    graph_reader.set_boundary_data(path_boundary_nonlinear, *graph_nl);
+  };
 
   graph_reader.append(path_linear_geometry, *graph_li);
   graph_reader.set_boundary_data(path_boundary_linear, *graph_li);
-  graph_reader.set_boundary_data(path_boundary_nonlinear, *graph_nl);
 
   if (bmodel == BoundaryModel::DiscreteRCRChain)
     convert_rcr_to_partitioned_tree_bcs(graph_li);
@@ -352,6 +377,7 @@ void HeartToBreast1DSolver::write_output(double t) {
 }
 
 void HeartToBreast1DSolver::setup(size_t degree, double tau, BoundaryModel boundary_model) {
+  d_is_setup = true;
   setup_graphs(boundary_model);
   setup_solver(degree, tau);
   setup_output();

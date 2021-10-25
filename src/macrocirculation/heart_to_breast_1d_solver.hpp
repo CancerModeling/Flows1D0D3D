@@ -91,6 +91,10 @@ class HeartToBreast1DSolver {
 public:
   explicit HeartToBreast1DSolver(MPI_Comm comm);
 
+  void set_path_inflow_pressures(const std::string& path);
+
+  void set_path_nonlinear_geometry(const std::string& path);
+
   void setup(size_t degree, double tau, BoundaryModel boundary_model);
 
   void solve_flow(double tau, double t);
@@ -135,6 +139,8 @@ private:
 
   size_t d_degree;
 
+  bool d_is_setup;
+
   std::shared_ptr<GraphStorage> graph_nl;
   std::shared_ptr<GraphStorage> graph_li;
 
@@ -144,6 +150,8 @@ private:
 
   std::string path_nonlinear_geometry{"data/meshes/network-33-vessels-extended.json"};
   std::string path_linear_geometry{"data/meshes/coarse-network-geometry.json"};
+
+  std::string path_inflow_pressures{""};
 
   std::string path_boundary_nonlinear{"data/meshes/boundary-combined-geometry-nonlinear-part.json"};
   std::string path_boundary_linear{"data/meshes/boundary-combined-geometry-linear-part.json"};

@@ -9,6 +9,7 @@
 #define TUMORMODELS_EMBEDDED_GRAPH_READER_HPP
 
 #include <string>
+#include <vector>
 
 namespace macrocirculation {
 
@@ -30,6 +31,14 @@ public:
 private:
   double d_rho;
 };
+
+struct InputPressuresResults {
+  std::string name;
+  std::vector< double > t;
+  std::vector< double > p;
+};
+
+std::vector<InputPressuresResults> read_input_pressures(const std::string& filepath);
 
 } // namespace macrocirculation
 
