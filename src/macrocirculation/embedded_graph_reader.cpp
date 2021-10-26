@@ -145,6 +145,7 @@ std::vector<InputPressuresResults> read_input_pressures(const std::string &filep
     result.name = d["name"].get<std::string>();
     result.t = d["t"].get<std::vector<double>>();
     result.p = d["p"].get<std::vector<double>>();
+    result.periodic = d["periodic"].get<bool>();
     results.push_back(result);
   }
 

@@ -52,6 +52,8 @@ fig = plt.figure()
 fig.tight_layout()
 axes = fig.subplots(num_rows, len(args.vessels), sharey='row', sharex='col', squeeze=False)
 
+position = 0
+
 
 for idx, vessel_id in enumerate(args.vessels):
     vessel_info = find_vessel(vessel_id)
@@ -60,14 +62,14 @@ for idx, vessel_id in enumerate(args.vessels):
     print('loading {}'.format(path))
     q = np.loadtxt(path, delimiter=',')
     q = q[:]
-    q = q[:, int(q.shape[1]/2)]
+    q = q[:, int((q.shape[1]-1)*position)]
 
     if ('a' in vessel_info['filepaths']):
         path = os.path.join(directory, vessel_info['filepaths']['a'])
         print('loading {}'.format(path))
         a = np.loadtxt(path, delimiter=',')
         a = a[:]
-        a = a[:, int(a.shape[1]/2)]
+        a = a[:, int((a.shape[1]-1) * position)]
     else:
         a = np.ones(q.shape) * vessel_info['A0']
 
@@ -76,7 +78,7 @@ for idx, vessel_id in enumerate(args.vessels):
         print('loading {}'.format(path))
         p = np.loadtxt(path, delimiter=',') / 1.333332
         p = p[:]
-        p = p[:, int(p.shape[1]/2)]
+        p = p[:, int((p.shape[1]-2) * position)]
     else:
         p = vessel_info['G0'] * (np.sqrt(a/vessel_info['A0']) - 1) / 1.33332
 
@@ -85,7 +87,7 @@ for idx, vessel_id in enumerate(args.vessels):
         print('loading {}'.format(path))
         c = np.loadtxt(path, delimiter=',')
         c = c[:]
-        c = c[:, int(c.shape[1]/2)]
+        c = c[:, int((c.shape[1]-1)*position)]
 
     path = os.path.join(directory, meta['filepath_time'])
     print('loading {}'.format(path))

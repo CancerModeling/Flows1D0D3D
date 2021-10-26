@@ -7,25 +7,25 @@ import argparse
 
 filepaths = [
     'output_full/heart_to_breast_1d_solution_nl.json',
-    #'',
+    'output_full_reduced/heart_to_breast_1d_solution_nl.json',
     'output_33vessel_extended/abstract_33_vessels.json'
 ]
 
 labels = [
     'cow+extension+breast',
-    #'extension+breast',
+    'extension+breast',
     'cow+extension',
 ]
 
 vessels = [
     [35, 36, 37, 38, 39, 40, 41, 42],
-    #[0, 1, 2, 3, 4, 5, 6, 7],
-    [35, 36, 37, 38, 39, 40, 41, 42]
+    [0, 1, 2, 3, 4, 5, 6, 7],
+    [35, 36, 37, 38, 39, 40, 41, 42],
 ]
 
 visible = [
     [True, True, True, True, True, True, True, True],
-    #[True, True, True, True, True, True, True, True],
+    [True, True, True, True, True, True, True, True],
     [True, False, False, False, False, True, False, False],
 ]
 
@@ -35,11 +35,11 @@ positions = [
     [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
 ]
 
-t_start = 0
-t_end = 1
+t_start = 19
+t_end = 20
 
 output_folder = 'tmp_for_plots'
-dataset_name = 'extension_'
+dataset_name = 'extension'
 
 list_all_t = []
 list_all_p = []
@@ -109,8 +109,8 @@ for filepath_idx, filepath in enumerate(filepaths):
     list_all_q.append(list_q)
     list_all_t.append(list_t)
 
-max_p, min_p = np.array(list_all_p).max(), np.array(list_all_p).min()
-max_q, min_q = np.array(list_all_q).max(), np.array(list_all_q).min()
+max_p, min_p = max([np.array(l).max() for l in list_all_p]), min([np.array(l).min() for l in list_all_p])
+max_q, min_q = max([np.array(l).max() for l in list_all_q]), min([np.array(l).min() for l in list_all_q])
 
 if True:
     fig = plt.figure()
@@ -121,6 +121,7 @@ if True:
         for src_idx in range(len(list_all_p)):
             if not visible[src_idx][idx]:
                 continue
+            print(src_idx, idx)
             vessel_id = vessels[src_idx][idx]
             ax.plot(list_all_t[src_idx][idx], list_all_p[src_idx][idx], label='$p_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=4-src_idx)
         ax.legend()
@@ -128,7 +129,7 @@ if True:
         ax.set_ylabel('p [mmHg]')
         ax.set_ylim(top=max_p+5, bottom=min_p-5)
         ax.grid(True)
-        plt.savefig(os.path.join(output_folder, '{}_p_{}.pdf'.format(dataset_name, vessel_id)))
+        plt.savefig(os.path.join(output_folder, '{}_p_{}.pdf'.format(dataset_name, idx)))
 
     for idx in range(len(list_all_p[0])):
         plt.clf()

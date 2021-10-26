@@ -207,14 +207,12 @@ void HeartToBreast1DSolver::setup_graphs(BoundaryModel bmodel) {
   EmbeddedGraphReader graph_reader;
 
   graph_reader.append(path_nonlinear_geometry, *graph_nl);
-
-  graph_reader.append(path_nonlinear_geometry, *graph_nl);
   if (!path_inflow_pressures.empty()) {
     auto inflow_pressures = read_input_pressures(path_inflow_pressures);
     for (const auto& inflow_pressure : inflow_pressures)
     {
       auto &v_in = *graph_nl->find_vertex_by_name(inflow_pressure.name);
-      v_in.set_to_inflow_with_fixed_pressure(piecewise_linear_source_function(inflow_pressure.t, inflow_pressure.p));
+      v_in.set_to_inflow_with_fixed_pressure(piecewise_linear_source_function(inflow_pressure.t, inflow_pressure.p, inflow_pressure.periodic));
     }
   } else {
     auto &v_in = *graph_nl->find_vertex_by_name("cw_in");

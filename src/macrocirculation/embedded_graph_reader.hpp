@@ -36,6 +36,7 @@ struct InputPressuresResults {
   std::string name;
   std::vector< double > t;
   std::vector< double > p;
+  bool periodic;
 };
 
 std::vector<InputPressuresResults> read_input_pressures(const std::string& filepath);

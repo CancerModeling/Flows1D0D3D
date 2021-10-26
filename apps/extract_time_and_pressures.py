@@ -13,6 +13,7 @@ parser.add_argument('--position', type=float, default=0.5)
 parser.add_argument('--filepath', type=str, required=True)
 parser.add_argument('--name-postfix', type=str, default='_in')
 parser.add_argument('--output-filepath', type=str, required=True)
+parser.add_argument('--periodic', help='adds a flag for periodicity', action='store_true')
 
 args = parser.parse_args()
 
@@ -54,8 +55,8 @@ for vessel_id in args.vessels:
     else:
         p = vessel_info['G0'] * (np.sqrt(a/vessel_info['A0']) - 1)
 
-    start_index = np.sum(t < args.t_start)
-    end_index = np.sum(t < args.t_end)
+    start_index = np.sum(t <= args.t_start-1e-3)
+    end_index = np.sum(t <= args.t_end+1e-3)
 
     p = p[start_index:end_index].tolist()
     t = t[start_index:end_index].tolist()
@@ -64,6 +65,7 @@ for vessel_id in args.vessels:
     data['name'] = vessel_info['name'] + args.name_postfix
     data['p'] = p
     data['t'] = t
+    data['periodic'] = args.periodic
     data_list.append(data)
 
 serialized_data = json.dumps(data_list, indent=0)

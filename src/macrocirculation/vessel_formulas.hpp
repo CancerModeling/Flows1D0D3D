@@ -283,10 +283,16 @@ private:
   double d_delta;
 };
 
+inline double value_in_period(double t, double t_start, double t_end)
+{
+  double interval_size = t_end - t_start;
+  return (t-t_start) - interval_size * std::floor((t-t_start) / interval_size) + t_start;
+}
+
 class piecewise_linear_source_function {
 public:
-  piecewise_linear_source_function(std::vector<double> t_list, std::vector<double> value_list)
-      : d_t_list(std::move(t_list)), d_value_list(std::move(value_list)) {
+  piecewise_linear_source_function(std::vector<double> t_list, std::vector<double> value_list, bool periodic=false)
+      : d_t_list(std::move(t_list)), d_value_list(std::move(value_list)), d_periodic(periodic) {
     if (!std::is_sorted(d_t_list.begin(), d_t_list.end()))
       throw std::runtime_error("piecewise_linear_source_function only accepts sorted time arrays");
     if (d_t_list.size() != d_value_list.size())
@@ -294,24 +300,37 @@ public:
   }
 
   double operator()(double t) const {
-    auto lower_t_it = std::lower_bound(d_t_list.begin(), d_t_list.end(), t);
-    const auto idx = std::distance(d_t_list.begin(), lower_t_it);
+    if (d_periodic)
+      t = value_in_period(t, d_t_list.front(), d_t_list.back());
+
+    // find correct time value pair:
+    const auto idx = get_lower_bound(t);
 
     // if we are the last element:
     if (idx == d_t_list.size() - 1 && std::abs(d_t_list.back() - t) < 1e-12)
       return d_value_list.back();
 
-    const double t_next = d_t_list[idx + 1];
-    const double t_prev = d_t_list[idx];
+    const double t_next = d_t_list.at(idx + 1);
+    const double t_prev = d_t_list.at(idx);
     const double tau = t_next - t_prev;
     const double theta = (t - t_prev) / tau;
 
-    return d_value_list[idx] * (1 - theta) + d_value_list[idx + 1] * theta;
+    return d_value_list.at(idx) * (1 - theta) + d_value_list.at(idx + 1) * theta;
   }
 
 private:
+  size_t get_lower_bound(double t) const {
+    for (size_t k = 0; k < d_t_list.size()-1; k += 1)
+    {
+      if ( d_t_list[k]-1e-8 <= t && t <= d_t_list[k+1] + 1e-8 )
+        return k;
+    }
+    throw std::runtime_error(std::to_string(t) + " could not be found in list [" + std::to_string(d_t_list.front()) + ", " + std::to_string(d_t_list.back()) + "]");
+  }
+
   std::vector<double> d_t_list;
   std::vector<double> d_value_list;
+  bool d_periodic;
 };
 
 /*! @brief Solves for the forward propagating characteristic W2, given the
