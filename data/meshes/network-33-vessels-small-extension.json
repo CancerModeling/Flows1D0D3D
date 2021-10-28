@@ -1,37 +1,146 @@
 {
   "vertices": [
-    { "id": 0, "name": "cw_in", "inflow": true },
-    { "id": 1 },
-    { "id": 2 },
-    { "id": 3 },
-    { "id": 4 },
-    { "id": 5 },
-    { "id": 6 },
-    { "id": 7 },
-    { "id": 8, "name": "cw_out_8", "peripheral_resistance": 1.8, "peripheral_compliance": 0.387 },
-    { "id": 9 },
-    { "id": 10, "name": "cw_out_10",  "peripheral_resistance": 54.3, "peripheral_compliance": 0.0127 },
-    { "id": 11 },
-    { "id": 12 },
-    { "id": 13, "name": "cw_out_13", "peripheral_resistance": 54.3, "peripheral_compliance": 0.0127 },
-    { "id": 14 },
-    { "id": 15, "name": "cw_out_15", "peripheral_resistance": 26.8, "peripheral_compliance": 0.0258 },
-    { "id": 16, "name": "cw_out_16", "peripheral_resistance": 26.8, "peripheral_compliance": 0.0258 },
-    { "id": 17 },
-    { "id": 18 },
-    { "id": 19 },
-    { "id": 20 },
-    { "id": 21 },
-    { "id": 22, "name": "cw_out_23", "peripheral_resistance": 59.7, "peripheral_compliance": 0.0116 },
-    { "id": 23, "name": "cw_out_24", "peripheral_resistance": 59.7, "peripheral_compliance": 0.0116 },
-    { "id": 24 },
-    { "id": 25 },
-    { "id": 26, "name": "cw_out_29", "peripheral_resistance": 84.8, "peripheral_compliance": 0.0082 },
-    { "id": 27, "name": "cw_out_30", "peripheral_resistance": 84.8, "peripheral_compliance": 0.0082 },
-    { "id": 28, "name": "cw_out_32", "peripheral_resistance": 110.8, "peripheral_compliance": 0.0062 },
-    { "id": 29, "name": "cw_out_33", "peripheral_resistance": 110.8, "peripheral_compliance": 0.0062 },
-    { "id": 30, "name": "cw_con_1" },
-    { "id": 31, "name": "cw_con_2" }
+    {
+      "id": 0,
+      "name": "cw_in",
+      "inflow": true
+    },
+    {
+      "id": 1
+    },
+    {
+      "id": 2
+    },
+    {
+      "id": 3
+    },
+    {
+      "id": 4
+    },
+    {
+      "id": 5
+    },
+    {
+      "id": 6
+    },
+    {
+      "id": 7
+    },
+    {
+      "id": 8,
+      "name": "cw_out_8",
+      "peripheral_resistance": 1.8,
+      "peripheral_compliance": 0.387
+    },
+    {
+      "id": 9
+    },
+    {
+      "id": 10,
+      "name": "cw_out_10",
+      "peripheral_resistance": 54.3,
+      "peripheral_compliance": 0.0127
+    },
+    {
+      "id": 11
+    },
+    {
+      "id": 12
+    },
+    {
+      "id": 13,
+      "name": "cw_out_13",
+      "peripheral_resistance": 54.3,
+      "peripheral_compliance": 0.0127
+    },
+    {
+      "id": 14
+    },
+    {
+      "id": 15,
+      "name": "cw_out_15",
+      "peripheral_resistance": 26.8,
+      "peripheral_compliance": 0.0258
+    },
+    {
+      "id": 16,
+      "name": "cw_out_16",
+      "peripheral_resistance": 26.8,
+      "peripheral_compliance": 0.0258
+    },
+    {
+      "id": 17
+    },
+    {
+      "id": 18
+    },
+    {
+      "id": 19
+    },
+    {
+      "id": 20
+    },
+    {
+      "id": 21
+    },
+    {
+      "id": 22,
+      "name": "cw_out_23",
+      "peripheral_resistance": 59.7,
+      "peripheral_compliance": 0.0116
+    },
+    {
+      "id": 23,
+      "name": "cw_out_24",
+      "peripheral_resistance": 59.7,
+      "peripheral_compliance": 0.0116
+    },
+    {
+      "id": 24
+    },
+    {
+      "id": 25
+    },
+    {
+      "id": 26,
+      "name": "cw_out_29",
+      "peripheral_resistance": 84.8,
+      "peripheral_compliance": 0.0082
+    },
+    {
+      "id": 27,
+      "name": "cw_out_30",
+      "peripheral_resistance": 84.8,
+      "peripheral_compliance": 0.0082
+    },
+    {
+      "id": 28,
+      "name": "cw_out_32",
+      "peripheral_resistance": 110.8,
+      "peripheral_compliance": 0.0062
+    },
+    {
+      "id": 29,
+      "name": "cw_out_33",
+      "peripheral_resistance": 110.8,
+      "peripheral_compliance": 0.0062
+    },
+    {
+      "id": 30,
+      "name": "cw_con_1"
+    },
+    {
+      "id": 31,
+      "name": "cw_con_2"
+    },
+    {
+      "id": 32,
+      "name": "cw_out_1"
+    },
+    {
+      "id": 33,
+      "name": "cw_out_2"
+    },
   ],
   "vessels": [
     {
@@ -453,6 +562,30 @@
       "number_edges": 10,
       "left_vertex_id": 7,
       "right_vertex_id": 31
+    },
+    {
+      "id": 35,
+      "name": "cw_right_branch_start",
+      "vessel_length": 2.5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 5,
+      "left_vertex_id": 30,
+      "right_vertex_id": 32
+    },
+    {
+      "id": 36,
+      "name": "cw_left_branch_start",
+      "vessel_length": 2.5,
+      "radius": 0.06,
+      "wall_thickness": 0.005,
+      "elastic_modulus": 1300000.0,
+      "gamma": 2,
+      "number_edges": 5,
+      "left_vertex_id": 31,
+      "right_vertex_id": 33
     }
   ]
 }
