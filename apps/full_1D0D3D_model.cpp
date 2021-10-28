@@ -62,6 +62,8 @@ int main(int argc, char *argv[]) {
     ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                                            //
     ("input-file-pressures", "file containing the pressures at the input", cxxopts::value<std::string>()->default_value(""))                     //
     ("input-file-1d-nonlinear-geometry", "file containing the nonlinear part of our geometry", cxxopts::value<std::string>()->default_value("")) //
+    ("input-file-1d-linearized-geometry", "file containing the linearized part of our geometry", cxxopts::value<std::string>()->default_value("")) //
+    ("input-file-coupling", "file containing the coupling conditions of our geometry", cxxopts::value<std::string>()->default_value("")) //
     ("h,help", "print usage");
   options.allow_unrecognised_options(); // for petsc
 
@@ -88,6 +90,8 @@ int main(int argc, char *argv[]) {
 
   const auto input_file_pressures = args["input-file-pressures"].as<std::string>();
   const auto input_file_nonlinear_geometry = args["input-file-1d-nonlinear-geometry"].as<std::string>();
+  const auto input_file_linear_geometry = args["input-file-1d-linearized-geometry"].as<std::string>();
+  const auto input_file_coupling = args["input-file-coupling"].as<std::string>();
 
   if (tau > tau_coup || tau > tau_transport) {
     std::cerr << "flow time step width too large" << std::endl;
@@ -118,6 +122,7 @@ int main(int argc, char *argv[]) {
   }
 
   mc::HeartToBreast1DSolver solver_1d(MPI_COMM_WORLD);
+  // customize the 1d solver from the respective input parameters
   if (!input_file_pressures.empty()) {
     std::cout << "Using input pressures from " << input_file_pressures << std::endl;
     solver_1d.set_path_inflow_pressures(input_file_pressures);
@@ -125,6 +130,14 @@ int main(int argc, char *argv[]) {
   if (!input_file_nonlinear_geometry.empty()) {
     std::cout << "Using custom nonlinear geometry at " << input_file_nonlinear_geometry << std::endl;
     solver_1d.set_path_nonlinear_geometry(input_file_nonlinear_geometry);
+  }
+  if (!input_file_linear_geometry.empty()) {
+    std::cout << "Using custom linear geometry at " << input_file_linear_geometry << std::endl;
+    solver_1d.set_path_linear_geometry(input_file_linear_geometry);
+  }
+  if (!input_file_coupling.empty()) {
+    std::cout << "Using coupling from file " << input_file_coupling << std::endl;
+    solver_1d.set_path_coupling_conditions(input_file_coupling);
   }
   solver_1d.set_output_folder(out_dir);
   solver_1d.setup(degree, tau, mc::BoundaryModel::DiscreteRCRTree);

@@ -95,6 +95,10 @@ public:
 
   void set_path_nonlinear_geometry(const std::string& path);
 
+  void set_path_linear_geometry(const std::string& path);
+
+  void set_path_coupling_conditions(const std::string& path);
+
   void setup(size_t degree, double tau, BoundaryModel boundary_model);
 
   void solve_flow(double tau, double t);
@@ -152,6 +156,8 @@ private:
   std::string path_linear_geometry{"data/meshes/coarse-network-geometry.json"};
 
   std::string path_inflow_pressures{""};
+
+  std::string path_coupling_conditions{"data/meshes/coupling-33v-extended-to-coarse-network-geometry.json"};
 
   std::string path_boundary_nonlinear{"data/meshes/boundary-combined-geometry-nonlinear-part.json"};
   std::string path_boundary_linear{"data/meshes/boundary-combined-geometry-linear-part.json"};

@@ -7,6 +7,7 @@
 
 #include "heart_to_breast_1d_solver.hpp"
 
+#include <nlohmann/json.hpp>
 #include <utility>
 
 #include "0d_boundary_conditions.hpp"
@@ -145,6 +146,20 @@ void HeartToBreast1DSolver::set_path_nonlinear_geometry(const std::string& path)
   path_nonlinear_geometry = path;
 }
 
+void HeartToBreast1DSolver::set_path_linear_geometry(const std::string& path) {
+  if (d_is_setup)
+    throw std::runtime_error("HeartToBreast1DSolver::set_path_linear_geometry: cannot be called after setup.");
+
+  path_linear_geometry = path;
+}
+
+void HeartToBreast1DSolver::set_path_coupling_conditions(const std::string& path) {
+  if (d_is_setup)
+    throw std::runtime_error("HeartToBreast1DSolver::set_path_coupling_conditions: cannot be called after setup.");
+
+  path_coupling_conditions = path;
+}
+
 std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_pressures() {
   auto &dof_map_flow = *solver->get_implicit_dof_map();
   auto &u_flow = solver->get_implicit_solver()->get_solution();
@@ -203,6 +218,24 @@ void HeartToBreast1DSolver::update_vessel_tip_concentrations(const std::map<size
   }
 }
 
+void read_coupling_conditions(NonlinearLinearCoupling & coupling, const std::string& filepath)
+{
+  using json = nlohmann::json;
+
+  std::fstream file(filepath, std::ios::in);
+  json j;
+  file >> j;
+
+  std::cout << "coupling between " << j["file_start"] << " and " << j["file_end"] << std::endl;
+
+  auto couplings = j["couplings"];
+  for (auto coupling_pair: couplings)
+  {
+    std::cout << "couples node " <<coupling_pair["start"] << " with node " << coupling_pair["end"] << std::endl;
+    coupling.add_coupled_vertices( coupling_pair["start"], coupling_pair["end"] );
+  }
+}
+
 void HeartToBreast1DSolver::setup_graphs(BoundaryModel bmodel) {
   EmbeddedGraphReader graph_reader;
 
@@ -230,11 +263,7 @@ void HeartToBreast1DSolver::setup_graphs(BoundaryModel bmodel) {
   else
     throw std::runtime_error("Boundary model type was not implemented yet.");
 
-  coupling->add_coupled_vertices("cw_out_1_1", "bg_141");
-  coupling->add_coupled_vertices("cw_out_1_2", "bg_139");
-  coupling->add_coupled_vertices("cw_out_1_3", "bg_132");
-  coupling->add_coupled_vertices("cw_out_2_1", "bg_135");
-  coupling->add_coupled_vertices("cw_out_2_2", "bg_119");
+  read_coupling_conditions(*coupling, path_coupling_conditions);
 
   graph_nl->finalize_bcs();
   graph_li->finalize_bcs();
