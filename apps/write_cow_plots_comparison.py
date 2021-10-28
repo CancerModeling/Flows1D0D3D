@@ -95,7 +95,7 @@ for filepath in args.filepaths:
 max_p, min_p = np.array(list_all_p).max(), np.array(list_all_p).min()
 max_q, min_q = np.array(list_all_q).max(), np.array(list_all_q).min()
 
-if True:
+if False:
     fig = plt.figure()
 
     for idx, vessel_id in enumerate(args.vessels):
@@ -121,4 +121,26 @@ if True:
         #ax.set_ylim(top=max_q+5, bottom=min_q-5)
         ax.grid(True)
         plt.savefig(os.path.join(args.output_folder, '{}_q_{}.pdf'.format(args.dataset_name, vessel_id)))
+
+if True:
+    fig, axes = plt.subplots(2, len(args.vessels), squeeze=False, sharey='row', sharex='col')
+
+    for idx, vessel_id in enumerate(args.vessels):
+        ax = axes[0, idx]
+        for src_idx in range(len(list_all_p)):
+            ax.plot(list_all_t[src_idx][idx], list_all_p[src_idx][idx], label='$p_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=3-src_idx)
+        if idx == 0:
+            ax.set_ylabel('p [mmHg]')
+        ax.set_ylim(top=max_p+5, bottom=min_p-5)
+        ax.grid(True)
+
+    for idx, vessel_id in enumerate(args.vessels):
+        ax = axes[1, idx]
+        for src_idx in range(len(list_all_q)):
+            ax.plot(list_all_t[src_idx][idx], list_all_q[src_idx][idx], label='$q_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=3-src_idx)
+        ax.set_xlabel('t [s]')
+        if idx == 0:
+            ax.set_ylabel(r'q [$cm^{3}/s$]')
+        ax.grid(True)
+    plt.show()
 
