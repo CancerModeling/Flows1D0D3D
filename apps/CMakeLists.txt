@@ -150,84 +150,25 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}Full1D0D3DModel
                    ${ProjectName}Full1D0D3DModelPKJ
                    ${ProjectName}MultiscaleTime3D1D0D)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_darcy3d)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_darcy_hetero)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_part_perfusion_test)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_voxels_to_mesh)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_darcy_flow_reg_outlets)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_full_1d0d3d_pkj)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_multiscale_time_3d1d0d)
+
+    foreach(FolderName output
+            output_darcy3d
+            output_darcy_hetero
+            output_part_perfusion_test
+            output_voxels_to_mesh
+            output_darcy_flow_reg_outlets
+            output_full_1d0d3d_pkj
+            output_multiscale_time_3d1d0d)
+        add_custom_command(
+                TARGET ${TargetName} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory
+                $<TARGET_FILE_DIR:${TargetName}>/${FolderName})
+    endforeach()
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/animation.py $<TARGET_FILE_DIR:${TargetName}>/animation.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/animation.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessels.py $<TARGET_FILE_DIR:${TargetName}>/plot_vessels.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessels.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink
-            ${CMAKE_CURRENT_SOURCE_DIR}/plot_qoi_3d.py
-            $<TARGET_FILE_DIR:${TargetName}>/plot_qoi_3d.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_qoi_3d.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessel_tips.py $<TARGET_FILE_DIR:${TargetName}>/plot_vessel_tips.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessel_tips.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/write_cow_plots.py $<TARGET_FILE_DIR:${TargetName}>/write_cow_plots.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/write_cow_plots.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/write_cow_plots_comparison.py $<TARGET_FILE_DIR:${TargetName}>/write_cow_plots_comparison.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/write_cow_plots_comparison.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/extract_time_and_pressures.py $<TARGET_FILE_DIR:${TargetName}>/extract_time_and_pressures.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/extract_time_and_pressures.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/write_extension_plots.py $<TARGET_FILE_DIR:${TargetName}>/write_extension_plots.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/write_extension_plots.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_pressure_amplitudes_in_1d0d_models.py $<TARGET_FILE_DIR:${TargetName}>/plot_pressure_amplitudes_in_1d0d_models.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_pressure_amplitudes_in_1d0d_models.py")
+            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization $<TARGET_FILE_DIR:${TargetName}>/visualization
+            COMMENT "Symlinking folder: ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization")
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
