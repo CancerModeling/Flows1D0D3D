@@ -30,6 +30,7 @@
 #include "tip_vertex_dof_integrator.hpp"
 #include "vessel_formulas.hpp"
 #include "vessel_tree_flow_integrator.hpp"
+#include "boundary_condition_readers.hpp"
 
 namespace macrocirculation {
 
@@ -215,24 +216,6 @@ void HeartToBreast1DSolver::update_vessel_tip_concentrations(const std::map<size
     auto &v = *graph_li->get_vertex(v_id);
     if (v.is_vessel_tree_outflow())
       transport_solver->set_inflow_value(*graph_li, v, concentrations_at_outlets.at(v_id));
-  }
-}
-
-void read_coupling_conditions(NonlinearLinearCoupling & coupling, const std::string& filepath)
-{
-  using json = nlohmann::json;
-
-  std::fstream file(filepath, std::ios::in);
-  json j;
-  file >> j;
-
-  std::cout << "coupling between " << j["file_start"] << " and " << j["file_end"] << std::endl;
-
-  auto couplings = j["couplings"];
-  for (auto coupling_pair: couplings)
-  {
-    std::cout << "couples node " <<coupling_pair["start"] << " with node " << coupling_pair["end"] << std::endl;
-    coupling.add_coupled_vertices( coupling_pair["start"], coupling_pair["end"] );
   }
 }
 
