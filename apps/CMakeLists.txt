@@ -31,9 +31,9 @@ add_executable(${ProjectName}BreastGeometry breast_geometry.cpp)
 target_link_libraries(${ProjectName}BreastGeometry ${ProjectLib})
 
 # test the 1d network:
-add_executable(${ProjectName}Abstract33VesselsGeometry abstract_33_vessels_geometry.cpp)
-target_link_libraries(${ProjectName}Abstract33VesselsGeometry ${ProjectLib})
-target_link_libraries(${ProjectName}Abstract33VesselsGeometry cxxopts)
+add_executable(${ProjectName}Nonlinear1DSolver nonlinear_1d_solver.cpp)
+target_link_libraries(${ProjectName}Nonlinear1DSolver ${ProjectLib})
+target_link_libraries(${ProjectName}Nonlinear1DSolver cxxopts)
 
 add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
 target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})
@@ -136,7 +136,7 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
                    ${ProjectName}ConvergenceStudy
                    ${ProjectName}BreastGeometry
-                   ${ProjectName}Abstract33VesselsGeometry
+                   ${ProjectName}Nonlinear1DSolver
                    ${ProjectName}CombinedGeometry
                    ${ProjectName}Transport
                    ${ProjectName}Darcy3D

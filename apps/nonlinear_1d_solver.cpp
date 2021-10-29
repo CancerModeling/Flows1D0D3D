@@ -32,29 +32,13 @@ namespace mc = macrocirculation;
 
 constexpr std::size_t degree = 2;
 
-template<typename SolverType>
-void output_tip_values(const mc::GraphStorage &graph, const mc::DofMap &dof_map, const SolverType &solver) {
-  for (const auto &v_id : graph.get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
-    auto &vertex = *graph.get_vertex(v_id);
-    auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
-    if (vertex.is_windkessel_outflow()) {
-      auto &vertex_dof_indices = dof_map.get_local_dof_map(vertex).dof_indices();
-
-      std::vector<double> vertex_values(vertex_dof_indices.size());
-      extract_dof(vertex_dof_indices, solver.get_solution(), vertex_values);
-
-      std::cout << "vertex id = " << vertex.get_id() << " has c = " << vertex_values << std::endl;
-    }
-  }
-}
-
 int main(int argc, char *argv[]) {
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
 
   {
-    cxxopts::Options options(argv[0], "Abstract 33 vessel geometry");
+    cxxopts::Options options(argv[0], "Nonlinear 1D solver");
     options.add_options()                                                                                                                                           //
-      ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/meshes/network-33-vessels.json"))                               //
+      ("mesh-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/1d-meshes/33-vessels.json"))                               //
       ("boundary-file", "path to the file for the boundary conditions", cxxopts::value<std::string>()->default_value(""))                                           //
       ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))                                                   //
       ("inlet-name", "the name of the inlet", cxxopts::value<std::string>()->default_value("cw_in"))                                                                //
@@ -193,8 +177,6 @@ int main(int argc, char *argv[]) {
       pvd_writer.add_vertex_data("c", c_vertex_values);
       pvd_writer.add_vertex_data("vessel_id", vessel_ids);
       pvd_writer.write(t);
-
-      output_tip_values(*graph, *dof_map_transport, *transport_solver);
 
       vessel_tip_writer.write(t, flow_solver->get_solution());
     };
