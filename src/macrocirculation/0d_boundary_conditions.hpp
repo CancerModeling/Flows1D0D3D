@@ -11,12 +11,14 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <functional>
 
 namespace macrocirculation {
 
 // forward declarations:
 class GraphStorage;
 class Edge;
+class Vertex;
 
 struct EdgeTreeParameters
 {
@@ -27,7 +29,9 @@ struct EdgeTreeParameters
 };
 
 /*! @brief Sets the boundary conditions using a tree estimate. */
-void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph, const std::string &name_prefix);
+void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph, const std::function< bool(const Vertex&) >& conditional);
+
+void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph);
 
 /*! @brief Takes the RCR boundary conditions and partitions the conductances and resistances into an RCR system.
  *         Every pressure corresponds to the mean pressure of a part of the vascular tree.

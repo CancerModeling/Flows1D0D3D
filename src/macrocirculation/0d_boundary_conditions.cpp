@@ -46,7 +46,11 @@ EdgeTreeParameters calculate_edge_tree_parameters(const Edge& edge)
   return { list_lengths, list_radii, list_R, list_C };
 }
 
-void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph, const std::string &name_prefix) {
+void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph){
+  set_0d_tree_boundary_conditions(graph, [](auto){ return true; });
+}
+
+void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph, const std::function< bool(const Vertex&) >& conditional){
   for (auto &v_id : graph->get_vertex_ids()) {
     auto &vertex = *graph->get_vertex(v_id);
     if (!vertex.is_leaf())
@@ -63,7 +67,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     }
 
     // we do not touch the circle of willis
-    if (vertex.get_name().rfind(name_prefix) != 0) {
+    if (!conditional(vertex)) {
       std::cout << "rank = " << mpi::rank(MPI_COMM_WORLD) << " ignoring node " << vertex.get_name() << " and keeps windkessel bc." << std::endl;
       continue;
     }

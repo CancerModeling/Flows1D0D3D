@@ -20,6 +20,9 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
   using json = nlohmann::json;
 
   std::fstream file(filepath, std::ios::in);
+  if (!file.good())
+    throw std::runtime_error("file " + filepath + " could not be opened");
+
   json j;
   file >> j;
 
@@ -109,6 +112,9 @@ void EmbeddedGraphReader::set_boundary_data(const std::string &filepath, GraphSt
   using json = nlohmann::json;
 
   std::fstream file(filepath, std::ios::in);
+  if (!file.good())
+    throw std::runtime_error("file " + filepath + " could not be opened");
+
   json j;
   file >> j;
 

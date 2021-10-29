@@ -10,7 +10,6 @@
 #include <cxxopts.hpp>
 #include <fmt/format.h>
 #include <macrocirculation/graph_csv_writer.hpp>
-#include <memory>
 #include <utility>
 
 #include "petsc.h"
@@ -19,7 +18,6 @@
 #include "macrocirculation/coupled_explicit_implicit_1d_solver.hpp"
 #include "macrocirculation/csv_vessel_tip_writer.hpp"
 #include "macrocirculation/dof_map.hpp"
-#include "macrocirculation/embedded_graph_reader.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/heart_to_breast_1d_solver.hpp"
@@ -52,11 +50,10 @@ int main(int argc, char *argv[]) {
     ("tau-coup", "time step size for updating the coupling", cxxopts::value<double>()->default_value("5e-3"))                                    //
     ("t-coup-start", "The time when the 3D coupling gets activated", cxxopts::value<double>()->default_value("2"))                               //
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("50."))                                                //
-    ("t-start-averaging-flow", "When should the averaging of the flow start?", cxxopts::value<double>()->default_value("10."))                   //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output_full_1d0d3d_pkj/"))                  //
     ("time-step", "time step size", cxxopts::value<double>()->default_value("0.01"))                                                             //
     ("mesh-size", "mesh size", cxxopts::value<double>()->default_value("0.02"))                                                                  //
-    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/meshes/test_full_1d0d3d_cm.e"))                            //
+    ("mesh-file", "mesh filename", cxxopts::value<std::string>()->default_value("data/3d-meshes/test_full_1d0d3d_cm.e"))                            //
     ("deactivate-3d-1d-coupling", "deactivates the 3d-1d coupling", cxxopts::value<bool>()->default_value("false"))                              //
     ("no-slope-limiter", "Disables the slope limiter", cxxopts::value<bool>()->default_value("false"))                                           //
     ("input-file", "input filename for parameters", cxxopts::value<std::string>()->default_value(""))                                            //
@@ -79,7 +76,6 @@ int main(int argc, char *argv[]) {
   // setup 1D solver
   const double t_end = args["t-end"].as<double>();
   const double t_coup_start = args["t-coup-start"].as<double>();
-  const double t_start_averaging_flow = args["t-start-averaging-flow"].as<double>();
   const std::size_t max_iter = 160000000;
 
   const auto tau = args["tau"].as<double>();
@@ -140,7 +136,7 @@ int main(int argc, char *argv[]) {
     solver_1d.set_path_coupling_conditions(input_file_coupling);
   }
   solver_1d.set_output_folder(out_dir);
-  solver_1d.setup(degree, tau, mc::BoundaryModel::DiscreteRCRTree);
+  solver_1d.setup(degree, tau);
 
   if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
     std::cout << "updating transport every " << transport_update_interval << " interval" << std::endl;
@@ -250,9 +246,6 @@ int main(int argc, char *argv[]) {
     // solve flow:
     solver_1d.solve_flow(tau, t);
 
-    if (t - 0.5 * tau < t_start_averaging_flow && t + 1.5 * tau > t_start_averaging_flow)
-      solver_1d.start_0d_flow_integrator();
-
     t += tau;
 
     // solve transport:
@@ -333,9 +326,6 @@ int main(int argc, char *argv[]) {
     if (t > t_end + 1e-12)
       break;
   }
-
-  if (t > t_start_averaging_flow)
-    solver_1d.stop_0d_flow_integrator_and_write();
 
   const auto end_t = std::chrono::steady_clock::now();
   const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
