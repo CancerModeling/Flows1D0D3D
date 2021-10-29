@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
       ("inlet-name", "the name of the inlet", cxxopts::value<std::string>()->default_value("cw_in"))                                                                //
       ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                                                         //
       ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                                                              //
-      ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-4"))                                                                 //
+      ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                                                                 //
       ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("5"))                                                                             //
       ("update-interval-transport", "transport is only updated every nth flow step, where n is the update-interval?", cxxopts::value<size_t>()->default_value("5")) //
       ("h,help", "print usage");
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     auto graph = std::make_shared<mc::GraphStorage>();
 
     mc::EmbeddedGraphReader graph_reader;
-    graph_reader.append(args["input-file"].as<std::string>(), *graph);
+    graph_reader.append(args["mesh-file"].as<std::string>(), *graph);
 
     // read in other data
     auto boundary_file_path = args["boundary-file"].as<std::string>();

@@ -29,7 +29,7 @@ with open(args.filepath) as f:
 
 
 def find_vessel(vessel_id):
-    for vessel in  meta['vessels']:
+    for vessel in meta['vessels']:
         if vessel['edge_id'] == vessel_id:
             return vessel
     raise 'vessel with id {} not found'.format(vessel_id)

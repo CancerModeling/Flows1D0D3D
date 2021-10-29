@@ -29,9 +29,9 @@ constexpr std::size_t degree = 2;
 int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
-  cxxopts::Options options(argv[0], "Abstract 33 vessel geometry");
+  cxxopts::Options options(argv[0], "Calibration for the nonlinear solver");
   options.add_options()                                                                                                                     //
-    ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/1d-meshes/33-vessels.json"))         //
+    ("mesh-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/1d-meshes/33-vessels.json"))         //
     ("output-file", "path to the output file", cxxopts::value<std::string>()->default_value("./data/1d-boundary/33-vessels.json")) //
     ("inflow-vertex-name", "the name of the inflow vertex", cxxopts::value<std::string>()->default_value("cw_in"))                          //
     ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                                   //
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
   auto graph = std::make_shared<mc::GraphStorage>();
 
   mc::EmbeddedGraphReader graph_reader;
-  graph_reader.append(args["input-file"].as<std::string>(), *graph);
+  graph_reader.append(args["mesh-file"].as<std::string>(), *graph);
 
   auto heart_amplitude = args["heart-amplitude"].as<double>();
   auto heart_period = args["heart-period"].as<double>();
