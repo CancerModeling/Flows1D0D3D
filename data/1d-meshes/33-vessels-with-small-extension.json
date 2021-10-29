@@ -135,11 +135,11 @@
     },
     {
       "id": 32,
-      "name": "cw_out_1"
+      "name": "cw_right_inout"
     },
     {
       "id": 33,
-      "name": "cw_out_2"
+      "name": "cw_left_inout"
     }
   ],
   "vessels": [
