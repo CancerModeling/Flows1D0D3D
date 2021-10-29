@@ -15286,7 +15286,7 @@
 "gamma": 2,
 "number_edges": 5,
 "left_vertex_id": 150,
-"right_vertex_id": 59
+"right_vertex_id": 0
 },
 {
 "id": 195,
@@ -15298,7 +15298,7 @@
 "gamma": 2,
 "number_edges": 10,
 "left_vertex_id": 150,
-"right_vertex_id": 0
+"right_vertex_id": 59
 }
 ]
 }
