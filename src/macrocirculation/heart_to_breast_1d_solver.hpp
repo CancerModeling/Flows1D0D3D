@@ -33,6 +33,8 @@ class UpwindProviderLinearizedFlow;
 class UpwindProviderNonlinearFlow;
 class LinearizedFlowUpwindEvaluator;
 class NonlinearFlowUpwindEvaluator;
+class DofMap;
+class PetscVec;
 
 struct VesselTipCurrentCouplingData {
   /*! @brief Coordinates of the vessel tip. */
@@ -166,6 +168,8 @@ private:
 
   void setup_output();
 };
+
+std::map<size_t, double> get_vessel_tip_dof_values(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, const PetscVec &u);
 
 } // namespace macrocirculation
 

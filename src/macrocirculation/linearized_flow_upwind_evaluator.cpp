@@ -228,6 +228,9 @@ void LinearizedFlowUpwindEvaluator::calculate_inout_fluxes(double t, const Vecto
     if (vertex->is_inflow_with_fixed_flow()) {
       q_up = -sigma * vertex->get_inflow_value(t);
       p_up = p_value[0] + 1. / alpha * (q_value[0] - q_up);
+    } else if (vertex->is_inflow_with_fixed_pressure()) {
+      p_up = vertex->get_inflow_value(t);
+      q_up = sigma * alpha * p_value[0] + q_value[0] - sigma * alpha * p_up;
     } else if (vertex->is_free_outflow()) {
       p_up = 0.5 * (p_value[0] + sigma / alpha * q_value[0]);
       q_up = sigma * alpha * p_up;

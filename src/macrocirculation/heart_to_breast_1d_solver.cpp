@@ -84,7 +84,7 @@ void HeartToBreast1DSolver::set_path_nonlinear_geometry(const std::string& path)
 
 void HeartToBreast1DSolver::set_path_linear_geometry(const std::string& path) {
   if (d_is_setup)
-    throw std::runtime_error("HeartToBreast1DSolver::set_path_linear_geometry: cannot be called after setup.");
+    throw std::runtime_error("HeartToBreast1DSolver::set_path_geometry: cannot be called after setup.");
 
   path_linear_geometry = path;
 }
