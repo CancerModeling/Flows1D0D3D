@@ -31,6 +31,8 @@ struct EdgeTreeParameters
 /*! @brief Sets the boundary conditions using a tree estimate. */
 void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph, const std::function< bool(const Vertex&) >& conditional);
 
+void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph, const std::string & prefix);
+
 void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph);
 
 /*! @brief Takes the RCR boundary conditions and partitions the conductances and resistances into an RCR system.

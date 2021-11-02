@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
 
     mc::HeartToBreast1DSolver solver_1d(MPI_COMM_WORLD);
     solver_1d.set_output_folder(out_dir);
-    solver_1d.setup(degree, tau, mc::BoundaryModel::DiscreteRCRTree);
+    solver_1d.setup(degree, tau);
 
     // create logger
     mc::Logger log(out_dir + "sim", comm->rank());

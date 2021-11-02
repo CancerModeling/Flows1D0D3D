@@ -15,8 +15,7 @@
 
 namespace macrocirculation {
 
-EdgeTreeParameters calculate_edge_tree_parameters(const Edge& edge)
-{
+EdgeTreeParameters calculate_edge_tree_parameters(const Edge &edge) {
   auto &param = edge.get_physical_data();
   const double E = param.elastic_modulus * 4;
   const double r_0 = param.radius;
@@ -43,14 +42,18 @@ EdgeTreeParameters calculate_edge_tree_parameters(const Edge& edge)
     list_lengths.push_back(l);
     r *= alpha;
   }
-  return { list_lengths, list_radii, list_R, list_C };
+  return {list_lengths, list_radii, list_R, list_C};
 }
 
-void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph){
-  set_0d_tree_boundary_conditions(graph, [](auto){ return true; });
+void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph) {
+  set_0d_tree_boundary_conditions(graph, [](auto) { return true; });
 }
 
-void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph, const std::function< bool(const Vertex&) >& conditional){
+void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph, const std::string &prefix) {
+  set_0d_tree_boundary_conditions(graph, [&](const Vertex &v) { return v.get_name().rfind(prefix) == 0; });
+}
+
+void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph, const std::function<bool(const Vertex &)> &conditional) {
   for (auto &v_id : graph->get_vertex_ids()) {
     auto &vertex = *graph->get_vertex(v_id);
     if (!vertex.is_leaf())
@@ -87,7 +90,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     // floor ?
     const int N = static_cast<int>(std::ceil(gamma * std::log(r_0 / r_cap) / std::log(2)));
     const auto alpha = 1. / std::pow(2, 1 / gamma);
-    const auto beta = 3./4.;
+    const auto beta = 3. / 4.;
     std::vector<double> list_radius;
     std::vector<double> list_C;
     std::vector<double> list_R;
@@ -169,7 +172,7 @@ void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &gr
       // small veins
       list_R.push_back(R2 * 0.025);
 
-      std::vector< double > radii;
+      std::vector<double> radii;
       for (auto x : list_R)
         radii.push_back(NAN);
 
@@ -242,7 +245,7 @@ void convert_rcr_to_rcl_chain_bcs(const std::shared_ptr<GraphStorage> &graph) {
       list_L.push_back(L_art * 0.125);
       list_L.push_back(L_art * 0.125);
       // capillaries
-      const double L_cap = 1e-8  * 1.333;
+      const double L_cap = 1e-8 * 1.333;
       list_L.push_back(L_cap);
       // venules
       const double L_ven = 5e-8 * 1.333;

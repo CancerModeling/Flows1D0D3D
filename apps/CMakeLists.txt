@@ -178,4 +178,13 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
             TARGET ${TargetName} PRE_BUILD
             COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data $<TARGET_FILE_DIR:${TargetName}>/data
             COMMENT "Copying symlinking folder: data")
+
+    file(GLOB visualization_scripts RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization/*)
+    foreach(f ${visualization_scripts})
+        MESSAGE(${f})
+        add_custom_command(
+                TARGET ${TargetName} PRE_BUILD
+                COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization/${f} $<TARGET_FILE_DIR:${TargetName}>/${f}
+                COMMENT "Symlinking : ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization/${f} to $<TARGET_FILE_DIR:${TargetName}>/${f}")
+    endforeach()
 endforeach()
