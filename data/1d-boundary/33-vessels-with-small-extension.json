@@ -17,8 +17,8 @@
         },
         {
             "name": "cw_out_15",
-            "peripheral_compliance": 0.025798708370479984,
-            "peripheral_resistance": 26.8
+            "peripheral_compliance": 0.02491315830862822,
+            "peripheral_resistance": 27.752618747234784
         },
         {
             "name": "cw_out_16",
@@ -54,6 +54,16 @@
             "name": "cw_out_33",
             "peripheral_compliance": 0.00540678155194941,
             "peripheral_resistance": 127.8774401528351
+        },
+        {
+            "name": "cw_right_inout",
+            "peripheral_compliance": 0.0004458872373289754,
+            "peripheral_resistance": 1550.6283348019333
+        },
+        {
+            "name": "cw_left_inout",
+            "peripheral_compliance": 0.0004396628245227866,
+            "peripheral_resistance": 1572.5809546879939
         }
     ]
 }

@@ -132,7 +132,8 @@ int main(int argc, char *argv[]) {
 
   std::vector< OutletParition > outlet_partitions = {
     { "head", 0.15, {10, 13, 22, 23, 26, 27, 28, 29}},
-    { "left_arm", 0.05, {15, 34, 36, 37, 38, 39}},
+    // { "left_arm", 0.05, {15, 34, 36, 37, 38, 39}},
+    { "left_arm", 0.05, {15, 32, 33}},
     { "right_arm", 0.05, {16}},
     { "body", 0.75, {8}},
   };
