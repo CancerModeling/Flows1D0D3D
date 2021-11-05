@@ -296,7 +296,7 @@ void ImplicitLinearFlowSolver::assemble_matrix_inner_boundaries(double tau) {
 void ImplicitLinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *d_graph->get_vertex(v_idx);
-    if (!vertex.is_inflow_with_fixed_flow())
+    if (!vertex.is_inflow_with_fixed_flow() && !vertex.is_inflow_with_fixed_pressure())
       continue;
     const auto q_in = vertex.get_inflow_value(t);
     auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
@@ -309,27 +309,38 @@ void ImplicitLinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
     std::vector<size_t> dof_indices_p(local_dof_map.num_basis_functions());
     local_dof_map.dof_indices(micro_edge_idx, p_component, dof_indices_p);
     std::vector<double> rhs_values_p(local_dof_map.num_basis_functions());
-    for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
-      // L^{-1} * tau * q_in(t) * phi_j(-1) = L^{-1} * tau * q_in(t) * (-1)^{j}
-      rhs_values_p[j] = (-sigma / C) * tau * (-sigma * q_in) * std::pow(sigma, j);
+    if (vertex.is_inflow_with_fixed_flow()) {
+      for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1)
+        rhs_values_p[j] = (-sigma / C) * tau * (-sigma * q_in) * std::pow(sigma, j);
+    } else if (vertex.is_inflow_with_fixed_pressure()) {
+      for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1)
+        rhs_values_p[j] = tau / std::sqrt(C * L) * q_in * std::pow(sigma, j);
+    } else {
+      throw std::runtime_error("unknown boundary condition");
     }
     rhs->add(dof_indices_p, rhs_values_p);
     // b_q:
     std::vector<size_t> dof_indices_q(local_dof_map.num_basis_functions());
     local_dof_map.dof_indices(micro_edge_idx, q_component, dof_indices_q);
     std::vector<double> rhs_values_q(local_dof_map.num_basis_functions());
-    for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
-      // L^{-1} * tau * sqrt(L/C) * q_in(t) * phi_j(-1) = L^{-1} * tau * sqrt(L/C) * q_in(t) * (-1)^{j}
-      rhs_values_q[j] = (-sigma / L) * tau * (sigma * std::sqrt(L / C)) * (sigma * q_in) * std::pow(sigma, j);
+    if (vertex.is_inflow_with_fixed_flow()) {
+      for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1)
+        rhs_values_q[j] = (-sigma / L) * tau * (sigma * std::sqrt(L / C)) * (sigma * q_in) * std::pow(sigma, j);
+    } else if (vertex.is_inflow_with_fixed_pressure()) {
+      for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1)
+        rhs_values_q[j] = (- tau * sigma) / L * q_in * std::pow(sigma, j);
+    } else {
+      throw std::runtime_error("unknown boundary condition");
     }
     rhs->add(dof_indices_q, rhs_values_q);
   }
 }
 
 void ImplicitLinearFlowSolver::assemble_matrix_inflow(double tau) {
+  // fixed inflow condition
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *d_graph->get_vertex(v_idx);
-    if (!vertex.is_inflow_with_fixed_flow())
+    if (!vertex.is_inflow_with_fixed_flow() && !vertex.is_inflow_with_fixed_pressure())
       continue;
     auto &neighbor_edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
     auto &local_dof_map = d_dof_map->get_local_dof_map(neighbor_edge);
@@ -342,10 +353,19 @@ void ImplicitLinearFlowSolver::assemble_matrix_inflow(double tau) {
     local_dof_map.dof_indices(micro_edge_idx, p_component, dof_indices_p);
     local_dof_map.dof_indices(micro_edge_idx, q_component, dof_indices_q);
     auto pattern = neighbor_edge.is_pointing_to(v_idx) ? create_boundary(local_dof_map, BoundaryPointType::Right, BoundaryPointType::Right) : create_boundary(local_dof_map, BoundaryPointType::Left, BoundaryPointType::Left);
-    Eigen::MatrixXd u_qp = sigma * tau * (1. / L) * pattern;
-    Eigen::MatrixXd u_qq = tau * (1. / L) * (std::sqrt(L / C)) * pattern;
-    A->add(dof_indices_q, dof_indices_p, u_qp);
-    A->add(dof_indices_q, dof_indices_q, u_qq);
+    if (vertex.is_inflow_with_fixed_flow()) {
+      Eigen::MatrixXd u_qp = sigma * tau * (1. / L) * pattern;
+      Eigen::MatrixXd u_qq = tau * (1. / L) * (std::sqrt(L / C)) * pattern;
+      A->add(dof_indices_q, dof_indices_p, u_qp);
+      A->add(dof_indices_q, dof_indices_q, u_qq);
+    } else if (vertex.is_inflow_with_fixed_pressure()) {
+      Eigen::MatrixXd u_pp = tau / std::sqrt( C * L ) * pattern;
+      Eigen::MatrixXd u_pq = tau * sigma * (1. / C) * pattern;
+      A->add(dof_indices_p, dof_indices_p, u_pp);
+      A->add(dof_indices_p, dof_indices_q, u_pq);
+    } else {
+      throw std::runtime_error("unknown boundary condition");
+    }
   }
 }
 

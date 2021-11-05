@@ -1,0 +1,26 @@
+{
+  "file_start": "network-33-vessels-extended.json",
+  "file_end": "coarse-network-geometry.json",
+  "couplings": [
+    {
+      "start": "cw_out_1_1",
+      "end": "bg_141"
+    },
+    {
+      "start": "cw_out_1_2",
+      "end": "bg_139"
+    },
+    {
+      "start": "cw_out_1_3",
+      "end": "bg_132"
+    },
+    {
+      "start": "cw_out_2_1",
+      "end": "bg_135"
+    },
+    {
+      "start": "cw_out_2_2",
+      "end": "bg_119"
+    }
+  ]
+}

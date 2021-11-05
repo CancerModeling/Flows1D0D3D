@@ -58,3 +58,46 @@ TEST_CASE("PressureAndFluxInflowBCAreConsistent", "[VesselFormulas]") {
     REQUIRE(recreated_Q_up == Approx(-Q_up).epsilon(1e-8));
   }
 }
+
+TEST_CASE("PiecewiseLinearSourceFunctionsWorksCorrectly", "[VesselFormulas]") {
+  {
+    mc::piecewise_linear_source_function f({0, 1, 2, 3, 4}, {0.5, 1.5, 2.5, 3.5, 4.5});
+
+    // test edges
+    REQUIRE(f(0) == Approx(0.5).epsilon(1e-16));
+    REQUIRE(f(4) == Approx(4.5).epsilon(1e-16));
+    REQUIRE(f(4+1e-16) == Approx(4.5).epsilon(1e-16));
+    // test intermediate values
+    REQUIRE(f(0.5) == Approx(1).epsilon(1e-16));
+    REQUIRE(f(1.) == Approx(1.5).epsilon(1e-16));
+    REQUIRE(f(1.+1e-16) == Approx(1.5+1e-16).epsilon(1e-16));
+    REQUIRE(f(2.5) == Approx(3.).epsilon(1e-16));
+    REQUIRE(f(3.5) == Approx(4.).epsilon(1e-16));
+  }
+
+  {
+    mc::piecewise_linear_source_function f({1, 2, 3, 4}, {1.5, 2.5, 3.5, 4.5});
+
+    REQUIRE(f(4) == Approx(4.5).epsilon(1e-16));
+    REQUIRE(f(4+1e-16) == Approx(4.5).epsilon(1e-16));
+    REQUIRE(f(1.) == Approx(1.5).epsilon(1e-16));
+    REQUIRE(f(1.+1e-16) == Approx(1.5+1e-16).epsilon(1e-16));
+    REQUIRE(f(2.5) == Approx(3.).epsilon(1e-16));
+    REQUIRE(f(3.5) == Approx(4.).epsilon(1e-16));
+  }
+}
+
+TEST_CASE("PeriodicPiecewiseLinearSourceFunctionsWorksCorrectly", "[VesselFormulas]") {
+  mc::piecewise_linear_source_function f({1, 2, 3, 4}, {1.5, 2.5, 3.5, 4.5}, true);
+
+  // test edges
+  REQUIRE(f(1+1e-12) == Approx(1.5).epsilon(1e-12));
+  REQUIRE(f(1.5) == Approx(2.).epsilon(1e-12));
+  REQUIRE(f(2) == Approx(2.5).epsilon(1e-12));
+  REQUIRE(f(2.5) == Approx(3.).epsilon(1e-12));
+  REQUIRE(f(3) == Approx(3.5).epsilon(1e-12));
+  REQUIRE(f(3.5) == Approx(4).epsilon(1e-12));
+  REQUIRE(f(4-1e-12) == Approx(4.5).epsilon(1e-12));
+  REQUIRE(f(4.2) == Approx(1.7).epsilon(1e-12));
+  REQUIRE(f(4.5) == Approx(2.).epsilon(1e-12));
+}

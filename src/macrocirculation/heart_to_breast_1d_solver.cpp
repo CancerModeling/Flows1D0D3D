@@ -7,6 +7,7 @@
 
 #include "heart_to_breast_1d_solver.hpp"
 
+#include <nlohmann/json.hpp>
 #include <utility>
 
 #include "0d_boundary_conditions.hpp"
@@ -28,7 +29,7 @@
 #include "nonlinear_linear_coupling.hpp"
 #include "tip_vertex_dof_integrator.hpp"
 #include "vessel_formulas.hpp"
-#include "vessel_tree_flow_integrator.hpp"
+#include "boundary_condition_readers.hpp"
 
 namespace macrocirculation {
 
@@ -36,75 +37,12 @@ namespace macrocirculation {
 HeartToBreast1DSolver::HeartToBreast1DSolver(MPI_Comm comm)
     : d_comm(comm),
       d_degree(2),
+      d_is_setup(false),
       graph_nl{std::make_shared<GraphStorage>()},
       graph_li{std::make_shared<GraphStorage>()},
       coupling{std::make_shared<NonlinearLinearCoupling>(d_comm, graph_nl, graph_li)},
       d_tau_flow{NAN},
-      solver{nullptr},
-      d_integrator_running(false),
-      d_flow_integrator_running(false) {}
-
-void HeartToBreast1DSolver::start_0d_pressure_integrator() {
-  integrator->reset();
-  d_integrator_running = true;
-}
-
-void HeartToBreast1DSolver::start_0d_flow_integrator() {
-  flow_integrator->reset();
-  d_flow_integrator_running = true;
-}
-
-std::vector<VesselTreeFlowIntegratorResult> HeartToBreast1DSolver::stop_0d_flow_integrator() {
-  d_flow_integrator_running = false;
-  return flow_integrator->calculate();
-}
-
-void HeartToBreast1DSolver::stop_0d_flow_integrator_and_write() {
-  d_flow_integrator_running = false;
-  flow_integrator->write(output_folder_name, "0d_averaged_flows");
-}
-
-std::vector<VesselTipAverageCouplingData> HeartToBreast1DSolver::stop_0d_pressure_integrator() {
-  d_integrator_running = false;
-
-  auto values = integrator->get_integral_value({last_arterial_tip_index, first_vene_tip_index});
-
-  double time_interval = integrator->get_integration_time();
-
-  std::vector<VesselTipAverageCouplingData> results;
-
-  for (auto v_id : graph_li->get_vertex_ids()) {
-    auto &v = *graph_li->get_vertex(v_id);
-
-    if (v.is_vessel_tree_outflow()) {
-      auto &e = *graph_li->get_edge(v.get_edge_neighbors()[0]);
-
-      auto &R = v.get_vessel_tree_data().resistances;
-
-      if (!e.has_embedding_data())
-        throw std::runtime_error("cannot determine coupling data for an unembedded graph");
-
-      Point p = e.is_pointing_to(v_id) ? e.get_embedding_data().points.back() : e.get_embedding_data().points.front();
-
-      // 1e3 since we have to convert kg -> g:
-      auto p_art = values[v_id][0] * 1e3 / time_interval;
-      auto p_ven = values[v_id][1] * 1e3 / time_interval;
-
-      // 1e3 since we have to convert kg -> g:
-      // auto R1 = calculate_R1(e.get_physical_data());
-      // auto R2_art = (R[last_arterial_tip_index] - R1) * 1e3;
-      // auto R2_cap = (R[capillary_tip_index] - R1) * 1e3;
-
-      // 1e3 since we have to convert kg -> g:
-      auto R2_art = (R[last_arterial_tip_index]) * 1e3;
-      auto R2_cap = (R[capillary_tip_index]) * 1e3;
-
-      results.push_back({p, v.get_id(), p_art, p_ven, R2_art, R2_cap});
-    }
-  }
-
-  return results;
-}
+      solver{nullptr} {}
 
 std::map<size_t, double> get_vessel_tip_dof_values(MPI_Comm comm,
                                                    const GraphStorage &graph,
@@ -128,6 +66,34 @@ std::map<size_t, double> get_vessel_tip_dof_values(MPI_Comm comm,
     }
   }
   return data;
+}
+
+void HeartToBreast1DSolver::set_path_inflow_pressures(const std::string &path){
+  if (d_is_setup)
+    throw std::runtime_error("HeartToBreast1DSolver::set_path_inflow_pressures: cannot be called after setup.");
+
+  path_inflow_pressures = path;
+}
+
+void HeartToBreast1DSolver::set_path_nonlinear_geometry(const std::string& path) {
+  if (d_is_setup)
+    throw std::runtime_error("HeartToBreast1DSolver::set_path_nonlinear_geometry: cannot be called after setup.");
+
+  path_nonlinear_geometry = path;
+}
+
+void HeartToBreast1DSolver::set_path_linear_geometry(const std::string& path) {
+  if (d_is_setup)
+    throw std::runtime_error("HeartToBreast1DSolver::set_path_geometry: cannot be called after setup.");
+
+  path_linear_geometry = path;
+}
+
+void HeartToBreast1DSolver::set_path_coupling_conditions(const std::string& path) {
+  if (d_is_setup)
+    throw std::runtime_error("HeartToBreast1DSolver::set_path_coupling_conditions: cannot be called after setup.");
+
+  path_coupling_conditions = path;
 }
 
 std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_pressures() {
@@ -188,30 +154,27 @@ void HeartToBreast1DSolver::update_vessel_tip_concentrations(const std::map<size
   }
 }
 
-void HeartToBreast1DSolver::setup_graphs(BoundaryModel bmodel) {
+void HeartToBreast1DSolver::setup_graphs() {
   EmbeddedGraphReader graph_reader;
 
   graph_reader.append(path_nonlinear_geometry, *graph_nl);
-
-  auto &v_in = *graph_nl->find_vertex_by_name("cw_in");
-  v_in.set_to_inflow_with_fixed_flow(heart_beat_inflow(485.0));
+  if (!path_inflow_pressures.empty()) {
+    auto inflow_pressures = read_input_pressures(path_inflow_pressures);
+    for (const auto& inflow_pressure : inflow_pressures)
+    {
+      auto &v_in = *graph_nl->find_vertex_by_name(inflow_pressure.name);
+      v_in.set_to_inflow_with_fixed_pressure(piecewise_linear_source_function(inflow_pressure.t, inflow_pressure.p, inflow_pressure.periodic));
+    }
+  } else {
+    auto &v_in = *graph_nl->find_vertex_by_name("cw_in");
+    v_in.set_to_inflow_with_fixed_flow(heart_beat_inflow(485.0));
+  };
 
   graph_reader.append(path_linear_geometry, *graph_li);
-  graph_reader.set_boundary_data(path_boundary_linear, *graph_li);
-  graph_reader.set_boundary_data(path_boundary_nonlinear, *graph_nl);
 
-  if (bmodel == BoundaryModel::DiscreteRCRChain)
-    convert_rcr_to_partitioned_tree_bcs(graph_li);
-  else if (bmodel == BoundaryModel::DiscreteRCRTree)
-    set_0d_tree_boundary_conditions(graph_li, "bg");
-  else
-    throw std::runtime_error("Boundary model type was not implemented yet.");
+  set_0d_tree_boundary_conditions(graph_li);
 
-  coupling->add_coupled_vertices("cw_out_1_1", "bg_141");
-  coupling->add_coupled_vertices("cw_out_1_2", "bg_139");
-  coupling->add_coupled_vertices("cw_out_1_3", "bg_132");
-  coupling->add_coupled_vertices("cw_out_2_1", "bg_135");
-  coupling->add_coupled_vertices("cw_out_2_2", "bg_119");
+  read_coupling_conditions(*coupling, path_coupling_conditions);
 
   graph_nl->finalize_bcs();
   graph_li->finalize_bcs();
@@ -239,10 +202,6 @@ void HeartToBreast1DSolver::setup_solver_flow(size_t degree, double tau_flow) {
   solver = std::make_shared<CoupledExplicitImplicit1DSolver>(d_comm, coupling, graph_nl, graph_li, d_degree, d_degree);
   solver->setup(tau_flow);
   solver->get_explicit_solver()->use_ssp_method();
-
-  auto dof_map_li = solver->get_implicit_dof_map();
-  integrator = std::make_shared<TipVertexDofIntegrator>(d_comm, graph_li, dof_map_li);
-  flow_integrator = std::make_shared<VesselTreeFlowIntegrator>(d_comm, graph_li, dof_map_li);
 }
 
 void HeartToBreast1DSolver::setup_solver(size_t degree, double tau) {
@@ -351,8 +310,9 @@ void HeartToBreast1DSolver::write_output(double t) {
   vessel_tip_writer_li->write(t, {get_solver_li().get_solution(), transport_solver->get_solution(), transport_solver->get_volumes()});
 }
 
-void HeartToBreast1DSolver::setup(size_t degree, double tau, BoundaryModel boundary_model) {
-  setup_graphs(boundary_model);
+void HeartToBreast1DSolver::setup(size_t degree, double tau) {
+  d_is_setup = true;
+  setup_graphs();
   setup_solver(degree, tau);
   setup_output();
 }
@@ -361,10 +321,6 @@ void HeartToBreast1DSolver::solve_flow(double tau, double t) {
   if (std::abs(tau - d_tau_flow) > 1e-12)
     throw std::runtime_error("changing time step width not supported yet.");
 
-  if (d_integrator_running)
-    integrator->update_vertex_dof(get_solver_li().get_solution(), tau);
-  if (d_flow_integrator_running)
-    flow_integrator->add(get_solver_li().get_solution(), tau);
   solver->solve(tau, t);
 }
 

@@ -20,6 +20,9 @@ void EmbeddedGraphReader::append(const std::string &filepath, GraphStorage &grap
   using json = nlohmann::json;
 
   std::fstream file(filepath, std::ios::in);
+  if (!file.good())
+    throw std::runtime_error("file " + filepath + " could not be opened");
+
   json j;
   file >> j;
 
@@ -109,6 +112,9 @@ void EmbeddedGraphReader::set_boundary_data(const std::string &filepath, GraphSt
   using json = nlohmann::json;
 
   std::fstream file(filepath, std::ios::in);
+  if (!file.good())
+    throw std::runtime_error("file " + filepath + " could not be opened");
+
   json j;
   file >> j;
 
@@ -129,6 +135,27 @@ void EmbeddedGraphReader::set_boundary_data(const std::string &filepath, GraphSt
       }
     }
   }
+}
+
+std::vector<InputPressuresResults> read_input_pressures(const std::string &filepath) {
+  using json = nlohmann::json;
+
+  std::fstream file(filepath, std::ios::in);
+  json j;
+  file >> j;
+
+  std::vector< InputPressuresResults > results;
+  for (auto d : j)
+  {
+    InputPressuresResults result;
+    result.name = d["name"].get<std::string>();
+    result.t = d["t"].get<std::vector<double>>();
+    result.p = d["p"].get<std::vector<double>>();
+    result.periodic = d["periodic"].get<bool>();
+    results.push_back(result);
+  }
+
+  return results;
 }
 
 } // namespace macrocirculation

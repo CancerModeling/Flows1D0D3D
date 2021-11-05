@@ -27,34 +27,14 @@ class GraphCSVWriter;
 class GraphPVDWriter;
 class CSVVesselTipWriter;
 class TipVertexDofIntegrator;
-class VesselTreeFlowIntegrator;
 class UpwindProvider;
 class ImplicitTransportSolver;
 class UpwindProviderLinearizedFlow;
 class UpwindProviderNonlinearFlow;
 class LinearizedFlowUpwindEvaluator;
 class NonlinearFlowUpwindEvaluator;
-class VesselTreeFlowIntegratorResult;
-
-struct VesselTipAverageCouplingData {
-  /*! @brief Coordinates of the vessel tip. */
-  Point p;
-
-  /*! @brief Vertex id at the vessel tip. */
-  size_t vertex_id;
-
-  /*! @brief Pressure value in the arterioles in [Ba]. */
-  double p_art;
-
-  /*! @brief Pressure value in the venules in [Ba]. */
-  double p_ven;
-
-  /*! @brief Second resistance of the arteriole compartment in [cm^{-4} g s^{-1}]. */
-  double R2_art;
-
-  /*! @brief Second resistance of the capillary compartment in [cm^{-4} g s^{-1}]. */
-  double R2_cap;
-};
+class DofMap;
+class PetscVec;
 
 struct VesselTipCurrentCouplingData {
   /*! @brief Coordinates of the vessel tip. */
@@ -79,19 +59,19 @@ struct VesselTipCurrentCouplingData {
   size_t level;
 };
 
-/*! @brief Denotes Different boundary conditions. */
-enum class BoundaryModel {
-  /*! @brief RCR-models, which are chained one after the other. */
-  DiscreteRCRChain,
-  /*! @brief RCR-models, which form a tree like structure. */
-  DiscreteRCRTree
-};
-
 class HeartToBreast1DSolver {
 public:
   explicit HeartToBreast1DSolver(MPI_Comm comm);
 
-  void setup(size_t degree, double tau, BoundaryModel boundary_model);
+  void set_path_inflow_pressures(const std::string& path);
+
+  void set_path_nonlinear_geometry(const std::string& path);
+
+  void set_path_linear_geometry(const std::string& path);
+
+  void set_path_coupling_conditions(const std::string& path);
+
+  void setup(size_t degree, double tau);
 
   void solve_flow(double tau, double t);
 
@@ -100,16 +80,6 @@ public:
   void apply_slope_limiter_transport(double t);
 
   void write_output(double t);
-
-  void start_0d_pressure_integrator();
-  void start_0d_flow_integrator();
-
-  /*! @brief Returns the *averaged* pressures at the vessel tips in CGS units. */
-  std::vector<VesselTipAverageCouplingData> stop_0d_pressure_integrator();
-
-  std::vector<VesselTreeFlowIntegratorResult> stop_0d_flow_integrator();
-
-  void stop_0d_flow_integrator_and_write();
 
   /*! @brief Returns the *current* pressures at the vessel tips in CGS units. */
   std::vector<VesselTipCurrentCouplingData> get_vessel_tip_pressures();
@@ -135,6 +105,8 @@ private:
 
   size_t d_degree;
 
+  bool d_is_setup;
+
   std::shared_ptr<GraphStorage> graph_nl;
   std::shared_ptr<GraphStorage> graph_li;
 
@@ -142,11 +114,12 @@ private:
 
   double d_tau_flow;
 
-  std::string path_nonlinear_geometry{"data/meshes/network-33-vessels-extended.json"};
-  std::string path_linear_geometry{"data/meshes/coarse-network-geometry.json"};
+  std::string path_nonlinear_geometry{"data/1d-meshes/33-vessels-with-small-extension.json"};
+  std::string path_linear_geometry{"data/1d-meshes/coarse-breast-geometry-with-extension.json"};
 
-  std::string path_boundary_nonlinear{"data/meshes/boundary-combined-geometry-nonlinear-part.json"};
-  std::string path_boundary_linear{"data/meshes/boundary-combined-geometry-linear-part.json"};
+  std::string path_inflow_pressures{""};
+
+  std::string path_coupling_conditions{"data/1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"};
 
   std::string output_folder_name{"output"};
   std::string filename_csv_nl{"heart_to_breast_1d_solution_nl"};
@@ -158,11 +131,6 @@ private:
   std::shared_ptr<CoupledExplicitImplicit1DSolver> solver;
 
   std::shared_ptr<TipVertexDofIntegrator> integrator;
-  std::shared_ptr<VesselTreeFlowIntegrator> flow_integrator;
-
-  size_t last_arterial_tip_index{7};
-  size_t capillary_tip_index{8};
-  size_t first_vene_tip_index{9};
 
   std::shared_ptr<GraphCSVWriter> csv_writer_nl;
   std::shared_ptr<GraphCSVWriter> csv_writer_li;
@@ -187,13 +155,10 @@ private:
 
   std::shared_ptr<ImplicitTransportSolver> transport_solver;
 
-  bool d_integrator_running;
-  bool d_flow_integrator_running;
-
   ImplicitLinearFlowSolver &get_solver_li();
   ExplicitNonlinearFlowSolver &get_solver_nl();
 
-  void setup_graphs(BoundaryModel boundary_model);
+  void setup_graphs();
 
   void setup_solver(size_t degree, double tau);
 
@@ -203,6 +168,8 @@ private:
 
   void setup_output();
 };
+
+std::map<size_t, double> get_vessel_tip_dof_values(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, const PetscVec &u);
 
 } // namespace macrocirculation
 

@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     const double tau = 1e-3;
     const double t_end = 1;
 
-    const size_t output_interval = 10;
+    const size_t output_interval = 100;
 
     // vessel parameters
     const double vessel_length = 42.2;
@@ -55,19 +55,19 @@ int main(int argc, char *argv[]) {
 
     auto v0 = graph->create_vertex();
     auto v1 = graph->create_vertex();
-    auto edge1 = graph->connect(*v1, *v0, num_micro_edges);
+    auto edge1 = graph->connect(*v0, *v1, num_micro_edges);
 
     auto physical_data = mc::PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
     physical_data.viscosity = 0.;
 
-    edge1->add_embedding_data({{mc::Point(2, 0, 0), mc::Point(0, 0, 0)}});
+    edge1->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(2, 0, 0)}});
     edge1->add_physical_data(physical_data);
 
     const double p_in = 5.;
     const double q_in = 4.;
 
-    v0->set_to_inflow_with_fixed_pressure([](double t) { return 2 * std::abs( std::sin(M_PI * t) ); });
-    v1->set_to_free_outflow();
+    v0->set_to_linear_characteristic_inflow(mc::ImplicitLinearFlowSolver::get_C(*edge1), mc::ImplicitLinearFlowSolver::get_L(*edge1),true, p_in, q_in);
+    v1->set_to_linear_characteristic_inflow(mc::ImplicitLinearFlowSolver::get_C(*edge1), mc::ImplicitLinearFlowSolver::get_L(*edge1),false, p_in, q_in);
 
     graph->finalize_bcs();
 
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
         std::cout << "it = " << t_idx << std::endl;
 
         {
-          double p, q;
+          double p,q;
           solver.evaluate_1d_pq_values(*edge1, 0, p, q);
           std::cout << std::abs(p - p_in) << " " << std::abs(q - q_in) << " ";
           solver.evaluate_1d_pq_values(*edge1, 0.5, p, q);

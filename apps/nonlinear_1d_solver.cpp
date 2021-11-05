@@ -32,35 +32,19 @@ namespace mc = macrocirculation;
 
 constexpr std::size_t degree = 2;
 
-template<typename SolverType>
-void output_tip_values(const mc::GraphStorage &graph, const mc::DofMap &dof_map, const SolverType &solver) {
-  for (const auto &v_id : graph.get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
-    auto &vertex = *graph.get_vertex(v_id);
-    auto &edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
-    if (vertex.is_windkessel_outflow()) {
-      auto &vertex_dof_indices = dof_map.get_local_dof_map(vertex).dof_indices();
-
-      std::vector<double> vertex_values(vertex_dof_indices.size());
-      extract_dof(vertex_dof_indices, solver.get_solution(), vertex_values);
-
-      std::cout << "vertex id = " << vertex.get_id() << " has c = " << vertex_values << std::endl;
-    }
-  }
-}
-
 int main(int argc, char *argv[]) {
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
 
   {
-    cxxopts::Options options(argv[0], "Abstract 33 vessel geometry");
+    cxxopts::Options options(argv[0], "Nonlinear 1D solver");
     options.add_options()                                                                                                                                           //
-      ("input-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/meshes/network-33-vessels.json"))                               //
+      ("mesh-file", "path to the input file", cxxopts::value<std::string>()->default_value("./data/1d-meshes/33-vessels.json"))                               //
       ("boundary-file", "path to the file for the boundary conditions", cxxopts::value<std::string>()->default_value(""))                                           //
       ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))                                                   //
       ("inlet-name", "the name of the inlet", cxxopts::value<std::string>()->default_value("cw_in"))                                                                //
       ("heart-amplitude", "the amplitude of a heartbeat", cxxopts::value<double>()->default_value("485.0"))                                                         //
       ("tau", "time step size", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                                                              //
-      ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-4"))                                                                 //
+      ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                                                                 //
       ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("5"))                                                                             //
       ("update-interval-transport", "transport is only updated every nth flow step, where n is the update-interval?", cxxopts::value<size_t>()->default_value("5")) //
       ("h,help", "print usage");
@@ -81,7 +65,7 @@ int main(int argc, char *argv[]) {
     auto graph = std::make_shared<mc::GraphStorage>();
 
     mc::EmbeddedGraphReader graph_reader;
-    graph_reader.append(args["input-file"].as<std::string>(), *graph);
+    graph_reader.append(args["mesh-file"].as<std::string>(), *graph);
 
     // read in other data
     auto boundary_file_path = args["boundary-file"].as<std::string>();
@@ -173,9 +157,35 @@ int main(int argc, char *argv[]) {
     double t = 0;
     double t_transport = 0.0;
 
+    const auto write_output = [&](){
+      csv_writer.add_data("a", flow_solver->get_solution());
+      csv_writer.add_data("q", flow_solver->get_solution());
+      csv_writer.add_data("c", transport_solver->get_solution());
+      csv_writer.write(t);
+
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, 0, flow_solver->get_solution(), points, Q_vertex_values);
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, 1, flow_solver->get_solution(), points, A_vertex_values);
+      mc::calculate_total_pressure(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->get_solution(), points, p_total_vertex_values);
+      mc::calculate_static_pressure(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->get_solution(), points, p_static_vertex_values);
+      mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_transport, 0, transport_solver->get_solution(), points, c_vertex_values);
+
+      pvd_writer.set_points(points);
+      pvd_writer.add_vertex_data("Q", Q_vertex_values);
+      pvd_writer.add_vertex_data("A", A_vertex_values);
+      pvd_writer.add_vertex_data("p_static", p_static_vertex_values);
+      pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
+      pvd_writer.add_vertex_data("c", c_vertex_values);
+      pvd_writer.add_vertex_data("vessel_id", vessel_ids);
+      pvd_writer.write(t);
+
+      vessel_tip_writer.write(t, flow_solver->get_solution());
+    };
+
     const size_t update_interval_transport = args["update-interval-transport"].as<size_t>();
     if (mc::mpi::rank(MPI_COMM_WORLD) == 0)
       std::cout << "updating transport every " << update_interval_transport << " interval" << std::endl;
+
+    write_output();
 
     for (std::size_t it = 0; it < max_iter; it += 1) {
       flow_solver->solve(tau, t);
@@ -193,64 +203,7 @@ int main(int argc, char *argv[]) {
       if (it % output_interval == 0) {
         std::cout << "iter = " << it << ", t = " << t << std::endl;
 
-        csv_writer.add_data("a", flow_solver->get_solution());
-        csv_writer.add_data("q", flow_solver->get_solution());
-        csv_writer.add_data("c", transport_solver->get_solution());
-        csv_writer.write(t);
-
-        mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, 0, flow_solver->get_solution(), points, Q_vertex_values);
-        mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, 1, flow_solver->get_solution(), points, A_vertex_values);
-        mc::calculate_total_pressure(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->get_solution(), points, p_total_vertex_values);
-        mc::calculate_static_pressure(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->get_solution(), points, p_static_vertex_values);
-        mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_transport, 0, transport_solver->get_solution(), points, c_vertex_values);
-
-        pvd_writer.set_points(points);
-        pvd_writer.add_vertex_data("Q", Q_vertex_values);
-        pvd_writer.add_vertex_data("A", A_vertex_values);
-        pvd_writer.add_vertex_data("p_static", p_static_vertex_values);
-        pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
-        pvd_writer.add_vertex_data("c", c_vertex_values);
-        pvd_writer.add_vertex_data("vessel_id", vessel_ids);
-        pvd_writer.write(t);
-
-        output_tip_values(*graph, *dof_map_transport, *transport_solver);
-
-        for (auto &v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
-          auto &vertex = *graph->get_vertex(v_id);
-          if (vertex.is_vessel_tree_outflow()) {
-            const auto &vertex_dof_map = dof_map_flow->get_local_dof_map(vertex);
-            const auto &vertex_dofs = vertex_dof_map.dof_indices();
-            const auto &u = flow_solver->get_solution();
-
-            std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << std::endl;
-            std::cout << "vertex = " << vertex.get_name() << "\n";
-            std::cout << " p = ";
-            for (size_t k = 0; k < vertex_dofs.size(); k += 1)
-              std::cout << u[vertex_dofs[k]] << ", ";
-            std::cout << std::endl;
-            std::cout << " R = ";
-            for (size_t k = 0; k < vertex_dofs.size(); k += 1)
-              std::cout << vertex.get_vessel_tree_data().resistances[k] << ", ";
-            std::cout << std::endl;
-            std::cout << " C = ";
-            for (size_t k = 0; k < vertex_dofs.size(); k += 1)
-              std::cout << vertex.get_vessel_tree_data().capacitances[k] << ", ";
-            std::cout << std::endl;
-          } else {
-            // std::cout << "vertex = " << vertex.get_name() << " (no tree outflow)\n";
-          }
-        }
-
-        // update and write 0D-Model
-        for (auto v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
-          auto v = graph->get_vertex(v_id);
-          if (v->is_windkessel_outflow()) {
-            auto res = flow_solver->get_0D_values(*v);
-            list_0d[v_id].push_back(res);
-          }
-        }
-        list_t.push_back(it * tau);
-        vessel_tip_writer.write(t, flow_solver->get_solution());
+        write_output();
       }
 
       // break

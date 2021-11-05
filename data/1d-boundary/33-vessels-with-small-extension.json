@@ -1,0 +1,69 @@
+{
+    "vertices": [
+        {
+            "name": "cw_out_8",
+            "peripheral_compliance": 0.38698062555719975,
+            "peripheral_resistance": 1.7866666666666668
+        },
+        {
+            "name": "cw_out_10",
+            "peripheral_compliance": 0.015744141201527204,
+            "peripheral_resistance": 43.915090412285956
+        },
+        {
+            "name": "cw_out_13",
+            "peripheral_compliance": 0.015896763998100933,
+            "peripheral_resistance": 43.49346724977867
+        },
+        {
+            "name": "cw_out_15",
+            "peripheral_compliance": 0.02491315830862822,
+            "peripheral_resistance": 27.752618747234784
+        },
+        {
+            "name": "cw_out_16",
+            "peripheral_compliance": 0.025798708370479984,
+            "peripheral_resistance": 26.8
+        },
+        {
+            "name": "cw_out_23",
+            "peripheral_compliance": 0.010520071354715624,
+            "peripheral_resistance": 65.72249949796596
+        },
+        {
+            "name": "cw_out_24",
+            "peripheral_compliance": 0.01057722759681456,
+            "peripheral_resistance": 65.36735434690726
+        },
+        {
+            "name": "cw_out_29",
+            "peripheral_compliance": 0.006912379915383334,
+            "peripheral_resistance": 100.02421637591962
+        },
+        {
+            "name": "cw_out_30",
+            "peripheral_compliance": 0.0069339515108717085,
+            "peripheral_resistance": 99.71303999527723
+        },
+        {
+            "name": "cw_out_32",
+            "peripheral_compliance": 0.005404807982077174,
+            "peripheral_resistance": 127.92413470036783
+        },
+        {
+            "name": "cw_out_33",
+            "peripheral_compliance": 0.00540678155194941,
+            "peripheral_resistance": 127.8774401528351
+        },
+        {
+            "name": "cw_right_inout",
+            "peripheral_compliance": 0.0004458872373289754,
+            "peripheral_resistance": 1550.6283348019333
+        },
+        {
+            "name": "cw_left_inout",
+            "peripheral_compliance": 0.0004396628245227866,
+            "peripheral_resistance": 1572.5809546879939
+        }
+    ]
+}

@@ -1,0 +1,14 @@
+{
+  "file_start": "network-33-vessels-small-extension.json",
+  "file_end": "coarse-network-geometry.json",
+  "couplings": [
+    {
+      "start": "cw_right_inout",
+      "end": "cw_right_inout"
+    },
+    {
+      "start": "cw_left_inout",
+      "end": "cw_left_inout"
+    }
+  ]
+}

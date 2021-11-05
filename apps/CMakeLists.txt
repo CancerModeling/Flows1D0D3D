@@ -31,9 +31,9 @@ add_executable(${ProjectName}BreastGeometry breast_geometry.cpp)
 target_link_libraries(${ProjectName}BreastGeometry ${ProjectLib})
 
 # test the 1d network:
-add_executable(${ProjectName}Abstract33VesselsGeometry abstract_33_vessels_geometry.cpp)
-target_link_libraries(${ProjectName}Abstract33VesselsGeometry ${ProjectLib})
-target_link_libraries(${ProjectName}Abstract33VesselsGeometry cxxopts)
+add_executable(${ProjectName}Nonlinear1DSolver nonlinear_1d_solver.cpp)
+target_link_libraries(${ProjectName}Nonlinear1DSolver ${ProjectLib})
+target_link_libraries(${ProjectName}Nonlinear1DSolver cxxopts)
 
 add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
 target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})
@@ -42,6 +42,10 @@ target_link_libraries(${ProjectName}CombinedGeometry cxxopts)
 add_executable(${ProjectName}Full1D0D3DModel full_1D0D3D_model.cpp)
 target_link_libraries(${ProjectName}Full1D0D3DModel ${ProjectLib})
 target_link_libraries(${ProjectName}Full1D0D3DModel cxxopts fmt)
+
+add_executable(${ProjectName}Linearized1D0D3DModel linearized_1D0D3D_model.cpp)
+target_link_libraries(${ProjectName}Linearized1D0D3DModel ${ProjectLib})
+target_link_libraries(${ProjectName}Linearized1D0D3DModel cxxopts fmt)
 
 add_executable(${ProjectName}Full1D0D3DModelPKJ full_1D0D3D_model_pkj.cpp)
 target_link_libraries(${ProjectName}Full1D0D3DModelPKJ ${ProjectLib})
@@ -136,7 +140,7 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}NonlinearFlowBifurcation
                    ${ProjectName}ConvergenceStudy
                    ${ProjectName}BreastGeometry
-                   ${ProjectName}Abstract33VesselsGeometry
+                   ${ProjectName}Nonlinear1DSolver
                    ${ProjectName}CombinedGeometry
                    ${ProjectName}Transport
                    ${ProjectName}Darcy3D
@@ -150,72 +154,37 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}Full1D0D3DModel
                    ${ProjectName}Full1D0D3DModelPKJ
                    ${ProjectName}MultiscaleTime3D1D0D)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${TargetName}>/output)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_darcy3d)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_darcy_hetero)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_part_perfusion_test)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_voxels_to_mesh)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_darcy_flow_reg_outlets)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_full_1d0d3d_pkj)
-    add_custom_command(
-            TARGET ${TargetName} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-            $<TARGET_FILE_DIR:${TargetName}>/output_multiscale_time_3d1d0d)
+
+    foreach(FolderName output
+            output_darcy3d
+            output_darcy_hetero
+            output_part_perfusion_test
+            output_voxels_to_mesh
+            output_darcy_flow_reg_outlets
+            output_full_1d0d3d_pkj
+            output_multiscale_time_3d1d0d)
+        add_custom_command(
+                TARGET ${TargetName} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory
+                $<TARGET_FILE_DIR:${TargetName}>/${FolderName})
+    endforeach()
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/animation.py $<TARGET_FILE_DIR:${TargetName}>/animation.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/animation.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessels.py $<TARGET_FILE_DIR:${TargetName}>/plot_vessels.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessels.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink
-            ${CMAKE_CURRENT_SOURCE_DIR}/plot_qoi_3d.py
-            $<TARGET_FILE_DIR:${TargetName}>/plot_qoi_3d.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_qoi_3d.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessel_tips.py $<TARGET_FILE_DIR:${TargetName}>/plot_vessel_tips.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_vessel_tips.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/write_cow_plots.py $<TARGET_FILE_DIR:${TargetName}>/write_cow_plots.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/write_cow_plots.py")
-
-    add_custom_command(
-            TARGET ${TargetName} PRE_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/plot_pressure_amplitudes_in_1d0d_models.py $<TARGET_FILE_DIR:${TargetName}>/plot_pressure_amplitudes_in_1d0d_models.py
-            COMMENT "Copying file: ${CMAKE_CURRENT_SOURCE_DIR}/plot_pressure_amplitudes_in_1d0d_models.py")
+            COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization $<TARGET_FILE_DIR:${TargetName}>/visualization
+            COMMENT "Symlinking folder: ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization")
 
     add_custom_command(
             TARGET ${TargetName} PRE_BUILD
             COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../data $<TARGET_FILE_DIR:${TargetName}>/data
             COMMENT "Copying symlinking folder: data")
+
+    file(GLOB visualization_scripts RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization/*)
+    foreach(f ${visualization_scripts})
+        MESSAGE(${f})
+        add_custom_command(
+                TARGET ${TargetName} PRE_BUILD
+                COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization/${f} $<TARGET_FILE_DIR:${TargetName}>/${f}
+                COMMENT "Symlinking : ${CMAKE_CURRENT_SOURCE_DIR}/../tools/visualization/${f} to $<TARGET_FILE_DIR:${TargetName}>/${f}")
+    endforeach()
 endforeach()

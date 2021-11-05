@@ -168,7 +168,7 @@ std::string GraphCSVWriter::get_csv_file_path(const std::string &component_name,
 }
 
 std::string GraphCSVWriter::get_time_csv_file_name() const {
-  return d_datasetname  + "_time.csv";
+  return d_datasetname + "_time.csv";
 }
 
 std::string GraphCSVWriter::get_time_csv_file_path() const {
@@ -192,6 +192,9 @@ void GraphCSVWriter::write_meta_file() {
     const double length = edge->has_physical_data() ? edge->get_physical_data().length : 1.;
     const auto h = length / static_cast<double>(edge->num_micro_edges());
 
+    const auto &vertex_left = *d_graph->get_vertex(edge->get_vertex_neighbors()[0]);
+    const auto &vertex_right = *d_graph->get_vertex(edge->get_vertex_neighbors()[1]);
+
     std::vector<double> coordinates;
     for (std::size_t micro_edge = 0; micro_edge < edge->num_micro_edges(); micro_edge += 1) {
       coordinates.push_back(h * micro_edge);
@@ -205,11 +208,20 @@ void GraphCSVWriter::write_meta_file() {
       filepath_obj[d.first] = get_csv_file_name(d.first, eid);
     }
 
+    json vertices_obj = {
+      {"left",
+       {{"id", vertex_left.get_id()},
+        {"name", vertex_left.get_name()}}},
+      {"right",
+       {{"id", vertex_right.get_id()},
+        {"name", vertex_right.get_name()}}}};
+
     json vessel_obj = {
       {"edge_id", edge->get_id()},
       {"name", edge->get_name()},
       {"coordinates", coordinates},
       {"filepaths", filepath_obj},
+      {"vertices", vertices_obj},
       {"A0", pdata.A0},
       {"G0", pdata.G0}};
 
