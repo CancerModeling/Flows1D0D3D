@@ -47,6 +47,10 @@ add_executable(${ProjectName}Linearized1D0D3DModel linearized_1D0D3D_model.cpp)
 target_link_libraries(${ProjectName}Linearized1D0D3DModel ${ProjectLib})
 target_link_libraries(${ProjectName}Linearized1D0D3DModel cxxopts fmt)
 
+add_executable(${ProjectName}3DModel 3D_model.cpp)
+target_link_libraries(${ProjectName}3DModel ${ProjectLib})
+target_link_libraries(${ProjectName}3DModel cxxopts fmt)
+
 add_executable(${ProjectName}Full1D0D3DModelPKJ full_1D0D3D_model_pkj.cpp)
 target_link_libraries(${ProjectName}Full1D0D3DModelPKJ ${ProjectLib})
 target_link_libraries(${ProjectName}Full1D0D3DModelPKJ cxxopts fmt)
@@ -149,6 +153,7 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
                    ${ProjectName}LegacyVTK
                    ${ProjectName}PartPerfusionTest
                    ${ProjectName}LinearFlow
+                   ${ProjectName}3DModel
                    ${ProjectName}VoxelsToMesh
                    ${ProjectName}DarcyRegOutlets
                    ${ProjectName}Full1D0D3DModel
@@ -162,6 +167,7 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
             output_voxels_to_mesh
             output_darcy_flow_reg_outlets
             output_full_1d0d3d_pkj
+            output_3d_model
             output_multiscale_time_3d1d0d)
         add_custom_command(
                 TARGET ${TargetName} POST_BUILD
