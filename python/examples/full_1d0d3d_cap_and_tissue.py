@@ -94,8 +94,8 @@ class SimpleCapillaryPressureSolver:
             J -= df.Constant( rho_c * 2**(self.level[k]-1) / self.R2[k] / volumes[k] ) * (df.Constant(self.pressures[k]) - phi_c) * psi_c * self.dx(k)
 
         # q_ct
-        #J -= df.Constant(rho_t * L_ct * S_ct ) * (phi_t-phi_c) * psi_c * df.dx
-        #J -= df.Constant(rho_t * L_ct * S_ct * sigma * (pi_int-pi_bl)) * psi_c * df.dx
+        J -= df.Constant(rho_t * L_ct * S_ct ) * (phi_t-phi_c) * psi_c * df.dx
+        J -= df.Constant(rho_t * L_ct * S_ct * sigma * (pi_int-pi_bl)) * psi_c * df.dx
 
         # q_tc
         J -= df.Constant(rho_t * L_ct * S_ct ) * (phi_c-phi_t) * psi_t * df.dx
