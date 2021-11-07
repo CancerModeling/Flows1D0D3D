@@ -22,6 +22,14 @@ def run():
     s.set_path_coupling_conditions(os.path.join(data_folder, "1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"));
     s.setup(degree, tau)
 
+    vessel_tip_pressures = s.get_vessel_tip_pressures()
+
+    new_pressures = {}
+    for tip_pressures in vessel_tip_pressures:
+        new_pressures[tip_pressures.vertex_id] = 22. * 1333
+
+    s.update_vessel_tip_pressures(new_pressures)
+
     for i in range(int(t_end / tau_out)):
         print ('iter = {}, t = {}'.format(i, t))
         t = s.solve_flow(tau, t, int(tau_out / tau))

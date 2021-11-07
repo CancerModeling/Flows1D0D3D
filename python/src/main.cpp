@@ -69,6 +69,8 @@ PYBIND11_MODULE(_core, m) {
     .def("solve_flow", py::overload_cast<double, double, size_t>(&mc::HeartToBreast1DSolver::solve_flow))
     .def("write_output", &mc::HeartToBreast1DSolver::write_output)
     .def("get_vessel_tip_pressures", &mc::HeartToBreast1DSolver::get_vessel_tip_pressures)
+    .def("update_vessel_tip_pressures", &mc::HeartToBreast1DSolver::update_vessel_tip_pressures)
+    .def("update_vessel_tip_concentrations", &mc::HeartToBreast1DSolver::update_vessel_tip_concentrations)
     ;
 
 #ifdef VERSION_INFO
