@@ -9,9 +9,9 @@ def run():
     os.makedirs(output_folder, exist_ok=True)
 
     degree = 2
-    tau = 1.5625e-05
-    tau_out =0.01
-    t_end = 10
+    tau = 1. / 2**16
+    tau_out = 1. / 2**6
+    t_end = 10.
     t = 0
 
     s = f.HeartToBreast1DSolver()
