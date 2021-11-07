@@ -26,6 +26,9 @@ def run():
         print ('iter = {}, t = {}'.format(i, t))
         t = s.solve_flow(tau, t, int(tau_out / tau))
         s.write_output(t)
+        vessel_tip_pressures = s.get_vessel_tip_pressures()
+        for tip_pressure in vessel_tip_pressures:
+            print(tip_pressure)
 
 
 if __name__ == '__main__':
