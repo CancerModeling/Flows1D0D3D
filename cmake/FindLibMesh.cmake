@@ -34,13 +34,14 @@ message(STATUS "linking against ${METHOD} libmesh library")
 # required for LIBMESH_DEFINITIONS
 find_package(PkgConfig REQUIRED)
 
-set(LIBMESH_DIR LIBMESH_DIR-NOTFOUND CACHE PATH "Libmesh installation directory")
+set(LIBMESH_DIR $ENV{LIBMESH_DIR} CACHE PATH "Libmesh installation directory")
 
 if(LIBMESH_DIR)
   set(ENV{PKG_CONFIG_PATH} "${LIBMESH_DIR}/lib/pkgconfig")
 #  message($ENV{PKG_CONFIG_PATH})
 endif()
 
+message("searching libmesh in ${LIBMESH_DIR}/lib/pkgconfig")
 pkg_check_modules(PC_LIBMESH libmesh-${METHOD})
 message(STATUS "PC_LIBMESH_FOUND = ${PC_LIBMESH_FOUND}")
 message(STATUS "PC_LIBMESH_LIBRARIES = ${PC_LIBMESH_LIBRARIES}")

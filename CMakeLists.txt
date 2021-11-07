@@ -217,3 +217,7 @@ if (${Enable_Documentation})
     endif ()
     add_subdirectory(docs)
 endif ()
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/pybind11)
+
+add_subdirectory(${CMAKE_SOURCE_DIR}/python)
