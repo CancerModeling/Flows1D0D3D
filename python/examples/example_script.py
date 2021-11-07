@@ -1,14 +1,17 @@
 import os
 import flows1d0d3d as f
 
+
 def run():
     data_folder = '../../data'
     output_folder = './tmp'
 
-    os.mkdir(output_folder)
+    os.makedirs(output_folder, exist_ok=True)
 
     degree = 2
-    tau = 1e-6
+    tau = 1.5625e-05
+    tau_out =0.01
+    t_end = 10
     t = 0
 
     s = f.HeartToBreast1DSolver()
@@ -19,12 +22,11 @@ def run():
     s.set_path_coupling_conditions(os.path.join(data_folder, "1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"));
     s.setup(degree, tau)
 
-    for i in range(1000):
-        s.solve_flow(tau, t)
-        t += tau
-        if i % 100 == 0:
-            print ('iter = {}, t = {}'.format(i, t))
-            s.write_output(t)
+    for i in range(int(t_end / tau_out)):
+        print ('iter = {}, t = {}'.format(i, t))
+        t = s.solve_flow(tau, t, int(tau_out / tau))
+        s.write_output(t)
+
 
 if __name__ == '__main__':
     f.initialize()

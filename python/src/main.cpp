@@ -41,7 +41,7 @@ PYBIND11_MODULE(_core, m) {
     .def("set_path_linear_geometry", &mc::HeartToBreast1DSolver::set_path_linear_geometry)
     .def("set_path_coupling_conditions", &mc::HeartToBreast1DSolver::set_path_coupling_conditions)
     .def("setup", &mc::HeartToBreast1DSolver::setup)
-    .def("solve_flow", &mc::HeartToBreast1DSolver::solve_flow)
+    .def("solve_flow", py::overload_cast<double, double, size_t>(&mc::HeartToBreast1DSolver::solve_flow))
     .def("write_output", &mc::HeartToBreast1DSolver::write_output)
     ;
 

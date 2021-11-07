@@ -327,6 +327,15 @@ void HeartToBreast1DSolver::solve_flow(double tau, double t) {
   solver->solve(tau, t);
 }
 
+double HeartToBreast1DSolver::solve_flow(double tau, double t, size_t num_iter) {
+  for (size_t idx = 0; idx < num_iter; idx += 1)
+  {
+    solve_flow(tau, t);
+    t += tau;
+  }
+  return t;
+}
+
 void HeartToBreast1DSolver::solve_transport(double tau, double t) {
   upwind_evaluator_nl->init(t, solver->get_explicit_solver()->get_solution());
   upwind_evaluator_li->init(t, solver->get_implicit_solver()->get_solution());
