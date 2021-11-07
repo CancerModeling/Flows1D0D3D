@@ -19,6 +19,9 @@ set(VERSION_MAJOR 0)
 set(VERSION_MINOR 1)
 set(VERSION_UPDATE 0)
 
+# pybind11 needs position independent code:
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # ****************************************************************************
 # Project setting
 # ****************************************************************************
@@ -182,7 +185,11 @@ if (${Enable_CMAKE_Debug_Build})
 endif ()
 
 add_subdirectory(src)
-add_subdirectory(apps)
+
+set(Enable_Apps ON CACHE BOOL "Includes the apps in our build process")
+if (${Enable_Apps})
+    add_subdirectory(apps)
+endif()
 
 
 # ****************************************************************************
@@ -218,6 +225,9 @@ if (${Enable_Documentation})
     add_subdirectory(docs)
 endif ()
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/external/pybind11)
-
-add_subdirectory(${CMAKE_SOURCE_DIR}/python)
+# python bindings
+set(Enable_Python_Bindings OFF CACHE BOOL "Adds the python bindings to our build process")
+if (${Enable_Python_Bindings})
+    add_subdirectory(${CMAKE_SOURCE_DIR}/external/pybind11)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/python)
+endif ()

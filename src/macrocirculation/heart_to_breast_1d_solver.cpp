@@ -33,6 +33,9 @@
 
 namespace macrocirculation {
 
+HeartToBreast1DSolver::HeartToBreast1DSolver()
+  : HeartToBreast1DSolver(MPI_COMM_WORLD)
+{}
 
 HeartToBreast1DSolver::HeartToBreast1DSolver(MPI_Comm comm)
     : d_comm(comm),

@@ -61,6 +61,8 @@ struct VesselTipCurrentCouplingData {
 
 class HeartToBreast1DSolver {
 public:
+  HeartToBreast1DSolver();
+
   explicit HeartToBreast1DSolver(MPI_Comm comm);
 
   void set_path_inflow_pressures(const std::string& path);
