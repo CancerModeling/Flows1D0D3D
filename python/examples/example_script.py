@@ -64,6 +64,7 @@ class SimpleCapillaryPressureSolver:
         for k in range(len(self.pressures)):
             volume = df.assemble(df.Constant(1) * self.dx(k))
             volumes.append(volume)
+        self.volumes = volumes
 
         R2_ven = 1e6
         p_ven = 10 * 1333
@@ -100,7 +101,14 @@ class SimpleCapillaryPressureSolver:
         self._setup_problem()
 
     def get_pressures(self):
-        pass
+        new_data = {}
+        for k in range(len(self.pressures)):
+            integrated_pressure = df.assemble(self.current * self.dx(k))
+            average_pressure = integrated_pressure / self.volumes[k]
+            new_data[int(self.point_to_vertex_id[k])] = average_pressure
+        return new_data
+
+
 
 
 def run():
@@ -116,39 +124,33 @@ def run():
     t_end = 10.
     t = 0
 
-    s = f.HeartToBreast1DSolver()
-    s.set_output_folder('./tmp')
+    solver1d = f.HeartToBreast1DSolver()
+    solver1d.set_output_folder('./tmp')
     #s.set_path_inflow_pressures(os.path.join(data_folder, ""));
-    s.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"));
-    s.set_path_linear_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"));
-    s.set_path_coupling_conditions(os.path.join(data_folder, "1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"));
-    s.setup(degree, tau)
+    solver1d.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"));
+    solver1d.set_path_linear_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"));
+    solver1d.set_path_coupling_conditions(os.path.join(data_folder, "1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"));
+    solver1d.setup(degree, tau)
 
-    vessel_tip_pressures = s.get_vessel_tip_pressures()
-
-    # new_pressures = {}
-    # for tip_pressures in vessel_tip_pressures:
-    #     new_pressures[tip_pressures.vertex_id] = 22. * 1333
-
-    # s.update_vessel_tip_pressures(new_pressures)
+    vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
 
     solver3d = SimpleCapillaryPressureSolver(mesh_3d_filename, output_folder, vessel_tip_pressures)
     solver3d.write_solution(0.)
 
     for i in range(int(t_end / tau_out)):
         print ('iter = {}, t = {}'.format(i, t))
-        t = s.solve_flow(tau, t, int(tau_out / tau))
-        s.write_output(t)
-        vessel_tip_pressures = s.get_vessel_tip_pressures()
+        t = solver1d.solve_flow(tau, t, int(tau_out / tau))
+        solver1d.write_output(t)
+        vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
         solver3d.update_vessel_tip_pressures(vessel_tip_pressures)
         solver3d.solve()
         solver3d.write_solution(t)
+        new_pressures = solver3d.get_pressures()
+        solver1d.update_vessel_tip_pressures(new_pressures)
         max_value = solver3d.current.vector().max()
         min_value = solver3d.current.vector().min()
         if df.MPI.rank(df.MPI.comm_world) == 0:
             print('max = {}, min = {}'.format(max_value, min_value))
-        #for tip_pressure in vessel_tip_pressures:
-        #    print(tip_pressure)
 
 
 if __name__ == '__main__':
