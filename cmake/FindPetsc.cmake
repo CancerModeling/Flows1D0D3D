@@ -4,6 +4,9 @@
 # (See accompanying file LICENSE.txt)
 find_package(PkgConfig)
 
+set(PETSC_DIR $ENV{PETSC_DIR} CACHE PATH "Petsc installation directory")
+set(ENV{PKG_CONFIG_PATH} "${PETSC_DIR}/lib/pkgconfig")
+
 find_library(PETSC_LIBRARIES
         NAMES libpetsc.so libpetsc.dylib
         HINTS "${PETSC_DIR}/lib/")

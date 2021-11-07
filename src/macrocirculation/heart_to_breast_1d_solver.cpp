@@ -33,6 +33,9 @@
 
 namespace macrocirculation {
 
+HeartToBreast1DSolver::HeartToBreast1DSolver()
+  : HeartToBreast1DSolver(MPI_COMM_WORLD)
+{}
 
 HeartToBreast1DSolver::HeartToBreast1DSolver(MPI_Comm comm)
     : d_comm(comm),
@@ -322,6 +325,15 @@ void HeartToBreast1DSolver::solve_flow(double tau, double t) {
     throw std::runtime_error("changing time step width not supported yet.");
 
   solver->solve(tau, t);
+}
+
+double HeartToBreast1DSolver::solve_flow(double tau, double t, size_t num_iter) {
+  for (size_t idx = 0; idx < num_iter; idx += 1)
+  {
+    solve_flow(tau, t);
+    t += tau;
+  }
+  return t;
 }
 
 void HeartToBreast1DSolver::solve_transport(double tau, double t) {
