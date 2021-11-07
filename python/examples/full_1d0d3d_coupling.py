@@ -109,8 +109,6 @@ class SimpleCapillaryPressureSolver:
         return new_data
 
 
-
-
 def run():
     data_folder = '../../data'
     output_folder = './tmp'
