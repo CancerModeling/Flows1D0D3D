@@ -1,4 +1,4 @@
-find_package(pybind11 CONFIG REQUIRED)
+#find_package(pybind11 CONFIG REQUIRED)
 
 pybind11_add_module(_core MODULE src/main.cpp)
 target_link_libraries(_core PUBLIC LibMacrocirculation)
