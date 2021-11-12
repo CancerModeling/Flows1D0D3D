@@ -7,8 +7,16 @@ import numpy as np
 # constants:
 rho = 1060 * 1e-3
 r_c_bar = 3.375e-4
+# K = 460 * r_c_bar**4 * np.pi/(8 * 1e-2)
 K = 460 * r_c_bar**4 * np.pi/(8 * 1e-2)
 mu = 0.0805438
+L_cv = 4.641e-7  # Liverpool!
+#p_ven = 15 * 1333
+p_ven = 10 * 1333
+
+# Liverpool values
+K = 4.28e-4 * 1e-6
+mu = 1.
 
 
 class SimpleCapillaryPressureSolver:
@@ -73,14 +81,13 @@ class SimpleCapillaryPressureSolver:
         #L_cv = 1./(0.667 * 1333)  # Ottesen, Olufsen, Larsen, p. 153
         #L_cv = 1./(0.0223 * 1333)  # Ottesen, Olufsen, Larsen, p. 153
         #L_cv = 1./(0.0223 * 1333)  # Ottesen, Olufsen, Larsen, p. 153
-        L_cv = 4.641e-7  # Liverpool!
         #L_cv = 5e-8  # Ottesen, Olufsen, Larsen, p. 153
-        p_ven = 10 * 1333
 
         # rhs contributions
         for k in range(len(self.pressures)):
             J -= df.Constant( 2**(self.level[k]-1) / self.R2[k] / volumes[k] ) * df.Constant(self.pressures[k]) * psi_c * self.dx(k)
             J -= df.Constant( L_cv / volumes[k] ) * df.Constant(p_ven) * psi_c * self.dx(k)
+            # J -= df.Constant( L_cv ) * df.Constant(p_ven) * psi_c * self.dx(k)
 
         # lhs contributions
         for k in range(len(self.pressures)):
@@ -88,6 +95,7 @@ class SimpleCapillaryPressureSolver:
                 print(k, 2**(self.level[k]-1) / self.R2[k] / volumes[k], L_cv / volumes[k])
             J += df.Constant( 2**(self.level[k]-1) / self.R2[k] / volumes[k] ) * phi_c * psi_c * self.dx(k)
             J += df.Constant( L_cv / volumes[k] ) * phi_c * psi_c * self.dx(k)
+            # J += df.Constant( L_cv ) * phi_c * psi_c * self.dx(k)
 
         self.J = J
         self.bcs = []
@@ -146,7 +154,8 @@ def run():
     solver3d.write_solution(0.)
 
     for i in range(int(t_end / tau_out)):
-        print ('iter = {}, t = {}'.format(i, t))
+        if df.MPI.rank(df.MPI.comm_world) == 0:
+            print ('iter = {}, t = {}'.format(i, t))
         t = solver1d.solve_flow(tau, t, int(tau_out / tau))
         solver1d.write_output(t)
 
@@ -160,7 +169,7 @@ def run():
             max_value = solver3d.current.vector().max()
             min_value = solver3d.current.vector().min()
             if df.MPI.rank(df.MPI.comm_world) == 0:
-                print('max = {}, min = {}'.format(max_value, min_value))
+                print('max = {}, min = {}'.format(max_value/1333, min_value/1333))
 
 
 if __name__ == '__main__':

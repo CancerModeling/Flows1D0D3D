@@ -5,28 +5,29 @@ import numpy as np
 
 
 # constants:
+# constants:
 rho_c = 997 * 1e-3
 rho_t = 1060 * 1e-3
 K_c = 1e-13 * 1e4 # open?
 K_t = 1e-18 * 1e4 # Tobias paper homogenisierung
 mu_c = 0.0805438
 mu_t = 0.79722 * 1e-3 * 10
-L_cv = 1e-8  # Ottesen, Olufsen, Larsen, p. 153
+L_cv = 1e-8
 p_ven = 10 * 1333
 
 L_ct = 1e-6 #?
 S_ct = 1.   #?
 
-sigma = 0.  #?
+sigma = 1.  #?
 pi_int = 6.6e3
 pi_bl = 3.3e4
 
-L_tl = 1e-8 #?
+L_tl = 1e-6 #?
 p_lym = 1333.2
 
 D_c = 1. #?
 D_t = 1. #?
-lambda_t = 1e-8 #??
+lambda_t = 1. #??
 
 
 def read_mesh(mesh_filename):
@@ -58,6 +59,7 @@ class PressureSolver:
         self.mesh = mesh
         self._setup_vessel_tip_pressures(vessel_tip_pressures)
         self._setup_subdomains()
+        self._setup_function_spaces()
         self._setup_problem()
         self._setup_solver()
         self.file_p_cap = df.File(os.path.join(output_folder, "p_cap.pvd"), "compressed")
@@ -82,15 +84,26 @@ class PressureSolver:
     def _setup_subdomains(self):
         self.subdomains, self.dx = setup_subdomains(self.mesh, self.points)
 
+    def _setup_function_spaces(self):
+        PEl = df.FiniteElement('P', self.mesh.ufl_cell(), 1)
+        REl = df.FiniteElement('R', self.mesh.ufl_cell(), 0)
+        elements = [PEl, PEl] + [REl for idx in range(len(self.points))]
+        MEl = df.MixedElement(elements)
+        self.V = df.FunctionSpace(self.mesh, MEl)
+
     def _setup_problem(self):
-        P1El = df.FiniteElement('P', self.mesh.ufl_cell(), 1)
-        MixedEl = df.MixedElement([P1El, P1El])
-        V = df.FunctionSpace(self.mesh, MixedEl)
+        trial_functions = df.TrialFunctions(self.V)
+        test_functions = df.TestFunctions(self.V)
 
-        phi_c, phi_t = df.TrialFunctions(V)
-        psi_c, psi_t = df.TestFunctions(V)
+        phi_c = trial_functions[0]
+        phi_t = trial_functions[1]
+        psi_c = test_functions[0]
+        psi_t = test_functions[1]
 
-        self.current = df.Function(V, name='u') if not hasattr(self, 'current') else self.current
+        llambda = trial_functions[2:]
+        mu = test_functions[2:]
+
+        self.current = df.Function(self.V, name='u') if not hasattr(self, 'current') else self.current
 
         volumes = []
         for k in range(len(self.pressures)):
@@ -101,17 +114,21 @@ class PressureSolver:
         self.update_average_pressures()
 
         J = 0
-        J += df.inner( df.Constant(rho_c * K_c / mu_c) * df.grad(phi_c), df.grad(psi_c) ) * df.dx
-        J += df.inner( df.Constant(rho_t * K_t / mu_t) * df.grad(phi_t), df.grad(psi_t) ) * df.dx
+        J += df.inner(df.Constant(rho_c * K_c / mu_c) * df.grad(phi_c), df.grad(psi_c)) * df.dx
+        J += df.inner(df.Constant(rho_t * K_t / mu_t) * df.grad(phi_t), df.grad(psi_t)) * df.dx
+
+        # llambda[k] = - 1/Omega_k int_Omega[k] p_c dx
+        for k in range(len(self.pressures)):
+            alpha = df.Constant(rho_c * 2**(self.level[k]-1) / self.R2[k] / volumes[k]) + df.Constant(rho_c * L_cv / volumes[k])
+            J += - alpha * llambda[k] * mu[k] * df.dx + alpha * phi_c * mu[k] * self.dx(k)
 
         # q_cv
-        J -= df.Constant( rho_c * L_cv ) * (df.Constant(p_ven) - phi_c) * psi_c * df.dx
+        for k in range(len(self.pressures)):
+            J -= df.Constant(rho_c * L_cv / volumes[k]) * (df.Constant(p_ven) - llambda[k]) * psi_c * self.dx(k)
 
         # q_ca
-        print(self.average_pressures)
         for k in range(len(self.pressures)):
-            J -= df.Constant(rho_c * 2**(self.level[k]-1) / self.R2[k] / volumes[k]) * (df.Constant(self.pressures[k]) - phi_c) * psi_c * self.dx(k)
-            #J -= df.Constant(rho_c * 2**(self.level[k]-1) / self.R2[k] / volumes[k]) * (df.Constant(self.pressures[k]) - df.Constant(self.average_pressures[k])) * psi_c * self.dx(k)
+            J -= df.Constant(rho_c * 2**(self.level[k]-1) / self.R2[k] / volumes[k]) * (df.Constant(self.pressures[k]) - llambda[k]) * psi_c * self.dx(k)
 
         # q_ct
         J -= df.Constant(rho_t * L_ct * S_ct ) * (phi_t-phi_c) * psi_c * df.dx
@@ -122,18 +139,19 @@ class PressureSolver:
         J -= df.Constant(rho_t * L_ct * S_ct * sigma * (pi_bl-pi_int)) * psi_t * df.dx
 
         # q_tl
-        #J -= df.Constant(rho_t * L_tl) * (p_lym - phi_t) * psi_t * df.dx
         J -= df.Constant(rho_t * L_tl) * (p_lym - phi_t) * psi_t * df.dx
 
         # setup diagonal preconditioner
         P = 0
         P += df.inner( df.Constant(rho_c * K_c / mu_c) * df.grad(phi_c), df.grad(psi_c)) * df.dx
         P += df.inner( df.Constant(rho_t * K_t / mu_t) * df.grad(phi_t), df.grad(psi_t)) * df.dx
-        for k in range(len(self.pressures)):
-            P -= df.Constant( rho_c * 2**(self.level[k]-1) / self.R2[k] / volumes[k]) * (- phi_c) * psi_c * self.dx(k)
         P -= df.Constant(rho_t * L_ct * S_ct) * (-phi_c) * psi_c * df.dx
         P -= df.Constant(rho_t * L_ct * S_ct) * (-phi_t) * psi_t * df.dx
+        P -= df.Constant(rho_t * L_tl) * (- phi_t) * psi_t * df.dx
         P += df.Constant(0) * psi_t * df.dx
+        for k in range(len(self.pressures)):
+            alpha = df.Constant(rho_c * 2**(self.level[k]-1) / self.R2[k] / volumes[k]) + df.Constant(rho_c * L_cv)
+            P += - alpha * llambda[k] * mu[k] * df.dx
 
         self.J = J
         self.P = P
@@ -143,7 +161,9 @@ class PressureSolver:
         A, b = df.assemble_system(df.lhs(self.J), df.rhs(self.J), self.bcs)
         P, _ = df.assemble_system(df.lhs(self.P), df.rhs(self.P), self.bcs)
         self.solver = df.KrylovSolver('gmres', 'amg')
+        #self.solver = df.KrylovSolver('gmres', 'jacobi')
         self.solver.set_operators(A, P)
+        #kself.solver.set_operator(A)
 
     def solve(self):
         A, b = df.assemble_system(df.lhs(self.J), df.rhs(self.J), self.bcs)
@@ -178,118 +198,6 @@ class PressureSolver:
             self.average_pressures[k] = integrated_pressure / self.volumes[k]
 
 
-class TransportSolver:
-    def __init__(self, mesh, output_folder, pressure, list_vessel_tips):
-        self.mesh = mesh
-        self.pressure = pressure
-        self.list_vessel_tips = list_vessel_tips
-        self._setup_vessel_tip_pressures(list_vessel_tips)
-        self._setup_subdomains()
-        self._setup_space()
-        self._setup_problem()
-        self.file_c_cap = df.File(os.path.join(output_folder, "c_cap.pvd"), "compressed")
-        self.file_c_tis = df.File(os.path.join(output_folder, "c_tis.pvd"), "compressed")
-
-    def _setup_vessel_tip_pressures(self, list_vessel_tips):
-        num_outlets = len(list_vessel_tips)
-        self.points = np.zeros((num_outlets, 3))
-        self.point_to_vertex_id = np.zeros(num_outlets)
-        self.pressures = np.zeros(num_outlets)
-        self.concentrations = np.zeros(num_outlets)
-        self.average_pressures = np.zeros(num_outlets)
-        self.R2 = np.zeros(num_outlets)
-        self.level = np.zeros(num_outlets)
-        for idx, vessel_tip in enumerate(list_vessel_tips):
-            p = vessel_tip.p
-            self.points[idx, :] = np.array([p.x, p.y, p.z])
-            self.point_to_vertex_id[idx] = vessel_tip.vertex_id
-            self.pressures[idx] = vessel_tip.pressure
-            self.concentrations[idx] = vessel_tip.concentration
-            self.R2[idx] = vessel_tip.R2
-            self.level[idx] = vessel_tip.level
-
-    def _setup_subdomains(self):
-        self.subdomains, self.dx = setup_subdomains(self.mesh, self.points)
-
-    def _setup_space(self):
-        P1El = df.FiniteElement('P', self.mesh.ufl_cell(), 1)
-        MixedEl = df.MixedElement([P1El, P1El])
-        self.V = df.FunctionSpace(self.mesh, MixedEl)
-
-    def _setup_problem(self):
-        phi_c, phi_t = df.TrialFunctions(self.V)
-        psi_c, psi_t = df.TestFunctions(self.V)
-
-        volumes = []
-        for k in range(len(self.pressures)):
-            volume = df.assemble(df.Constant(1) * self.dx(k))
-            volumes.append(volume)
-        self.volumes = volumes
-
-        p_c = self.pressure.split()[0]
-        p_t = self.pressure.split()[1]
-
-        v_c = -K_c/mu_c * df.grad(p_c)
-        v_t = -K_t/mu_t * df.grad(p_t)
-
-        J = 0
-        J += - df.inner(v_c * phi_c - df.Constant(D_c) * df.grad(phi_c), df.grad(psi_c)) * df.dx
-        J += - df.inner(v_t * phi_t - df.Constant(D_t) * df.grad(phi_t), df.grad(psi_t)) * df.dx
-
-        # t_cv
-        q_cv = df.Constant(rho_c * L_cv) * (df.Constant(p_ven) - p_c)
-        J -= q_cv * phi_c * psi_c * df.dx
-        # t_ct
-        q_ct = df.Constant(rho_t * L_ct * S_ct) * ((p_t-p_c) + sigma * (pi_int-pi_bl))
-        from_c_to_t = df.conditional(df.le(q_ct, 0), df.Constant(1), df.Constant(0))
-        from_t_to_c = df.conditional(df.ge(q_ct, 0), df.Constant(1), df.Constant(0))
-        J -= q_ct * from_c_to_t * phi_c * psi_c * df.dx
-        J -= q_ct * from_t_to_c * phi_t * psi_c * df.dx
-        # t_ca
-        for k in range(len(self.pressures)):
-            q_ca = df.Constant(rho_c * 2**(self.level[k]-1) / self.R2[k] / volumes[k]) * (df.Constant(self.pressures[k] - self.average_pressures[k]))
-            J -= q_ca * self.concentrations[k] * psi_c * self.dx(k)
-
-        # t_tc
-        q_tc = df.Constant(rho_t * L_ct * S_ct) * ((p_c-p_t) + sigma * (pi_bl-pi_int))
-        J -= q_tc * from_c_to_t * phi_c * psi_t * df.dx
-        J -= q_tc * from_t_to_c * phi_t * psi_t * df.dx
-
-        # t_tl
-        q_tl = df.Constant(rho_t * L_tl) * (p_lym - rho_t) * p_t
-        J -= q_tl * phi_t * psi_t * df.dx
-
-        # r_t
-        J -= - lambda_t * phi_t *psi_t * df.dx
-
-        self.J = J
-        self.bcs = []
-        print('test', hasattr(self,'current'))
-        self.current = df.Function(self.V, name='u') if not hasattr(self, 'current') else self.current
-        print('test', hasattr(self,'current'))
-        print('test', hasattr(self,'current'))
-
-    def update_average_pressures(self, average_pressures):
-        for idx in range(len(self.points)):
-            self.average_pressures[idx] = average_pressures[self.point_to_vertex_id[idx]]
-        # we have to reassemble the system:
-        self._setup_problem()
-
-    def update_vessel_tip_concentrations(self, list_vessel_tip_concentrations):
-        for idx, vessel_tip in enumerate(list_vessel_tip_concentrations):
-            assert vessel_tip.vertex_id == self.point_to_vertex_id[idx]
-            self.concentrations[idx] = vessel_tip.concentration
-        # we have to reassemble the system:
-        self._setup_problem()
-
-    def solve(self):
-        df.solve(df.lhs(self.J) == df.rhs(self.J), self.current, self.bcs)
-
-    def write_solution(self, t):
-        self.file_c_cap << (self.current.split()[0], t)
-        self.file_c_tis << (self.current.split()[1], t)
-
-
 def run():
     data_folder = '../../data'
     output_folder = './tmp'
@@ -302,8 +210,7 @@ def run():
     tau_out = 1. / 2**6
     t_end = 20.
     t = 0
-    t_coup_start = 0.
-    t_coup_interval_transport = 1000
+    t_coup_start = 1.
 
     solver1d = f.HeartToBreast1DSolver()
     solver1d.set_output_folder('./tmp')
@@ -317,11 +224,9 @@ def run():
 
     mesh = read_mesh(mesh_3d_filename)
     solver3d = PressureSolver(mesh, output_folder, vessel_tip_pressures)
-    #solver3d.current.interpolate(df.Constant((33. * 1333, 33. * 1333)))
+    df.assign(solver3d.current.sub(0), df.interpolate(df.Constant(33. * 1333), solver3d.V.sub(0).collapse()))
+    df.assign(solver3d.current.sub(1), df.interpolate(df.Constant(33. * 1333), solver3d.V.sub(1).collapse()))
     solver3d.write_solution(0.)
-
-    solver3d_transport = TransportSolver(mesh, output_folder, solver3d.current, vessel_tip_pressures)
-    solver3d_transport.write_solution(0.)
 
     for i in range(int(t_end / tau_out)):
         print ('iter = {}, t = {}'.format(i, t))
@@ -335,27 +240,12 @@ def run():
             solver3d.write_solution(t)
             print('endsolving pressures')
             new_pressures = solver3d.get_pressures()
-
             solver1d.update_vessel_tip_pressures(new_pressures)
-            solver3d_transport.update_average_pressures(new_pressures)
-
-            # solve the transport:
-            if i % t_coup_interval_transport == 0:
-                print('start solving transport')
-                # REMOVE ME START
-                for x in vessel_tip_pressures:
-                    x.concentration = 1.
-                # REMOVE ME END
-                solver3d_transport.update_vessel_tip_concentrations(vessel_tip_pressures)
-
-                solver3d_transport.solve()
-                solver3d_transport.write_solution(t)
-                print('end solving transport')
 
             max_value = solver3d.current.vector().max()
             min_value = solver3d.current.vector().min()
             if df.MPI.rank(df.MPI.comm_world) == 0:
-                print('max = {}, min = {}'.format(max_value, min_value))
+                print('max = {}, min = {}'.format(max_value/1333, min_value/1333))
 
 
 if __name__ == '__main__':
