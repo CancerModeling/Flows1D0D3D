@@ -82,7 +82,8 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     // const double E = param.elastic_modulus;
     const double E = param.elastic_modulus * 4;
     const double r_0 = param.radius;
-    const double r_cap = 7.5e-4;
+    //const double r_cap = 7.5e-4;
+    const double r_cap = 0.001;
     //const double h_0 = 1e-4;
     const double h_0 = 1e-4;
     const double p_cap = 30 * (133.333) * 1e-2;
