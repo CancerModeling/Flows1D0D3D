@@ -63,6 +63,15 @@ void LinearizedHeartToBreast1DSolver::solve_flow(double tau, double t) {
   solver->solve(tau, t);
 }
 
+double LinearizedHeartToBreast1DSolver::solve_flow(double tau, double t, size_t num_iter) {
+  for (size_t idx = 0; idx < num_iter; idx += 1)
+  {
+    solve_flow(tau, t);
+    t += tau;
+  }
+  return t;
+}
+
 void LinearizedHeartToBreast1DSolver::solve_transport(double tau, double t) {
   upwind_evaluator->init(t, solver->get_solution());
   transport_solver->solve(tau, t);

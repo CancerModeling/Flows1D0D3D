@@ -41,6 +41,8 @@ public:
 
   void solve_flow(double tau, double t);
 
+  double solve_flow(double tau, double t, size_t num_iter);
+
   void solve_transport(double tau, double t);
 
   void apply_slope_limiter_transport(double t);

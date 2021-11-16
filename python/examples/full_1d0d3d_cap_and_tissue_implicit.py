@@ -264,20 +264,24 @@ def run():
     os.makedirs(output_folder, exist_ok=True)
 
     degree = 2
-    tau = 1. / 2 ** 16
     tau_out = 1. / 2 ** 3
     t_end = 20.
     t = 0
     t_coup_start = 2.
+    use_fully_coupled = False
 
-    solver1d = f.HeartToBreast1DSolver()
+    if use_fully_coupled:
+        tau = 1. / 2 ** 16
+        solver1d = f.FullyCoupledHeartToBreast1DSolver()
+        solver1d.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"))
+        solver1d.set_path_linear_geometry( os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
+        solver1d.set_path_coupling_conditions(os.path.join(data_folder, "1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"))
+    else:
+        tau = 1. / 2 ** 4
+        solver1d = f.LinearizedHeartToBreast1DSolver()
+        solver1d.set_path_inflow_pressures(os.path.join(data_folder, "1d-input-pressures/from-33-vessels-with-small-extension.json"))
+        solver1d.set_path_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
     solver1d.set_output_folder('./tmp')
-    # s.set_path_inflow_pressures(os.path.join(data_folder, ""));
-    solver1d.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"));
-    solver1d.set_path_linear_geometry(
-        os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"));
-    solver1d.set_path_coupling_conditions(os.path.join(data_folder,
-                                                       "1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"));
     solver1d.setup(degree, tau)
 
     vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
@@ -303,11 +307,13 @@ def run():
         solver1d.write_output(t)
         if t > t_coup_start:
             vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
-            print('start solving pressures')
+            if df.MPI.rank(df.MPI.comm_world) == 0:
+                print('start solving 3D pressures')
             solver3d.update_vessel_tip_pressures(vessel_tip_pressures)
             solver3d.solve()
             solver3d.write_solution(t)
-            print('endsolving pressures')
+            if df.MPI.rank(df.MPI.comm_world) == 0:
+                print('end solving 3D pressures')
             new_pressures = solver3d.get_pressures()
             solver1d.update_vessel_tip_pressures(new_pressures)
 
