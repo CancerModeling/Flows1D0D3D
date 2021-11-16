@@ -49,6 +49,7 @@ PYBIND11_MODULE(_core, m) {
     .def_readwrite("pressure", &mc::VesselTipCurrentCouplingData::pressure)
     .def_readwrite("concentration", &mc::VesselTipCurrentCouplingData::concentration)
     .def_readonly("R2", &mc::VesselTipCurrentCouplingData::R2)
+    .def_readonly("radius", &mc::VesselTipCurrentCouplingData::radius)
     .def_readonly("level", &mc::VesselTipCurrentCouplingData::level)
     .def("__repr__",
          [](const mc::VesselTipCurrentCouplingData &a) {

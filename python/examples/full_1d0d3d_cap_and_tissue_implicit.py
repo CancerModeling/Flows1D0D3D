@@ -1,3 +1,4 @@
+import math
 import os
 import flows1d0d3d as f
 import dolfin as df
@@ -51,9 +52,12 @@ def read_mesh(mesh_filename):
     return mesh
 
 
-def setup_subdomains(mesh, points):
+def setup_subdomains(mesh, points, weights=None):
     subdomains = df.MeshFunction('size_t', mesh, mesh.topology().dim())
     subdomains.set_all(0)
+
+    if weights is None:
+        weights = np.ones(len(points))
 
     for cell in df.cells(mesh):
         mp = cell.midpoint()
@@ -61,17 +65,12 @@ def setup_subdomains(mesh, points):
         diff = mp_array - points
         dist = np.linalg.norm(diff, axis=1)
 
-        weight = np.ones(len(dist)) # propto r
-        np.argmin(dist * weight)
-
-        index = np.argmin(dist)
+        index = np.argmin(dist * weights)
         subdomains[cell] = index
 
     dx = df.Measure('dx', domain=mesh, subdomain_data=subdomains)
 
     return subdomains, dx
-
-
 
 
 class PressureSolver:
@@ -91,6 +90,7 @@ class PressureSolver:
         self.point_to_vertex_id = np.zeros(num_outlets)
         self.pressures = np.zeros(num_outlets)
         self.average_pressures = np.zeros(num_outlets)
+        self.radii = np.zeros(num_outlets)
         self.R2 = np.zeros(num_outlets)
         self.level = np.zeros(num_outlets)
         for idx, vessel_tip in enumerate(list_vessel_tip_pressures):
@@ -99,10 +99,12 @@ class PressureSolver:
             self.point_to_vertex_id[idx] = vessel_tip.vertex_id
             self.pressures[idx] = vessel_tip.pressure
             self.R2[idx] = vessel_tip.R2
+            self.radii[idx] = vessel_tip.radius
             self.level[idx] = vessel_tip.level
 
     def _setup_subdomains(self):
-        self.subdomains, self.dx = setup_subdomains(self.mesh, self.points)
+        weights = 1./self.radii**4
+        self.subdomains, self.dx = setup_subdomains(self.mesh, self.points, weights)
 
     def _setup_function_spaces(self):
         PEl = df.FiniteElement('P', self.mesh.ufl_cell(), 1)
@@ -147,8 +149,8 @@ class PressureSolver:
             coeff_ca.append(rho_c * 2 ** (self.level[k] - 1) / self.R2[k] / volumes[k])
             coeff_cv.append(rho_c * L_cv)
         # mean value:
-        #coeff_ca_mean = np.array(coeff_ca).mean()
-        #coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean
+        coeff_ca_mean = np.array(coeff_ca).mean()
+        coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean
 
         # llambda[k] = - 1/Omega_k int_Omega[k] p_c dx
         for k in range(len(self.pressures)):
@@ -194,13 +196,14 @@ class PressureSolver:
     def _setup_solver(self):
         self.A, self.b = df.assemble_system(df.lhs(self.J), df.rhs(self.J), self.bcs)
         self.P, _ = df.assemble_system(df.lhs(self.P), df.rhs(self.P), self.bcs)
-        #self.solver = df.KrylovSolver('gmres', 'jacobi')
+        # self.solver = df.KrylovSolver('gmres', 'jacobi')
         self.solver = df.KrylovSolver('gmres', 'amg')
-        #print(self.solver.parameters.keys())
+        # print(self.solver.parameters.keys())
         self.solver.parameters['monitor_convergence'] = True
-        #self.solver.parameters['absolute_tolerance'] = 1e-12
-        #self.solver.parameters['relative_tolerance'] = 1e-12
-        #self.solver.parameters['maximum_iterations'] = 10000
+        self.solver.parameters['nonzero_initial_guess'] = True
+        # self.solver.parameters['absolute_tolerance'] = 1e-12
+        # self.solver.parameters['relative_tolerance'] = 1e-12
+        # self.solver.parameters['maximum_iterations'] = 10000
         # self.solver = df.KrylovSolver('gmres', 'jacobi')
         self.solver.set_operators(self.A, self.P)
         #self.solver.set_operator(A)
@@ -230,6 +233,13 @@ class PressureSolver:
         for k in range(len(self.pressures)):
             integrated_pressure = df.assemble(self.current.split()[0] * self.dx(k))
             average_pressure = integrated_pressure / self.volumes[k]
+            new_data[int(self.point_to_vertex_id[k])] = average_pressure
+        return new_data
+
+    def get_pressures_from_multiplier(self):
+        new_data = {}
+        for k in range(len(self.pressures)):
+            average_pressure = self.current.split()[self.first_multiplier_index+k].vector().get_local()[0]
             new_data[int(self.point_to_vertex_id[k])] = average_pressure
         return new_data
 
@@ -265,6 +275,10 @@ def run():
 
     degree = 2
     tau_out = 1. / 2 ** 3
+    #tau_out = 1.
+    #tau_coup = 2.
+    tau_coup = tau_out
+    #t_end = 80.
     t_end = 20.
     t = 0
     t_coup_start = 2.
@@ -281,31 +295,25 @@ def run():
         solver1d = f.LinearizedHeartToBreast1DSolver()
         solver1d.set_path_inflow_pressures(os.path.join(data_folder, "1d-input-pressures/from-33-vessels-with-small-extension.json"))
         solver1d.set_path_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
-    solver1d.set_output_folder('./tmp')
+    solver1d.set_output_folder(output_folder)
     solver1d.setup(degree, tau)
 
-    vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
+    coupling_interval_0d3d = int(round(tau_coup / tau_out))
 
-    # print('[')
-    # for v in vessel_tip_pressures:
-    #     print(
-    #         "MockVesselTipPressures(p=MockPoint(x={:.3}, y={:.3}, z={:.3}), vertex_id={}, pressure={}, concentration={}, R2={}, level={}),".format(
-    #             v.p.x, v.p.y, v.p.z, v.vertex_id, 33 * 1333, 0, v.R2, v.level
-    #         ))
-    # print(']')
-    # return 0
+    vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
 
     mesh = read_mesh(mesh_3d_filename)
     solver3d = PressureSolver(mesh, output_folder, vessel_tip_pressures)
     df.assign(solver3d.current.sub(0), df.interpolate(df.Constant(33 * 1333), solver3d.V.sub(0).collapse()))
     df.assign(solver3d.current.sub(1), df.interpolate(df.Constant(13 * 1333), solver3d.V.sub(1).collapse()))
     solver3d.write_solution(0.)
+    solver3d.write_subdomains(output_folder)
 
-    for i in range(int(t_end / tau_out)):
+    for i in range(0, int(t_end / tau_out)):
         print('iter = {}, t = {}'.format(i, t))
         t = solver1d.solve_flow(tau, t, int(tau_out / tau))
         solver1d.write_output(t)
-        if t > t_coup_start:
+        if (t > t_coup_start) and (i % coupling_interval_0d3d == 0):
             vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('start solving 3D pressures')
@@ -315,6 +323,9 @@ def run():
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('end solving 3D pressures')
             new_pressures = solver3d.get_pressures()
+            # new_pressures_comp = solver3d.get_pressures_from_multiplier()
+            # print(new_pressures)
+            # print(new_pressures_comp)
             solver1d.update_vessel_tip_pressures(new_pressures)
 
             max_value = solver3d.current.vector().max()
@@ -322,118 +333,8 @@ def run():
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('max = {}, min = {}'.format(max_value / 1333, min_value / 1333))
 
-in_p = 33 * 1333
-
-mock_vessel_tip_pressures = [
-    MockVesselTipPressures(p=MockPoint(x=3.57, y=7.65, z=4.37), vertex_id=2, pressure=in_p, concentration=0,
-                           R2=120495648.5176453, level=12),
-    MockVesselTipPressures(p=MockPoint(x=2.21, y=8.29, z=5.57), vertex_id=3, pressure=in_p, concentration=0,
-                           R2=129807914.06789602, level=12),
-    MockVesselTipPressures(p=MockPoint(x=4.93, y=9.81, z=5.49), vertex_id=7, pressure=in_p, concentration=0,
-                           R2=122967826.3673249, level=12),
-    MockVesselTipPressures(p=MockPoint(x=3.33, y=8.37, z=4.61), vertex_id=11, pressure=in_p, concentration=0,
-                           R2=160414934.95677227, level=11),
-    MockVesselTipPressures(p=MockPoint(x=2.21, y=9.81, z=14.7), vertex_id=23, pressure=in_p, concentration=0,
-                           R2=125046304.98609628, level=12),
-    MockVesselTipPressures(p=MockPoint(x=1.01, y=9.89, z=11.9), vertex_id=27, pressure=in_p, concentration=0,
-                           R2=137279441.42421895, level=12),
-    MockVesselTipPressures(p=MockPoint(x=1.01, y=10.1, z=13.8), vertex_id=28, pressure=in_p, concentration=0,
-                           R2=146632792.38299593, level=12),
-    MockVesselTipPressures(p=MockPoint(x=7.25, y=9.89, z=13.6), vertex_id=39, pressure=in_p, concentration=0,
-                           R2=137941990.30448535, level=11),
-    MockVesselTipPressures(p=MockPoint(x=4.29, y=9.57, z=15.5), vertex_id=40, pressure=in_p, concentration=0,
-                           R2=150775781.71597233, level=11),
-    MockVesselTipPressures(p=MockPoint(x=2.29, y=10.1, z=0.693), vertex_id=56, pressure=in_p, concentration=0,
-                           R2=124923507.01379998, level=11),
-    MockVesselTipPressures(p=MockPoint(x=0.773, y=8.93, z=3.57), vertex_id=60, pressure=in_p, concentration=0,
-                           R2=176278128.67142257, level=12),
-    MockVesselTipPressures(p=MockPoint(x=5.81, y=4.69, z=9.49), vertex_id=76, pressure=in_p, concentration=0,
-                           R2=163053931.97067818, level=11),
-    MockVesselTipPressures(p=MockPoint(x=2.77, y=9.01, z=11.7), vertex_id=87, pressure=in_p, concentration=0,
-                           R2=154092211.81762356, level=13),
-    MockVesselTipPressures(p=MockPoint(x=2.45, y=9.89, z=11.8), vertex_id=92, pressure=in_p, concentration=0,
-                           R2=163470061.43666664, level=11),
-    MockVesselTipPressures(p=MockPoint(x=5.89, y=8.77, z=14.1), vertex_id=100, pressure=in_p, concentration=0,
-                           R2=119275602.28663285, level=11),
-    MockVesselTipPressures(p=MockPoint(x=2.77, y=10.1, z=0.613), vertex_id=102, pressure=in_p, concentration=0,
-                           R2=196577356.68226808, level=12),
-    MockVesselTipPressures(p=MockPoint(x=3.65, y=2.69, z=2.13), vertex_id=104, pressure=in_p, concentration=0,
-                           R2=163470061.43666664, level=11),
-    MockVesselTipPressures(p=MockPoint(x=7.01, y=9.25, z=3.33), vertex_id=106, pressure=in_p, concentration=0,
-                           R2=168610289.46967137, level=12),
-    MockVesselTipPressures(p=MockPoint(x=4.69, y=1.49, z=5.49), vertex_id=111, pressure=in_p, concentration=0,
-                           R2=162225664.565375, level=11),
-    MockVesselTipPressures(p=MockPoint(x=8.21, y=3.81, z=7.89), vertex_id=112, pressure=in_p, concentration=0,
-                           R2=131139462.43191028, level=11),
-    MockVesselTipPressures(p=MockPoint(x=5.09, y=5.65, z=10.7), vertex_id=116, pressure=in_p, concentration=0,
-                           R2=171210843.470033, level=12),
-    MockVesselTipPressures(p=MockPoint(x=7.41, y=9.25, z=11.7), vertex_id=117, pressure=in_p, concentration=0,
-                           R2=163470061.43666664, level=11),
-    MockVesselTipPressures(p=MockPoint(x=8.29, y=9.97, z=12.5), vertex_id=120, pressure=in_p, concentration=0,
-                           R2=148851838.98346952, level=12),
-    MockVesselTipPressures(p=MockPoint(x=9.17, y=7.81, z=4.21), vertex_id=126, pressure=in_p, concentration=0,
-                           R2=147730112.62774938, level=11),
-    MockVesselTipPressures(p=MockPoint(x=4.61, y=1.73, z=4.93), vertex_id=127, pressure=in_p, concentration=0,
-                           R2=159467496.38934076, level=11),
-    MockVesselTipPressures(p=MockPoint(x=8.69, y=5.49, z=6.05), vertex_id=128, pressure=in_p, concentration=0,
-                           R2=134281999.0028481, level=11),
-    MockVesselTipPressures(p=MockPoint(x=9.09, y=7.73, z=6.77), vertex_id=129, pressure=in_p, concentration=0,
-                           R2=129818181.5848586, level=11),
-    MockVesselTipPressures(p=MockPoint(x=5.25, y=6.37, z=0.853), vertex_id=130, pressure=in_p, concentration=0,
-                           R2=153966783.72596282, level=12),
-    MockVesselTipPressures(p=MockPoint(x=6.21, y=8.37, z=1.49), vertex_id=141, pressure=in_p, concentration=0,
-                           R2=163470061.43666655, level=11),
-    MockVesselTipPressures(p=MockPoint(x=5.97, y=9.09, z=0.933), vertex_id=143, pressure=in_p, concentration=0,
-                           R2=163470061.43666673, level=11),
-    MockVesselTipPressures(p=MockPoint(x=7.81, y=8.53, z=0.133), vertex_id=145, pressure=in_p, concentration=0,
-                           R2=163470061.43666705, level=11),
-]
-
-
-def run2():
-    data_folder = '../../data'
-    output_folder = './tmp'
-    mesh_3d_filename = '../../data/3d-meshes/test_full_1d0d3d_cm.xdmf'
-
-    os.makedirs(output_folder, exist_ok=True)
-
-    degree = 2
-    tau = 1. / 2 ** 16
-    tau_out = 1. / 2 ** 6
-    t_end = 20.
-    t = 0
-    t_coup_start = 1.
-
-    in_p = 33. * 1333
-
-
-    mesh = read_mesh(mesh_3d_filename)
-    solver3d = PressureSolver(mesh, output_folder, mock_vessel_tip_pressures)
-    df.assign(solver3d.current.sub(0), df.interpolate(df.Constant(33 * 1333), solver3d.V.sub(0).collapse()))
-    df.assign(solver3d.current.sub(1), df.interpolate(df.Constant(13 * 1333), solver3d.V.sub(1).collapse()))
-    solver3d.write_solution(0.)
-
-    solver3d.update_vessel_tip_pressures(mock_vessel_tip_pressures)
-    print('start solving')
-    solver3d.solve()
-    print('end solving')
-    solver3d.write_solution(1.)
-    print('endsolving pressures')
-
-    max_value = solver3d.current.vector().max()
-    min_value = solver3d.current.vector().min()
-    if df.MPI.rank(df.MPI.comm_world) == 0:
-        print('max = {}, min = {}'.format(max_value / 1333, min_value / 1333))
-
-    average_pressures = solver3d.get_pressures()
-
-    for idx, key in enumerate(average_pressures.keys()):
-        v = solver3d.current.split(True)[solver3d.first_multiplier_index+idx].vector()[:]
-        print('id = {}, lambda = {}, avg_p = {}'.format(key, v, average_pressures[key]))
-
 
 if __name__ == '__main__':
     f.initialize()
-    #run2()
     run()
     f.finalize()
