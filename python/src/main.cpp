@@ -1,6 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include "macrocirculation/heart_to_breast_1d_solver.hpp"
+#include "macrocirculation/linearized_heart_to_breast_1d_solver.hpp"
 #include "petsc.h"
 
 #define STRINGIFY(x) #x
@@ -28,7 +29,8 @@ PYBIND11_MODULE(_core, m) {
         .. currentmodule:: flows1d0d3d
         .. autosummary::
            :toctree: _generate
-           HeartToBreast1DSolver
+           FullyCoupledHeartToBreast1DSolver
+           LinearizedHeartToBreast1DSolver
     )pbdoc";
 
   m.def("initialize", initialize, "initializes the flow1d0d3d library");
@@ -47,6 +49,7 @@ PYBIND11_MODULE(_core, m) {
     .def_readwrite("pressure", &mc::VesselTipCurrentCouplingData::pressure)
     .def_readwrite("concentration", &mc::VesselTipCurrentCouplingData::concentration)
     .def_readonly("R2", &mc::VesselTipCurrentCouplingData::R2)
+    .def_readonly("radius", &mc::VesselTipCurrentCouplingData::radius)
     .def_readonly("level", &mc::VesselTipCurrentCouplingData::level)
     .def("__repr__",
          [](const mc::VesselTipCurrentCouplingData &a) {
@@ -58,7 +61,7 @@ PYBIND11_MODULE(_core, m) {
          }
     );
 
-  py::class_<mc::HeartToBreast1DSolver>(m, "HeartToBreast1DSolver")
+  py::class_<mc::HeartToBreast1DSolver>(m, "FullyCoupledHeartToBreast1DSolver")
     .def(py::init<>())
     .def("set_output_folder", &mc::HeartToBreast1DSolver::set_output_folder)
     .def("set_path_inflow_pressures", &mc::HeartToBreast1DSolver::set_path_inflow_pressures)
@@ -71,6 +74,19 @@ PYBIND11_MODULE(_core, m) {
     .def("get_vessel_tip_pressures", &mc::HeartToBreast1DSolver::get_vessel_tip_pressures)
     .def("update_vessel_tip_pressures", &mc::HeartToBreast1DSolver::update_vessel_tip_pressures)
     .def("update_vessel_tip_concentrations", &mc::HeartToBreast1DSolver::update_vessel_tip_concentrations)
+    ;
+
+  py::class_<mc::LinearizedHeartToBreast1DSolver>(m, "LinearizedHeartToBreast1DSolver")
+    .def(py::init<>())
+    .def("set_output_folder", &mc::LinearizedHeartToBreast1DSolver::set_output_folder)
+    .def("set_path_inflow_pressures", &mc::LinearizedHeartToBreast1DSolver::set_path_inflow_pressures)
+    .def("set_path_geometry", &mc::LinearizedHeartToBreast1DSolver::set_path_geometry)
+    .def("setup", &mc::LinearizedHeartToBreast1DSolver::setup)
+    .def("solve_flow", py::overload_cast<double, double, size_t>(&mc::LinearizedHeartToBreast1DSolver::solve_flow))
+    .def("write_output", &mc::LinearizedHeartToBreast1DSolver::write_output)
+    .def("get_vessel_tip_pressures", &mc::LinearizedHeartToBreast1DSolver::get_vessel_tip_pressures)
+    .def("update_vessel_tip_pressures", &mc::LinearizedHeartToBreast1DSolver::update_vessel_tip_pressures)
+    .def("update_vessel_tip_concentrations", &mc::LinearizedHeartToBreast1DSolver::update_vessel_tip_concentrations)
     ;
 
 #ifdef VERSION_INFO

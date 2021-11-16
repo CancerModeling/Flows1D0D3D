@@ -22,16 +22,25 @@ Its future goal is to simulate and study breast cancer models.
 
 ## Directory structure
   - `apps`: contains the demo applications (executibles are created inside `<build path>/bin/macrocirculation`)
-  - `assets`: contains asset files
+  - `assets`: contains asset files for doxygen
   - `cmake`: contains cmake modules to locate petsc and libmesh
   - `docs`: doxygen related files
   - `external`: keep external libraries
-  - `data/meshes`: contains the 1D and 3D meshes, boundary conditions, and other files used in demo apps
+  - `data`: contains all the data needed for the simulations
+    - `1d-boundary`: Contains data for the calibrated RCR-models for different meshes.
+    - `1d-coupling`: Contains data coupling two geometries together. 
+    - `1d-input-pressures`: Contains input pressures for other models to decoupled the simulations.
+    - `1d-meshes`: Contains the 1d networks.
+    - `3d-meshes`: Contains the 3d domains.
   - `tools`: contains utility scripts
     - `mesh_creation`: scripts for creating the 1D mesh 
     - `script/install`: install scripts to facilitate setup
+    - `visualization`: scripts for visualizing our output data
   - `src`: the source code of the library 
   - `tests`: a few catch2 unittests for critical components
+  - `python`: the python bindings
+    - `flows1d0d3d`: the parts of our library written in python
+    - `examples`: contains example applications in python calling our (*already installed*) library.
 
 ## Installation
 
@@ -138,6 +147,17 @@ pip3 install numpy
 For `circle-ci` testing, we use docker images `prashjha/angio-base-bionic` and `prashjha/angio-base-focal` of ubuntu 18.04 and 20.04 with petsc and libmesh installed. The associated dockerfiles can be found [here](https://github.com/prashjha/dockerimages). 
 
 In [Packages](https://github.com/orgs/CancerModeling/packages?repo_name=Flows1D0D3D), docker images of `Flows1D0D3D` is provided. 
+
+### Installing the python bindings
+
+For installation execute
+```bash
+LIBMESH_DIR=<REPLACE_WITH_LIBMESH_DIRECTORY> PETSC_DIR=<REPLACE_WITH_PETSC_DIRECTORY> python3 -m pip install .
+```
+in the directory containing the `setup.py` file. Test if the installation was successful with
+```bash
+python3 -c "import flows1d0d3d"
+```
 
 ## Run unittests
 
