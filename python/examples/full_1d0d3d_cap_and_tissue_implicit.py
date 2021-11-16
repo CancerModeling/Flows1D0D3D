@@ -149,8 +149,16 @@ class PressureSolver:
             coeff_ca.append(rho_c * 2 ** (self.level[k] - 1) / self.R2[k] / volumes[k])
             coeff_cv.append(rho_c * L_cv)
         # mean value:
+        # coeff_ca_mean = np.array(coeff_ca).mean()
+        # coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean
+        '''
+        for k in range(len(self.pressures)):
+            coeff_ca.append(rho_c * 2 ** (self.level[k] - 1) / self.R2[k])
+            coeff_cv.append(rho_c * L_cv)
         coeff_ca_mean = np.array(coeff_ca).mean()
-        coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean
+        coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean / np.sum(self.volumes)
+        '''
+
 
         # llambda[k] = - 1/Omega_k int_Omega[k] p_c dx
         for k in range(len(self.pressures)):
@@ -288,7 +296,7 @@ def run():
         tau = 1. / 2 ** 16
         solver1d = f.FullyCoupledHeartToBreast1DSolver()
         solver1d.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"))
-        solver1d.set_path_linear_geometry( os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
+        solver1d.set_path_linear_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
         solver1d.set_path_coupling_conditions(os.path.join(data_folder, "1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"))
     else:
         tau = 1. / 2 ** 4
