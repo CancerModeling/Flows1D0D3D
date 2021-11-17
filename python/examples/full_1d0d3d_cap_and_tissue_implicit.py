@@ -19,6 +19,7 @@ mu_t = 0.79722 * 1e-3 * 10
 # L_cv = 0.667 / 1333  # Ottesen, Olufsen, Larsen, p. 153
 # L_cv = 4.641e-7  # Liverpool!
 L_cv = 1e-8  # guess
+#L_cv = 2.2e-3 * 10-4  # p.142 carlo
 p_ven = 10 * 1333
 
 #L_ct = 1e-6  # ?
@@ -93,6 +94,7 @@ class PressureSolver:
         self.radii = np.zeros(num_outlets)
         self.R2 = np.zeros(num_outlets)
         self.level = np.zeros(num_outlets)
+        self.total_flows = np.zeros(num_outlets)
         for idx, vessel_tip in enumerate(list_vessel_tip_pressures):
             p = vessel_tip.p
             self.points[idx, :] = np.array([p.x, p.y, p.z])
@@ -101,9 +103,11 @@ class PressureSolver:
             self.R2[idx] = vessel_tip.R2
             self.radii[idx] = vessel_tip.radius
             self.level[idx] = vessel_tip.level
+            self.total_flows[idx] = 2**(vessel_tip.level-1) * (vessel_tip.pressure - 30 * 1333) / vessel_tip.R2
 
     def _setup_subdomains(self):
-        weights = 1./self.radii**4
+        weights = 1./self.radii**2
+        weights = np.ones(self.radii.shape)
         self.subdomains, self.dx = setup_subdomains(self.mesh, self.points, weights)
 
     def _setup_function_spaces(self):
@@ -145,20 +149,28 @@ class PressureSolver:
 
         coeff_ca = []
         coeff_cv = []
+        list_L_ct = []
+        list_L_tl = []
         for k in range(len(self.pressures)):
             coeff_ca.append(rho_c * 2 ** (self.level[k] - 1) / self.R2[k] / volumes[k])
+            #coeff_cv.append(rho_c * L_cv)
+            #L_cv = 0.95 * self.total_flows[k] / (self.volumes[k] * p_ven)
+            #L_ct = 0.05 * self.total_flows[k] / (self.volumes[k] * 16 * 1333 * S_ct)
+            #L_tl = 0.05 * self.total_flows[k] / (self.volumes[k] * p_lym)
             coeff_cv.append(rho_c * L_cv)
+            list_L_ct.append(L_ct)
+            list_L_tl.append(L_tl)
         # mean value:
-        # coeff_ca_mean = np.array(coeff_ca).mean()
-        # coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean
+        coeff_ca_mean = np.array(coeff_ca).mean()
+        coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean
         '''
+        total_volume = np.sum(volumes)
         for k in range(len(self.pressures)):
-            coeff_ca.append(rho_c * 2 ** (self.level[k] - 1) / self.R2[k])
+            coeff_ca.append(rho_c * 2 ** (self.level[k] - 1) / self.R2[k] / total_volume)
             coeff_cv.append(rho_c * L_cv)
         coeff_ca_mean = np.array(coeff_ca).mean()
-        coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean / np.sum(self.volumes)
+        coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean
         '''
-
 
         # llambda[k] = - 1/Omega_k int_Omega[k] p_c dx
         for k in range(len(self.pressures)):
@@ -175,23 +187,27 @@ class PressureSolver:
             J -= df.Constant(coeff_ca[k]) * (df.Constant(self.pressures[k]) - llambda[k]) * psi_c * self.dx(k)
 
         # q_ct
-        J -= df.Constant(rho_t * L_ct * S_ct) * (phi_t - phi_c) * psi_c * df.dx
-        J -= df.Constant(rho_t * L_ct * S_ct * sigma * (pi_bl - pi_int)) * psi_c * df.dx
+        for k in range(len(self.pressures)):
+            J -= df.Constant(rho_t * list_L_ct[k] * S_ct) * (phi_t - phi_c) * psi_c * self.dx(k)
+            J -= df.Constant(rho_t * list_L_ct[k] * S_ct * sigma * (pi_bl - pi_int)) * psi_c * self.dx(k)
 
         # q_tc
-        J -= df.Constant(rho_t * L_ct * S_ct) * (phi_c - phi_t) * psi_t * df.dx
-        J -= df.Constant(rho_t * L_ct * S_ct * sigma * (pi_int - pi_bl)) * psi_t * df.dx
+        for k in range(len(self.pressures)):
+            J -= df.Constant(rho_t * list_L_ct[k] * S_ct) * (phi_c - phi_t) * psi_t * self.dx(k)
+            J -= df.Constant(rho_t * list_L_ct[k] * S_ct * sigma * (pi_int - pi_bl)) * psi_t * self.dx(k)
 
         # q_tl
-        J -= df.Constant(rho_t * L_tl) * (p_lym - phi_t) * psi_t * df.dx
+        for k in range(len(self.pressures)):
+            J -= df.Constant(rho_t * list_L_tl[k]) * (p_lym - phi_t) * psi_t * self.dx(k)
 
         # setup diagonal preconditioner
         P = 0
         P += df.inner(df.Constant(rho_c * K_c / mu_c) * df.grad(phi_c), df.grad(psi_c)) * df.dx
         P += df.inner(df.Constant(rho_t * K_t / mu_t) * df.grad(phi_t), df.grad(psi_t)) * df.dx
-        P -= df.Constant(rho_t * L_ct * S_ct) * (-phi_c) * psi_c * df.dx
-        P -= df.Constant(rho_t * L_ct * S_ct) * (-phi_t) * psi_t * df.dx
-        P -= df.Constant(rho_t * L_tl) * (- phi_t) * psi_t * df.dx
+        for k in range(len(self.pressures)):
+            P -= df.Constant(rho_t * list_L_ct[k] * S_ct) * (-phi_c) * psi_c * self.dx(k)
+            P -= df.Constant(rho_t * list_L_ct[k] * S_ct) * (-phi_t) * psi_t * self.dx(k)
+            P -= df.Constant(rho_t * list_L_tl[k]) * (- phi_t) * psi_t * self.dx(k)
         P += df.Constant(0) * psi_t * df.dx
         for k in range(len(self.pressures)):
             alpha = df.Constant(coeff_ca[k] + coeff_cv[k])
@@ -286,8 +302,7 @@ def run():
     #tau_out = 1.
     #tau_coup = 2.
     tau_coup = tau_out
-    #t_end = 80.
-    t_end = 20.
+    t_end = 80.
     t = 0
     t_coup_start = 2.
     use_fully_coupled = False
@@ -307,6 +322,8 @@ def run():
     solver1d.setup(degree, tau)
 
     coupling_interval_0d3d = int(round(tau_coup / tau_out))
+
+    t = solver1d.solve_flow(tau, t, int(6 / tau))
 
     vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
 

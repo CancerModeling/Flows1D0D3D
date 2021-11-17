@@ -173,8 +173,8 @@ ctest
 ```
 
 ## Developers
-  - [Andreas Wagner](wagneran@ma.tum.de)
-  - [Tobias Koeppl](koepplto@ma.tum.de)
-  - [Prashant K. Jha](pjha.sci@gmail.com)
-  - [Marvin Fritz](marvin.fritz@ma.tum.de)
-  - [Chengyue Wu](cw35926@utexas.edu)
+  - [Andreas Wagner](mailto:wagneran@ma.tum.de)
+  - [Tobias Koeppl](mailto:koepplto@ma.tum.de)
+  - [Prashant K. Jha](mailto:pjha.sci@gmail.com)
+  - [Marvin Fritz](mailto:marvin.fritz@ma.tum.de)
+  - [Chengyue Wu](mailto:cw35926@utexas.edu)
