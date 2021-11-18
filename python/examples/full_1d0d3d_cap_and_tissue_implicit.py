@@ -278,23 +278,6 @@ class PressureSolver:
             self.average_pressures[k] = average_pressure
 
 
-@dataclass
-class MockPoint:
-    x: float
-    y: float
-    z: float
-
-
-@dataclass
-class MockVesselTipPressures:
-    p: Tuple[float, float, float]
-    vertex_id: int
-    pressure: float
-    concentration: float
-    R2: float
-    level: float
-
-
 def run():
     data_folder = '../../data'
     output_folder = './tmp'
