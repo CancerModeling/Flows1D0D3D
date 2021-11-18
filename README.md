@@ -79,6 +79,9 @@ Core dependencies are:
   - [gmm](http://getfem.org/project/libdesc_gmm.html)
     * included as external library in the code
     * provides framework to solve linear systems associated to the 1D networks
+  - [pybind11](https://github.com/pybind/pybind11)
+    * included as a submodule in the code
+    * provides simple python bindings to call our 1D and 0D solvers from python
 
 Dependencies for running the examples:
   - [python3](https://www.python.org/)
@@ -89,7 +92,7 @@ Dependencies for running the examples:
 ### Building the code
 Assuming all dependencies are installed in global path (`/usr/local/` etc), we build the code using
 ```sh
-git clone https://github.com/CancerModeling/Flows1D0D3D.git
+git clone --recurse-submodules https://github.com/CancerModeling/Flows1D0D3D.git
 
 cd Flows1D0D3D && mkdir build && cd build
 
@@ -102,10 +105,11 @@ make -j 4
 
 ctest --verbose
 ```
+The `--recurse-submodules` parameter is required, *if* you want to use the python bindings and clones the pybind11 repository.
 
 If libmesh and petsc are installed at custom paths, we will do
 ```sh
-git clone https://github.com/CancerModeling/Flows1D0D3D.git
+git clone --recurse-submodules https://github.com/CancerModeling/Flows1D0D3D.git
 
 cd Flows1D0D3D && mkdir build && cd build
 
@@ -169,8 +173,8 @@ ctest
 ```
 
 ## Developers
-  - [Andreas Wagner](wagneran@ma.tum.de)
-  - [Tobias Koeppl](koepplto@ma.tum.de)
-  - [Prashant K. Jha](pjha.sci@gmail.com)
-  - [Marvin Fritz](marvin.fritz@ma.tum.de)
-  - [Chengyue Wu](cw35926@utexas.edu)
+  - [Andreas Wagner](mailto:wagneran@ma.tum.de)
+  - [Tobias Koeppl](mailto:koepplto@ma.tum.de)
+  - [Prashant K. Jha](mailto:pjha.sci@gmail.com)
+  - [Marvin Fritz](mailto:marvin.fritz@ma.tum.de)
+  - [Chengyue Wu](mailto:cw35926@utexas.edu)

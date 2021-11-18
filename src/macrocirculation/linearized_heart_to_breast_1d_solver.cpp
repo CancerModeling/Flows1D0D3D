@@ -143,11 +143,12 @@ std::vector<VesselTipCurrentCouplingData> LinearizedHeartToBreast1DSolver::get_v
       // 1e3 since we have to convert kg -> g:
       auto R2 = R.back() * 1e3;
 
-      auto radius = calculate_edge_tree_parameters(e).radii.back();
+      auto radius_last = calculate_edge_tree_parameters(e).radii.back();
+      auto radius_first = e.get_physical_data().radius;
 
       auto concentration = concentration_values[v_id];
 
-      results.push_back({p, v.get_id(), p_out, concentration, R2, radius, R.size()});
+      results.push_back({p, v.get_id(), p_out, concentration, R2, radius_last, radius_first, R.size()});
     }
   }
 

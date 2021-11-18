@@ -262,7 +262,7 @@ int main(int argc, char *argv[]) {
                     << "p = " << d.pressure << ", "
                     << "c = " << d.concentration << ", "
                     << "R = " << d.R2 << ", "
-                    << "r = " << d.radius << std::endl;
+                    << "r = " << d.radius_last << std::endl;
       }
 
       // Some condition to solve the 3D system
