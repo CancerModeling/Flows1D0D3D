@@ -53,7 +53,10 @@ struct VesselTipCurrentCouplingData {
   double R2;
 
   /*! @brief The radius of the last vessel tree segment in [cm]. */
-  double radius;
+  double radius_last;
+
+  /*! @brief The vessel in [cm]. */
+  double radius_first;
 
   /*! @brief The number of levels for this tree. */
   size_t level;

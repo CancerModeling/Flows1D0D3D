@@ -306,7 +306,7 @@ void HeartToBreast3DSolver::setup_1d3d_reg_source(const std::vector<VesselTipCur
   // step 1: copy relevant data
   for (const auto &a : data_1d) {
     d_perf_pts.push_back(lm::Point(a.p.x, a.p.y, a.p.z));
-    d_perf_radii.push_back(a.radius);
+    d_perf_radii.push_back(a.radius_last);
     d_perf_pres.push_back(a.pressure);
     d_perf_pres_vein.push_back(6666.); // FIXME
     d_perf_nut.push_back(1.); // FIXME
@@ -469,7 +469,7 @@ void HeartToBreast3DSolver::setup_1d3d_partition(const std::vector<VesselTipCurr
   // step 1: copy relevant data
   for (const auto &a : data_1d) {
     d_perf_pts.push_back(lm::Point(a.p.x, a.p.y, a.p.z));
-    d_perf_radii.push_back(a.radius);
+    d_perf_radii.push_back(a.radius_last);
     d_perf_pres.push_back(a.pressure);
     d_perf_pres_vein.push_back(6666.); // FIXME
     d_perf_nut.push_back(1.); // FIXME
