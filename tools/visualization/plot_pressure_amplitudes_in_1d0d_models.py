@@ -1,6 +1,7 @@
 import numpy as np
 import json
 import os
+import matplotlib as mpl 
 from matplotlib import pyplot as plt
 import argparse
 
@@ -114,10 +115,11 @@ def load_averaged_pressure_data(filepath, t_start, t_stop):
     else:
         raise 'unknown'
 
+color_max = ['#496380', '#6e95bf', '#92c6ff']
+color_mean = ['#51815c', '#78bf87','#99f0aa'] 
+color_min = ['#80504d', '#bf7774', '#ff9f9a']
 
 if __name__ == '__main__':
-    plt.style.use('seaborn-pastel')
-
     parser = argparse.ArgumentParser(description='Animator for the vessel data.')
     parser.add_argument('--filepaths', type=str, help='Filepath to a file containing the pressures and flows.', nargs='+', required=True)
     parser.add_argument('--t-start', type=float, help='Start point when to plot', default=0.)
@@ -129,18 +131,61 @@ if __name__ == '__main__':
     show_amplitude = True
     show_min_max = True
 
-    radii_list = []
-    mean_p_list = []
-    min_p_list = []
-    max_p_list = []
+    if show_min_max:
+        for idx, filepath in enumerate(args.filepaths):
+            radii_list_, mean_p_list_, min_p_list_, max_p_list_ = load_averaged_pressure_data(filepath, args.t_start, args.t_stop)
 
-    for filepath in args.filepaths:
-        radii_list_, mean_p_list_, min_p_list_, max_p_list_ = load_averaged_pressure_data(filepath, args.t_start, args.t_stop)
+            radii_list = np.array(radii_list_)
+            permutation = np.argsort(radii_list_)
+            radii_list = radii_list[permutation]
+            mean_p_list = np.array(mean_p_list_)[permutation]
+            max_p_list = np.array(max_p_list_)[permutation]
+            min_p_list = np.array(min_p_list_)[permutation]
+
+            label_max = 'maximum' if idx+1 == len(args.filepaths) else None
+            label_mean = 'mean' if idx+1 == len(args.filepaths) else None
+            label_min = 'minimum' if idx+1 == len(args.filepaths) else None
+
+            plt.plot(radii_list_, max_p_list_, '.', label=label_max, color=color_max[idx])
+            plt.plot(radii_list, mean_p_list, 'x', label=label_mean, color=color_mean[idx])
+            plt.plot(radii_list, min_p_list, '+', label=label_min, color=color_min[idx])
+
+        plt.gca().set_xscale('log', nonposx='clip')
+        plt.gca().set_xlabel('r [cm]')
+        plt.gca().set_ylabel('pressure [mmHg]')
+        plt.gca().legend()
+        plt.gca().invert_xaxis()
+        plt.gca().grid(True)
+        plt.show()
+
+    if show_amplitude:
+        for idx, filepath in enumerate(args.filepaths):
+            radii_list_, mean_p_list_, min_p_list_, max_p_list_ = load_averaged_pressure_data(filepath, args.t_start, args.t_stop)
+
+            radii_list = np.array(radii_list_)
+            permutation = np.argsort(radii_list_)
+            radii_list = radii_list[permutation]
+            mean_p_list = np.array(mean_p_list_)[permutation]
+            max_p_list = np.array(max_p_list_)[permutation]
+            min_p_list = np.array(min_p_list_)[permutation]
+
+            plt.plot(radii_list, (max_p_list-min_p_list)/2, '.', color=color_max[idx])
+
+        plt.gca().set_xscale('log', nonposx='clip')
+        plt.gca().set_xlabel('r [cm]')
+        plt.gca().set_ylabel('pressure amplitude [mmHg]')
+        plt.gca().invert_xaxis()
+        plt.gca().grid(True)
+        plt.show()
+
+    '''
         radii_list += radii_list_
         mean_p_list += mean_p_list_
         min_p_list += min_p_list_
         max_p_list += max_p_list_
+        '''
 
+    '''
     print('sorting')
 
     radii_list = np.array(radii_list)
@@ -179,3 +224,4 @@ if __name__ == '__main__':
         plt.gca().invert_xaxis()
         plt.gca().grid(True)
         plt.show()
+   '''

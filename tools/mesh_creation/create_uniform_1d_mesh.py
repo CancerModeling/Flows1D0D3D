@@ -61,6 +61,7 @@ def create_uniform_mesh(data, h):
         norms = np.linalg.norm(diff, axis=1)
         abstract_coordinates = [0] + np.cumsum(norms).tolist()
         vessel_length = abstract_coordinates[-1]
+        print(vessel_length)
 
         if (h > vessel_length):
             raise "h ({}) > vessel_length ({}) not allowed".format(h, vessel_length)
@@ -107,7 +108,8 @@ def reduce_network(data, max_num_vessels):
         vertices_to_edges[vessel['left_vertex_id']].append(vessel['id'])
         vertices_to_edges[vessel['right_vertex_id']].append(vessel['id'])
 
-    start_vertex = 135
+    #start_vertex = 135
+    start_vertex = 0 
 
     added_edges = []
     active_vertices = set([start_vertex])
@@ -118,6 +120,7 @@ def reduce_network(data, max_num_vessels):
     while (len(active_vertices) > 0):
         vidx = active_vertices.pop()
         finished_vertices.add(vidx)
+        print(vertices_to_edges, vidx, len(vertices_to_edges))
         for eidx in vertices_to_edges[vidx]:
             if len(added_edges) < num_edges_to_add and not eidx in set(added_edges):
                 print('added', eidx)

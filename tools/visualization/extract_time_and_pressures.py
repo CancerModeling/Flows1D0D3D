@@ -97,7 +97,7 @@ for idx, vertex_name in enumerate(args.vertices):
     data['periodic'] = args.periodic
     data_list.append(data)
 
-serialized_data = json.dumps(data_list, indent=0)
+serialized_data = json.dumps({'vertices': data_list}, indent=0)
 print(serialized_data)
 
 with open(args.output_filepath, 'w') as f:

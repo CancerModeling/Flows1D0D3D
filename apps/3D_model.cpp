@@ -19,6 +19,7 @@
 #include "macrocirculation/heart_to_breast_3d_solver.hpp"
 #include "macrocirculation/libmesh_utils.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
+#include "macrocirculation/vessel_formulas.hpp"
 
 
 namespace mc = macrocirculation;
@@ -61,6 +62,8 @@ int main(int argc, char *argv[]) {
   char petsc_version[1000];
   PetscGetVersion(petsc_version, 1000);
   std::cout << petsc_version << std::endl;
+
+  // std::cout << " viscosity " << mc::viscosity_bloodplasma(3.75 * 1e-6 * 1e2) * 1.06e-3 * 1e3 << std::endl;
 
   cxxopts::Options options(argv[0], "Fully coupled 1D-0D-3D solver.");
   options.add_options()                                                                                                                 //
