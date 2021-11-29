@@ -4,7 +4,6 @@ import os
 import flows1d0d3d as f
 import dolfin as df
 import numpy as np
-from mpi4py import MPI as MPI4
 from dataclasses import dataclass
 from typing import Tuple
 
@@ -59,11 +58,6 @@ def create_weight_function(p):
     return df.Expression('(1./norm) * std::exp( - alpha * (std::pow(x[0]-px, 2) + std::pow(x[1]-py, 2) + std::pow(x[2]-pz, 2)))', norm=1., alpha=5e-2, px=p[0], py=p[1], pz=p[2], degree=2)
 
 
-def create_weight_rev_function(p):
-    return df.Expression('(std::sqrt(std::pow(x[0]-px, 2) + std::pow(x[1]-py, 2) + std::pow(x[2]-pz, 2)) <= radius) ? 1. / (4./3. * std::pow(radius, 3) * M_PI) : 0.', radius=1, px=p[0], py=p[1], pz=p[2], degree=6)
-    #return df.Expression('(std::sqrt(std::pow(x[0]-px, 2) + std::pow(x[1]-py, 2) + std::pow(x[2]-pz, 2)) <= radius) ? 1.  : 0.', radius=0.1, px=p[0], py=p[1], pz=p[2], degree=4)
-
-
 def setup_subdomains(mesh, points, weights=None):
     subdomains = df.MeshFunction('size_t', mesh, mesh.topology().dim())
     subdomains.set_all(0)
@@ -83,55 +77,6 @@ def setup_subdomains(mesh, points, weights=None):
     dx = df.Measure('dx', domain=mesh, subdomain_data=subdomains)
 
     return subdomains, dx
-
-
-def evaluateAtPoint( u, point ):
-    mesh = u.function_space().mesh()
-    box = mesh.bounding_box_tree()
-    isValid = box.collides_entity(point)
-    if (isValid):
-        value = u(point)
-    else:
-        value = 0
-    return [ value, isValid ]
-
-
-def evaluateAtTestedPoint( u, point ):
-    dcomm = df.MPI.comm_world
-    mcomm = MPI4.COMM_WORLD
-    root = 0
-
-    [ valueTentative, valueValid ] = evaluateAtPoint(u, point)
-    valueTentativeA = numpy.array(range(1), numpy.double)
-    valueTentativeA[0] = valueTentative
-    values = numpy.array(range(df.MPI.size(dcomm)), np.double)
-    mcomm.Gather( valueTentativeA, values )
-
-    # MPI crashes if we try to gather bool values,
-    # so convert validities to int instead
-    valueValidA = np.array(range(1), np.int)
-    valueValidA[0] = valueValid
-    valueValidities = np.array(range(df.MPI.size(dcomm)), np.int)
-    mcomm.Gather( valueValidA, valueValidities )
-
-    testedValue=0
-    if (df.MPI.rank(df.mpi_comm_world()) == root):
-        validityIndex = np.where(valueValidities==True)[0]
-        if( validityIndex.size > 0 ):
-            validIndex = validityIndex[0]
-            testedValue = values[validIndex]
-            isValid = valueValidities[validIndex]
-        else:
-            testedValue = 0
-            isValid = False
-
-    # get the root process to share the tested value with the other processes
-    testedValueA = np.array(range(1), np.double)
-    testedValueA[0] = testedValue
-    mcomm.Bcast(testedValueA)
-    testedValue = testedValueA[0]
-
-    return testedValue
 
 
 class PressureSolver:
@@ -167,25 +112,23 @@ class PressureSolver:
             self.total_flows[idx] = 2**(vessel_tip.level-1) * (vessel_tip.pressure - 30 * 1333) / vessel_tip.R2
 
     def _setup_subdomains(self):
+        weights = 1./self.radii**2
         weights = np.ones(self.radii.shape)
         self.subdomains, self.dx = setup_subdomains(self.mesh, self.points, weights)
 
     def _setup_weight_functions(self):
         self.weight_funs = []
-        self.weight_funs_rev = []
         dx = df.Measure('dx', domain=self.mesh)
+        alphas = {10: 2e-1, 11: 1e-1, 12: 5e-2}
 
         for k in range(len(self.points)):
             w = create_weight_function(self.points[k,:])
-            w.alpha = 5e-3 / (self.radii[k] / self.radii.min())**2
+            #w.alpha = alphas[self.level[k]]
+            w.alpha = 1e-1 * (self.radii[k] / self.radii.min())**(-2)
             norm_w = df.assemble(w * dx)
             w.norm = norm_w
             print(df.assemble(w * dx))
             self.weight_funs.append(w)
-
-            #w = create_weight_rev_function(self.points[k,:])
-            #print('rev', df.assemble(w * dx))
-            #self.weight_funs_rev.append(w)
 
 
     def _setup_function_spaces(self):
@@ -220,7 +163,6 @@ class PressureSolver:
         self.volumes = volumes
 
         volume = np.sum(self.volumes)
-        print('volume', volume)
 
         self.update_average_pressures()
 
@@ -230,23 +172,24 @@ class PressureSolver:
 
         coeff_ca = []
         for k in range(len(self.pressures)):
-            coeff_ca.append(rho_c * 2 ** (self.level[k] - 1) / self.R2[k])
+            coeff_ca.append(rho_c * 2 ** (self.level[k] - 1) / self.R2[k] / self.volumes[k])
         # mean value:
-        # coeff_ca_mean = np.array(coeff_ca).mean()
-        # coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean
+        coeff_ca_mean = np.array(coeff_ca).mean()
+        coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean
 
         # llambda[k] = - 1/Omega_k int_Omega[k] p_c dx
         for k in range(len(self.pressures)):
             alpha = df.Constant(coeff_ca[k] + rho_c * L_cv)
-            # J += - alpha * llambda[k] * mu[k] * self.dx(k) + alpha * phi_c * mu[k] * self.dx(k)
-            J += - df.Constant(1/volume) * llambda[k] * mu[k] * self.dx + phi_c * self.weight_funs[k] * mu[k] * self.dx
+            J += - alpha * llambda[k] * mu[k] * self.dx(k) + alpha * phi_c * mu[k] * self.dx(k)
+            #J += - df.Constant(1/volume) * llambda[k] * mu[k] * self.dx + phi_c * self.weight_funs[k] * mu[k] * self.dx
 
         # q_cv
         J -= df.Constant(rho_c * L_cv) * (df.Constant(p_ven) - phi_c) * psi_c * self.dx
 
         # q_ca
         for k in range(len(self.pressures)):
-            J -= df.Constant(coeff_ca[k]) * self.weight_funs[k] * (df.Constant(self.pressures[k]) - llambda[k]) * psi_c * self.dx
+            J -= df.Constant(coeff_ca[k]) * (df.Constant(self.pressures[k]) - llambda[k]) * psi_c * self.dx(k)
+            # J -= df.Constant(coeff_ca[k]) * self.weight_funs[k] * (df.Constant(self.pressures[k]) - llambda[k]) * psi_c * self.dx
 
         # q_ct
         J -= df.Constant(rho_t * L_ct * S_ct) * (phi_t - phi_c) * psi_c * self.dx
@@ -269,8 +212,8 @@ class PressureSolver:
         P += df.Constant(0) * psi_t * df.dx
         for k in range(len(self.pressures)):
             #alpha = df.Constant(coeff_ca[k] + rho_c * L_cv)
-            #P += - alpha * llambda[k] * mu[k] * self.dx(k)
-            P += - df.Constant(1/volume) * llambda[k] * mu[k] * self.dx(k)
+            P += - alpha * llambda[k] * mu[k] * self.dx(k)
+            #P += - df.Constant(1/volume) * llambda[k] * mu[k] * self.dx(k)
 
         self.J = J
         self.P = P
@@ -287,8 +230,6 @@ class PressureSolver:
         # self.solver.parameters['absolute_tolerance'] = 1e-12
         # self.solver.parameters['relative_tolerance'] = 1e-12
         # self.solver.parameters['maximum_iterations'] = 10000
-        self.solver.parameters['absolute_tolerance'] = 1e-6
-        self.solver.parameters['relative_tolerance'] = 1e-6
         # self.solver = df.KrylovSolver('gmres', 'jacobi')
         self.solver.set_operators(self.A, self.P)
         #self.solver.set_operator(A)
@@ -316,24 +257,10 @@ class PressureSolver:
     def get_pressures(self):
         new_data = {}
         for k in range(len(self.pressures)):
-            #integrated_pressure = df.assemble(self.current.split()[0] * self.dx(k))
-            #average_pressure = integrated_pressure / self.volumes[k]
+            integrated_pressure = df.assemble(self.current.split()[0] * self.dx(k))
+            average_pressure = integrated_pressure / self.volumes[k]
 
-            # average_pressure = df.assemble(self.weight_funs[k] * self.current.split()[0] * self.dx)
-
-            # average_pressure = df.assemble(self.weight_funs_rev[k] * self.current.split()[0] * self.dx)
-            '''
-            average_pressure = 33. * 1333
-            average_pressure = self.current(self.points[k,:])
-
-            source = df.PointSource(self.V.sub(0), p, 1.0)
-            result = df.assemble(source * self.current.split()[0] * self.dx)
-            print(result)
-            '''
-
-            p = df.Point(self.points[k,0], self.points[k,1], self.points[k,2])
-            average_pressure= evaluateAtTestedPoint(self.current.split(True)[0], p)
-            print(average_pressure)
+            #average_pressure = df.assemble(self.weight_funs[k] * self.current.split()[0] * self.dx)
 
             new_data[int(self.point_to_vertex_id[k])] = average_pressure
         return new_data
@@ -347,8 +274,8 @@ class PressureSolver:
 
     def update_average_pressures(self):
         for k in range(len(self.pressures)):
-            # average_pressure = df.assemble(self.current.split()[0] * self.dx(k)) / self.volumes[k]
-            average_pressure = df.assemble(self.weight_funs[k] * self.current.split()[0] * self.dx)
+            average_pressure = df.assemble(self.current.split()[0] * self.dx(k)) / self.volumes[k]
+            #average_pressure = df.assemble(self.weight_funs[k] * self.current.split()[0] * self.dx)
             self.average_pressures[k] = average_pressure
 
 
