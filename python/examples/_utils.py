@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import dolfin as df
 
@@ -7,6 +8,13 @@ def read_mesh(mesh_filename):
     f = df.XDMFFile(df.MPI.comm_world, mesh_filename)
     f.read(mesh)
     return mesh
+
+
+def open_input_pressures(filepath):
+    with open(filepath) as file:
+        tip_pressures = json.loads(file.read())
+        tip_pressures = {int(k):int(v) for k,v in tip_pressures.items()}
+    return tip_pressures
 
 
 def setup_subdomains(mesh, points, weights=None):
