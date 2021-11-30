@@ -28,28 +28,28 @@ def run():
 
     degree = 2
     tau_out = 1. / 2 ** 3
-    #tau_out = 1.
-    #tau_coup = 2.
     tau_coup = tau_out
     t_end = 80.
     t = 0
     t_coup_start = 2.
-    t_preiter = 6.
+    t_preiter = 6 
 
     if args.use_fully_coupled:
         tau = 1. / 2 ** 16
+        tau_transport = 1. / 2 ** 7
         solver1d = f.FullyCoupledHeartToBreast1DSolver()
         solver1d.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"))
         solver1d.set_path_linear_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
         solver1d.set_path_coupling_conditions(os.path.join(data_folder, "1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"))
     else:
         tau = 1. / 2 ** 4
+        tau_transport = 1. / 2 ** 4
         solver1d = f.LinearizedHeartToBreast1DSolver()
         solver1d.set_path_inflow_pressures(os.path.join(data_folder, "1d-input-pressures/from-33-vessels-with-small-extension.json"))
         solver1d.set_path_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
+
     solver1d.set_output_folder(output_folder)
     solver1d.setup(degree, tau)
-
 
     tip_pressures = open_input_pressures(args.tip_pressures_input_file)
     solver1d.update_vessel_tip_pressures(tip_pressures)
@@ -75,7 +75,13 @@ def run():
     for i in range(0, int((t_end-t_preiter) / tau_out)):
         if df.MPI.rank(df.MPI.comm_world) == 0:
             print('iter = {}, t = {}'.format(i, t))
-        t = solver1d.solve_flow(tau, t, int(tau_out / tau))
+
+        for i in range(int(tau_out/tau_transport)):
+            t_old = t
+            t = solver1d.solve_flow(tau, t_old, int(tau_transport/ tau))
+            assert np.isclose(t_old + tau_transport, t)
+            solver1d.solve_transport(tau_transport, t)
+
         if (t > t_coup_start) and (i % coupling_interval_0d3d == 0):
             vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
             if df.MPI.rank(df.MPI.comm_world) == 0:
@@ -91,7 +97,7 @@ def run():
             # fix me with real concentrations 
             # for v in vessel_tip_pressures:
             #     v.concentration = 1
-            vessel_tip_pressures[0].concentration = 1
+            # vessel_tip_pressures[0].concentration = 1
 
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('start solving 3D transport')

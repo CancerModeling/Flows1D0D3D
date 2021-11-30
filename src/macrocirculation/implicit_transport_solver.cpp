@@ -365,6 +365,7 @@ void ImplicitTransportSolver::assemble(double tau, double t) {
   rhs->zero();
   assemble_matrix(tau, t);
   assemble_rhs(tau, t);
+  rhs->assemble();
   assemble_windkessel_rhs_and_matrix(tau, t);
   rhs->assemble();
   A->assemble();
