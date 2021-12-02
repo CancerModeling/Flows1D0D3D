@@ -39,10 +39,6 @@ add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
 target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})
 target_link_libraries(${ProjectName}CombinedGeometry cxxopts)
 
-add_executable(${ProjectName}Linearized1D0D3DModel linearized_1D0D3D_model.cpp)
-target_link_libraries(${ProjectName}Linearized1D0D3DModel ${ProjectLib})
-target_link_libraries(${ProjectName}Linearized1D0D3DModel cxxopts fmt)
-
 add_executable(${ProjectName}Calibration calibration.cpp)
 target_link_libraries(${ProjectName}Calibration ${ProjectLib})
 target_link_libraries(${ProjectName}Calibration cxxopts)
