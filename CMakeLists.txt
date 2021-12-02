@@ -60,9 +60,6 @@ add_definitions(-DOMPI_SKIP_MPICXX)
 # **** pthreads ****#
 find_package(Threads REQUIRED)
 
-# **** libmesh ****#
-find_package(LibMesh REQUIRED)
-
 # **** petsc ****#
 # Note: -DPETSC_DIR should point to the same directory that libmesh was compiled with
 find_package(Petsc REQUIRED)
@@ -94,16 +91,6 @@ if (NOT cxxopts_POPULATED)
     add_subdirectory(${cxxopts_SOURCE_DIR} ${cxxopts_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
 
-# fmt
-FetchContent_Declare(fmt
-        GIT_REPOSITORY https://github.com/fmtlib/fmt
-        GIT_TAG 7.1.3)
-FetchContent_GetProperties(fmt)
-if (NOT fmt_POPULATED)
-    FetchContent_Populate(fmt)
-    add_subdirectory(${fmt_SOURCE_DIR} ${fmt_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif ()
-
 # debug output flags
 if (${Enable_CMAKE_Debug_Build})
     message("LIBMESH_DEFINITIONS = ${PC_LIBMESH_CFLAGS_DEFS}")
@@ -113,36 +100,9 @@ if (${Enable_CMAKE_Debug_Build})
     message("PETSC_LIBRARIES = ${PETSC_LIBRARIES}")
 endif ()
 
-# **** vtk ****#
-find_package(VTK REQUIRED)
-
-if (VTK_VERSION VERSION_LESS "6")
-    message(FATAL_ERROR "ERROR: Only VTK library 6+ supported")
-endif ()
-
-if (${Enable_CMAKE_Debug_Build})
-    message("VTK_DIR = ${VTK_DIR}")
-    message("VTK_LIBRARIES = ${VTK_LIBRARIES}")
-    message("VTK_INCLUDE_DIRS = ${VTK_INCLUDE_DIRS}")
-endif ()
-
 # issue error and exit
 if ((NOT MPI_FOUND) AND (NOT LIBMESH_FOUND))
     message(FATAL_ERROR "ERROR: MPI and LIBMESH are required")
-endif ()
-
-#if ("${PETSC_DIR}" STREQUAL "")
-#    message(FATAL_ERROR "ERROR: Please specify petsc directory")
-#endif ()
-
-# nanoflann
-FetchContent_Declare(nanoflann
-        GIT_REPOSITORY https://github.com/jlblancoc/nanoflann
-        GIT_TAG v1.3.2)
-FetchContent_GetProperties(nanoflann)
-if (NOT nanoflann_POPULATED)
-    FetchContent_Populate(nanoflann)
-    add_subdirectory(${nanoflann_SOURCE_DIR} ${nanoflann_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
 
 # ****************************************************************************

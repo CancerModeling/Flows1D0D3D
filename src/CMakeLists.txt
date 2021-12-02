@@ -15,6 +15,6 @@ add_library(${ProjectLib} ${SOURCES})
 set_target_properties(${ProjectLib} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(${ProjectLib} PUBLIC ${MPI_CXX_LIBRARIES}
                                            ${CMAKE_THREAD_LIBS_INIT}
-                                           ${PETSC_LIBRARIES})
+                                           PkgConfig::PETSC)
 target_include_directories(${ProjectLib} INTERFACE ./)
 target_link_libraries(${ProjectLib} PRIVATE nlohmann_json::nlohmann_json)
