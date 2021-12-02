@@ -188,6 +188,12 @@ void CSVVesselTipWriter::write_meta_file() {
         {"num_dofs", num_dofs},
       };
 
+      if (e->has_embedding_data()) {
+        auto& points = e->get_embedding_data().points;
+        auto p = e->is_pointing_to(v_id) ? points.back() : points.front();
+        vessel_obj["coordinates"] = {p.x, p.y, p.z};
+      }
+
       if (v->is_vessel_tree_outflow()) {
         vessel_obj["resistance"] = v->get_vessel_tree_data().resistances;
         vessel_obj["capacitances"] = v->get_vessel_tree_data().capacitances;

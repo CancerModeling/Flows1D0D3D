@@ -162,6 +162,7 @@ foreach(TargetName ${ProjectName}NonlinearFlowLine
             output_voxels_to_mesh
             output_darcy_flow_reg_outlets
             output_full_1d0d3d_pkj
+            output_3d_model
             output_multiscale_time_3d1d0d)
         add_custom_command(
                 TARGET ${TargetName} POST_BUILD

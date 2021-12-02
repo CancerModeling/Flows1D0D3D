@@ -9,6 +9,7 @@ parser = argparse.ArgumentParser(description='Plots the vessel data.')
 parser.add_argument('--filepaths', type=str, nargs='+', required=True)
 parser.add_argument('--vessels', type=int, nargs='+', help='A list of ids of the vessels to plot.', default=[15])
 parser.add_argument('--labels', type=str, nargs='+', default=[])
+parser.add_argument('--colors', type=str, nargs='+', default=[])
 parser.add_argument('--t-start', type=float, default=0)
 parser.add_argument('--t-end', type=float, default=10000)
 parser.add_argument('--output-folder', type=str, required=True)
@@ -19,6 +20,8 @@ args = parser.parse_args()
 list_all_t = []
 list_all_p = []
 list_all_q = []
+
+colors = args.colors
 
 labels = args.labels
 if len(labels) != len(args.filepaths):
@@ -95,14 +98,15 @@ for filepath in args.filepaths:
 max_p, min_p = np.array(list_all_p).max(), np.array(list_all_p).min()
 max_q, min_q = np.array(list_all_q).max(), np.array(list_all_q).min()
 
-if False:
+if True:
     fig = plt.figure()
 
     for idx, vessel_id in enumerate(args.vessels):
         plt.clf()
         ax = fig.add_subplot(111) 
         for src_idx in range(len(list_all_p)):
-            ax.plot(list_all_t[src_idx][idx], list_all_p[src_idx][idx], label='$p_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=4-src_idx)
+            linestyle = '-' if src_idx % 2 == 0 else '--'
+            ax.plot(list_all_t[src_idx][idx], list_all_p[src_idx][idx], label='$p_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=4-src_idx, linestyle=linestyle, color=colors[src_idx])
         ax.legend()
         ax.set_xlabel('t [s]')
         ax.set_ylabel('p [mmHg]')
@@ -114,7 +118,7 @@ if False:
         plt.clf()
         ax = fig.add_subplot(111) 
         for src_idx in range(len(list_all_q)):
-            ax.plot(list_all_t[src_idx][idx], list_all_q[src_idx][idx], label='$q_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=4-src_idx)
+            ax.plot(list_all_t[src_idx][idx], list_all_q[src_idx][idx], label='$q_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=4-src_idx, linestyle=linestyle, color=colors[src_idx])
         ax.legend()
         ax.set_xlabel('t [s]')
         ax.set_ylabel(r'q [$cm^{3}/s$]')
@@ -128,7 +132,8 @@ if True:
     for idx, vessel_id in enumerate(args.vessels):
         ax = axes[0, idx]
         for src_idx in range(len(list_all_p)):
-            ax.plot(list_all_t[src_idx][idx], list_all_p[src_idx][idx], label='$p_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=3-src_idx)
+            linestyle = '-' if src_idx % 2 == 0 else '--'
+            ax.plot(list_all_t[src_idx][idx], list_all_p[src_idx][idx], label='$p_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=3-src_idx, linestyle=linestyle, color=colors[src_idx])
         if idx == 0:
             ax.set_ylabel('p [mmHg]')
         ax.set_ylim(top=max_p+5, bottom=min_p-5)
@@ -137,7 +142,8 @@ if True:
     for idx, vessel_id in enumerate(args.vessels):
         ax = axes[1, idx]
         for src_idx in range(len(list_all_q)):
-            ax.plot(list_all_t[src_idx][idx], list_all_q[src_idx][idx], label='$q_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=3-src_idx)
+            linestyle = '-' if src_idx % 2 == 0 else '--'
+            ax.plot(list_all_t[src_idx][idx], list_all_q[src_idx][idx], label='$q_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=3-src_idx, linestyle=linestyle, color=colors[src_idx])
         ax.set_xlabel('t [s]')
         if idx == 0:
             ax.set_ylabel(r'q [$cm^{3}/s$]')

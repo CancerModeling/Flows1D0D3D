@@ -15207,7 +15207,7 @@
 {
 "id": 188,
 "name": "cw_right_branch_start",
-"vessel_length": 5,
+"vessel_length": 2.5,
 "radius": 0.06,
 "wall_thickness": 0.005,
 "elastic_modulus": 1300000.0,
@@ -15267,7 +15267,7 @@
 {
 "id": 193,
 "name": "cw_left_branch_start",
-"vessel_length": 5,
+"vessel_length": 2.5,
 "radius": 0.06,
 "wall_thickness": 0.005,
 "elastic_modulus": 1300000.0,

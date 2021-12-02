@@ -145,7 +145,7 @@ std::vector<InputPressuresResults> read_input_pressures(const std::string &filep
   file >> j;
 
   std::vector< InputPressuresResults > results;
-  for (auto d : j)
+  for (auto d : j["vertices"])
   {
     InputPressuresResults result;
     result.name = d["name"].get<std::string>();
