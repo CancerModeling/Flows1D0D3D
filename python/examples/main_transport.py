@@ -58,7 +58,7 @@ def run():
     
     coupling_interval_0d3d = int(round(tau_coup / tau_out))
 
-    for j in range(int((t_preiter-t)/tau_transport)):
+    for j in range(0, int((t_preiter-t)/tau_transport)):
         if df.MPI.rank(df.MPI.comm_world) == 0:
             print('preiter = {}, t = {}'.format(j, t))
         t_old = t
@@ -103,11 +103,6 @@ def run():
             new_pressures = flow_solver_3d.get_pressures()
             solver1d.update_vessel_tip_pressures(new_pressures)
 
-            # fix me with real concentrations 
-            # for v in vessel_tip_pressures:
-            #     v.concentration = 1
-            # vessel_tip_pressures[0].concentration = 1
-
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('start solving 3D transport')
             transport_solver_3d.update_average_pressures(new_pressures)
@@ -116,29 +111,11 @@ def run():
             transport_solver_3d.write_solution(t)
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('end solving 3D transport')
-            if df.MPI.rank(df.MPI.comm_world) == 0:
-                print ('new_pressures', new_pressures)
-                print ('vessel_tip_pressures = [')
-                for v in vessel_tip_pressures:
-                    print("VesselTipData(")
-                    print('p = Point(x={}, y={}, z={}),'.format(v.p.x, v.p.y, v.p.z))
-                    print('vertex_id = {},'.format(v.vertex_id))
-                    print('pressure = {},'.format(v.pressure))
-                    print('concentration = {},'.format(v.concentration))
-                    print('R2 = {},'.format(v.R2))
-                    print('radius_first = {},'.format(v.radius_first))
-                    print('radius_last = {},'.format(v.radius_last))
-                    print('level = {}'.format(v.level))
-                    print("),")
-                print (']')
 
             max_value = transport_solver_3d.current.vector().max()
             min_value = transport_solver_3d.current.vector().min()
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('transport max = {}, min = {}'.format(max_value, min_value))
-
-            if transport_solver_3d.current.vector().min() < -10:
-                os.sys.exit()
 
             max_value = flow_solver_3d.current.vector().max()
             min_value = flow_solver_3d.current.vector().min()

@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 import numpy as np
 import dolfin as df
 
@@ -36,3 +37,41 @@ def setup_subdomains(mesh, points, weights=None):
     dx = df.Measure('dx', domain=mesh, subdomain_data=subdomains)
 
     return subdomains, dx
+
+
+@dataclass
+class Point:
+    """Point mock data."""
+    x: float
+    y: float
+    z: float
+
+
+@dataclass
+class VesselTipData:
+    """Mock vessel tip coupling data."""
+    p: Point
+    vertex_id: int
+    pressure: float
+    concentration: float
+    R2: float
+    radius_first: float
+    radius_last: float
+    level: int
+
+
+def vessel_tip_coupling_data_to_str(data_list):
+    """A list of vessel tip data elements is converted into a string."""
+    s = []
+    for v in data_list:
+        s.append('VesselTipData(')
+        s.append('  p = Point(x={}, y={}, z={}),'.format(v.p.x, v.p.y, v.p.z))
+        s.append('  vertex_id = {},'.format(v.vertex_id))
+        s.append('  pressure = {},'.format(v.pressure))
+        s.append('  concentration = {},'.format(v.concentration))
+        s.append('  R2 = {},'.format(v.R2))
+        s.append('  radius_first = {},'.format(v.radius_first))
+        s.append('  radius_last = {},'.format(v.radius_last))
+        s.append('  level = {}'.format(v.level))
+        s.append('),')
+    return '\n'.join(s)
