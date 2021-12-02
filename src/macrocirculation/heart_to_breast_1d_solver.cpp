@@ -99,6 +99,11 @@ void HeartToBreast1DSolver::set_path_coupling_conditions(const std::string& path
   path_coupling_conditions = path;
 }
 
+void HeartToBreast1DSolver::set_start_time_transport(double t)
+{
+  t_start_transport = t;
+}
+
 std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_pressures() {
   auto &dof_map_flow = *solver->get_implicit_dof_map();
   auto &u_flow = solver->get_implicit_solver()->get_solution();
@@ -234,6 +239,8 @@ void HeartToBreast1DSolver::setup_solver_transport(size_t degree) {
                                                                std::vector<std::shared_ptr<DofMap>>({dof_map_transport_nl, dof_map_transport_li}),
                                                                std::vector<std::shared_ptr<UpwindProvider>>({upwind_provider_nl, upwind_provider_li}),
                                                                degree);
+
+  transport_solver->set_inflow_function([this](double t) -> double { return (t > t_start_transport) ? 1. : 0.; });
 }
 
 void HeartToBreast1DSolver::setup_output() {
