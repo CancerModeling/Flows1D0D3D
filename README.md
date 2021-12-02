@@ -22,16 +22,25 @@ Its future goal is to simulate and study breast cancer models.
 
 ## Directory structure
   - `apps`: contains the demo applications (executibles are created inside `<build path>/bin/macrocirculation`)
-  - `assets`: contains asset files
+  - `assets`: contains asset files for doxygen
   - `cmake`: contains cmake modules to locate petsc and libmesh
   - `docs`: doxygen related files
   - `external`: keep external libraries
-  - `data/meshes`: contains the 1D and 3D meshes, boundary conditions, and other files used in demo apps
+  - `data`: contains all the data needed for the simulations
+    - `1d-boundary`: Contains data for the calibrated RCR-models for different meshes.
+    - `1d-coupling`: Contains data coupling two geometries together. 
+    - `1d-input-pressures`: Contains input pressures for other models to decoupled the simulations.
+    - `1d-meshes`: Contains the 1d networks.
+    - `3d-meshes`: Contains the 3d domains.
   - `tools`: contains utility scripts
     - `mesh_creation`: scripts for creating the 1D mesh 
     - `script/install`: install scripts to facilitate setup
+    - `visualization`: scripts for visualizing our output data
   - `src`: the source code of the library 
   - `tests`: a few catch2 unittests for critical components
+  - `python`: the python bindings
+    - `flows1d0d3d`: the parts of our library written in python
+    - `examples`: contains example applications in python calling our (*already installed*) library.
 
 ## Installation
 
@@ -70,6 +79,9 @@ Core dependencies are:
   - [gmm](http://getfem.org/project/libdesc_gmm.html)
     * included as external library in the code
     * provides framework to solve linear systems associated to the 1D networks
+  - [pybind11](https://github.com/pybind/pybind11)
+    * included as a submodule in the code
+    * provides simple python bindings to call our 1D and 0D solvers from python
 
 Dependencies for running the examples:
   - [python3](https://www.python.org/)
@@ -80,7 +92,7 @@ Dependencies for running the examples:
 ### Building the code
 Assuming all dependencies are installed in global path (`/usr/local/` etc), we build the code using
 ```sh
-git clone https://github.com/CancerModeling/Flows1D0D3D.git
+git clone --recurse-submodules https://github.com/CancerModeling/Flows1D0D3D.git
 
 cd Flows1D0D3D && mkdir build && cd build
 
@@ -93,10 +105,11 @@ make -j 4
 
 ctest --verbose
 ```
+The `--recurse-submodules` parameter is required, *if* you want to use the python bindings and clones the pybind11 repository.
 
 If libmesh and petsc are installed at custom paths, we will do
 ```sh
-git clone https://github.com/CancerModeling/Flows1D0D3D.git
+git clone --recurse-submodules https://github.com/CancerModeling/Flows1D0D3D.git
 
 cd Flows1D0D3D && mkdir build && cd build
 
@@ -139,6 +152,17 @@ For `circle-ci` testing, we use docker images `prashjha/angio-base-bionic` and `
 
 In [Packages](https://github.com/orgs/CancerModeling/packages?repo_name=Flows1D0D3D), docker images of `Flows1D0D3D` is provided. 
 
+### Installing the python bindings
+
+For installation execute
+```bash
+LIBMESH_DIR=<REPLACE_WITH_LIBMESH_DIRECTORY> PETSC_DIR=<REPLACE_WITH_PETSC_DIRECTORY> python3 -m pip install .
+```
+in the directory containing the `setup.py` file. Test if the installation was successful with
+```bash
+python3 -c "import flows1d0d3d"
+```
+
 ## Run unittests
 
 The unittests can be run right after building the project with ctest
@@ -149,8 +173,8 @@ ctest
 ```
 
 ## Developers
-  - [Andreas Wagner](wagneran@ma.tum.de)
-  - [Tobias Koeppl](koepplto@ma.tum.de)
-  - [Prashant K. Jha](pjha.sci@gmail.com)
-  - [Marvin Fritz](marvin.fritz@ma.tum.de)
-  - [Chengyue Wu](cw35926@utexas.edu)
+  - [Andreas Wagner](mailto:wagneran@ma.tum.de)
+  - [Tobias Koeppl](mailto:koepplto@ma.tum.de)
+  - [Prashant K. Jha](mailto:pjha.sci@gmail.com)
+  - [Marvin Fritz](mailto:marvin.fritz@ma.tum.de)
+  - [Chengyue Wu](mailto:cw35926@utexas.edu)

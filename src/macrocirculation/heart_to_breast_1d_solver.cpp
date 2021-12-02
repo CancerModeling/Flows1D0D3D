@@ -33,6 +33,9 @@
 
 namespace macrocirculation {
 
+HeartToBreast1DSolver::HeartToBreast1DSolver()
+  : HeartToBreast1DSolver(MPI_COMM_WORLD)
+{}
 
 HeartToBreast1DSolver::HeartToBreast1DSolver(MPI_Comm comm)
     : d_comm(comm),
@@ -96,6 +99,11 @@ void HeartToBreast1DSolver::set_path_coupling_conditions(const std::string& path
   path_coupling_conditions = path;
 }
 
+void HeartToBreast1DSolver::set_start_time_transport(double t)
+{
+  t_start_transport = t;
+}
+
 std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_pressures() {
   auto &dof_map_flow = *solver->get_implicit_dof_map();
   auto &u_flow = solver->get_implicit_solver()->get_solution();
@@ -126,11 +134,12 @@ std::vector<VesselTipCurrentCouplingData> HeartToBreast1DSolver::get_vessel_tip_
       // 1e3 since we have to convert kg -> g:
       auto R2 = R.back() * 1e3;
 
-      auto radius = calculate_edge_tree_parameters(e).radii.back();
+      auto radius_last = calculate_edge_tree_parameters(e).radii.back();
+      auto radius_first = e.get_physical_data().radius;
 
       auto concentration = concentration_values[v_id];
 
-      results.push_back({p, v.get_id(), p_out, concentration, R2, radius, R.size()});
+      results.push_back({p, v.get_id(), p_out, concentration, R2, radius_last, radius_first, R.size()});
     }
   }
 
@@ -230,6 +239,8 @@ void HeartToBreast1DSolver::setup_solver_transport(size_t degree) {
                                                                std::vector<std::shared_ptr<DofMap>>({dof_map_transport_nl, dof_map_transport_li}),
                                                                std::vector<std::shared_ptr<UpwindProvider>>({upwind_provider_nl, upwind_provider_li}),
                                                                degree);
+
+  transport_solver->set_inflow_function([this](double t) -> double { return (t > t_start_transport) ? 1. : 0.; });
 }
 
 void HeartToBreast1DSolver::setup_output() {
@@ -322,6 +333,15 @@ void HeartToBreast1DSolver::solve_flow(double tau, double t) {
     throw std::runtime_error("changing time step width not supported yet.");
 
   solver->solve(tau, t);
+}
+
+double HeartToBreast1DSolver::solve_flow(double tau, double t, size_t num_iter) {
+  for (size_t idx = 0; idx < num_iter; idx += 1)
+  {
+    solve_flow(tau, t);
+    t += tau;
+  }
+  return t;
 }
 
 void HeartToBreast1DSolver::solve_transport(double tau, double t) {
