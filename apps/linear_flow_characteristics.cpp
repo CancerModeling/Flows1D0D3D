@@ -5,25 +5,20 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "libmesh/libmesh.h"
-#include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include <cmath>
-#include <macrocirculation/0d_boundary_conditions.hpp>
 #include <memory>
 #include <petsc.h>
 #include <utility>
 
+#include "macrocirculation/implicit_linear_flow_solver.hpp"
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
-#include "macrocirculation/fe_type.hpp"
 #include "macrocirculation/graph_partitioner.hpp"
 #include "macrocirculation/graph_pvd_writer.hpp"
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/petsc/petsc_ksp.hpp"
-#include "macrocirculation/vessel_formulas.hpp"
 
-namespace lm = libMesh;
 namespace mc = macrocirculation;
 
 

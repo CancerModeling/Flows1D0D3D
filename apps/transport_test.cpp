@@ -6,10 +6,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
-#include <cmath>
 #include <memory>
 
-#include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/dof_map.hpp"
 #include "macrocirculation/explicit_nonlinear_flow_solver.hpp"
 #include "macrocirculation/explicit_transport_solver.hpp"

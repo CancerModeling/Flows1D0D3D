@@ -23,7 +23,6 @@
 #include "macrocirculation/petsc/petsc_ksp.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
-namespace lm = libMesh;
 namespace mc = macrocirculation;
 
 
