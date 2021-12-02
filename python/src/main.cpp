@@ -66,6 +66,7 @@ PYBIND11_MODULE(_core, m) {
     .def(py::init<>())
     .def("set_output_folder", &mc::HeartToBreast1DSolver::set_output_folder)
     .def("set_path_inflow_pressures", &mc::HeartToBreast1DSolver::set_path_inflow_pressures)
+    .def("set_start_time_transport", &mc::HeartToBreast1DSolver::set_start_time_transport)
     .def("set_path_nonlinear_geometry", &mc::HeartToBreast1DSolver::set_path_nonlinear_geometry)
     .def("set_path_linear_geometry", &mc::HeartToBreast1DSolver::set_path_linear_geometry)
     .def("set_path_coupling_conditions", &mc::HeartToBreast1DSolver::set_path_coupling_conditions)

@@ -185,8 +185,8 @@ class ImplicitPressureSolver:
         self.solver = df.KrylovSolver('gmres', 'amg')
         self.solver.parameters['monitor_convergence'] = True
         self.solver.parameters['nonzero_initial_guess'] = True
-        #self.solver.parameters['absolute_tolerance'] = 1e-12
-        #self.solver.parameters['relative_tolerance'] = 1e-12
+        self.solver.parameters['absolute_tolerance'] = 1e-8
+        self.solver.parameters['relative_tolerance'] = 1e-8
         #self.solver.parameters['maximum_iterations'] = 10000
         # self.solver = df.KrylovSolver('gmres', 'jacobi')
         self.solver.set_operators(self.A, self.P)

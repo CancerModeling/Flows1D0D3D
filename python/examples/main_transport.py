@@ -1,3 +1,4 @@
+import json
 import argparse
 from dataclasses import dataclass
 import os
@@ -41,6 +42,7 @@ def run():
         solver1d.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"))
         solver1d.set_path_linear_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
         solver1d.set_path_coupling_conditions(os.path.join(data_folder, "1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"))
+        solver1d.set_start_time_transport(t_preiter)
     else:
         tau = 1. / 2 ** 4
         tau_transport = 1. / 2 ** 4
@@ -56,7 +58,13 @@ def run():
     
     coupling_interval_0d3d = int(round(tau_coup / tau_out))
 
-    t = solver1d.solve_flow(tau, t, int(t_preiter / tau))
+    for j in range(int((t_preiter-t)/tau_transport)):
+        if df.MPI.rank(df.MPI.comm_world) == 0:
+            print('preiter = {}, t = {}'.format(j, t))
+        t_old = t
+        t = solver1d.solve_flow(tau, t_old, int(tau_transport/ tau))
+        assert np.isclose(t_old + tau_transport, t)
+        solver1d.solve_transport(tau_transport, t)
 
     vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
 
@@ -76,11 +84,12 @@ def run():
         if df.MPI.rank(df.MPI.comm_world) == 0:
             print('iter = {}, t = {}'.format(i, t))
 
-        for i in range(int(tau_out/tau_transport)):
+        for j in range(int(tau_out/tau_transport)):
             t_old = t
             t = solver1d.solve_flow(tau, t_old, int(tau_transport/ tau))
             assert np.isclose(t_old + tau_transport, t)
             solver1d.solve_transport(tau_transport, t)
+        solver1d.write_output(t)
 
         if (t > t_coup_start) and (i % coupling_interval_0d3d == 0):
             vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
@@ -107,11 +116,34 @@ def run():
             transport_solver_3d.write_solution(t)
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('end solving 3D transport')
+            if df.MPI.rank(df.MPI.comm_world) == 0:
+                print ('new_pressures', new_pressures)
+                print ('vessel_tip_pressures = [')
+                for v in vessel_tip_pressures:
+                    print("VesselTipData(")
+                    print('p = Point(x={}, y={}, z={}),'.format(v.p.x, v.p.y, v.p.z))
+                    print('vertex_id = {},'.format(v.vertex_id))
+                    print('pressure = {},'.format(v.pressure))
+                    print('concentration = {},'.format(v.concentration))
+                    print('R2 = {},'.format(v.R2))
+                    print('radius_first = {},'.format(v.radius_first))
+                    print('radius_last = {},'.format(v.radius_last))
+                    print('level = {}'.format(v.level))
+                    print("),")
+                print (']')
+
+            max_value = transport_solver_3d.current.vector().max()
+            min_value = transport_solver_3d.current.vector().min()
+            if df.MPI.rank(df.MPI.comm_world) == 0:
+                print('transport max = {}, min = {}'.format(max_value, min_value))
+
+            if transport_solver_3d.current.vector().min() < -10:
+                os.sys.exit()
 
             max_value = flow_solver_3d.current.vector().max()
             min_value = flow_solver_3d.current.vector().min()
             if df.MPI.rank(df.MPI.comm_world) == 0:
-                print('max = {}, min = {}'.format(max_value / 1333, min_value / 1333))
+                print('flow max = {}, min = {}'.format(max_value / 1333, min_value / 1333))
 
 
 if __name__ == '__main__':

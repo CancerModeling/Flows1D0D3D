@@ -38,6 +38,6 @@ class FlowModelParameters:
 
 @dataclass
 class TransportModelParameters:
-    D_c = 1.  # ?
-    D_t = 1.  # ?
-    lambda_t = 1.  # ??
+    D_c = 1.7e-5    # siehe unten -
+    D_t = 1.7e-5    # d'Angleo -> D_{t,b} cm^2/s
+    lambda_t = 5 * 1e-8 * 1e3   # d'Angelo theta

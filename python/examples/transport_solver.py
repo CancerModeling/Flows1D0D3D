@@ -76,10 +76,15 @@ class TransportSolver:
         J = 0
         J += - df.inner(v_c * phi_c - df.Constant(D_c) * df.grad(phi_c), df.grad(psi_c)) * df.dx
         J += - df.inner(v_t * phi_t - df.Constant(D_t) * df.grad(phi_t), df.grad(psi_t)) * df.dx
+        #J += - df.inner(- df.Constant(D_c) * df.grad(phi_c), df.grad(psi_c)) * df.dx
+        #J += - df.inner(- df.Constant(D_t) * df.grad(phi_t), df.grad(psi_t)) * df.dx
 
         # t_cv
         q_cv = self.flow_solver.get_q_cv(p_c)
-        J -= q_cv * phi_c * psi_c * df.dx
+        from_c_to_v = df.conditional(df.le(q_cv, 0), df.Constant(1), df.Constant(0))
+        from_v_to_c = df.conditional(df.ge(q_cv, 0), df.Constant(1), df.Constant(0))
+        J -= q_cv * from_c_to_v * phi_c * psi_c * df.dx
+        J -= q_cv * from_v_to_c * df.Constant(0.0) * psi_c * df.dx
         # t_ct
         q_ct = self.flow_solver.get_q_ct(p_c, p_t) 
         from_c_to_t = df.conditional(df.le(q_ct, 0), df.Constant(1), df.Constant(0))
@@ -90,8 +95,10 @@ class TransportSolver:
         for k in range(len(self.pressures)):
             p_bar = self.average_pressures[k]
             q_ca = self.flow_solver.get_q_ca(k, p_bar)
-            df.Constant(rho_c * 2**(self.level[k]-1) / self.R2[k] / volumes[k]) * (df.Constant(self.pressures[k] - self.average_pressures[k]))
-            J -= q_ca * self.concentrations[k] * psi_c * self.dx(k)
+            from_c_to_a = df.conditional(df.le(q_ca, 0), df.Constant(1), df.Constant(0))
+            from_a_to_c = df.conditional(df.ge(q_ca, 0), df.Constant(1), df.Constant(0))
+            J -= q_ca * from_a_to_c * df.Constant(max(self.concentrations[k], 0)) * psi_c * self.dx(k)
+            J -= q_ca * from_c_to_a * df.Constant(0) * psi_c * self.dx(k)
 
         # t_tc
         q_tc = self.flow_solver.get_q_tc(p_c, p_t) 
@@ -100,7 +107,11 @@ class TransportSolver:
 
         # t_tl
         q_tl = self.flow_solver.get_q_tl(p_t) 
-        J -= q_tl * phi_t * psi_t * df.dx
+        from_t_to_l = df.conditional(df.le(q_tl, 0), df.Constant(1), df.Constant(0))
+        from_l_to_t = df.conditional(df.ge(q_tl, 0), df.Constant(1), df.Constant(0))
+        J -= q_tl * from_t_to_l * phi_t * psi_t * df.dx
+        J -= q_tl * from_l_to_t * df.Constant(0) * psi_t * df.dx
+        #J -= q_tl * phi_t * psi_t * df.dx
 
         # r_t
         J -= - lambda_t * phi_t *psi_t * df.dx
@@ -123,7 +134,14 @@ class TransportSolver:
         self._setup_problem()
 
     def solve(self):
-        df.solve(df.lhs(self.J) == df.rhs(self.J), self.current, self.bcs)
+        A, b = df.assemble_system(df.lhs(self.J), df.rhs(self.J), self.bcs)
+        solver = df.KrylovSolver('gmres', 'jacobi')
+        solver.parameters['monitor_convergence'] = True
+        solver.parameters['nonzero_initial_guess'] = True
+        solver.parameters['absolute_tolerance'] = 1e-12
+        solver.parameters['relative_tolerance'] = 1e-12
+        solver.set_operator(A)
+        solver.solve(self.current.vector(), b)
 
     def write_solution(self, t):
         self.file_c_cap << (self.current.split()[0], t)

@@ -76,6 +76,8 @@ public:
 
   void set_path_coupling_conditions(const std::string& path);
 
+  void set_start_time_transport(double t);
+
   void setup(size_t degree, double tau);
 
   void solve_flow(double tau, double t);
@@ -134,6 +136,8 @@ private:
   std::string filename_csv_tips_nl{"heart_to_breast_1d_solution_tips_nl"};
   std::string filename_csv_tips_li{"heart_to_breast_1d_solution_tips_li"};
   std::string filename_pvd{"heart_to_breast_1d_solution"};
+
+  double t_start_transport{0};
 
   std::shared_ptr<CoupledExplicitImplicit1DSolver> solver;
 
