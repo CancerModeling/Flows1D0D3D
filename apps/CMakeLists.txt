@@ -48,37 +48,37 @@ target_link_libraries(${ProjectName}LinearFlow ${ProjectLib})
 
 add_executable(${ProjectName}LinearFlowBreastGeometry linear_flow_breast_geometry.cpp)
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${ProjectLib})
-target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${PETSC_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${PETSC_LIBRARIES})
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry cxxopts)
 
 add_executable(${ProjectName}ImplicitTransport implicit_transport.cpp)
 target_link_libraries(${ProjectName}ImplicitTransport ${ProjectLib})
-target_link_libraries(${ProjectName}ImplicitTransport ${PETSC_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}ImplicitTransport ${PETSC_LIBRARIES})
 target_link_libraries(${ProjectName}ImplicitTransport cxxopts)
 
 add_executable(${ProjectName}ImplicitTransportWith0D implicit_transport_with_0d.cpp)
 target_link_libraries(${ProjectName}ImplicitTransportWith0D ${ProjectLib})
-target_link_libraries(${ProjectName}ImplicitTransportWith0D ${PETSC_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}ImplicitTransportWith0D ${PETSC_LIBRARIES})
 target_link_libraries(${ProjectName}ImplicitTransportWith0D cxxopts)
 
 add_executable(${ProjectName}WindkesselTransportInOutTest windkessel_transport_in_out_test.cpp)
 target_link_libraries(${ProjectName}WindkesselTransportInOutTest ${ProjectLib})
-target_link_libraries(${ProjectName}WindkesselTransportInOutTest ${PETSC_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}WindkesselTransportInOutTest ${PETSC_LIBRARIES})
 target_link_libraries(${ProjectName}WindkesselTransportInOutTest cxxopts)
 
 add_executable(${ProjectName}WindkesselTransportThroughCompartments windkessel_transport_through_compartments.cpp)
 target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments ${ProjectLib})
-target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments ${PETSC_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments ${PETSC_LIBRARIES})
 target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments cxxopts)
 
 add_executable(${ProjectName}ExplicitImplicitScheme explicit_implicit_scheme.cpp)
 target_link_libraries(${ProjectName}ExplicitImplicitScheme ${ProjectLib})
-target_link_libraries(${ProjectName}ExplicitImplicitScheme ${PETSC_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}ExplicitImplicitScheme ${PETSC_LIBRARIES})
 target_link_libraries(${ProjectName}ExplicitImplicitScheme cxxopts)
 
 add_executable(${ProjectName}ExplicitImplicitWithTransport explicit_implicit_with_transport.cpp)
 target_link_libraries(${ProjectName}ExplicitImplicitWithTransport ${ProjectLib})
-target_link_libraries(${ProjectName}ExplicitImplicitWithTransport ${PETSC_LIBRARIES}) # libmesh for eigen
+target_link_libraries(${ProjectName}ExplicitImplicitWithTransport ${PETSC_LIBRARIES})
 target_link_libraries(${ProjectName}ExplicitImplicitWithTransport cxxopts)
 
 add_executable(${ProjectName}Transport transport_test.cpp)

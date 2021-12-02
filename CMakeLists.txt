@@ -64,9 +64,12 @@ find_package(Threads REQUIRED)
 # Note: -DPETSC_DIR should point to the same directory that libmesh was compiled with
 find_package(Petsc REQUIRED)
 
+# **** eigen ***#
+find_package (Eigen3 3.3 REQUIRED)
+
 # json
 if (USE_EXTERNAL_JSON)
-    find_package(nlohmann_json 3.2.0 REQUIRED)
+find_package(nlohmann_json 3.2.0 REQUIRED)
 else ()
     include(FetchContent)
     set(JSON_BuildTests OFF)
@@ -91,28 +94,14 @@ if (NOT cxxopts_POPULATED)
     add_subdirectory(${cxxopts_SOURCE_DIR} ${cxxopts_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif ()
 
-# debug output flags
-if (${Enable_CMAKE_Debug_Build})
-    message("LIBMESH_DEFINITIONS = ${PC_LIBMESH_CFLAGS_DEFS}")
-    message("LIBMESH_FLAGS = ${PC_LIBMESH_CFLAGS_FLAGS}")
-    message("LIBMESH_INCLUDE_DIRS = ${LIBMESH_INCLUDE_DIRS}")
-    message("LIBMESH_LIBRARIES = ${LIBMESH_LIBRARIES}")
-    message("PETSC_LIBRARIES = ${PETSC_LIBRARIES}")
-endif ()
-
-# issue error and exit
-if ((NOT MPI_FOUND) AND (NOT LIBMESH_FOUND))
-    message(FATAL_ERROR "ERROR: MPI and LIBMESH are required")
-endif ()
-
 # ****************************************************************************
 # Build, compiler, linker flags
 # ****************************************************************************
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG ")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -fPIC -L /usr/lib/libmesh-1.6.1/lib/libtimpi_opt.so.2")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -fPIC")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LIBMESH_FLAGS} -xHost -std=c++14")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xHost -std=c++14")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG -std=c++11 -stdlib=libc++")
 endif ()
@@ -129,13 +118,11 @@ endif ()
 # ****************************************************************************
 # Include directories
 # ****************************************************************************
-include_directories(${LIBMESH_INCLUDE_DIRS})
 include_directories(${MPI_INCLUDE_PATH})
 
 # external headeronly dependencies
 include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/gmm")
 include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/aixlog")
-include_directories(${VTK_INCLUDE_DIRS})
 
 # ****************************************************************************
 # Add subfolders

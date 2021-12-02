@@ -16,7 +16,7 @@ commands:
     parameters:
       cmake-args:
         type: string
-        default: -DCMAKE_BUILD_TYPE=Release -DEnable_Tests=ON -DLIBMESH_DIR=${LIBMESH_DIR} -DPETSC_DIR=${PETSC_DIR}
+        default: -DCMAKE_BUILD_TYPE=Release -DEnable_Tests=ON -DPETSC_DIR=${PETSC_DIR}
     steps:
       - run: 
           name: Configure
