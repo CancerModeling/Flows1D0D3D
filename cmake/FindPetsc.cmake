@@ -6,6 +6,7 @@ find_package(PkgConfig)
 
 set(PETSC_DIR $ENV{PETSC_DIR} CACHE PATH "Petsc installation directory")
 set(ENV{PKG_CONFIG_PATH} "${PETSC_DIR}/lib/pkgconfig")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 pkg_check_modules(PETSC REQUIRED IMPORTED_TARGET PETSc)
 
