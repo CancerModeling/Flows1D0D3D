@@ -16,69 +16,69 @@ SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/macrocirculation/)
 
 # nonlinear flow solver line:
 add_executable(${ProjectName}NonlinearFlowLine nonlinear_flow_line.cpp)
-target_link_libraries(${ProjectName}NonlinearFlowLine ${ProjectLib})
+target_link_libraries(${ProjectName}NonlinearFlowLine ${ProjectLib} PkgConfig::PETSC) 
 
 # nonlinear flow solver bifurcation:
 add_executable(${ProjectName}NonlinearFlowBifurcation nonlinear_flow_bifurcation.cpp)
-target_link_libraries(${ProjectName}NonlinearFlowBifurcation ${ProjectLib})
+target_link_libraries(${ProjectName}NonlinearFlowBifurcation ${ProjectLib} PkgConfig::PETSC)
 
 # test the convergence:
 add_executable(${ProjectName}ConvergenceStudy convergence_study.cpp)
-target_link_libraries(${ProjectName}ConvergenceStudy ${ProjectLib})
+target_link_libraries(${ProjectName}ConvergenceStudy ${ProjectLib} PkgConfig::PETSC)
 
 # test the 1d network:
 add_executable(${ProjectName}BreastGeometry breast_geometry.cpp)
-target_link_libraries(${ProjectName}BreastGeometry ${ProjectLib})
+target_link_libraries(${ProjectName}BreastGeometry ${ProjectLib} PkgConfig::PETSC)
 
 # test the 1d network:
 add_executable(${ProjectName}Nonlinear1DSolver nonlinear_1d_solver.cpp)
-target_link_libraries(${ProjectName}Nonlinear1DSolver ${ProjectLib})
+target_link_libraries(${ProjectName}Nonlinear1DSolver ${ProjectLib} PkgConfig::PETSC)
 target_link_libraries(${ProjectName}Nonlinear1DSolver cxxopts)
 
 add_executable(${ProjectName}CombinedGeometry combined_geometry.cpp)
-target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib})
+target_link_libraries(${ProjectName}CombinedGeometry ${ProjectLib} PkgConfig::PETSC)
 target_link_libraries(${ProjectName}CombinedGeometry cxxopts)
 
 add_executable(${ProjectName}Calibration calibration.cpp)
-target_link_libraries(${ProjectName}Calibration ${ProjectLib})
+target_link_libraries(${ProjectName}Calibration ${ProjectLib} PkgConfig::PETSC)
 target_link_libraries(${ProjectName}Calibration cxxopts)
 
 add_executable(${ProjectName}LinearFlow linear_flow.cpp)
-target_link_libraries(${ProjectName}LinearFlow ${ProjectLib})
+target_link_libraries(${ProjectName}LinearFlow ${ProjectLib} PkgConfig::PETSC)
 
 add_executable(${ProjectName}LinearFlowBreastGeometry linear_flow_breast_geometry.cpp)
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${ProjectLib})
-target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${PETSC_LIBRARIES})
+target_link_libraries(${ProjectName}LinearFlowBreastGeometry PkgConfig::PETSC)
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry cxxopts)
 
 add_executable(${ProjectName}ImplicitTransport implicit_transport.cpp)
 target_link_libraries(${ProjectName}ImplicitTransport ${ProjectLib})
-target_link_libraries(${ProjectName}ImplicitTransport ${PETSC_LIBRARIES})
+target_link_libraries(${ProjectName}ImplicitTransport PkgConfig::PETSC)
 target_link_libraries(${ProjectName}ImplicitTransport cxxopts)
 
 add_executable(${ProjectName}ImplicitTransportWith0D implicit_transport_with_0d.cpp)
 target_link_libraries(${ProjectName}ImplicitTransportWith0D ${ProjectLib})
-target_link_libraries(${ProjectName}ImplicitTransportWith0D ${PETSC_LIBRARIES})
+target_link_libraries(${ProjectName}ImplicitTransportWith0D PkgConfig::PETSC)
 target_link_libraries(${ProjectName}ImplicitTransportWith0D cxxopts)
 
 add_executable(${ProjectName}WindkesselTransportInOutTest windkessel_transport_in_out_test.cpp)
 target_link_libraries(${ProjectName}WindkesselTransportInOutTest ${ProjectLib})
-target_link_libraries(${ProjectName}WindkesselTransportInOutTest ${PETSC_LIBRARIES})
+target_link_libraries(${ProjectName}WindkesselTransportInOutTest PkgConfig::PETSC)
 target_link_libraries(${ProjectName}WindkesselTransportInOutTest cxxopts)
 
 add_executable(${ProjectName}WindkesselTransportThroughCompartments windkessel_transport_through_compartments.cpp)
 target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments ${ProjectLib})
-target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments ${PETSC_LIBRARIES})
+target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments PkgConfig::PETSC)
 target_link_libraries(${ProjectName}WindkesselTransportThroughCompartments cxxopts)
 
 add_executable(${ProjectName}ExplicitImplicitScheme explicit_implicit_scheme.cpp)
 target_link_libraries(${ProjectName}ExplicitImplicitScheme ${ProjectLib})
-target_link_libraries(${ProjectName}ExplicitImplicitScheme ${PETSC_LIBRARIES})
+target_link_libraries(${ProjectName}ExplicitImplicitScheme PkgConfig::PETSC)
 target_link_libraries(${ProjectName}ExplicitImplicitScheme cxxopts)
 
 add_executable(${ProjectName}ExplicitImplicitWithTransport explicit_implicit_with_transport.cpp)
 target_link_libraries(${ProjectName}ExplicitImplicitWithTransport ${ProjectLib})
-target_link_libraries(${ProjectName}ExplicitImplicitWithTransport ${PETSC_LIBRARIES})
+target_link_libraries(${ProjectName}ExplicitImplicitWithTransport PkgConfig::PETSC)
 target_link_libraries(${ProjectName}ExplicitImplicitWithTransport cxxopts)
 
 add_executable(${ProjectName}Transport transport_test.cpp)
