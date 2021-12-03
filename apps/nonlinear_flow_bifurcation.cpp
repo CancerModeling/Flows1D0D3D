@@ -18,7 +18,6 @@
 #include "macrocirculation/graph_storage.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
 #include "macrocirculation/quantities_of_interest.hpp"
-#include "macrocirculation/rcr_estimator.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
 namespace mc = macrocirculation;

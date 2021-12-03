@@ -12,13 +12,13 @@ WORKDIR /
 
 RUN git clone  https://github.com/CancerModeling/Flows1D0D3D.git
 
+RUN apt-get install libpetsc3.12-dev-common
+
 RUN cd /Flows1D0D3D && \
 		mkdir build && \
 		cd build && \
-		cmake -DLIBMESH_DIR=${LIBMESH_DIR} \
-					-DPETSC_DIR=${PETSC_DIR} \
-					-DCMAKE_BUILD_TYPE=Release \
-					-DEnable_Tests=ON \
+		cmake -DCMAKE_BUILD_TYPE=Release \
+			  -DEnable_Tests=ON \
 					.. && \
 		make -j 2 && \
 		make install

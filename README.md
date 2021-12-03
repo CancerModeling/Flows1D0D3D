@@ -23,7 +23,7 @@ Its future goal is to simulate and study breast cancer models.
 ## Directory structure
   - `apps`: contains the demo applications (executibles are created inside `<build path>/bin/macrocirculation`)
   - `assets`: contains asset files for doxygen
-  - `cmake`: contains cmake modules to locate petsc and libmesh
+  - `cmake`: contains cmake modules to locate petsc 
   - `docs`: doxygen related files
   - `external`: keep external libraries
   - `data`: contains all the data needed for the simulations
@@ -50,11 +50,7 @@ Core dependencies are:
   - [vtk](https://vtk.org/) (7.1.1)
     * recommend to install using `apt-get`
   - [petsc](https://github.com/petsc/petsc) (3.13.3 or above)
-    * required to build libmesh
     * see further below on how to build petsc
-  - [libmesh](https://github.com/libMesh/libmesh) (1.5.0 or above)
-    * core library
-    * see further below on how to build this
   - [aixlog](https://github.com/badaix/aixlog) (1.2.4)
     * included as external library in the code
     * for logging
@@ -107,14 +103,13 @@ ctest --verbose
 ```
 The `--recurse-submodules` parameter is required, *if* you want to use the python bindings and clones the pybind11 repository.
 
-If libmesh and petsc are installed at custom paths, we will do
+If petsc is installed at a custom path, we execute 
 ```sh
 git clone --recurse-submodules https://github.com/CancerModeling/Flows1D0D3D.git
 
 cd Flows1D0D3D && mkdir build && cd build
 
-cmake   -DLIBMESH_DIR="<libmesh install path>" \
-        -DPETSC_DIR="<petsc install path>" \
+cmake   -DPETSC_DIR="<petsc install path>" \
         -DEnable_Documentation=ON \
         -DEnable_Tests=ON \
         -DCMAKE_BUILD_TYPE=Release \
@@ -143,7 +138,7 @@ sudo apt-get install -y build-essential ubuntu-dev-tools \
 pip3 install numpy
 ```
 
-2. Build petsc and libmesh. To learn how to build petsc and libmesh on ubuntu 18.04 and 20.04, you can follow the [dockerfile](https://github.com/prashjha/dockerimages/blob/main/angio-base-bionic/Dockerfile). [Shell script](tools/script/install/install_petsc_libmesh.sh) could also be helpful.
+2. Build petsc. To learn how to build petsc on ubuntu 18.04 and 20.04, you can follow the [dockerfile](https://github.com/prashjha/dockerimages/blob/main/angio-base-bionic/Dockerfile). [Shell script](tools/script/install/install_petsc_libmesh.sh) could also be helpful.
 
 3. Use instructions in previous section to build `Flows1D0D3D` (provide right paths to libmesh and petsc). 
 
@@ -156,7 +151,7 @@ In [Packages](https://github.com/orgs/CancerModeling/packages?repo_name=Flows1D0
 
 For installation execute
 ```bash
-LIBMESH_DIR=<REPLACE_WITH_LIBMESH_DIRECTORY> PETSC_DIR=<REPLACE_WITH_PETSC_DIRECTORY> python3 -m pip install .
+PETSC_DIR=<REPLACE_WITH_PETSC_DIRECTORY> python3 -m pip install .
 ```
 in the directory containing the `setup.py` file. Test if the installation was successful with
 ```bash

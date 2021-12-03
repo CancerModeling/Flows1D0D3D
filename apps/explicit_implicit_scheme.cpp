@@ -5,7 +5,6 @@
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "libmesh/libmesh.h"
 #include <cmath>
 #include <memory>
 #include <petsc.h>
@@ -27,7 +26,6 @@
 #include "macrocirculation/quantities_of_interest.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 
-namespace lm = libMesh;
 namespace mc = macrocirculation;
 
 int main(int argc, char *argv[]) {

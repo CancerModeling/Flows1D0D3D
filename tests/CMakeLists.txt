@@ -6,6 +6,7 @@ target_link_libraries(Macrocirculation_Test_Runner PUBLIC MPI::MPI_CXX)
 
 add_library(Macrocirculation_LibMesh_Test_Runner run_libmesh_tests.cpp)
 target_link_libraries(Macrocirculation_LibMesh_Test_Runner PUBLIC Catch2::Catch2)
+target_link_libraries(Macrocirculation_LibMesh_Test_Runner PUBLIC LibMacrocirculation)
 
 add_library(Macrocirculation_TestUtil ${CMAKE_CURRENT_SOURCE_DIR}/util/create_3_vessel_network.cpp)
 target_sources(Macrocirculation_TestUtil PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/util/create_3_vessel_network.hpp)
