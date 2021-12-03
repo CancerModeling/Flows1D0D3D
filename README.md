@@ -47,8 +47,6 @@ Its future goal is to simulate and study breast cancer models.
 ### Dependencies
 Core dependencies are:
   - [cmake](https://cmake.org/) (3.12 or above) 
-  - [vtk](https://vtk.org/) (7.1.1)
-    * recommend to install using `apt-get`
   - [petsc](https://github.com/petsc/petsc) (3.13.3 or above)
     * see further below on how to build petsc
   - [aixlog](https://github.com/badaix/aixlog) (1.2.4)
@@ -63,12 +61,6 @@ Core dependencies are:
   - [cxxopts](https://github.com/jarro2783/cxxopts) (2.2.1)
     * directly pulled using CMake `FetchContent` module
     * for reading command line options
-  - [fmt](https://github.com/fmtlib/fmt) (7.1.3)
-    * directly pulled using CMake `FetchContent` module
-    * for easy formatting and output
-  - [nanoflann](https://github.com/jlblancoc/nanoflann) (1.3.2)
-    * directly pulled using CMake `FetchContent` module
-    * for tree search
   - [Catch2](https://github.com/catchorg/Catch2.git) (2.13.1)
     * directly pulled using CMake `FetchContent` module
     * for ctest
@@ -84,7 +76,9 @@ Dependencies for running the examples:
     * required to run the test python scripts
   - [numpy](https://numpy.org/)
     * required to run the test python scripts
-
+  - [dolfin](https://fenicsproject.org/)
+    * required to run the 3d simulations for the microcirculation 
+     
 ### Building the code
 Assuming all dependencies are installed in global path (`/usr/local/` etc), we build the code using
 ```sh
@@ -99,26 +93,12 @@ cmake   -DEnable_Documentation=ON \
 
 make -j 4
 
+cd tests
+
 ctest --verbose
 ```
 The `--recurse-submodules` parameter is required, *if* you want to use the python bindings and clones the pybind11 repository.
-
-If petsc is installed at a custom path, we execute 
-```sh
-git clone --recurse-submodules https://github.com/CancerModeling/Flows1D0D3D.git
-
-cd Flows1D0D3D && mkdir build && cd build
-
-cmake   -DPETSC_DIR="<petsc install path>" \
-        -DEnable_Documentation=ON \
-        -DEnable_Tests=ON \
-        -DCMAKE_BUILD_TYPE=Release \
-        .. 
-
-make -j 4
-
-ctest --verbose
-```
+If petsc is installed at a custom path one has to add `-DPETSC_DIR="<petsc install path>"` to the cmake parameters.
 
 ### Recommendations for quick build
 1. Install most of the dependencies using `apt-get`:
@@ -157,6 +137,8 @@ in the directory containing the `setup.py` file. Test if the installation was su
 ```bash
 python3 -c "import flows1d0d3d"
 ```
+*For developers:*
+Note that the providing the `-e, --editable` parameter to pip allows you to edit and test the python source code without having to reinstall the package.
 
 ## Run unittests
 
@@ -164,7 +146,8 @@ The unittests can be run right after building the project with ctest
 ```
 cmake <cmake-options-here> ..
 make 
-ctest
+cd tests
+ctest .
 ```
 
 ## Developers

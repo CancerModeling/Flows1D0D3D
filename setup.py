@@ -16,7 +16,7 @@ setup(
     name="flows1d0d3d",
     version="0.0.1",
     description="Package for calculating the flow and transport inside a vascular network",
-    author="Andreas Wagner",
+    author="Andreas Wagner, Prashant K. Jha, Tobias Koeppl, Marvin Fritz",
     license="boost software license 1.0",
     packages=find_packages(where="python/src"),
     package_dir={"": "python/src"},
