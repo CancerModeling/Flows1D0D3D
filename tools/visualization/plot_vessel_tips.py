@@ -67,7 +67,7 @@ if __name__ == '__main__':
     show_p = True 
     show_Q = False 
     show_V = False
-    show_c = False 
+    show_c = True 
     show_N = False 
 
     show_V_from_p = False

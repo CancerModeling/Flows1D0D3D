@@ -78,37 +78,31 @@ def vessel_tip_coupling_data_to_str(data_list):
 
 
 class AverageQuantityWriter:
-    @dataclass
-    class Quantity:
-        t = []
-        c_cap = []
-        c_tis = []
-        p_cap = []
-        p_tis = []
-
     def __init__(self, coupling_data):
         num_outlets = len(coupling_data)
         self.point_to_vertex_id = np.zeros(num_outlets)
         self.quantities = {}
+        self.t = []
         for idx, vessel_tip in enumerate(coupling_data):
             self.point_to_vertex_id[idx] = vessel_tip.vertex_id
-            self.quantities[vessel_tip.vertex_id] = AverageQuantityWriter.Quantity()
+            self.quantities[vessel_tip.vertex_id] = { 'idx': idx, 'c_cap': [], 'c_tis': [], 'p_cap': [], 'p_tis': []} 
 
     def update(self, t, p_cap, p_tis, c_cap=None, c_tis=None):
+        self.t.append(t)
         for vertex_id in p_cap.keys():
-            self.quantities[vertex_id] = p_cap[vertex_id]
+            self.quantities[vertex_id]['p_cap'].append(p_cap[vertex_id])
         for vertex_id in p_tis.keys():
-            self.quantities[vertex_id] = p_tis[vertex_id]
+            self.quantities[vertex_id]['p_tis'].append(p_tis[vertex_id])
         if c_cap is not None:
             for vertex_id in c_cap.keys():
-                self.quantities[vertex_id] = c_cap[vertex_id]
+                self.quantities[vertex_id]['c_cap'].append(c_cap[vertex_id])
         if c_tis is not None:
             for vertex_id in c_tis.keys():
-                self.quantities[vertex_id] = c_tis[vertex_id]
+                self.quantities[vertex_id]['c_tis'].append(c_tis[vertex_id])
 
     def write(self, filepath):
         with open(filepath, 'w') as file:
-            file.write(json.dumps(self.quantities))
+            file.write(json.dumps({'t': self.t, 'quantities': self.quantities}))
 
 
 def viscosity_bloodplasma(r: float):
@@ -123,7 +117,7 @@ def viscosity_bloodplasma(r: float):
     mu_0p45 = 6.0 * exp(-0.085 * d_tilde) + 3.2 - 2.44 * exp(-0.06 * pow(d_tilde, 0.645))
 
     # viscosity of blood plasma [Pa s]
-    mu_p = 1e-3;
+    mu_p = 1e-3
 
     # the blood viscosity in [Pa s]
     # Note: we set the hematocrit to H = 0.45

@@ -4,7 +4,7 @@ import os
 import flows1d0d3d as f
 import dolfin as df
 import numpy as np
-from _utils import read_mesh, open_input_pressures
+from _utils import read_mesh, open_input_pressures, AverageQuantityWriter
 from implicit_pressure_solver import ImplicitPressureSolver
 
 
@@ -60,6 +60,8 @@ def run():
 
     vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
 
+    q_writer = AverageQuantityWriter(vessel_tip_pressures)
+
     mesh = read_mesh(mesh_3d_filename)
     solver3d = ImplicitPressureSolver(mesh, output_folder, vessel_tip_pressures)
     df.assign(solver3d.current.sub(0), df.interpolate(df.Constant(33 * 1333), solver3d.V.sub(0).collapse()))
@@ -91,6 +93,9 @@ def run():
             min_value = solver3d.current.vector().min()
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('max = {}, min = {}'.format(max_value / 1333, min_value / 1333))
+
+        q_writer.update(t, new_pressures, solver3d.get_pressures(1))
+        q_writer.write(os.path.join(output_folder, "average_quantities.json"))
         
         if args.tip_pressures_output_file is not None and df.MPI.rank(df.MPI.comm_world) == 0:
             print('writing tip pressures to {}'.format(args.tip_pressures_output_file))

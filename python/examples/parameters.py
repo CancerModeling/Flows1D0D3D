@@ -14,10 +14,10 @@ class FlowModelParameters:
     rho_c = 997 * 1e-3
     rho_t = 1060 * 1e-3
 
-    n_sev = n_rev / 8 # every capillary leaves somewhere
+    n_sev = n_rev / 3 # every capillary leaves at two ends somewhere
 
     K_c = n_sev * r_c_bar**4 * pi / 8 / (1e-2)
-    K_c = 1e-13 * 1e4  # open?
+    # K_c = 1e-13 * 1e4  # open?
     K_t = 1e-18 * 1e4  # Tobias paper homogenisierung
 
 

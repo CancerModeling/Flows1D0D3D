@@ -3,7 +3,7 @@ import os
 import flows1d0d3d as f
 import dolfin as df
 import numpy as np
-from _utils import read_mesh, open_input_pressures
+from _utils import read_mesh, open_input_pressures, AverageQuantityWriter
 from implicit_pressure_solver import ImplicitPressureSolver
 from transport_solver import TransportSolver 
 
@@ -78,6 +78,8 @@ def run():
 
     transport_solver_3d = TransportSolver(mesh, output_folder, flow_solver_3d, vessel_tip_pressures)
 
+    q_writer = AverageQuantityWriter(vessel_tip_pressures)
+
     for i in range(0, int((t_end-t_preiter) / tau_out)):
         if df.MPI.rank(df.MPI.comm_world) == 0:
             print('iter = {}, t = {}'.format(i, t))
@@ -120,6 +122,11 @@ def run():
             min_value = flow_solver_3d.current.vector().min()
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('flow max = {}, min = {}'.format(max_value / 1333, min_value / 1333))
+            
+            q_writer.update(t, 
+                new_pressures, flow_solver_3d.get_pressures(1), 
+                transport_solver_3d.get_concentrations(0), transport_solver_3d.get_concentrations(1))
+            q_writer.write(os.path.join(output_folder, "average_quantities.json"))
 
 
 if __name__ == '__main__':
