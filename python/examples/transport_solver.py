@@ -133,6 +133,14 @@ class TransportSolver:
         # we have to reassemble the system:
         self._setup_problem()
 
+    def get_concentrations(self, component=0):
+        new_data = {}
+        for k in range(len(self.pressures)):
+            integrated_pressure = df.assemble(self.current.split()[component] * self.dx(k))
+            average_pressure = integrated_pressure / self.volumes[k]
+            new_data[int(self.point_to_vertex_id[k])] = average_pressure
+        return new_data
+
     def solve(self):
         A, b = df.assemble_system(df.lhs(self.J), df.rhs(self.J), self.bcs)
         solver = df.KrylovSolver('gmres', 'jacobi')

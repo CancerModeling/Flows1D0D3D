@@ -75,3 +75,63 @@ def vessel_tip_coupling_data_to_str(data_list):
         s.append('  level = {}'.format(v.level))
         s.append('),')
     return '\n'.join(s)
+
+
+class AverageQuantityWriter:
+    @dataclass
+    class Quantity:
+        t = []
+        c_cap = []
+        c_tis = []
+        p_cap = []
+        p_tis = []
+
+    def __init__(self, coupling_data):
+        num_outlets = len(coupling_data)
+        self.point_to_vertex_id = np.zeros(num_outlets)
+        self.quantities = {}
+        for idx, vessel_tip in enumerate(coupling_data):
+            self.point_to_vertex_id[idx] = vessel_tip.vertex_id
+            self.quantities[vessel_tip.vertex_id] = AverageQuantityWriter.Quantity()
+
+    def update(self, t, p_cap, p_tis, c_cap=None, c_tis=None):
+        for vertex_id in p_cap.keys():
+            self.quantities[vertex_id] = p_cap[vertex_id]
+        for vertex_id in p_tis.keys():
+            self.quantities[vertex_id] = p_tis[vertex_id]
+        if c_cap is not None:
+            for vertex_id in c_cap.keys():
+                self.quantities[vertex_id] = c_cap[vertex_id]
+        if c_tis is not None:
+            for vertex_id in c_tis.keys():
+                self.quantities[vertex_id] = c_tis[vertex_id]
+
+    def write(self, filepath):
+        with open(filepath, 'w') as file:
+            file.write(json.dumps(self.quantities))
+
+
+def viscosity_bloodplasma(r: float):
+    from math import pow, exp
+
+    # radius to diameter
+    d = 2 * r
+
+    # dimensionless diameter:  d / 1 micrometer
+    d_tilde = (1e-2 * d) / 1e-6
+
+    mu_0p45 = 6.0 * exp(-0.085 * d_tilde) + 3.2 - 2.44 * exp(-0.06 * pow(d_tilde, 0.645))
+
+    # viscosity of blood plasma [Pa s]
+    mu_p = 1e-3;
+
+    # the blood viscosity in [Pa s]
+    # Note: we set the hematocrit to H = 0.45
+    #       thus ((1 - H)^C -1)/ ((1 - 0.45)^C - 1) simplifies to 1
+    mu_bl = mu_p * (1 + (mu_0p45 - 1) * pow(d_tilde / (d_tilde - 1.1), 2)) * pow(d_tilde / (d_tilde - 1.1), 2)
+
+    # we convert to the cm units:
+     # [Pa s] = 10 [Ba s]
+    mu_bl_cm = mu_bl * 10
+
+    return mu_bl_cm

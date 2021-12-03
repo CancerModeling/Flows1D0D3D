@@ -99,14 +99,8 @@ class ImplicitPressureSolver:
         J += df.inner(df.Constant(rho_c * K_c / mu_c) * df.grad(phi_c), df.grad(psi_c)) * df.dx
         J += df.inner(df.Constant(rho_t * K_t / mu_t) * df.grad(phi_t), df.grad(psi_t)) * df.dx
 
-        coeff_ca = []
-        for k in range(len(self.pressures)):
-            coeff_ca.append(rho_c * 2 ** (self.level[k] - 1) / self.R2[k] / self.volumes[k])
-        # mean value:
-        coeff_ca_mean = np.array(coeff_ca).mean()
-        coeff_ca = np.ones(len(coeff_ca)) * coeff_ca_mean
-
         # llambda[k] = - 1/Omega_k int_Omega[k] p_c dx
+        coeff_ca = self._get_coeff_ca()
         for k in range(len(self.pressures)):
             alpha = df.Constant(coeff_ca[k] + rho_c * L_cv)
             J += - alpha * llambda[k] * mu[k] * self.dx(k) + alpha * phi_c * mu[k] * self.dx(k)
@@ -212,10 +206,10 @@ class ImplicitPressureSolver:
         # we have to reassemble the system:
         self._setup_problem()
 
-    def get_pressures(self):
+    def get_pressures(self, component=0):
         new_data = {}
         for k in range(len(self.pressures)):
-            integrated_pressure = df.assemble(self.current.split()[0] * self.dx(k))
+            integrated_pressure = df.assemble(self.current.split()[component] * self.dx(k))
             average_pressure = integrated_pressure / self.volumes[k]
             new_data[int(self.point_to_vertex_id[k])] = average_pressure
         return new_data
