@@ -812,76 +812,76 @@ void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> 
       extract_dof(dof_indices, *u, dof_edge);
 
       if (micro_edge_id == 0) {
-        auto &vertex = *d_graph->get_vertex(macro_edge->get_vertex_neighbors()[0]);
-
-        if (!vertex.is_leaf())
-          continue;
-
-        std::vector<double> A_up(vertex.get_edge_neighbors().size());
-        std::vector<double> Q_up(vertex.get_edge_neighbors().size());
-        upwind_provider->get_upwinded_values(t, vertex, A_up, Q_up);
-
-        auto right_edge_id = micro_edge_id + 1;
-        local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
-        std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());
-        extract_dof(dof_indices_right, *u, dof_right_edge);
-
-        for (int j = dof_indices.size() - 1; j > 0; j--) {
-          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
-          double diff_left = 0.0;
-
-          if (j == 1)
-            diff_left = gamma * (dof_edge[j - 1] - 1.0 * A_up[0]);
-          else
-            diff_left = gamma * (dof_edge[j - 1] - 0.0);
-
-
-          double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
-          double dof_central = dof_edge[j];
-          double new_dof = 0.0;
-
-          if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
-            new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
-          }
-
-          if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
-            new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
-          }
-
-          // adaptive limiting:
-          if (std::abs(dof_central - new_dof) > 1.0e-10)
-            u->set(dof_indices[j], new_dof);
-          else
-            break;
-        }
+//        auto &vertex = *d_graph->get_vertex(macro_edge->get_vertex_neighbors()[0]);
+//
+//        if (!vertex.is_leaf())
+//          continue;
+//
+//        std::vector<double> A_up(vertex.get_edge_neighbors().size());
+//        std::vector<double> Q_up(vertex.get_edge_neighbors().size());
+//        upwind_provider->get_upwinded_values(t, vertex, A_up, Q_up);
+//
+//        auto right_edge_id = micro_edge_id + 1;
+//        local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
+//        std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());
+//        extract_dof(dof_indices_right, *u, dof_right_edge);
+//
+//        for (int j = dof_indices.size() - 1; j > 0; j--) {
+//          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
+//          double diff_left = 0.0;
+//
+//          if (j == 1)
+//            diff_left = gamma * (dof_edge[j - 1] - 1.0 * A_up[0]);
+//          else
+//            diff_left = gamma * (dof_edge[j - 1] - 0.0);
+//
+//
+//          double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
+//          double dof_central = dof_edge[j];
+//          double new_dof = 0.0;
+//
+//          if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
+//            new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+//          }
+//
+//          if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
+//            new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+//          }
+//
+//          // adaptive limiting:
+//          if (std::abs(dof_central - new_dof) > 1.0e-10)
+//            u->set(dof_indices[j], new_dof);
+//          else
+//            break;
+//        }
 
       } else if (micro_edge_id == macro_edge->num_micro_edges() - 1) {
 
-        auto left_edge_id = micro_edge_id - 1;
-        local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
-        std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
-        extract_dof(dof_indices_left, *u, dof_left_edge);
-
-        for (int j = dof_indices.size() - 1; j > 0; j--) {
-          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
-          double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
-          double diff_right = gamma * (0.0 - dof_edge[j - 1]);
-          double dof_central = dof_edge[j];
-          double new_dof = 0.0;
-
-          if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
-            new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
-          }
-
-          if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
-            new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
-          }
-
-          if (std::abs(dof_central - new_dof) > 1.0e-10)
-            u->set(dof_indices[j], new_dof);
-          else
-            break;
-        }
+//        auto left_edge_id = micro_edge_id - 1;
+//        local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
+//        std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
+//        extract_dof(dof_indices_left, *u, dof_left_edge);
+//
+//        for (int j = dof_indices.size() - 1; j > 0; j--) {
+//          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
+//          double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
+//          double diff_right = gamma * (0.0 - dof_edge[j - 1]);
+//          double dof_central = dof_edge[j];
+//          double new_dof = 0.0;
+//
+//          if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
+//            new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+//          }
+//
+//          if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
+//            new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+//          }
+//
+//          if (std::abs(dof_central - new_dof) > 1.0e-10)
+//            u->set(dof_indices[j], new_dof);
+//          else
+//            break;
+//        }
 
       } else {
 

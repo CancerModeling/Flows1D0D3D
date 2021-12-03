@@ -77,6 +77,7 @@ PYBIND11_MODULE(_core, m) {
     .def("get_vessel_tip_pressures", &mc::HeartToBreast1DSolver::get_vessel_tip_pressures)
     .def("update_vessel_tip_pressures", &mc::HeartToBreast1DSolver::update_vessel_tip_pressures)
     .def("update_vessel_tip_concentrations", &mc::HeartToBreast1DSolver::update_vessel_tip_concentrations)
+    .def("apply_slope_limiter_transport", &mc::HeartToBreast1DSolver::apply_slope_limiter_transport)
     ;
 
   py::class_<mc::LinearizedHeartToBreast1DSolver>(m, "LinearizedHeartToBreast1DSolver")
@@ -91,6 +92,7 @@ PYBIND11_MODULE(_core, m) {
     .def("get_vessel_tip_pressures", &mc::LinearizedHeartToBreast1DSolver::get_vessel_tip_pressures)
     .def("update_vessel_tip_pressures", &mc::LinearizedHeartToBreast1DSolver::update_vessel_tip_pressures)
     .def("update_vessel_tip_concentrations", &mc::LinearizedHeartToBreast1DSolver::update_vessel_tip_concentrations)
+    .def("apply_slope_limiter_transport", &mc::LinearizedHeartToBreast1DSolver::apply_slope_limiter_transport)
     ;
 
 #ifdef VERSION_INFO

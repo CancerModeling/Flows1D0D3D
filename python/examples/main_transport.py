@@ -89,6 +89,7 @@ def run():
             t = solver1d.solve_flow(tau, t_old, int(tau_transport/ tau))
             assert np.isclose(t_old + tau_transport, t)
             solver1d.solve_transport(tau_transport, t)
+            solver1d.apply_slope_limiter_transport(t)
         solver1d.write_output(t)
 
         if (t > t_coup_start) and (i % coupling_interval_0d3d == 0):
