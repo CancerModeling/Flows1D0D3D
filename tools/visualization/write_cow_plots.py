@@ -5,12 +5,9 @@ import matplotlib as mpl
 from matplotlib import pyplot as plt
 import argparse
 
-font = {'family' : 'normal',
-        #'weight' : 'bold',
-        'size'   : 22}
 
+font = {'family': 'normal', 'size': 22}
 mpl.rc('font', **font)
-
 
 
 parser = argparse.ArgumentParser(description='Plots the vessel data.')

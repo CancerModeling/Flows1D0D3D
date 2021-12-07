@@ -1,8 +1,13 @@
 import os
 import numpy as np
 import json
+import matplotlib as mpl
 from matplotlib import pyplot as plt
 import argparse
+
+
+font = {'family': 'normal', 'size': 22}
+mpl.rc('font', **font)
 
 
 parser = argparse.ArgumentParser(description='Plots the vessel data.')
@@ -22,6 +27,8 @@ list_all_p = []
 list_all_q = []
 
 colors = args.colors
+
+no_legend = True
 
 labels = args.labels
 if len(labels) != len(args.filepaths):
@@ -87,16 +94,22 @@ for filepath in args.filepaths:
         start_index = np.sum(t < args.t_start)
         end_index = np.sum(t < args.t_end)
 
-        list_p.append(p[start_index:end_index])
-        list_q.append(q[start_index:end_index])
-        list_t.append(t[start_index:end_index])
+        list_p.append(p[start_index:end_index].tolist())
+        list_q.append(q[start_index:end_index].tolist())
+        list_t.append(t[start_index:end_index].tolist())
 
     list_all_p.append(list_p)
     list_all_q.append(list_q)
     list_all_t.append(list_t)
 
-max_p, min_p = np.array(list_all_p).max(), np.array(list_all_p).min()
-max_q, min_q = np.array(list_all_q).max(), np.array(list_all_q).min()
+
+def flatten(t):
+    if isinstance(t, list):
+        return [item for sublist in t for item in flatten(sublist)]
+    return [t]
+
+max_p, min_p = np.array(flatten(list_all_p)).max(), np.array(flatten(list_all_p)).min()
+max_q, min_q = np.array(flatten(list_all_q)).max(), np.array(flatten(list_all_q)).min()
 
 if True:
     fig = plt.figure()
@@ -107,24 +120,26 @@ if True:
         for src_idx in range(len(list_all_p)):
             linestyle = '-' if src_idx % 2 == 0 else '--'
             ax.plot(list_all_t[src_idx][idx], list_all_p[src_idx][idx], label='$p_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=4-src_idx, linestyle=linestyle, color=colors[src_idx])
-        ax.legend()
+        if not no_legend:
+            ax.legend()
         ax.set_xlabel('t [s]')
         ax.set_ylabel('p [mmHg]')
         ax.set_ylim(top=max_p+5, bottom=min_p-5)
         ax.grid(True)
-        plt.savefig(os.path.join(args.output_folder, '{}_p_{}.pdf'.format(args.dataset_name, vessel_id)))
+        plt.savefig(os.path.join(args.output_folder, '{}_p_{}.pdf'.format(args.dataset_name, vessel_id)), bbox_inches='tight')
 
     for idx, vessel_id in enumerate(args.vessels):
         plt.clf()
         ax = fig.add_subplot(111) 
         for src_idx in range(len(list_all_q)):
             ax.plot(list_all_t[src_idx][idx], list_all_q[src_idx][idx], label='$q_{' + str(vessel_id+1) + '}$ ' + labels[src_idx], linewidth=4-src_idx, linestyle=linestyle, color=colors[src_idx])
-        ax.legend()
+        if not no_legend:
+            ax.legend()
         ax.set_xlabel('t [s]')
         ax.set_ylabel(r'q [$cm^{3}/s$]')
         #ax.set_ylim(top=max_q+5, bottom=min_q-5)
         ax.grid(True)
-        plt.savefig(os.path.join(args.output_folder, '{}_q_{}.pdf'.format(args.dataset_name, vessel_id)))
+        plt.savefig(os.path.join(args.output_folder, '{}_q_{}.pdf'.format(args.dataset_name, vessel_id)), bbox_inches='tight')
 
 if True:
     fig, axes = plt.subplots(2, len(args.vessels), squeeze=False, sharey='row', sharex='col')
