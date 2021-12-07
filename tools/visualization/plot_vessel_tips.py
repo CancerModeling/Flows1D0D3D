@@ -63,14 +63,15 @@ if __name__ == '__main__':
         stop_index = len(t)
 
     show_Q_total = False 
-    show_N_total = False 
-    show_p = True 
+    show_N_total = True 
+    show_p = False 
     show_Q = False 
-    show_V = False
-    show_c = True 
-    show_N = False 
+    show_V = False 
+    show_c = True
+    show_N = True 
+    no_legend = True
 
-    show_V_from_p = False
+    show_V_from_p = False 
 
     data, vessel = load_data_by_edge_id(directory_name, metainfo, args.vessel_by_edge_id)
     print(vessel)
@@ -111,7 +112,8 @@ if __name__ == '__main__':
             if show_p:
                 ax = axes[next_ax_index, i]; next_ax_index += 1
                 ax.plot(t[start_index:stop_index], data['p'][start_index:stop_index,dof] / 1.3333, label='{}'.format(indices[dof]), linewidth=3)
-                ax.legend()
+                if not no_legend:
+                    ax.legend()
                 if i == 0:
                     ax.set_ylabel('$p_c$ [mmHg]')
                 if next_ax_index == num_plot_rows:
@@ -140,7 +142,8 @@ if __name__ == '__main__':
             if show_Q:
                 ax = axes[next_ax_index, i]; next_ax_index += 1
                 ax.plot(t[start_index:stop_index], flows, label='{}'.format(indices[dof]), linewidth=3)
-                ax.legend()
+                if not no_legend:
+                    ax.legend()
                 if i == 0:
                     ax.set_ylabel('$q_c [cm^3 s^{-1}]$')
                 if next_ax_index == num_plot_rows:
@@ -150,7 +153,8 @@ if __name__ == '__main__':
             if 'furcation_number' in vessel and vessel['furcation_number'] > 1 and show_Q_total:
                 ax = axes[next_ax_index, i]; next_ax_index += 1
                 ax.plot(t[start_index:stop_index], 2**dof * flows, label='{}'.format(indices[dof]), linewidth=3)
-                ax.legend()
+                if not no_legend:
+                    ax.legend()
                 if i == 0:
                     ax.set_ylabel('$q_{c,total} [cm^3 s^{-1}]$')
                 if next_ax_index == num_plot_rows:
@@ -160,7 +164,8 @@ if __name__ == '__main__':
         if 'c' in data and show_c:
             ax = axes[next_ax_index, i]; next_ax_index += 1
             ax.plot(t[start_index:stop_index], data['c'][start_index:stop_index, dof], label='{}'.format(indices[dof]), linewidth=3)
-            ax.legend()
+            if not no_legend:
+                ax.legend()
             if i == 0:
                 ax.set_ylabel('$c [mmol cm^{-3}]$')
             if next_ax_index == num_plot_rows:
@@ -172,7 +177,8 @@ if __name__ == '__main__':
             ax.plot(t[start_index:stop_index], data['V'][start_index:stop_index, dof], label='{}'.format(indices[dof]), linewidth=3)
             if show_V_from_p:
                 ax.plot(t[start_index:stop_index], vessel['capacitances'][dof]*data['p'][start_index:stop_index, dof], label='{}'.format(indices[dof]), linewidth=1)
-            ax.legend()
+            if not no_legend:
+                ax.legend()
             if i == 0:
                 ax.set_ylabel('$V [cm^3]$')
             if next_ax_index == num_plot_rows:
@@ -182,7 +188,8 @@ if __name__ == '__main__':
         if 'c' in data and 'V' in data and show_N:
             ax = axes[next_ax_index, i]; next_ax_index += 1
             ax.plot(t[start_index:stop_index], data['c'][start_index:stop_index, dof] * data['V'][start_index:stop_index, dof], label='{}'.format(indices[dof]), linewidth=3)
-            ax.legend()
+            if not no_legend:
+                ax.legend()
             if i == 0:
                 ax.set_ylabel('$N [mmol]$')
             if next_ax_index == num_plot_rows:
@@ -191,8 +198,9 @@ if __name__ == '__main__':
 
         if 'c' in data and 'V' in data and 'furcation_number' in vessel and vessel['furcation_number'] > 1 and show_N_total:
             ax = axes[next_ax_index, i]; next_ax_index += 1
-            ax.plot(t[start_index:stop_index], 2**(dof) * data['c'][start_index:stop_index, dof] * data['V'][start_index:stop_index, dof], label='{}'.format(indices[dof]), linewidth=3)
-            ax.legend()
+            ax.plot(t[start_index:stop_index], 2**(dof+1) * data['c'][start_index:stop_index, dof] * data['V'][start_index:stop_index, dof], label='{}'.format(indices[dof]), linewidth=3)
+            if not no_legend:
+                ax.legend()
             if i == 0:
                 ax.set_ylabel('$N_{total} [mmol]$')
             if next_ax_index == num_plot_rows:

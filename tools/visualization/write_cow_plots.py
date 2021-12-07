@@ -1,8 +1,16 @@
 import os
 import numpy as np
 import json
+import matplotlib as mpl
 from matplotlib import pyplot as plt
 import argparse
+
+font = {'family' : 'normal',
+        #'weight' : 'bold',
+        'size'   : 22}
+
+mpl.rc('font', **font)
+
 
 
 parser = argparse.ArgumentParser(description='Plots the vessel data.')
@@ -96,7 +104,7 @@ if True:
         ax.set_ylabel('p [mmHg]')
         ax.set_ylim(top=max_p+5, bottom=min_p-5)
         ax.grid(True)
-        plt.savefig(os.path.join(args.output_folder, '{}_p_{}.pdf'.format(args.dataset_name, vessel_id)))
+        plt.savefig(os.path.join(args.output_folder, '{}_p_{}.pdf'.format(args.dataset_name, vessel_id)), bbox_inches='tight')
 
     for idx, vessel_id in enumerate(args.vessels):
         plt.clf()
@@ -107,7 +115,7 @@ if True:
         ax.set_ylabel(r'q [$cm^{3}/s$]')
         #ax.set_ylim(top=max_q+5, bottom=min_q-5)
         ax.grid(True)
-        plt.savefig(os.path.join(args.output_folder, '{}_q_{}.pdf'.format(args.dataset_name, vessel_id)))
+        plt.savefig(os.path.join(args.output_folder, '{}_q_{}.pdf'.format(args.dataset_name, vessel_id)), bbox_inches='tight')
 
 if True:
     plt.clf() 

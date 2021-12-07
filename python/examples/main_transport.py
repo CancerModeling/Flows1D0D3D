@@ -20,14 +20,14 @@ def run():
     args = cli()
 
     data_folder = '../../data'
-    output_folder = './tmp'
+    output_folder = './tmp_transport'
     mesh_3d_filename = '../../data/3d-meshes/test_full_1d0d3d_cm.xdmf'
 
     os.makedirs(output_folder, exist_ok=True)
 
     degree = 2
-    tau_out = 1. / 2 ** 3
-    tau_coup = tau_out
+    tau_out = 1. / 2 ** 6
+    tau_coup = 1. / 2 ** 4 
     t_end = 80.
     t = 0
     t_coup_start = 2.

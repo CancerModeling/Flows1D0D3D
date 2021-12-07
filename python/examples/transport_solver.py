@@ -146,8 +146,8 @@ class TransportSolver:
         solver = df.KrylovSolver('gmres', 'jacobi')
         solver.parameters['monitor_convergence'] = True
         solver.parameters['nonzero_initial_guess'] = True
-        solver.parameters['absolute_tolerance'] = 1e-12
-        solver.parameters['relative_tolerance'] = 1e-12
+        solver.parameters['absolute_tolerance'] = 1e-6
+        solver.parameters['relative_tolerance'] = 1e-6
         solver.set_operator(A)
         solver.solve(self.current.vector(), b)
 

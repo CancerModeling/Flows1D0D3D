@@ -676,7 +676,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau,
         const bool has_right_neighbor = (i < R.size() - 1);
 
         if (is_leftmost) {
-          V_np1[i] += tau * Q_up[0];
+          V_np1[i] += tau * Q_up[0] / alpha;
         }
         if (is_rightmost) {
           V_np1[i] -= tau * (p_c[i] - p_c[i + 1]) / R[i];
@@ -714,7 +714,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau,
 
         if (is_leftmost) {
           if (Q_up[0] >= 0) {
-            Eigen::MatrixXd mat_ve = -(tau / V_np1[i] * Q_up[0] / A_up[0]) * pattern.transpose();
+            Eigen::MatrixXd mat_ve = -(tau / V_np1[i] * Q_up[0] / alpha / A_up[0]) * pattern.transpose();
             A->add({vertex_dof_indices[i]}, edge_dof_indices, mat_ve);
 
             auto pattern_ee = edge.is_pointing_to(v_id)
@@ -725,7 +725,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau,
           } else {
             Eigen::MatrixXd mat_ev = +tau * Q_up[0] * pattern;
             A->add(edge_dof_indices, {vertex_dof_indices[i]}, mat_ev);
-            Eigen::MatrixXd mat_vv = -tau / V_np1[i] * Q_up[0] * mat_1x1;
+            Eigen::MatrixXd mat_vv = -tau / V_np1[i] * Q_up[0] / alpha * mat_1x1;
             A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i]}, mat_vv);
           }
         }

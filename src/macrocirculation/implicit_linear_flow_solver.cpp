@@ -328,7 +328,7 @@ void ImplicitLinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
         rhs_values_q[j] = (-sigma / L) * tau * (sigma * std::sqrt(L / C)) * (sigma * q_in) * std::pow(sigma, j);
     } else if (vertex.is_inflow_with_fixed_pressure()) {
       for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1)
-        rhs_values_q[j] = (- tau * sigma) / L * q_in * std::pow(sigma, j);
+        rhs_values_q[j] = (-tau * sigma) / L * q_in * std::pow(sigma, j);
     } else {
       throw std::runtime_error("unknown boundary condition");
     }
@@ -359,7 +359,7 @@ void ImplicitLinearFlowSolver::assemble_matrix_inflow(double tau) {
       A->add(dof_indices_q, dof_indices_p, u_qp);
       A->add(dof_indices_q, dof_indices_q, u_qq);
     } else if (vertex.is_inflow_with_fixed_pressure()) {
-      Eigen::MatrixXd u_pp = tau / std::sqrt( C * L ) * pattern;
+      Eigen::MatrixXd u_pp = tau / std::sqrt(C * L) * pattern;
       Eigen::MatrixXd u_pq = tau * sigma * (1. / C) * pattern;
       A->add(dof_indices_p, dof_indices_p, u_pp);
       A->add(dof_indices_p, dof_indices_q, u_pq);
