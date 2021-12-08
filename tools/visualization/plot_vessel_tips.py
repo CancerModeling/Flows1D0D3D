@@ -67,9 +67,9 @@ if __name__ == '__main__':
     show_p = False 
     show_Q = False 
     show_V = False 
-    show_c = True
+    show_c = True 
     show_N = True 
-    no_legend = True
+    no_legend = True 
 
     show_V_from_p = False 
 

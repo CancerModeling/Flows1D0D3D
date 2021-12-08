@@ -11,7 +11,9 @@ from transport_solver import TransportSolver
 def cli():
     parser = argparse.ArgumentParser(description='Full 1d0d3d transport solver.')
     parser.add_argument("--use-fully-coupled", action="store_true", help="Should the fully coupled solver be used?")
+    parser.add_argument("--use-slope-limiter", action="store_true", help="Should the slope limiter be used?")
     parser.add_argument("--tip-pressures-input-file", type=str, help="Should the pressures be initialized?", required=True)
+    parser.add_argument("--output-folder", type=str, help="Into which directory should we write?", default='./tmp_transport')
     args = parser.parse_args()
     return args
 
@@ -20,7 +22,7 @@ def run():
     args = cli()
 
     data_folder = '../../data'
-    output_folder = './tmp_transport'
+    output_folder = args.output_folder 
     mesh_3d_filename = '../../data/3d-meshes/test_full_1d0d3d_cm.xdmf'
 
     os.makedirs(output_folder, exist_ok=True)
@@ -89,7 +91,9 @@ def run():
             t = solver1d.solve_flow(tau, t_old, int(tau_transport/ tau))
             assert np.isclose(t_old + tau_transport, t)
             solver1d.solve_transport(tau_transport, t)
-            solver1d.apply_slope_limiter_transport(t)
+            if args.use_slope_limiter:
+                print('applying slope limiter')
+                solver1d.apply_slope_limiter_transport(t)
         solver1d.write_output(t)
 
         if (t > t_coup_start) and (i % coupling_interval_0d3d == 0):
