@@ -62,13 +62,13 @@ if __name__ == '__main__':
     else:
         stop_index = len(t)
 
-    show_Q_total = False 
-    show_N_total = True 
+    show_Q_total = True 
+    show_N_total = False 
     show_p = False 
-    show_Q = False 
+    show_Q = True 
     show_V = False 
-    show_c = True 
-    show_N = True 
+    show_c = False 
+    show_N = False 
     no_legend = True 
 
     show_V_from_p = False 
@@ -152,7 +152,7 @@ if __name__ == '__main__':
 
             if 'furcation_number' in vessel and vessel['furcation_number'] > 1 and show_Q_total:
                 ax = axes[next_ax_index, i]; next_ax_index += 1
-                ax.plot(t[start_index:stop_index], 2**dof * flows, label='{}'.format(indices[dof]), linewidth=3)
+                ax.plot(t[start_index:stop_index], 2**(dof+1) * flows, label='{}'.format(indices[dof]), linewidth=3)
                 if not no_legend:
                     ax.legend()
                 if i == 0:
