@@ -13,6 +13,7 @@ def cli():
     parser.add_argument("--use-fully-coupled", action="store_true", help="Should the fully coupled solver be used?")
     parser.add_argument("--use-slope-limiter", action="store_true", help="Should the slope limiter be used?")
     parser.add_argument("--tip-pressures-input-file", type=str, help="Should the pressures be initialized?", required=True)
+    parser.add_argument('--t-3dcoup-start', type=float, help='When should the 3d coupling be active?', default=80)
     parser.add_argument("--output-folder", type=str, help="Into which directory should we write?", default='./tmp_transport')
     args = parser.parse_args()
     return args
@@ -32,12 +33,12 @@ def run():
     tau_coup = 1. / 2 ** 4 
     t_end = 80.
     t = 0
-    t_coup_start = 2.
+    t_coup_start = args.t_3dcoup_start 
     t_preiter = 6 
 
     if args.use_fully_coupled:
         tau = 1. / 2 ** 16
-        tau_transport = 1. / 2 ** 7
+        tau_transport = 1. / 2 ** 9
         solver1d = f.FullyCoupledHeartToBreast1DSolver()
         solver1d.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"))
         solver1d.set_path_linear_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
