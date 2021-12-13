@@ -77,6 +77,11 @@ public:
     return ksp;
   }
 
+  void set_tolerances(double atol, double rtol, double divtol, int max_int)
+  {
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetTolerances(d_ksp, atol, rtol, divtol, max_int));
+  }
+
   PetscKsp(const PetscKsp &) = delete;
   PetscKsp(PetscKsp &&) = delete;
   PetscKsp &operator=(const PetscKsp &) = delete;
