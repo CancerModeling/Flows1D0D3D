@@ -32,7 +32,7 @@
 
 namespace mc = macrocirculation;
 
-constexpr std::size_t degree = 0;
+constexpr std::size_t degree = 2;
 
 void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_end, bool apply_slope_limiter, std::shared_ptr<mc::GraphStorage> graph) {
   const std::size_t max_iter = 1600000;
@@ -81,45 +81,45 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
     if (apply_slope_limiter)
       transport_solver.apply_slope_limiter(t + tau);
 
-    if (t > 0.1)
-    {
-      A.mul(flow_solver->get_solution(), u_dst);
-      rhs.zero();
-      mc::assemble_rhs_inflow(PETSC_COMM_WORLD, *graph, *dof_map_flow, tau, t+tau, flow_solver->p_component, flow_solver->q_component, rhs );
-      u_dst.print();
-      auto& e = *graph->get_edge(0);
-      std::vector< double > p_up (e.num_micro_vertices(), 0);
-      std::vector< double > q_up (e.num_micro_vertices(), 0);
-      upwind_evaluator->get_fluxes_on_macro_edge(t+tau, e, flow_solver->get_solution(), p_up, q_up);
-      double L = mc::linear::get_L(e.get_physical_data());
-      double C = mc::linear::get_C(e.get_physical_data());
-      auto& ldofmap = dof_map_flow->get_local_dof_map(e);
-      std::vector< size_t > dof_indices(ldofmap.num_basis_functions());
-      for (auto meid = 0; meid < e.num_micro_edges(); meid+=1)
-      {
-        double v_q = tau/L * (p_up[meid+1] - p_up[meid]);
-        double v_p = tau/C * (q_up[meid+1] - q_up[meid]);
-
-        std::cout << "edge " << meid << ":" << std::endl;
-        std::cout << std::ios::scientific << std::setprecision(8) << std::endl;
-
-        ldofmap.dof_indices(meid, flow_solver->p_component, dof_indices);
-        double error = std::abs(v_p + rhs.get(dof_indices[0]) - u_dst.get(dof_indices[0]));
-        std::cout << "q " << v_p + rhs.get(dof_indices[0]) << " " << u_dst.get(dof_indices[0]) << " " << error << std::endl;
-
-        if (std::abs(v_p + rhs.get(dof_indices[0]) - u_dst.get(dof_indices[0])) > 1e-10)
-          std::cout << "?" << std::endl;
-        //std::cout << rhs.get(dof_indices[0]) << std::endl;
-
-        ldofmap.dof_indices(meid, flow_solver->q_component, dof_indices);
-        error = std::abs(v_q + rhs.get(dof_indices[0]) - u_dst.get(dof_indices[0]));
-        std::cout << "p " << v_q + rhs.get(dof_indices[0]) << " " << u_dst.get(dof_indices[0]) << " " << error << std::endl;
-        // std::cout << rhs.get(dof_indices[0]) << std::endl;
-
-        if (std::abs(v_q + rhs.get(dof_indices[0]) - u_dst.get(dof_indices[0])) > 1e-10)
-          std::cout << "?" << std::endl;
-      }
-    }
+//    if (t > 0.1)
+//    {
+//      A.mul(flow_solver->get_solution(), u_dst);
+//      rhs.zero();
+//      mc::assemble_rhs_inflow(PETSC_COMM_WORLD, *graph, *dof_map_flow, tau, t+tau, flow_solver->p_component, flow_solver->q_component, rhs );
+//      u_dst.print();
+//      auto& e = *graph->get_edge(0);
+//      std::vector< double > p_up (e.num_micro_vertices(), 0);
+//      std::vector< double > q_up (e.num_micro_vertices(), 0);
+//      upwind_evaluator->get_fluxes_on_macro_edge(t+tau, e, flow_solver->get_solution(), p_up, q_up);
+//      double L = mc::linear::get_L(e.get_physical_data());
+//      double C = mc::linear::get_C(e.get_physical_data());
+//      auto& ldofmap = dof_map_flow->get_local_dof_map(e);
+//      std::vector< size_t > dof_indices(ldofmap.num_basis_functions());
+//      for (auto meid = 0; meid < e.num_micro_edges(); meid+=1)
+//      {
+//        double v_q = tau/L * (p_up[meid+1] - p_up[meid]);
+//        double v_p = tau/C * (q_up[meid+1] - q_up[meid]);
+//
+//        std::cout << "edge " << meid << ":" << std::endl;
+//        std::cout << std::ios::scientific << std::setprecision(8) << std::endl;
+//
+//        ldofmap.dof_indices(meid, flow_solver->p_component, dof_indices);
+//        double error = std::abs(v_p + rhs.get(dof_indices[0]) - u_dst.get(dof_indices[0]));
+//        std::cout << "q " << v_p + rhs.get(dof_indices[0]) << " " << u_dst.get(dof_indices[0]) << " " << error << std::endl;
+//
+//        if (std::abs(v_p + rhs.get(dof_indices[0]) - u_dst.get(dof_indices[0])) > 1e-10)
+//          std::cout << "?" << std::endl;
+//        //std::cout << rhs.get(dof_indices[0]) << std::endl;
+//
+//        ldofmap.dof_indices(meid, flow_solver->q_component, dof_indices);
+//        error = std::abs(v_q + rhs.get(dof_indices[0]) - u_dst.get(dof_indices[0]));
+//        std::cout << "p " << v_q + rhs.get(dof_indices[0]) << " " << u_dst.get(dof_indices[0]) << " " << error << std::endl;
+//        // std::cout << rhs.get(dof_indices[0]) << std::endl;
+//
+//        if (std::abs(v_q + rhs.get(dof_indices[0]) - u_dst.get(dof_indices[0])) > 1e-10)
+//          std::cout << "?" << std::endl;
+//      }
+//    }
 
     t += tau;
 
@@ -257,7 +257,7 @@ int main(int argc, char *argv[]) {
 
   cxxopts::Options options(argv[0], "Implicit transport solver.");
   options.add_options()                                                                                                              //
-    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 32.)))                //
+    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                //
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                                    //
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("6"))                                      //
     ("no-upper-vessel", "Disables the upper vessel at the bifurcation", cxxopts::value<bool>()->default_value("false"))              //
@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
   const bool no_lower_vessel = args["no-lower-vessel"].as<bool>();
   const bool no_upper_vessel = args["no-upper-vessel"].as<bool>();
 
-  const std::size_t num_micro_edges = 80;
+  const std::size_t num_micro_edges = 20;
 
   // vessel parameters
   //const double vessel_length = 20.5;
@@ -317,15 +317,15 @@ int main(int argc, char *argv[]) {
   edge_0->add_embedding_data({{mc::Point(0, 0, 0), mc::Point(0.25, 0, 0)}});
   edge_0->add_physical_data(physical_data_short);
 
- // auto edge_1 = add_embedded_edge(*graph, *v0m1, mc::Point(0.25, 0, 0), *v1, mc::Point(0.5, 0, 0), num_micro_edges, !flip_left);
-  //if (flip_left)
-  //  std::cout << "flips left edge" << std::endl;
-  //edge_1->add_physical_data(physical_data_short);
+  auto edge_1 = add_embedded_edge(*graph, *v0m1, mc::Point(0.25, 0, 0), *v1, mc::Point(0.5, 0, 0), num_micro_edges, !flip_left);
+  if (flip_left)
+    std::cout << "flips left edge" << std::endl;
+  edge_1->add_physical_data(physical_data_short);
 
-  //auto edge_2 = add_embedded_edge(*graph, *v1,mc::Point(0.5, 0, 0), *v2, mc::Point(1., 0, 0), num_micro_edges, !flip_right);
-  //if (flip_right)
-  //  std::cout << "flips right edge" << std::endl;
-  //edge_2->add_physical_data(physical_data_long);
+  auto edge_2 = add_embedded_edge(*graph, *v1,mc::Point(0.5, 0, 0), *v2, mc::Point(1., 0, 0), num_micro_edges, !flip_right);
+  if (flip_right)
+    std::cout << "flips right edge" << std::endl;
+  edge_2->add_physical_data(physical_data_long);
 
   if (!no_upper_vessel) {
     auto v3 = graph->create_vertex();
@@ -346,9 +346,7 @@ int main(int argc, char *argv[]) {
   }
 
   v0->set_to_inflow_with_fixed_flow([](double t) { return mc::heart_beat_inflow(4., 1., 0.7)(t); });
-  //v1->set_to_free_outflow();
-  // v2->set_to_free_outflow();
-  v0m1->set_to_free_outflow();
+  v2->set_to_free_outflow();
 
   graph->finalize_bcs();
 
