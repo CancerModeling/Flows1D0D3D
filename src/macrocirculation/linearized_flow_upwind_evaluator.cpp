@@ -47,7 +47,9 @@ inline void compute_inner_boundary_values_on_macro_edge(const Edge &edge,
     extract_dof(dof_indices, u, dof_values);
     auto boundary_values = fe.evaluate_dof_at_boundary_points(dof_values);
     boundary_values_l[micro_edge_id] = boundary_values.left;
+    boundary_values_l[micro_edge_id] = fe.evaluate_dof(dof_values, -1);
     boundary_values_r[micro_edge_id] = boundary_values.right;
+    boundary_values_r[micro_edge_id] = fe.evaluate_dof(dof_values, +1);
   }
 }
 
@@ -147,8 +149,10 @@ void LinearizedFlowUpwindEvaluator::get_fluxes_on_macro_edge_generic(double t, c
   q_up[0] = d_q_macro_edge_flux_l[edge.get_id()];
 
   // update right fluxes
-  p_up[edge.num_micro_vertices() - 1] = d_p_macro_edge_flux_r[edge.get_id()];
-  q_up[edge.num_micro_vertices() - 1] = d_q_macro_edge_flux_r[edge.get_id()];
+  //p_up[edge.num_micro_vertices() - 1] = d_p_macro_edge_flux_r[edge.get_id()];
+  //q_up[edge.num_micro_vertices() - 1] = d_q_macro_edge_flux_r[edge.get_id()];
+  p_up.back() = d_p_macro_edge_flux_r[edge.get_id()];
+  q_up.back() = d_q_macro_edge_flux_r[edge.get_id()];
 }
 
 template<typename VectorType>
@@ -226,10 +230,10 @@ void LinearizedFlowUpwindEvaluator::calculate_inout_fluxes(double t, const Vecto
     double q_up = NAN;
 
     if (vertex->is_inflow_with_fixed_flow()) {
-      q_up = -sigma * vertex->get_inflow_value(t);
-      p_up = p_value[0] + 1. / alpha * (q_value[0] - q_up);
+      q_up = -sigma * vertex->get_inflow_value(t );
+      p_up = p_value[0] + 1. / alpha * (q_up - q_value[0]);
     } else if (vertex->is_inflow_with_fixed_pressure()) {
-      p_up = vertex->get_inflow_value(t);
+      p_up = vertex->get_inflow_value(t );
       q_up = sigma * alpha * p_value[0] + q_value[0] - sigma * alpha * p_up;
     } else if (vertex->is_free_outflow()) {
       p_up = 0.5 * (p_value[0] + sigma / alpha * q_value[0]);

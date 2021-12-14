@@ -294,6 +294,79 @@ void ImplicitLinearFlowSolver::assemble_matrix_inner_boundaries(double tau) {
   }
 }
 
+void assemble_matrix_inner_boundaries(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, size_t p_component, size_t q_component, PetscMat& A) {
+  for (const auto &e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
+    const auto macro_edge = graph.get_edge(e_id);
+
+    const auto &local_dof_map = dof_map.get_local_dof_map(*macro_edge);
+
+    const double C = linear::get_C(macro_edge->get_physical_data());
+    const double L = linear::get_L(macro_edge->get_physical_data());
+
+    std::vector<std::size_t> dof_indices_p_left(local_dof_map.num_basis_functions());
+    std::vector<std::size_t> dof_indices_q_left(local_dof_map.num_basis_functions());
+    std::vector<std::size_t> dof_indices_p_right(local_dof_map.num_basis_functions());
+    std::vector<std::size_t> dof_indices_q_right(local_dof_map.num_basis_functions());
+
+    using BPT = BoundaryPointType;
+    auto pattern_ll = create_boundary(local_dof_map, BPT::Left, BPT::Left);
+    auto pattern_lr = create_boundary(local_dof_map, BPT::Left, BPT::Right);
+    auto pattern_rl = create_boundary(local_dof_map, BPT::Right, BPT::Left);
+    auto pattern_rr = create_boundary(local_dof_map, BPT::Right, BPT::Right);
+    // + q^{up} phi(right)
+    Eigen::MatrixXd u_pp_lr = tau * (-0.5 / std::sqrt(C * L)) * pattern_rl;
+    Eigen::MatrixXd u_pq_lr = tau * (1. / C) * (+0.5) * pattern_rl;
+    Eigen::MatrixXd u_pp_ll = tau * (+0.5 / std::sqrt(C * L)) * pattern_rr;
+    Eigen::MatrixXd u_pq_ll = tau * (1. / C) * (+0.5) * pattern_rr;
+    // - q^{up} phi(left)
+    Eigen::MatrixXd u_pp_rr = tau * (+0.5 / std::sqrt(C * L)) * pattern_ll;
+    Eigen::MatrixXd u_pq_rr = tau * (1. / C) * (-0.5) * pattern_ll;
+    Eigen::MatrixXd u_pp_rl = tau * (-0.5 / std::sqrt(C * L)) * pattern_lr;
+    Eigen::MatrixXd u_pq_rl = tau * (1. / C) * (-0.5) * pattern_lr;
+    // - p^{up} phi(right)
+    Eigen::MatrixXd u_qp_ll = tau * (1. / L) * (+0.5) * pattern_rr;
+    Eigen::MatrixXd u_qq_ll = tau * (+0.5 / std::sqrt(L * C)) * pattern_rr;
+    Eigen::MatrixXd u_qp_lr = tau * (1. / L) * (+0.5) * pattern_rl;
+    Eigen::MatrixXd u_qq_lr = tau * (-0.5 / std::sqrt(L * C)) * pattern_rl;
+    // + p^{up} phi(left)
+    Eigen::MatrixXd u_qp_rl = tau * (1. / L) * (-0.5) * pattern_lr;
+    Eigen::MatrixXd u_qq_rl = tau * (-0.5 / std::sqrt(L * C)) * pattern_lr;
+    Eigen::MatrixXd u_qp_rr = tau * (1. / L) * (-0.5) * pattern_ll;
+    Eigen::MatrixXd u_qq_rr = tau * (+0.5 / std::sqrt(L * C)) * pattern_ll;
+
+    for (size_t micro_vertex_id = 1; micro_vertex_id < macro_edge->num_micro_vertices() - 1; micro_vertex_id += 1) {
+      auto left_edge_id = micro_vertex_id - 1;
+      auto right_edge_id = micro_vertex_id;
+
+      local_dof_map.dof_indices(left_edge_id, p_component, dof_indices_p_left);
+      local_dof_map.dof_indices(left_edge_id, q_component, dof_indices_q_left);
+      local_dof_map.dof_indices(right_edge_id, p_component, dof_indices_p_right);
+      local_dof_map.dof_indices(right_edge_id, q_component, dof_indices_q_right);
+
+      // + q^{up} phi(right)
+      A.add(dof_indices_p_left, dof_indices_p_right, u_pp_lr);
+      A.add(dof_indices_p_left, dof_indices_q_right, u_pq_lr);
+      A.add(dof_indices_p_left, dof_indices_p_left, u_pp_ll);
+      A.add(dof_indices_p_left, dof_indices_q_left, u_pq_ll);
+      // - q^{up} phi(left)
+      A.add(dof_indices_p_right, dof_indices_p_right, u_pp_rr);
+      A.add(dof_indices_p_right, dof_indices_q_right, u_pq_rr);
+      A.add(dof_indices_p_right, dof_indices_p_left, u_pp_rl);
+      A.add(dof_indices_p_right, dof_indices_q_left, u_pq_rl);
+      // - p^{up} phi(right)
+      A.add(dof_indices_q_left, dof_indices_p_left, u_qp_ll);
+      A.add(dof_indices_q_left, dof_indices_q_left, u_qq_ll);
+      A.add(dof_indices_q_left, dof_indices_p_right, u_qp_lr);
+      A.add(dof_indices_q_left, dof_indices_q_right, u_qq_lr);
+      // + p^{up} phi(left)
+      A.add(dof_indices_q_right, dof_indices_p_left, u_qp_rl);
+      A.add(dof_indices_q_right, dof_indices_q_left, u_qq_rl);
+      A.add(dof_indices_q_right, dof_indices_p_right, u_qp_rr);
+      A.add(dof_indices_q_right, dof_indices_q_right, u_qq_rr);
+    }
+  }
+}
+
 void ImplicitLinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
     auto &vertex = *d_graph->get_vertex(v_idx);
@@ -337,6 +410,49 @@ void ImplicitLinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
   }
 }
 
+void assemble_rhs_inflow(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, double t, size_t p_component, size_t q_component, PetscVec& rhs) {
+  for (auto v_idx : graph.get_active_vertex_ids(mpi::rank(comm))) {
+    auto &vertex = *graph.get_vertex(v_idx);
+    if (!vertex.is_inflow_with_fixed_flow() && !vertex.is_inflow_with_fixed_pressure())
+      continue;
+    const auto q_in = vertex.get_inflow_value(t);
+    auto &neighbor_edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
+    auto &local_dof_map = dof_map.get_local_dof_map(neighbor_edge);
+    auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
+    const auto L = linear::get_L(neighbor_edge.get_physical_data());
+    const auto C = linear::get_C(neighbor_edge.get_physical_data());
+    const double sigma = neighbor_edge.is_pointing_to(v_idx) ? +1 : -1;
+    // b_p:
+    std::vector<size_t> dof_indices_p(local_dof_map.num_basis_functions());
+    local_dof_map.dof_indices(micro_edge_idx, p_component, dof_indices_p);
+    std::vector<double> rhs_values_p(local_dof_map.num_basis_functions());
+    if (vertex.is_inflow_with_fixed_flow()) {
+      for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1)
+        rhs_values_p[j] = (-sigma / C) * tau * (-sigma * q_in) * std::pow(sigma, j);
+    } else if (vertex.is_inflow_with_fixed_pressure()) {
+      for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1)
+        rhs_values_p[j] = tau / std::sqrt(C * L) * q_in * std::pow(sigma, j);
+    } else {
+      throw std::runtime_error("unknown boundary condition");
+    }
+    rhs.add(dof_indices_p, rhs_values_p);
+    // b_q:
+    std::vector<size_t> dof_indices_q(local_dof_map.num_basis_functions());
+    local_dof_map.dof_indices(micro_edge_idx, q_component, dof_indices_q);
+    std::vector<double> rhs_values_q(local_dof_map.num_basis_functions());
+    if (vertex.is_inflow_with_fixed_flow()) {
+      for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1)
+        rhs_values_q[j] = (-sigma / L) * tau * (sigma * std::sqrt(L / C)) * (sigma * q_in) * std::pow(sigma, j);
+    } else if (vertex.is_inflow_with_fixed_pressure()) {
+      for (size_t j = 0; j < local_dof_map.num_basis_functions(); j += 1)
+        rhs_values_q[j] = (-tau * sigma) / L * q_in * std::pow(sigma, j);
+    } else {
+      throw std::runtime_error("unknown boundary condition");
+    }
+    rhs.add(dof_indices_q, rhs_values_q);
+  }
+}
+
 void ImplicitLinearFlowSolver::assemble_matrix_inflow(double tau) {
   // fixed inflow condition
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {
@@ -364,6 +480,39 @@ void ImplicitLinearFlowSolver::assemble_matrix_inflow(double tau) {
       Eigen::MatrixXd u_pq = tau * sigma * (1. / C) * pattern;
       A->add(dof_indices_p, dof_indices_p, u_pp);
       A->add(dof_indices_p, dof_indices_q, u_pq);
+    } else {
+      throw std::runtime_error("unknown boundary condition");
+    }
+  }
+}
+
+void assemble_matrix_inflow(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, size_t p_component, size_t q_component, PetscMat& A) {
+  // fixed inflow condition
+  for (auto v_idx : graph.get_active_vertex_ids(mpi::rank(comm))) {
+    auto &vertex = *graph.get_vertex(v_idx);
+    if (!vertex.is_inflow_with_fixed_flow() && !vertex.is_inflow_with_fixed_pressure())
+      continue;
+    auto &neighbor_edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
+    auto &local_dof_map = dof_map.get_local_dof_map(neighbor_edge);
+    std::vector<size_t> dof_indices_p(local_dof_map.num_basis_functions());
+    std::vector<size_t> dof_indices_q(local_dof_map.num_basis_functions());
+    auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
+    const double sigma = neighbor_edge.is_pointing_to(v_idx) ? +1 : -1;
+    const auto L = linear::get_L(neighbor_edge.get_physical_data());
+    const auto C = linear::get_C(neighbor_edge.get_physical_data());
+    local_dof_map.dof_indices(micro_edge_idx, p_component, dof_indices_p);
+    local_dof_map.dof_indices(micro_edge_idx, q_component, dof_indices_q);
+    auto pattern = neighbor_edge.is_pointing_to(v_idx) ? create_boundary(local_dof_map, BoundaryPointType::Right, BoundaryPointType::Right) : create_boundary(local_dof_map, BoundaryPointType::Left, BoundaryPointType::Left);
+    if (vertex.is_inflow_with_fixed_flow()) {
+      Eigen::MatrixXd u_qp = sigma * tau * (1. / L) * pattern;
+      Eigen::MatrixXd u_qq = tau * (1. / L) * (std::sqrt(L / C)) * pattern;
+      A.add(dof_indices_q, dof_indices_p, u_qp);
+      A.add(dof_indices_q, dof_indices_q, u_qq);
+    } else if (vertex.is_inflow_with_fixed_pressure()) {
+      Eigen::MatrixXd u_pp = tau / std::sqrt(C * L) * pattern;
+      Eigen::MatrixXd u_pq = tau * sigma * (1. / C) * pattern;
+      A.add(dof_indices_p, dof_indices_p, u_pp);
+      A.add(dof_indices_p, dof_indices_q, u_pq);
     } else {
       throw std::runtime_error("unknown boundary condition");
     }
@@ -398,6 +547,37 @@ void ImplicitLinearFlowSolver::assemble_matrix_free_outflow(double tau) {
     A->add(dof_indices_q, dof_indices_q, u_qq);
   }
 }
+
+void assemble_matrix_free_outflow(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, size_t p_component, size_t q_component, PetscMat& A) {
+  for (auto v_idx : graph.get_active_vertex_ids(mpi::rank(comm))) {
+    auto &vertex = *graph.get_vertex(v_idx);
+    if (!vertex.is_free_outflow())
+      continue;
+    auto &neighbor_edge = *graph.get_edge(vertex.get_edge_neighbors()[0]);
+    auto &local_dof_map = dof_map.get_local_dof_map(neighbor_edge);
+    std::vector<size_t> dof_indices_p(local_dof_map.num_basis_functions());
+    std::vector<size_t> dof_indices_q(local_dof_map.num_basis_functions());
+    auto micro_edge_idx = neighbor_edge.is_pointing_to(v_idx) ? neighbor_edge.num_micro_edges() - 1 : 0;
+    const auto L = linear::get_L(neighbor_edge.get_physical_data());
+    const auto C = linear::get_C(neighbor_edge.get_physical_data());
+    const double sigma = neighbor_edge.is_pointing_to(v_idx) ? +1 : -1;
+    local_dof_map.dof_indices(micro_edge_idx, p_component, dof_indices_p);
+    local_dof_map.dof_indices(micro_edge_idx, q_component, dof_indices_q);
+    auto pattern = neighbor_edge.is_pointing_to(v_idx)
+                   ? create_boundary(local_dof_map, BoundaryPointType::Right, BoundaryPointType::Right)
+                   : create_boundary(local_dof_map, BoundaryPointType::Left, BoundaryPointType::Left);
+    Eigen::MatrixXd u_pp = tau * (1. / C) * (0.5 * std::sqrt(C / L)) * pattern;
+    Eigen::MatrixXd u_pq = tau * (1. / C) * sigma * (0.5) * pattern;
+    Eigen::MatrixXd u_qp = tau * (1. / L) * sigma * (0.5) * pattern;
+    Eigen::MatrixXd u_qq = tau * (1. / L) * (0.5 * std::sqrt(L / C)) * pattern;
+    A.add(dof_indices_p, dof_indices_p, u_pp);
+    A.add(dof_indices_p, dof_indices_q, u_pq);
+    A.add(dof_indices_q, dof_indices_p, u_qp);
+    A.add(dof_indices_q, dof_indices_q, u_qq);
+  }
+}
+
+
 
 void ImplicitLinearFlowSolver::assemble_matrix_nfurcations(double tau) {
   for (auto v_idx : d_graph->get_active_vertex_ids(mpi::rank(d_comm))) {

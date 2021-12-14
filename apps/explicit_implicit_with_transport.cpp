@@ -32,8 +32,8 @@
 namespace mc = macrocirculation;
 
 int main(int argc, char *argv[]) {
-  const std::size_t degree = 2;
-  const std::size_t num_micro_edges = 20;
+  const std::size_t degree = 0;
+  const std::size_t num_micro_edges = 40;
 
   // initialize petsc
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << std::endl;
 
-    const double tau = 2.5e-4 / 16.;
+    const double tau = 2.5e-4 / 32.;
     // const double t_end = 2.5e-4 / 16 * 100;
     const double t_end = 4;
     const double tau_out = 1e-2;
@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
 
     // vessel parameters
     const double vessel_length = 2.5;
+    // const double radius = 0.403;
     const double radius = 0.403;
     const double wall_thickness = 0.067;
     const double elastic_modulus = 400000.0;
@@ -115,9 +116,8 @@ int main(int argc, char *argv[]) {
     v0_li->set_name("li_in");
     // v1_li->set_to_free_outflow();
 
-    //v2_li->set_to_windkessel_outflow(1.8, 0.387);
     // v2_li->set_to_free_outflow();
-    v2_li->set_to_windkessel_outflow(1.8, 3870);
+    v2_li->set_to_vessel_tree_outflow( 5.0 * 1.333322, {1.8}, {3870}, {1.}, 1.);
 
     // v2_li->set_name("windkessel_outflow");
     // mc::set_0d_tree_boundary_conditions(graph_li, "windkessel_outflow");
@@ -129,14 +129,18 @@ int main(int argc, char *argv[]) {
     coupling->add_coupled_vertices("nl_out", "li_in");
 
     mc::CoupledExplicitImplicit1DSolver solver(MPI_COMM_WORLD, coupling, graph_nl, graph_li, degree, degree);
-    solver.get_explicit_solver()->use_ssp_method();
+    solver.get_explicit_solver()->use_explicit_euler_method();
 
     auto dof_map_nl = solver.get_explicit_dof_map();
     auto dof_map_li = solver.get_implicit_dof_map();
 
     auto dof_map_transport_nl = std::make_shared<mc::DofMap>(*graph_nl);
     auto dof_map_transport_li = std::make_shared<mc::DofMap>(*graph_li);
-    mc::DofMap::create(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, 1, degree,  [](const mc::GraphStorage&, const mc::Vertex &v) { return 0; });
+    mc::DofMap::create(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, 1, degree,  [](const mc::GraphStorage&, const mc::Vertex &v) {
+      if (v.is_vessel_tree_outflow())
+        return 1;
+      return 0;
+    });
 
     std::cout << mc::mpi::rank(MPI_COMM_WORLD) << " last global dof " << dof_map_transport_nl->last_global_dof() << std::endl;
     for (auto eid : graph_nl->get_edge_ids()) {

@@ -51,13 +51,13 @@ public:
     CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
     CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCHYPRE));
     CHKERRABORT(PETSC_COMM_WORLD, PCHYPRESetType(pc, "euclid"));
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetTolerances(ksp->d_ksp, 1e-16, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
      */
 
     PC pc;
     CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
     CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(ksp->d_ksp));
-    //CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PC));
-    // CHKERRABORT(PETSC_COMM_WORLD, KSPSetTolerances(ksp->d_ksp, 1e-10, 1e-10, 1e-10, 100000));
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetTolerances(ksp->d_ksp, 1e-16, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
 
     /*
     PC pc;
@@ -77,9 +77,9 @@ public:
     return ksp;
   }
 
-  void set_tolerances(double atol, double rtol, double divtol, int max_int)
+  void set_tolerances(double rtol, double atol, double divtol, int max_int)
   {
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetTolerances(d_ksp, atol, rtol, divtol, max_int));
+    CHKERRABORT(PETSC_COMM_WORLD, KSPSetTolerances(d_ksp, rtol, atol, divtol, max_int));
   }
 
   PetscKsp(const PetscKsp &) = delete;

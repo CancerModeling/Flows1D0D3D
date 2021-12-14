@@ -290,7 +290,7 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
       linear_solver(PetscKsp::create_with_pc_ilu(*A)),
       d_inflow_functions(d_graph.size()) {
 
-  linear_solver->set_tolerances(1e-10, 1e-10, 100000, 10000);
+  linear_solver->set_tolerances(1e-16, 1e-16, PETSC_DEFAULT, PETSC_DEFAULT);
 
   if (d_graph.size() != d_dof_map.size())
     throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and dof maps must coincide");
