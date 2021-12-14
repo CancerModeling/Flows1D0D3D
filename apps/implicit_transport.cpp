@@ -132,16 +132,24 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
       std::vector<double> p_vertex_values;
       std::vector<double> q_vertex_values;
       std::vector<double> v_vertex_values;
+      std::vector<double> A_vertex_values;
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_transport, 0, transport_solver.get_solution(), points, c_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->p_component, flow_solver->get_solution(), points, p_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->q_component, flow_solver->get_solution(), points, q_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *variable_upwind_provider, t, points, v_vertex_values);
 
+      auto trafo = [](double p, const mc::Edge& e) {
+        double G0 = e.get_physical_data().G0;
+        double A0 = e.get_physical_data().A0;
+        return mc::nonlinear::get_A_from_p(p, G0, A0);
+      };
+      mc::interpolate_transformation(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->p_component, flow_solver->get_solution(), trafo, points, A_vertex_values);
+
       pvd_writer.set_points(points);
       pvd_writer.add_vertex_data("c", c_vertex_values);
       pvd_writer.add_vertex_data("Q", q_vertex_values);
       pvd_writer.add_vertex_data("p", p_vertex_values);
-      pvd_writer.add_vertex_data("A", vessel_A0);
+      pvd_writer.add_vertex_data("A", A_vertex_values);
       pvd_writer.add_vertex_data("v", v_vertex_values);
       pvd_writer.write(t);
     }
@@ -249,7 +257,7 @@ int main(int argc, char *argv[]) {
 
   cxxopts::Options options(argv[0], "Implicit transport solver.");
   options.add_options()                                                                                                              //
-    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 16.)))                //
+    ("tau", "time step size for the 1D model", cxxopts::value<double>()->default_value(std::to_string(2.5e-4 / 32.)))                //
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                                    //
     ("t-end", "Simulation period for simulation", cxxopts::value<double>()->default_value("6"))                                      //
     ("no-upper-vessel", "Disables the upper vessel at the bifurcation", cxxopts::value<bool>()->default_value("false"))              //
@@ -278,7 +286,7 @@ int main(int argc, char *argv[]) {
   const bool no_lower_vessel = args["no-lower-vessel"].as<bool>();
   const bool no_upper_vessel = args["no-upper-vessel"].as<bool>();
 
-  const std::size_t num_micro_edges = 40;
+  const std::size_t num_micro_edges = 80;
 
   // vessel parameters
   //const double vessel_length = 20.5;

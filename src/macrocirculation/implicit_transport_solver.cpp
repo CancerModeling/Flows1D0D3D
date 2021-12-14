@@ -212,15 +212,20 @@ void UpwindProviderLinearizedFlow::get_values_at_qp(double t,
   std::vector<double> dof_values(ldof_map.num_basis_functions());
 
   std::vector<double> values_q(qf.size());
+  std::vector<double> values_p(qf.size());
 
   ldof_map.dof_indices(micro_edge, d_solver->q_component, dof_indices);
   extract_dof(dof_indices, d_solver->get_solution(), dof_values);
   fe.evaluate_dof_at_quadrature_points(dof_values, values_q);
 
+  ldof_map.dof_indices(micro_edge, d_solver->p_component, dof_indices);
+  extract_dof(dof_indices, d_solver->get_solution(), dof_values);
+  fe.evaluate_dof_at_quadrature_points(dof_values, values_p);
+
   auto &param = edge.get_physical_data();
 
   for (size_t k = 0; k < qf.size(); k += 1)
-    v_qp[k] = values_q[k] / param.A0;
+    v_qp[k] = values_q[k] / nonlinear::get_A_from_p(values_p[0], param.G0, param.A0);
 }
 
 /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
@@ -231,19 +236,21 @@ void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Edge &edg
   d_evaluator->get_fluxes_on_macro_edge(t, edge, d_solver->get_solution(), p_up, q_up);
   assert(edge.has_physical_data());
   auto A0 = edge.get_physical_data().A0;
+  auto G0 = edge.get_physical_data().G0;
   for (size_t k = 0; k < v_qp.size(); k += 1)
-    v_qp[k] = q_up[k] / A0;
+    v_qp[k] = q_up[k] / nonlinear::get_A_from_p(p_up[k], G0, A0);
 }
 
 void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
   std::vector<double> p_up(v.get_edge_neighbors().size());
   d_evaluator->get_fluxes_on_nfurcation(t, v, p_up, Q);
 
-  std::vector<double> A0;
   for (size_t k = 0; k < v.get_edge_neighbors().size(); k += 1) {
     auto &edge = *d_graph->get_edge(v.get_edge_neighbors()[k]);
     assert(edge.has_physical_data());
-    A[k] = edge.get_physical_data().A0;
+    double A0 = edge.get_physical_data().A0;
+    double G0 = edge.get_physical_data().G0;
+    A[k] = nonlinear::get_A_from_p(p_up[k], G0, A0);
   }
 }
 
