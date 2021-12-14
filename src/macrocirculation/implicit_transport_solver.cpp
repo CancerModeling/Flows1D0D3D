@@ -12,7 +12,9 @@
 
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
+#include "edge_boundary_evaluator.hpp"
 #include "explicit_nonlinear_flow_solver.hpp"
+#include "explicit_transport_solver.hpp"
 #include "fe_type.hpp"
 #include "graph_storage.hpp"
 #include "implicit_linear_flow_solver.hpp"
@@ -21,6 +23,7 @@
 #include "petsc/petsc_ksp.hpp"
 #include "petsc/petsc_vec.hpp"
 #include "petsc_assembly_blocks.hpp"
+#include "transport_upwind_evaluator.hpp"
 #include "vessel_formulas.hpp"
 
 namespace macrocirculation {
@@ -297,6 +300,9 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
   // initialize volumes
   for (size_t k = 0; k < d_graph.size(); k += 1)
     d_dof_maps_volume.push_back(std::make_shared<DofMap>(*d_graph[k]));
+
+  for (size_t k = 0; k < d_graph.size(); k += 1)
+    d_transport_upwind_evaluators.push_back(std::make_shared<TransportUpwindEvaluator>(comm, d_graph[k], d_dof_map[k], d_upwind_provider[k]));
 
   auto num_vertex_dof = [](auto, const Vertex &v) -> size_t {
     if (v.is_windkessel_outflow())
@@ -788,14 +794,40 @@ Eigen::MatrixXd create_QA_phi_grad_psi(const FETypeNetwork &fe,
 }
 
 void ImplicitTransportSolver::apply_slope_limiter(double t) {
-
   for (int i = 0; i < d_graph.size(); i++) {
-    apply_slope_limiter(d_graph[i], d_dof_map[i], d_upwind_provider[i], t);
+    d_transport_upwind_evaluators[i]->init(t, *u);
+    apply_slope_limiter(d_graph[i], d_dof_map[i], d_upwind_provider[i], d_transport_upwind_evaluators[i], t);
   }
   u->assemble();
 }
 
-void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t) {
+double limit(size_t j,
+             const std::vector<double> &dof_edge,
+             const std::vector<double> &dof_left_edge,
+             const std::vector<double> &dof_right_edge) {
+
+  double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
+  double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
+  double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
+  double dof_central = dof_edge[j];
+  double new_dof = 0.0;
+
+  if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
+    new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+  }
+
+  if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
+    new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+  }
+
+  return new_dof;
+}
+
+void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph,
+                                                  std::shared_ptr<DofMap> d_dof_map,
+                                                  std::shared_ptr<UpwindProvider> upwind_provider,
+                                                  std::shared_ptr<TransportUpwindEvaluator> eval,
+                                                  double t) {
 
   for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
     const auto macro_edge = d_graph->get_edge(e_id);
@@ -827,26 +859,45 @@ void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> 
       local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
       extract_dof(dof_indices_right, *u, dof_right_edge);
 
-      for (int j = dof_indices.size() - 1; j > 0; j--) {
-        double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
+      if (eval->upwind_is_implemented(vertex)) {
+        std::vector<double> gamma_up(vertex.get_edge_neighbors().size());
+        eval->get_fluxes_on_nfurcation(t, vertex, gamma_up);
 
-        double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
-        double dof_central = dof_edge[j];
-        double new_dof = 0.0;
+        for (size_t k = 0; k < dof_indices_left.size(); k += 1)
+          dof_left_edge[k] = 0;
+        dof_left_edge[0] = gamma_up[vertex.local_edge_index(*macro_edge)];
 
-        if (dof_central > 0.0 && diff_right > 0.0) {
-          new_dof = std::min(std::abs(dof_central), std::abs(diff_right));
+        for (int j = dof_indices.size() - 1; j > 0; j--) {
+          const double new_dof = limit(j, dof_edge, dof_left_edge, dof_right_edge);
+
+          // adaptive limiting:
+          if (std::abs(dof_edge[j] - new_dof) > 1.0e-10)
+            u->set(dof_indices[j], new_dof);
+          else
+            break;
         }
+      } else {
+        for (int j = dof_indices.size() - 1; j > 0; j--) {
+          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
 
-        if (dof_central < 0.0 && diff_right < 0.0) {
-          new_dof = -std::min(std::abs(dof_central), std::abs(diff_right));
+          double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
+          double dof_central = dof_edge[j];
+          double new_dof = 0.0;
+
+          if (dof_central > 0.0 && diff_right > 0.0) {
+            new_dof = std::min(std::abs(dof_central), std::abs(diff_right));
+          }
+
+          if (dof_central < 0.0 && diff_right < 0.0) {
+            new_dof = -std::min(std::abs(dof_central), std::abs(diff_right));
+          }
+
+          // adaptive limiting:
+          if (std::abs(dof_central - new_dof) > 1.0e-10)
+            u->set(dof_indices[j], new_dof);
+          else
+            break;
         }
-
-        // adaptive limiting:
-        if (std::abs(dof_central - new_dof) > 1.0e-10)
-          u->set(dof_indices[j], new_dof);
-        else
-          break;
       }
     }
 
@@ -904,24 +955,46 @@ void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> 
 
       auto left_edge_id = micro_edge_id - 1;
 
-      for (int j = dof_indices.size() - 1; j > 0; j--) {
-        double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
-        double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
-        double dof_central = dof_edge[j];
-        double new_dof = 0.0;
+      auto &vertex = *d_graph->get_vertex(macro_edge->get_vertex_neighbors()[1]);
 
-        if (dof_central > 0.0 && diff_left > 0.0) {
-          new_dof = std::min(std::abs(dof_central), std::abs(diff_left));
+      if (eval->upwind_is_implemented(vertex)) {
+        std::vector<double> gamma_up(vertex.get_edge_neighbors().size());
+        eval->get_fluxes_on_nfurcation(t, vertex, gamma_up);
+
+        for (size_t k = 0; k < dof_indices_left.size(); k += 1)
+          dof_right_edge[k] = 0;
+        dof_right_edge[0] = gamma_up[vertex.local_edge_index(*macro_edge)];
+
+        for (int j = dof_indices.size() - 1; j > 0; j--) {
+          const double new_dof = limit(j, dof_edge, dof_left_edge, dof_right_edge);
+
+          // adaptive limiting:
+          if (std::abs(dof_edge[j] - new_dof) > 1.0e-10)
+            u->set(dof_indices[j], new_dof);
+          else
+            break;
         }
 
-        if (dof_central < 0.0 && diff_left < 0.0) {
-          new_dof = -std::min(std::abs(dof_central), std::abs(diff_left));
-        }
+      } else {
+        for (int j = dof_indices.size() - 1; j > 0; j--) {
+          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
+          double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
+          double dof_central = dof_edge[j];
+          double new_dof = 0.0;
 
-        if (std::abs(dof_central - new_dof) > 1.0e-10)
-          u->set(dof_indices[j], new_dof);
-        else
-          break;
+          if (dof_central > 0.0 && diff_left > 0.0) {
+            new_dof = std::min(std::abs(dof_central), std::abs(diff_left));
+          }
+
+          if (dof_central < 0.0 && diff_left < 0.0) {
+            new_dof = -std::min(std::abs(dof_central), std::abs(diff_left));
+          }
+
+          if (std::abs(dof_central - new_dof) > 1.0e-10)
+            u->set(dof_indices[j], new_dof);
+          else
+            break;
+        }
       }
     }
   }

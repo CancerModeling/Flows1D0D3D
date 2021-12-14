@@ -27,7 +27,7 @@ public:
 
   void init(double t, const PetscVec &u_prev);
 
-  void get_fluxes_on_macro_edge(double t, const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &p_up, std::vector<double> &q_up) const;
+  void get_fluxes_on_macro_edge(double t, const Edge &edge, const std::vector<double> &u_prev, std::vector<double> &p_up, std::vector<double> &q_up) const ;
 
   void get_fluxes_on_macro_edge(double t, const Edge &edge, const PetscVec &u_prev, std::vector<double> &p_up, std::vector<double> &q_up) const;
 

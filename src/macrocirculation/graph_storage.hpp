@@ -234,6 +234,8 @@ class Vertex : public Primitive {
 public:
   explicit Vertex(std::size_t id);
 
+  size_t local_edge_index(const Edge& ege) const;
+
   const std::vector<std::size_t> &get_edge_neighbors() const;
 
   bool is_leaf() const;
@@ -501,6 +503,10 @@ private:
   std::size_t d_num_micro_edges;
   std::size_t d_num_micro_vertices;
 };
+
+std::vector<double> get_normals(const GraphStorage &graph, const Vertex &v);
+
+void get_normals(const GraphStorage &graph, const Vertex &v, std::vector<double> &sigma);
 
 } // namespace macrocirculation
 

@@ -210,7 +210,7 @@ void HeartToBreast1DSolver::setup_solver_flow(size_t degree, double tau_flow) {
   d_tau_flow = tau_flow;
   solver = std::make_shared<CoupledExplicitImplicit1DSolver>(d_comm, coupling, graph_nl, graph_li, d_degree, d_degree);
   solver->setup(tau_flow);
-  solver->get_explicit_solver()->use_ssp_method();
+  solver->get_explicit_solver()->use_explicit_euler_method();
 }
 
 void HeartToBreast1DSolver::setup_solver(size_t degree, double tau) {
@@ -351,6 +351,8 @@ void HeartToBreast1DSolver::solve_transport(double tau, double t) {
 }
 
 void HeartToBreast1DSolver::apply_slope_limiter_transport(double t) {
+  upwind_evaluator_nl->init(t, solver->get_explicit_solver()->get_solution());
+  upwind_evaluator_li->init(t, solver->get_implicit_solver()->get_solution());
   transport_solver->apply_slope_limiter(t);
 }
 

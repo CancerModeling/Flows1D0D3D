@@ -139,7 +139,7 @@ void LinearizedFlowUpwindEvaluator::get_fluxes_on_macro_edge_generic(double t, c
   const auto alpha = std::sqrt(linear::get_C(param) / linear::get_L(param));
 
   for (std::size_t micro_vertex_id = 1; micro_vertex_id < edge.num_micro_vertices() - 1; micro_vertex_id += 1) {
-    linearized::inner_boundary(alpha, p_l[micro_vertex_id], q_l[micro_vertex_id], p_r[micro_vertex_id - 1], q_r[micro_vertex_id - 1], p_up[micro_vertex_id], q_up[micro_vertex_id]);
+    linearized::inner_boundary(alpha, p_r[micro_vertex_id-1], q_r[micro_vertex_id-1], p_l[micro_vertex_id], q_l[micro_vertex_id], p_up[micro_vertex_id], q_up[micro_vertex_id]);
   }
 
   // update left fluxes

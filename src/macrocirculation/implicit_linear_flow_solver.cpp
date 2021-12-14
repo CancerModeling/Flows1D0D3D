@@ -147,7 +147,8 @@ ImplicitLinearFlowSolver::ImplicitLinearFlowSolver(MPI_Comm comm, std::shared_pt
       rhs(std::make_shared<PetscVec>("rhs", *d_dof_map)),
       A(std::make_shared<PetscMat>("A", *d_dof_map)),
       mass(std::make_shared<PetscVec>("mass", *d_dof_map)),
-      linear_solver(PetscKsp::create_with_pc_ilu(*A)) {
+      linear_solver(PetscKsp::create_with_pc_ilu(*A))
+{
   assemble_mass(d_comm, *d_graph, *d_dof_map, *mass);
   u->zero();
   rhs->zero();

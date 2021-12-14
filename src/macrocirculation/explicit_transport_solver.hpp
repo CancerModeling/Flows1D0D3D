@@ -70,6 +70,12 @@ private:
   std::vector<double> d_inverse_mass;
 };
 
+void calculate_gamma_up_at_bifurcation(const std::vector<double> &sigma,
+                                       const std::vector<double> &Q_up_values,
+                                       const std::vector<double> &A_up_values,
+                                       const std::vector<double> &gamma_values,
+                                       std::vector<double> &gamma_up_values);
+
 } // namespace macrocirculation
 
 #endif //TUMORMODELS_TRANSPORT_H

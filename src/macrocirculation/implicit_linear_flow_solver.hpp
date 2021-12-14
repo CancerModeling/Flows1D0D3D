@@ -26,6 +26,7 @@ class Point;
 class LocalEdgeDofMap;
 class Edge;
 class Vertex;
+class EdgeBoundaryEvaluator;
 
 void assemble_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, PetscVec &mass_vec);
 
@@ -103,8 +104,6 @@ public:
   /*! @brief Returns the degree of the finite element basis functions. */
   size_t get_degree() const;
   
-  void applySlopeLimiter();
-
   PetscKsp& get_solver();
 
 private:
