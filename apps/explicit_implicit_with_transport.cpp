@@ -237,9 +237,7 @@ int main(int argc, char *argv[]) {
           interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_transport_li, 0, transport_solver.get_solution(), points, c_vertex_values);
           mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *variable_upwind_provider_li, t, points, v_vertex_values);
           auto trafo = [](double p, const mc::Edge &e) {
-            double G0 = e.get_physical_data().G0;
-            double A0 = e.get_physical_data().A0;
-            return mc::nonlinear::get_A_from_p(p, G0, A0);
+            return e.get_physical_data().A0 + mc::linear::get_C(e.get_physical_data()) * p;
           };
           mc::interpolate_transformation(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->p_component, solver_li->get_solution(), trafo, points, A_vertex_values);
 

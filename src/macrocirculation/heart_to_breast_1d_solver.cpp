@@ -207,7 +207,7 @@ void HeartToBreast1DSolver::setup_solver_flow(size_t degree, double tau_flow) {
   d_tau_flow = tau_flow;
   solver = std::make_shared<CoupledExplicitImplicit1DSolver>(d_comm, coupling, graph_nl, graph_li, d_degree, d_degree);
   solver->setup(tau_flow);
-  solver->get_explicit_solver()->use_explicit_euler_method();
+  solver->get_explicit_solver()->use_ssp_method();
 }
 
 void HeartToBreast1DSolver::setup_solver(size_t degree, double tau) {
@@ -307,9 +307,7 @@ void HeartToBreast1DSolver::write_output(double t) {
 
 
   auto trafo = [](double p, const Edge &e) {
-    double G0 = e.get_physical_data().G0;
-    double A0 = e.get_physical_data().A0;
-    return nonlinear::get_A_from_p(p, G0, A0);
+    return e.get_physical_data().A0 + linear::get_C(e.get_physical_data()) * p;
   };
   interpolate_transformation(MPI_COMM_WORLD, *graph_li, *dof_map_li, get_solver_li().p_component, get_solver_li().get_solution(), trafo, points, vessel_A_li);
 

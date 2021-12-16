@@ -32,7 +32,7 @@
 
 namespace mc = macrocirculation;
 
-constexpr std::size_t degree = 2;
+constexpr std::size_t degree = 0;
 
 void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_end, bool apply_slope_limiter, std::shared_ptr<mc::GraphStorage> graph) {
   const std::size_t max_iter = 1600000;
@@ -139,9 +139,7 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *variable_upwind_provider, t, points, v_vertex_values);
 
       auto trafo = [](double p, const mc::Edge& e) {
-        double G0 = e.get_physical_data().G0;
-        double A0 = e.get_physical_data().A0;
-        return mc::nonlinear::get_A_from_p(p, G0, A0);
+        return e.get_physical_data().A0 + mc::linear::get_C(e.get_physical_data()) * p;
       };
       mc::interpolate_transformation(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->p_component, flow_solver->get_solution(), trafo, points, A_vertex_values);
 

@@ -100,9 +100,7 @@ void LinearizedHeartToBreast1DSolver::write_output(double t) {
   interpolate_to_vertices(MPI_COMM_WORLD, *graph, dof_map_transport, 0, transport_solver->get_solution(), points, c_vertex_values);
 
   auto trafo = [](double p, const Edge& e) {
-    double G0 = e.get_physical_data().G0;
-    double A0 = e.get_physical_data().A0;
-    return nonlinear::get_A_from_p(p, G0, A0);
+    return e.get_physical_data().A0 + linear::get_C(e.get_physical_data()) * p;
   };
   interpolate_transformation(MPI_COMM_WORLD, *graph, dof_map, solver->p_component, solver->get_solution(), trafo, points, vessel_A);
 

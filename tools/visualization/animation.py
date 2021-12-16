@@ -163,7 +163,9 @@ def animate(i):
             lc = lines[dset_index][axes_idx]
             lc.set_ydata(data_c)
             #ax_c.set_ylim([0, 1.05])
-            ax_c.set_ylim([0.90, 1.10])
+            #ax_c.set_ylim([0.99, 1.01])
+            ax_c.set_ylim([0.95, 1.05])
+            ax_c.set_ylim([0.0, 1.05])
             ax_c.autoscale_view()
             axes_idx += 1
 

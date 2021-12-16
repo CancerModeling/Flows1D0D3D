@@ -224,8 +224,11 @@ void UpwindProviderLinearizedFlow::get_values_at_qp(double t,
 
   auto &param = edge.get_physical_data();
 
+  const double A0 = param.A0;
+  const double C = linear::get_C(param);
+
   for (size_t k = 0; k < qf.size(); k += 1)
-    v_qp[k] = values_q[k] / nonlinear::get_A_from_p(values_p[0], param.G0, param.A0);
+    v_qp[k] = values_q[k] / (A0 + values_p[k] * C);
 }
 
 /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
@@ -235,10 +238,10 @@ void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Edge &edg
   std::vector<double> q_up(edge.num_micro_vertices());
   d_evaluator->get_fluxes_on_macro_edge(t, edge, d_solver->get_solution(), p_up, q_up);
   assert(edge.has_physical_data());
-  auto A0 = edge.get_physical_data().A0;
-  auto G0 = edge.get_physical_data().G0;
+  const double A0 = edge.get_physical_data().A0;
+  const double C = linear::get_C(edge.get_physical_data());
   for (size_t k = 0; k < v_qp.size(); k += 1)
-    v_qp[k] = q_up[k] / nonlinear::get_A_from_p(p_up[k], G0, A0);
+    v_qp[k] = q_up[k] / (A0 + p_up[k] * C);
 }
 
 void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
@@ -248,9 +251,9 @@ void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Vertex &v
   for (size_t k = 0; k < v.get_edge_neighbors().size(); k += 1) {
     auto &edge = *d_graph->get_edge(v.get_edge_neighbors()[k]);
     assert(edge.has_physical_data());
-    double A0 = edge.get_physical_data().A0;
-    double G0 = edge.get_physical_data().G0;
-    A[k] = nonlinear::get_A_from_p(p_up[k], G0, A0);
+    const double A0 = edge.get_physical_data().A0;
+    const double C = linear::get_C(edge.get_physical_data());
+    A[k] = (A0 + p_up[k] * C);
   }
 }
 

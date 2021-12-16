@@ -28,17 +28,17 @@ def run():
 
     os.makedirs(output_folder, exist_ok=True)
 
-    degree = 2
+    degree = 1
     tau_out = 1. / 2 ** 6
     tau_coup = 1. / 2 ** 4 
     t_end = 80.
     t = 0
     t_coup_start = args.t_3dcoup_start 
-    t_preiter = 6 
+    t_preiter = 0
 
     if args.use_fully_coupled:
         tau = 1. / 2 ** 16
-        tau_transport = 1. / 2 ** 9
+        tau_transport = 1. / 2 ** 12
         solver1d = f.FullyCoupledHeartToBreast1DSolver()
         solver1d.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"))
         solver1d.set_path_linear_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
@@ -93,7 +93,7 @@ def run():
             assert np.isclose(t_old + tau_transport, t)
             solver1d.solve_transport(tau_transport, t)
             if args.use_slope_limiter:
-                print('applying slope limiter')
+                #print('applying slope limiter')
                 solver1d.apply_slope_limiter_transport(t)
         solver1d.write_output(t)
 
