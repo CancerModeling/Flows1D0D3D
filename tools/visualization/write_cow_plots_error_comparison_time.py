@@ -105,7 +105,7 @@ for filepath_2 in args.filepaths_2:
     all_err_q.append(tmp_err_q)
 
 
-if False:
+if True:
     fig, axes = plt.subplots(2, len(args.vessels), squeeze=False, sharey='row', sharex='col')
 
     for idx, vessel_id in enumerate(args.vessels):
@@ -142,7 +142,8 @@ if True:
     #taus = [i for i in range(len(args.filepaths_2))]
     #taus = [i for i in range(9)] + [math.log2(0.005/1.5625e-5)]
     tau_min = 1. / 2**16
-    taus = [1./2**k for k in [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6]]
+    #taus = [1./2**k for k in [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6]]
+    taus = [1./2**k for k in [16, 15, 14, 13, 12, 11, 10, 9, 8]]
     axis_values = [math.log(tau/tau_min, 2) for tau in taus]
 
     for idx, vessel_id in enumerate(args.vessels):

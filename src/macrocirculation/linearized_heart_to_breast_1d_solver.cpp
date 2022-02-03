@@ -78,7 +78,6 @@ void LinearizedHeartToBreast1DSolver::solve_transport(double tau, double t) {
 }
 
 void LinearizedHeartToBreast1DSolver::apply_slope_limiter_transport(double t) {
-  upwind_evaluator->init(t, solver->get_solution());
   transport_solver->apply_slope_limiter(t);
 }
 

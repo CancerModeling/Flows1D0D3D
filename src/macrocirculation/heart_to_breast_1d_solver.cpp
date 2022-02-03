@@ -353,8 +353,6 @@ void HeartToBreast1DSolver::solve_transport(double tau, double t) {
 }
 
 void HeartToBreast1DSolver::apply_slope_limiter_transport(double t) {
-  upwind_evaluator_nl->init(t, solver->get_explicit_solver()->get_solution());
-  upwind_evaluator_li->init(t, solver->get_implicit_solver()->get_solution());
   transport_solver->apply_slope_limiter(t);
 }
 

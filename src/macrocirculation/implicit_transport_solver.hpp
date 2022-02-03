@@ -275,9 +275,7 @@ private:
 
   std::shared_ptr<PetscVec> d_volumes;
 
-  std::vector<std::shared_ptr<TransportUpwindEvaluator>> d_transport_upwind_evaluators;
-
-  void apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, std::shared_ptr<TransportUpwindEvaluator> eval, double t);
+  void apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map);
 };
 
 namespace implicit_transport {

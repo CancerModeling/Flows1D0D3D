@@ -13,6 +13,8 @@ def cli():
     parser.add_argument("--use-fully-coupled", action="store_true", help="Should the fully coupled solver be used?")
     parser.add_argument("--tip-pressures-input-file", type=str, help="Should the pressures be initialized?", required=False)
     parser.add_argument("--tip-pressures-output-file", type=str, help="Should the pressures be initialized?", required=False)
+    parser.add_argument('--t-3dcoup-start', type=float, help='When should the 3d coupling be active?', default=6)
+    parser.add_argument('--t-preiter', type=float, help='How long should we preiterate?', default=6)
     parser.add_argument('--tau-log2', type=int, help='Defines the time step width 1/2^k where k is the parameter', required=False)
     parser.add_argument('--t-end', type=float, help='When should the simulation stop', default=80)
     parser.add_argument("--output-folder", type=str, help="Into which directory should we write?", default='./tmp_flow')
@@ -33,10 +35,11 @@ def run():
 
     degree = 2
     tau_out = 1. / 2 ** 6
-    tau_coup = 1. / 2 ** 3
-    t_end = args.t_end 
+    tau_coup = 1. / 2 ** 4
+    t_end = args.t_end
     t = 0
-    t_coup_start = 2.
+    t_coup_start = args.t_3dcoup_start 
+    t_preiter = args.t_preiter 
 
     if args.use_fully_coupled:
         tau = 1. / 2 ** args.tau_log2 if args.tau_log2 is not None else 1. / 2 ** 16
@@ -59,7 +62,7 @@ def run():
     
     coupling_interval_0d3d = int(round(tau_coup / tau_out))
 
-    t = solver1d.solve_flow(tau, t, int(6 / tau))
+    t = solver1d.solve_flow(tau, t, int(t_preiter / tau))
 
     vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
 

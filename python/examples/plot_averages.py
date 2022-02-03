@@ -2,7 +2,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 import json
 
-filepath = 'tmp/average_quantities.json'
+#filepath = 'tmp_transport/average_quantities.json'
+filepath = 'tmp_flow/average_quantities.json'
 #indices = [23, 60, 128, 145]
 indices = [117, 23, 127, 145]
 legend = ['1', '2', '3', '4']
@@ -12,17 +13,18 @@ with open(filepath, 'r') as file:
     data = json.loads(file.read())
 
 
-fig = plt.figure()
-axes = fig.subplots(2, 1, sharey='row', sharex='col', squeeze=False)
 
-plot_pressures = False 
+plot_pressures = True 
 
 t_start = 0 
-#t_stop = 24 
 t_stop = 100
+#t_stop = 100
 
 
 if True:
+    fig = plt.figure()
+    axes = fig.subplots(2, 1, sharey='row', sharex='col', squeeze=False)
+
     for vessel_idx, data_at_idx in data['quantities'].items():
         vessel_idx = int(vessel_idx)
         if vessel_idx not in indices:
@@ -56,13 +58,17 @@ if True:
     plt.legend()
     plt.grid(True)
     plt.show()
+
 if True:
+    fig = plt.figure()
+    axes = fig.subplots(2, 1, sharey='row', sharex='col', squeeze=False)
+
     for idx, vessel_idx in enumerate(indices):
         vessel_idx = int(vessel_idx)
         data_at_idx = data['quantities']['{}'.format(vessel_idx)]
-        if vessel_idx not in indices:
-            print ('not showing {}'.format(vessel_idx))
-            continue
+        # if vessel_idx not in indices:
+        #     print ('not showing {}'.format(vessel_idx))
+        #     continue
         t = np.array(data['t'])
         start_index = np.sum(t < t_start)
         stop_index = np.sum(t < t_stop)
@@ -82,6 +88,8 @@ if True:
             c_cap = c_cap[start_index:stop_index]
             c_tis = c_tis[start_index:stop_index]
             print(indices.index(vessel_idx), vessel_idx)
+            print(c_cap)
+            print(c_tis)
             axes[0][0].plot(t, c_cap, label=legend[indices.index(vessel_idx)])
             axes[1][0].plot(t, c_tis, label=legend[indices.index(vessel_idx)])
             axes[0][0].set_ylabel(r'$\bar c_{cap}$ [mmol/cm${}^3$]')
