@@ -20,7 +20,7 @@ EdgeTreeParameters calculate_edge_tree_parameters(const Edge &edge) {
   const double E = param.elastic_modulus * 4;
   const double r_0 = param.radius;
   const double r_cap = 7.5e-4;
-  const double h_0 = 1e-4;
+  const double h_0 = 0.003;
   const double gamma = 2.5;
   // floor ?
   const int N = static_cast<int>(std::ceil(gamma * std::log(r_0 / r_cap) / std::log(2)));
@@ -35,7 +35,6 @@ EdgeTreeParameters calculate_edge_tree_parameters(const Edge &edge) {
     const double C = 3 * std::pow(r, 3) * M_PI * l / (2 * E * h_0);
     const double viscosity = viscosity_bloodplasma(r);
     double R = 2 * (param.gamma + 2) * viscosity * l / (std::pow(r, 2));
-    // R *= 2; // muscles?
     list_C.push_back(C);
     list_R.push_back(R);
     list_radii.push_back(r);
@@ -85,7 +84,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     //const double r_cap = 7.5e-4;
     const double r_cap = 0.001;
     //const double h_0 = 1e-4;
-    const double h_0 = 1e-4;
+    const double h_0 = 0.003;
     const double p_cap = 30 * (133.333) * 1e-2;
     const double gamma = 2.5;
     // floor ?
@@ -100,20 +99,15 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     //double l = 3 * beta; // 2mm is the average vessel length
     std::cout << "vessel start" << std::endl;
     for (size_t k = 0; k < N; k += 1) {
-      //const double l = std::exp(1.0 + 0.2*0.2/2.) * r;
       const double l = 280 * r;
       std::cout << " l = " << l << " r = " << r << std::endl;
       const double C = 3 * std::pow(r, 3) * M_PI * l / (2 * E * h_0);
       const double viscosity = viscosity_bloodplasma(r);
-      // const double viscosity = param.viscosity;
       double R = 2 * (param.gamma + 2) * viscosity * l / (std::pow(r, 2));
-      // R *= 1.15; // muscles?
-      // R *= 2; // muscles?
       list_C.push_back(C);
       list_R.push_back(R);
       list_radius.push_back(r);
       r *= alpha;
-      // l *= beta;
     }
     std::cout << "vessel stop" << std::endl;
 

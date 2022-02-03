@@ -1,11 +1,9 @@
-import json
 import argparse
-from dataclasses import dataclass
 import os
 import flows1d0d3d as f
 import dolfin as df
 import numpy as np
-from _utils import read_mesh, open_input_pressures
+from _utils import read_mesh, open_input_pressures, AverageQuantityWriter
 from implicit_pressure_solver import ImplicitPressureSolver
 from transport_solver import TransportSolver 
 
@@ -13,7 +11,12 @@ from transport_solver import TransportSolver
 def cli():
     parser = argparse.ArgumentParser(description='Full 1d0d3d transport solver.')
     parser.add_argument("--use-fully-coupled", action="store_true", help="Should the fully coupled solver be used?")
+    parser.add_argument("--use-slope-limiter", action="store_true", help="Should the slope limiter be used?")
     parser.add_argument("--tip-pressures-input-file", type=str, help="Should the pressures be initialized?", required=True)
+    parser.add_argument('--t-3dcoup-start', type=float, help='When should the 3d coupling be active?', default=6)
+    parser.add_argument('--t-preiter', type=float, help='How long should we preiterate?', default=6)
+    parser.add_argument('--degree', type=int, help='DG degree', default=2)
+    parser.add_argument("--output-folder", type=str, help="Into which directory should we write?", default='./tmp_transport')
     args = parser.parse_args()
     return args
 
@@ -22,22 +25,22 @@ def run():
     args = cli()
 
     data_folder = '../../data'
-    output_folder = './tmp'
+    output_folder = args.output_folder 
     mesh_3d_filename = '../../data/3d-meshes/test_full_1d0d3d_cm.xdmf'
 
     os.makedirs(output_folder, exist_ok=True)
 
-    degree = 2
-    tau_out = 1. / 2 ** 3
-    tau_coup = tau_out
+    degree = args.degree 
+    tau_out = 1. / 2 ** 6
+    tau_coup = 1. / 2 ** 4 
     t_end = 80.
     t = 0
-    t_coup_start = 2.
-    t_preiter = 6 
+    t_coup_start = args.t_3dcoup_start 
+    t_preiter = args.t_preiter 
 
     if args.use_fully_coupled:
         tau = 1. / 2 ** 16
-        tau_transport = 1. / 2 ** 7
+        tau_transport = 1. / 2 ** 12
         solver1d = f.FullyCoupledHeartToBreast1DSolver()
         solver1d.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"))
         solver1d.set_path_linear_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
@@ -80,6 +83,8 @@ def run():
 
     transport_solver_3d = TransportSolver(mesh, output_folder, flow_solver_3d, vessel_tip_pressures)
 
+    q_writer = AverageQuantityWriter(vessel_tip_pressures)
+
     for i in range(0, int((t_end-t_preiter) / tau_out)):
         if df.MPI.rank(df.MPI.comm_world) == 0:
             print('iter = {}, t = {}'.format(i, t))
@@ -89,7 +94,9 @@ def run():
             t = solver1d.solve_flow(tau, t_old, int(tau_transport/ tau))
             assert np.isclose(t_old + tau_transport, t)
             solver1d.solve_transport(tau_transport, t)
-            solver1d.apply_slope_limiter_transport(t)
+            if args.use_slope_limiter:
+                #print('applying slope limiter')
+                solver1d.apply_slope_limiter_transport(t)
         solver1d.write_output(t)
 
         if (t > t_coup_start) and (i % coupling_interval_0d3d == 0):
@@ -122,6 +129,11 @@ def run():
             min_value = flow_solver_3d.current.vector().min()
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('flow max = {}, min = {}'.format(max_value / 1333, min_value / 1333))
+            
+            q_writer.update(t, 
+                new_pressures, flow_solver_3d.get_pressures(1), 
+                transport_solver_3d.get_concentrations(0), transport_solver_3d.get_concentrations(1))
+            q_writer.write(os.path.join(output_folder, "average_quantities.json"))
 
 
 if __name__ == '__main__':

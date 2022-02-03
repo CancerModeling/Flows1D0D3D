@@ -2,6 +2,7 @@
 #include <pybind11/stl.h>
 #include "macrocirculation/heart_to_breast_1d_solver.hpp"
 #include "macrocirculation/linearized_heart_to_breast_1d_solver.hpp"
+#include "macrocirculation/vessel_formulas.hpp"
 #include "petsc.h"
 
 #define STRINGIFY(x) #x
@@ -37,7 +38,7 @@ PYBIND11_MODULE(_core, m) {
   m.def("finalize", finalize, "finalizes the flow1d0d3d library");
 
   py::class_<mc::Point>(m, "Point")
-    .def(py::init< double, double, double >())
+    .def(py::init< double, double, double >(), py::arg("x"), py::arg("y"), py::arg("z"))
     .def_readwrite("x", &mc::Point::x)
     .def_readwrite("y", &mc::Point::y)
     .def_readwrite("z", &mc::Point::z)

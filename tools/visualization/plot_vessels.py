@@ -7,6 +7,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Plots the vessel data.')
 parser.add_argument('--vessels', type=int, nargs='+', help='A list of ids of the vessels to plot.', default=[15])
+parser.add_argument('--position', type=float, help='A list of ids of the vessels to plot.', default=0.5)
 parser.add_argument('--t-start', type=float, default=0)
 parser.add_argument('--t-end', type=float, default=10000)
 parser.add_argument('--filepath', type=str, required=True)
@@ -52,7 +53,7 @@ fig = plt.figure()
 fig.tight_layout()
 axes = fig.subplots(num_rows, len(args.vessels), sharey='row', sharex='col', squeeze=False)
 
-position = 0
+position = args.position 
 
 
 for idx, vessel_id in enumerate(args.vessels):
@@ -97,7 +98,7 @@ for idx, vessel_id in enumerate(args.vessels):
     end_index = np.sum(t < args.t_end)
 
     array_sizes = []
-    if not args.no_a and 'a' in vessel_info['filepaths']:
+    if not args.no_a:
         array_sizes.append(len(a))
     if not args.no_q:
         array_sizes.append(len(q))
@@ -109,7 +110,7 @@ for idx, vessel_id in enumerate(args.vessels):
     end_index = min(min(array_sizes), end_index)
 
     t = t[start_index:end_index]
-    if not args.no_a and 'a' in vessel_info['filepaths']:
+    if not args.no_a:
         a = a[start_index:end_index]
     if not args.no_q:
         q = q[start_index:end_index]
@@ -139,6 +140,7 @@ for idx, vessel_id in enumerate(args.vessels):
         row_idx += 1
     if not args.no_c and 'c' in vessel_info['filepaths']:
         ax = axes[row_idx, idx]
+        print(c/a)
         ax.plot(t, c/a, label='$\Gamma_{{{}}}/A_{{{}}}$'.format(vessel_id, vessel_id))
         ax.legend()
         ax.grid(True)

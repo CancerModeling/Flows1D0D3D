@@ -72,6 +72,13 @@ const GraphStorage &InterGraphConnection::get_graph() const {
   return *graph;
 }
 
+size_t Vertex::local_edge_index(const Edge &edge) const {
+  for (size_t k = 0; k < get_edge_neighbors().size(); k += 1)
+    if (get_edge_neighbors()[k] == edge.get_id())
+      return k;
+  throw std::runtime_error("vertex (vid=" + std::to_string(get_id()) + ") does not have given edge neighbor (eid=" + std::to_string(edge.get_id()));
+}
+
 const Vertex &InterGraphConnection::get_vertex() const {
   return *get_graph().get_vertex(d_vertex_id);
 }
@@ -661,6 +668,19 @@ void GraphStorage::finalize_bcs() {
 
 bool GraphStorage::owns_primitive(const Vertex &vertex, size_t rank) const {
   return vertex_is_neighbor_of_rank(vertex, rank);
+}
+
+std::vector<double> get_normals(const GraphStorage &graph, const Vertex &v) {
+  std::vector<double> sigma(v.get_edge_neighbors().size(), 0);
+  get_normals(graph, v, sigma);
+  return sigma;
+}
+
+void get_normals(const GraphStorage &graph, const Vertex &v, std::vector<double> &sigma) {
+  for (size_t k = 0; k < v.get_edge_neighbors().size(); k += 1) {
+    auto &e = *graph.get_edge(v.get_edge_neighbors()[k]);
+    sigma[k] = e.is_pointing_to(v.get_id()) ? +1. : -1.;
+  }
 }
 
 } // namespace macrocirculation

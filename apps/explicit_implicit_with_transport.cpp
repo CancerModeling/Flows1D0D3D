@@ -33,7 +33,7 @@ namespace mc = macrocirculation;
 
 int main(int argc, char *argv[]) {
   const std::size_t degree = 2;
-  const std::size_t num_micro_edges = 20;
+  const std::size_t num_micro_edges = 10;
 
   // initialize petsc
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
   {
     std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << std::endl;
 
-    const double tau = 2.5e-4 / 16.;
+    const double tau = 2.5e-4 / 32.;
     // const double t_end = 2.5e-4 / 16 * 100;
     const double t_end = 4;
     const double tau_out = 1e-2;
@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
 
     // vessel parameters
     const double vessel_length = 2.5;
+    // const double radius = 0.403;
     const double radius = 0.403;
     const double wall_thickness = 0.067;
     const double elastic_modulus = 400000.0;
@@ -74,7 +75,7 @@ int main(int argc, char *argv[]) {
 
 
     auto edge_0_nl = graph_nl->connect(*v0_nl, *v1_nl, num_micro_edges);
-    std::shared_ptr< mc::Edge > edge_1_nl;
+    std::shared_ptr<mc::Edge> edge_1_nl;
     if (nl_forward)
       edge_1_nl = graph_nl->connect(*v1_nl, *v2_nl, num_micro_edges);
     else
@@ -94,7 +95,7 @@ int main(int argc, char *argv[]) {
     auto v1_li = graph_li->create_vertex();
     auto v2_li = graph_li->create_vertex();
 
-    std::shared_ptr< mc::Edge > edge_0_li;
+    std::shared_ptr<mc::Edge> edge_0_li;
     if (li_forward)
       edge_0_li = graph_li->connect(*v0_li, *v1_li, num_micro_edges);
     else
@@ -115,9 +116,8 @@ int main(int argc, char *argv[]) {
     v0_li->set_name("li_in");
     // v1_li->set_to_free_outflow();
 
-    //v2_li->set_to_windkessel_outflow(1.8, 0.387);
     // v2_li->set_to_free_outflow();
-    v2_li->set_to_windkessel_outflow(1.8, 3870);
+    v2_li->set_to_vessel_tree_outflow(5.0 * 1.333322, {1.8}, {3870}, {1.}, 1.);
 
     // v2_li->set_name("windkessel_outflow");
     // mc::set_0d_tree_boundary_conditions(graph_li, "windkessel_outflow");
@@ -129,14 +129,18 @@ int main(int argc, char *argv[]) {
     coupling->add_coupled_vertices("nl_out", "li_in");
 
     mc::CoupledExplicitImplicit1DSolver solver(MPI_COMM_WORLD, coupling, graph_nl, graph_li, degree, degree);
-    solver.get_explicit_solver()->use_ssp_method();
+    solver.get_explicit_solver()->use_explicit_euler_method();
 
     auto dof_map_nl = solver.get_explicit_dof_map();
     auto dof_map_li = solver.get_implicit_dof_map();
 
     auto dof_map_transport_nl = std::make_shared<mc::DofMap>(*graph_nl);
     auto dof_map_transport_li = std::make_shared<mc::DofMap>(*graph_li);
-    mc::DofMap::create(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, 1, degree,  [](const mc::GraphStorage&, const mc::Vertex &v) { return 0; });
+    mc::DofMap::create(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, 1, degree, [](const mc::GraphStorage &, const mc::Vertex &v) {
+      if (v.is_vessel_tree_outflow())
+        return 1;
+      return 0;
+    });
 
     std::cout << mc::mpi::rank(MPI_COMM_WORLD) << " last global dof " << dof_map_transport_nl->last_global_dof() << std::endl;
     for (auto eid : graph_nl->get_edge_ids()) {
@@ -155,7 +159,7 @@ int main(int argc, char *argv[]) {
         continue;
       auto ldof_map = dof_map_transport_nl->get_local_dof_map(*vertex);
       std::cout << "[" << mc::mpi::rank(MPI_COMM_WORLD) << "] nonlinear "
-                  << "macro-vertex= " << vid << ", dof-indices " << ldof_map.dof_indices() << std::endl;
+                << "macro-vertex= " << vid << ", dof-indices " << ldof_map.dof_indices() << std::endl;
     }
 
     std::cout << mc::mpi::rank(MPI_COMM_WORLD) << " last global dof " << dof_map_transport_li->last_global_dof() << std::endl;
@@ -186,7 +190,7 @@ int main(int argc, char *argv[]) {
 
     mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, {variable_upwind_provider_nl, variable_upwind_provider_li}, degree);
 
-    transport_solver.set_inflow_function([](double t){ return 1.; });
+    transport_solver.set_inflow_function([](double t) { return 1.; });
 
     auto solver_nl = solver.get_explicit_solver();
     auto solver_li = solver.get_implicit_solver();
@@ -227,16 +231,21 @@ int main(int argc, char *argv[]) {
           std::vector<double> q_vertex_values;
           std::vector<double> c_vertex_values;
           std::vector<double> v_vertex_values;
+          std::vector<double> A_vertex_values;
           interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->p_component, solver_li->get_solution(), points, p_vertex_values);
           interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->q_component, solver_li->get_solution(), points, q_vertex_values);
           interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_transport_li, 0, transport_solver.get_solution(), points, c_vertex_values);
           mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *variable_upwind_provider_li, t, points, v_vertex_values);
+          auto trafo = [](double p, const mc::Edge &e) {
+            return e.get_physical_data().A0 + mc::linear::get_C(e.get_physical_data()) * p;
+          };
+          mc::interpolate_transformation(MPI_COMM_WORLD, *graph_li, *dof_map_li, solver_li->p_component, solver_li->get_solution(), trafo, points, A_vertex_values);
 
           writer_li.set_points(points);
           writer_li.add_vertex_data("p", p_vertex_values);
           writer_li.add_vertex_data("q", q_vertex_values);
           writer_li.add_vertex_data("c", c_vertex_values);
-          writer_li.add_vertex_data("A", vessel_A0_li);
+          writer_li.add_vertex_data("A", A_vertex_values);
           writer_li.add_vertex_data("v", v_vertex_values);
           writer_li.write(t);
         }

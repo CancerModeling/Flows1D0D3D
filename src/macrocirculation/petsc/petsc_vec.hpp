@@ -88,6 +88,8 @@ public:
 
   Vec &get_vec() { return d_vec; }
 
+  const Vec &get_vec() const { return d_vec; }
+
   void swap(PetscVec &v) {
     Vec tmp = v.d_vec;
     v.d_vec = d_vec;

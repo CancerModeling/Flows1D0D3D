@@ -4,7 +4,7 @@ import os
 import flows1d0d3d as f
 import dolfin as df
 import numpy as np
-from _utils import read_mesh, open_input_pressures
+from _utils import read_mesh, open_input_pressures, AverageQuantityWriter
 from implicit_pressure_solver import ImplicitPressureSolver
 
 
@@ -13,6 +13,13 @@ def cli():
     parser.add_argument("--use-fully-coupled", action="store_true", help="Should the fully coupled solver be used?")
     parser.add_argument("--tip-pressures-input-file", type=str, help="Should the pressures be initialized?", required=False)
     parser.add_argument("--tip-pressures-output-file", type=str, help="Should the pressures be initialized?", required=False)
+    parser.add_argument('--t-3dcoup-start', type=float, help='When should the 3d coupling be active?', default=6)
+    parser.add_argument('--t-preiter', type=float, help='How long should we preiterate?', default=6)
+    parser.add_argument('--tau-log2', type=int, help='Defines the time step width 1/2^k where k is the parameter', required=False)
+    parser.add_argument('--t-end', type=float, help='When should the simulation stop', default=80)
+    parser.add_argument("--output-folder", type=str, help="Into which directory should we write?", default='./tmp_flow')
+    parser.add_argument("--data-folder", type=str, help="Into which directory should we write?", default='../../data')
+
     args = parser.parse_args()
     return args
 
@@ -20,29 +27,28 @@ def cli():
 def run():
     args = cli()
 
-    data_folder = '../../data'
-    output_folder = './tmp'
-    mesh_3d_filename = '../../data/3d-meshes/test_full_1d0d3d_cm.xdmf'
+    data_folder = args.data_folder 
+    output_folder = args.output_folder 
+    mesh_3d_filename = os.path.join(data_folder, '3d-meshes/test_full_1d0d3d_cm.xdmf')
 
     os.makedirs(output_folder, exist_ok=True)
 
     degree = 2
-    tau_out = 1. / 2 ** 3
-    #tau_out = 1.
-    #tau_coup = 2.
-    tau_coup = tau_out
-    t_end = 80.
+    tau_out = 1. / 2 ** 6
+    tau_coup = 1. / 2 ** 4
+    t_end = args.t_end
     t = 0
-    t_coup_start = 2.
+    t_coup_start = args.t_3dcoup_start 
+    t_preiter = args.t_preiter 
 
     if args.use_fully_coupled:
-        tau = 1. / 2 ** 16
+        tau = 1. / 2 ** args.tau_log2 if args.tau_log2 is not None else 1. / 2 ** 16
         solver1d = f.FullyCoupledHeartToBreast1DSolver()
         solver1d.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"))
         solver1d.set_path_linear_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
         solver1d.set_path_coupling_conditions(os.path.join(data_folder, "1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"))
     else:
-        tau = 1. / 2 ** 4
+        tau = 1. / 2 ** args.tau_log2 if args.tau_log2 is not None else 1. / 2 ** 4
         solver1d = f.LinearizedHeartToBreast1DSolver()
         solver1d.set_path_inflow_pressures(os.path.join(data_folder, "1d-input-pressures/from-33-vessels-with-small-extension.json"))
         solver1d.set_path_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
@@ -56,9 +62,11 @@ def run():
     
     coupling_interval_0d3d = int(round(tau_coup / tau_out))
 
-    t = solver1d.solve_flow(tau, t, int(6 / tau))
+    t = solver1d.solve_flow(tau, t, int(t_preiter / tau))
 
     vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
+
+    q_writer = AverageQuantityWriter(vessel_tip_pressures)
 
     mesh = read_mesh(mesh_3d_filename)
     solver3d = ImplicitPressureSolver(mesh, output_folder, vessel_tip_pressures)
@@ -91,6 +99,9 @@ def run():
             min_value = solver3d.current.vector().min()
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('max = {}, min = {}'.format(max_value / 1333, min_value / 1333))
+
+        q_writer.update(t, new_pressures, solver3d.get_pressures(1))
+        q_writer.write(os.path.join(output_folder, "average_quantities.json"))
         
         if args.tip_pressures_output_file is not None and df.MPI.rank(df.MPI.comm_world) == 0:
             print('writing tip pressures to {}'.format(args.tip_pressures_output_file))

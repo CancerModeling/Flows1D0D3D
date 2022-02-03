@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "0d_boundary_conditions.hpp"
+#include "boundary_condition_readers.hpp"
 #include "communication/mpi.hpp"
 #include "coupled_explicit_implicit_1d_solver.hpp"
 #include "csv_vessel_tip_writer.hpp"
@@ -29,13 +30,11 @@
 #include "nonlinear_linear_coupling.hpp"
 #include "tip_vertex_dof_integrator.hpp"
 #include "vessel_formulas.hpp"
-#include "boundary_condition_readers.hpp"
 
 namespace macrocirculation {
 
 HeartToBreast1DSolver::HeartToBreast1DSolver()
-  : HeartToBreast1DSolver(MPI_COMM_WORLD)
-{}
+    : HeartToBreast1DSolver(MPI_COMM_WORLD) {}
 
 HeartToBreast1DSolver::HeartToBreast1DSolver(MPI_Comm comm)
     : d_comm(comm),
@@ -71,36 +70,35 @@ std::map<size_t, double> get_vessel_tip_dof_values(MPI_Comm comm,
   return data;
 }
 
-void HeartToBreast1DSolver::set_path_inflow_pressures(const std::string &path){
+void HeartToBreast1DSolver::set_path_inflow_pressures(const std::string &path) {
   if (d_is_setup)
     throw std::runtime_error("HeartToBreast1DSolver::set_path_inflow_pressures: cannot be called after setup.");
 
   path_inflow_pressures = path;
 }
 
-void HeartToBreast1DSolver::set_path_nonlinear_geometry(const std::string& path) {
+void HeartToBreast1DSolver::set_path_nonlinear_geometry(const std::string &path) {
   if (d_is_setup)
     throw std::runtime_error("HeartToBreast1DSolver::set_path_nonlinear_geometry: cannot be called after setup.");
 
   path_nonlinear_geometry = path;
 }
 
-void HeartToBreast1DSolver::set_path_linear_geometry(const std::string& path) {
+void HeartToBreast1DSolver::set_path_linear_geometry(const std::string &path) {
   if (d_is_setup)
     throw std::runtime_error("HeartToBreast1DSolver::set_path_geometry: cannot be called after setup.");
 
   path_linear_geometry = path;
 }
 
-void HeartToBreast1DSolver::set_path_coupling_conditions(const std::string& path) {
+void HeartToBreast1DSolver::set_path_coupling_conditions(const std::string &path) {
   if (d_is_setup)
     throw std::runtime_error("HeartToBreast1DSolver::set_path_coupling_conditions: cannot be called after setup.");
 
   path_coupling_conditions = path;
 }
 
-void HeartToBreast1DSolver::set_start_time_transport(double t)
-{
+void HeartToBreast1DSolver::set_start_time_transport(double t) {
   t_start_transport = t;
 }
 
@@ -169,8 +167,7 @@ void HeartToBreast1DSolver::setup_graphs() {
   graph_reader.append(path_nonlinear_geometry, *graph_nl);
   if (!path_inflow_pressures.empty()) {
     auto inflow_pressures = read_input_pressures(path_inflow_pressures);
-    for (const auto& inflow_pressure : inflow_pressures)
-    {
+    for (const auto &inflow_pressure : inflow_pressures) {
       auto &v_in = *graph_nl->find_vertex_by_name(inflow_pressure.name);
       v_in.set_to_inflow_with_fixed_pressure(piecewise_linear_source_function(inflow_pressure.t, inflow_pressure.p, inflow_pressure.periodic));
     }
@@ -308,6 +305,12 @@ void HeartToBreast1DSolver::write_output(double t) {
   interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_li, get_solver_li().q_component, get_solver_li().get_solution(), points, q_vertex_values);
   interpolate_to_vertices(MPI_COMM_WORLD, *graph_li, *dof_map_transport_li, 0, transport_solver->get_solution(), points, c_vertex_values);
 
+
+  auto trafo = [](double p, const Edge &e) {
+    return e.get_physical_data().A0 + linear::get_C(e.get_physical_data()) * p;
+  };
+  interpolate_transformation(MPI_COMM_WORLD, *graph_li, *dof_map_li, get_solver_li().p_component, get_solver_li().get_solution(), trafo, points, vessel_A_li);
+
   graph_pvd_writer->set_points(points);
   graph_pvd_writer->add_vertex_data("p", p_vertex_values);
   graph_pvd_writer->add_vertex_data("q", q_vertex_values);
@@ -336,8 +339,7 @@ void HeartToBreast1DSolver::solve_flow(double tau, double t) {
 }
 
 double HeartToBreast1DSolver::solve_flow(double tau, double t, size_t num_iter) {
-  for (size_t idx = 0; idx < num_iter; idx += 1)
-  {
+  for (size_t idx = 0; idx < num_iter; idx += 1) {
     solve_flow(tau, t);
     t += tau;
   }

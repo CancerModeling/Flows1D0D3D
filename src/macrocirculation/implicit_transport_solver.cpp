@@ -12,6 +12,7 @@
 
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
+#include "edge_boundary_evaluator.hpp"
 #include "explicit_nonlinear_flow_solver.hpp"
 #include "fe_type.hpp"
 #include "graph_storage.hpp"
@@ -209,15 +210,23 @@ void UpwindProviderLinearizedFlow::get_values_at_qp(double t,
   std::vector<double> dof_values(ldof_map.num_basis_functions());
 
   std::vector<double> values_q(qf.size());
+  std::vector<double> values_p(qf.size());
 
   ldof_map.dof_indices(micro_edge, d_solver->q_component, dof_indices);
   extract_dof(dof_indices, d_solver->get_solution(), dof_values);
   fe.evaluate_dof_at_quadrature_points(dof_values, values_q);
 
+  ldof_map.dof_indices(micro_edge, d_solver->p_component, dof_indices);
+  extract_dof(dof_indices, d_solver->get_solution(), dof_values);
+  fe.evaluate_dof_at_quadrature_points(dof_values, values_p);
+
   auto &param = edge.get_physical_data();
 
+  const double A0 = param.A0;
+  const double C = linear::get_C(param);
+
   for (size_t k = 0; k < qf.size(); k += 1)
-    v_qp[k] = values_q[k] / param.A0;
+    v_qp[k] = values_q[k] / (A0 + values_p[k] * C);
 }
 
 /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
@@ -227,20 +236,22 @@ void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Edge &edg
   std::vector<double> q_up(edge.num_micro_vertices());
   d_evaluator->get_fluxes_on_macro_edge(t, edge, d_solver->get_solution(), p_up, q_up);
   assert(edge.has_physical_data());
-  auto A0 = edge.get_physical_data().A0;
+  const double A0 = edge.get_physical_data().A0;
+  const double C = linear::get_C(edge.get_physical_data());
   for (size_t k = 0; k < v_qp.size(); k += 1)
-    v_qp[k] = q_up[k] / A0;
+    v_qp[k] = q_up[k] / (A0 + p_up[k] * C);
 }
 
 void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
   std::vector<double> p_up(v.get_edge_neighbors().size());
   d_evaluator->get_fluxes_on_nfurcation(t, v, p_up, Q);
 
-  std::vector<double> A0;
   for (size_t k = 0; k < v.get_edge_neighbors().size(); k += 1) {
     auto &edge = *d_graph->get_edge(v.get_edge_neighbors()[k]);
     assert(edge.has_physical_data());
-    A[k] = edge.get_physical_data().A0;
+    const double A0 = edge.get_physical_data().A0;
+    const double C = linear::get_C(edge.get_physical_data());
+    A[k] = (A0 + p_up[k] * C);
   }
 }
 
@@ -286,6 +297,8 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
       mass(std::make_shared<PetscVec>("mass", d_dof_map)),
       linear_solver(PetscKsp::create_with_pc_ilu(*A)),
       d_inflow_functions(d_graph.size()) {
+
+  linear_solver->set_tolerances(1e-16, 1e-16, PETSC_DEFAULT, PETSC_DEFAULT);
 
   if (d_graph.size() != d_dof_map.size())
     throw std::runtime_error("ImplicitTransportSolver::ImplicitTransportSolver: number of graphs and dof maps must coincide");
@@ -676,7 +689,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau,
         const bool has_right_neighbor = (i < R.size() - 1);
 
         if (is_leftmost) {
-          V_np1[i] += tau * Q_up[0];
+          V_np1[i] += tau * Q_up[0] / alpha;
         }
         if (is_rightmost) {
           V_np1[i] -= tau * (p_c[i] - p_c[i + 1]) / R[i];
@@ -714,7 +727,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau,
 
         if (is_leftmost) {
           if (Q_up[0] >= 0) {
-            Eigen::MatrixXd mat_ve = -(tau / V_np1[i] * Q_up[0] / A_up[0]) * pattern.transpose();
+            Eigen::MatrixXd mat_ve = -(tau / V_np1[i] * Q_up[0] / alpha / A_up[0]) * pattern.transpose();
             A->add({vertex_dof_indices[i]}, edge_dof_indices, mat_ve);
 
             auto pattern_ee = edge.is_pointing_to(v_id)
@@ -725,7 +738,7 @@ void ImplicitTransportSolver::assemble_windkessel_rhs_and_matrix(double tau,
           } else {
             Eigen::MatrixXd mat_ev = +tau * Q_up[0] * pattern;
             A->add(edge_dof_indices, {vertex_dof_indices[i]}, mat_ev);
-            Eigen::MatrixXd mat_vv = -tau / V_np1[i] * Q_up[0] * mat_1x1;
+            Eigen::MatrixXd mat_vv = -tau / V_np1[i] * Q_up[0] / alpha * mat_1x1;
             A->add({vertex_dof_indices[i]}, {vertex_dof_indices[i]}, mat_vv);
           }
         }
@@ -786,14 +799,35 @@ Eigen::MatrixXd create_QA_phi_grad_psi(const FETypeNetwork &fe,
 }
 
 void ImplicitTransportSolver::apply_slope_limiter(double t) {
-
   for (int i = 0; i < d_graph.size(); i++) {
-    apply_slope_limiter(d_graph[i], d_dof_map[i], d_upwind_provider[i], t);
+    apply_slope_limiter(d_graph[i], d_dof_map[i]);
   }
   u->assemble();
 }
 
-void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map, std::shared_ptr<UpwindProvider> upwind_provider, double t) {
+double limit(size_t j,
+             const std::vector<double> &dof_edge,
+             const std::vector<double> &dof_left_edge,
+             const std::vector<double> &dof_right_edge) {
+
+  double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
+  double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
+  double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
+  double dof_central = dof_edge[j];
+  double new_dof = 0.0;
+
+  if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
+    new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+  }
+
+  if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
+    new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+  }
+
+  return new_dof;
+}
+
+void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> d_graph, std::shared_ptr<DofMap> d_dof_map) {
 
   for (const auto &e_id : d_graph->get_active_edge_ids(mpi::rank(d_comm))) {
     const auto macro_edge = d_graph->get_edge(e_id);
@@ -801,122 +835,125 @@ void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> 
     const auto &local_dof_map = d_dof_map->get_local_dof_map(*macro_edge);
     const auto &param = macro_edge->get_physical_data();
 
+    // collect the dof
     std::vector<std::size_t> dof_indices(local_dof_map.num_basis_functions());
     std::vector<std::size_t> dof_indices_left(local_dof_map.num_basis_functions());
     std::vector<std::size_t> dof_indices_right(local_dof_map.num_basis_functions());
 
-    for (size_t micro_edge_id = 0; micro_edge_id < macro_edge->num_micro_edges(); micro_edge_id += 1) {
+    std::vector<double> dof_edge(local_dof_map.num_basis_functions());
+    std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());
+    std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
 
+    // first micro edge:
+    {
+      size_t micro_edge_id = 0;
+
+      // middle
       local_dof_map.dof_indices(micro_edge_id, 0, dof_indices);
-      std::vector<double> dof_edge(local_dof_map.num_basis_functions());
       extract_dof(dof_indices, *u, dof_edge);
 
-      if (micro_edge_id == 0) {
-//        auto &vertex = *d_graph->get_vertex(macro_edge->get_vertex_neighbors()[0]);
-//
-//        if (!vertex.is_leaf())
-//          continue;
-//
-//        std::vector<double> A_up(vertex.get_edge_neighbors().size());
-//        std::vector<double> Q_up(vertex.get_edge_neighbors().size());
-//        upwind_provider->get_upwinded_values(t, vertex, A_up, Q_up);
-//
-//        auto right_edge_id = micro_edge_id + 1;
-//        local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
-//        std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());
-//        extract_dof(dof_indices_right, *u, dof_right_edge);
-//
-//        for (int j = dof_indices.size() - 1; j > 0; j--) {
-//          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
-//          double diff_left = 0.0;
-//
-//          if (j == 1)
-//            diff_left = gamma * (dof_edge[j - 1] - 1.0 * A_up[0]);
-//          else
-//            diff_left = gamma * (dof_edge[j - 1] - 0.0);
-//
-//
-//          double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
-//          double dof_central = dof_edge[j];
-//          double new_dof = 0.0;
-//
-//          if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
-//            new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
-//          }
-//
-//          if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
-//            new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
-//          }
-//
-//          // adaptive limiting:
-//          if (std::abs(dof_central - new_dof) > 1.0e-10)
-//            u->set(dof_indices[j], new_dof);
-//          else
-//            break;
-//        }
+      // right
+      auto right_edge_id = micro_edge_id + 1;
+      local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
+      extract_dof(dof_indices_right, *u, dof_right_edge);
 
-      } else if (micro_edge_id == macro_edge->num_micro_edges() - 1) {
+      for (int j = dof_indices.size() - 1; j > 0; j--) {
+        double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
 
-//        auto left_edge_id = micro_edge_id - 1;
-//        local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
-//        std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
-//        extract_dof(dof_indices_left, *u, dof_left_edge);
-//
-//        for (int j = dof_indices.size() - 1; j > 0; j--) {
-//          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
-//          double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
-//          double diff_right = gamma * (0.0 - dof_edge[j - 1]);
-//          double dof_central = dof_edge[j];
-//          double new_dof = 0.0;
-//
-//          if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
-//            new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
-//          }
-//
-//          if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
-//            new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
-//          }
-//
-//          if (std::abs(dof_central - new_dof) > 1.0e-10)
-//            u->set(dof_indices[j], new_dof);
-//          else
-//            break;
-//        }
+        double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
+        double dof_central = dof_edge[j];
+        double new_dof = 0.0;
 
-      } else {
-
-        auto left_edge_id = micro_edge_id - 1;
-        auto right_edge_id = micro_edge_id + 1;
-
-        local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
-        local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
-
-        std::vector<double> dof_left_edge(local_dof_map.num_basis_functions());
-        std::vector<double> dof_right_edge(local_dof_map.num_basis_functions());
-
-        extract_dof(dof_indices_left, *u, dof_left_edge);
-        extract_dof(dof_indices_right, *u, dof_right_edge);
-
-        for (int j = dof_indices.size() - 1; j > 0; j--) {
-          double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
-          double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
-          double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
-          double dof_central = dof_edge[j];
-          double new_dof = 0.0;
-
-          if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
-            new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
-          }
-
-          if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
-            new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
-          }
-
-          if (std::abs(dof_central - new_dof) > 1.0e-10)
-            u->set(dof_indices[j], new_dof);
-          else
-            break;
+        if (dof_central > 0.0 && diff_right > 0.0) {
+          new_dof = std::min(std::abs(dof_central), std::abs(diff_right));
         }
+
+        if (dof_central < 0.0 && diff_right < 0.0) {
+          new_dof = -std::min(std::abs(dof_central), std::abs(diff_right));
+        }
+
+        // adaptive limiting:
+        if (std::abs(dof_central - new_dof) > 1.0e-10)
+          u->set(dof_indices[j], new_dof);
+        else
+          break;
+      }
+    }
+
+    // inner micro edges:
+    for (size_t micro_edge_id = 1; micro_edge_id < macro_edge->num_micro_edges() - 1; micro_edge_id += 1) {
+
+      // left
+      dof_left_edge = dof_edge;
+
+      // middle
+      local_dof_map.dof_indices(micro_edge_id, 0, dof_indices);
+      extract_dof(dof_indices, *u, dof_edge);
+
+      // right
+      extract_dof(dof_indices_right, *u, dof_right_edge);
+
+      auto left_edge_id = micro_edge_id - 1;
+      auto right_edge_id = micro_edge_id + 1;
+
+      local_dof_map.dof_indices(left_edge_id, 0, dof_indices_left);
+      local_dof_map.dof_indices(right_edge_id, 0, dof_indices_right);
+
+      for (int j = dof_indices.size() - 1; j > 0; j--) {
+        double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
+        double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
+        double diff_right = gamma * (dof_right_edge[j - 1] - dof_edge[j - 1]);
+        double dof_central = dof_edge[j];
+        double new_dof = 0.0;
+
+        if (dof_central > 0.0 && diff_left > 0.0 && diff_right > 0.0) {
+          new_dof = std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+        }
+
+        if (dof_central < 0.0 && diff_left < 0.0 && diff_right < 0.0) {
+          new_dof = -std::min(std::min(std::abs(dof_central), std::abs(diff_left)), std::abs(diff_right));
+        }
+
+        if (std::abs(dof_central - new_dof) > 1.0e-10)
+          u->set(dof_indices[j], new_dof);
+        else
+          break;
+      }
+    }
+
+    // last micro edge:
+    {
+      size_t micro_edge_id = macro_edge->num_micro_edges() - 1;
+
+      // left
+      dof_left_edge = dof_edge;
+
+      // middle
+      local_dof_map.dof_indices(micro_edge_id, 0, dof_indices);
+      extract_dof(dof_indices, *u, dof_edge);
+
+      auto left_edge_id = micro_edge_id - 1;
+
+      auto &vertex = *d_graph->get_vertex(macro_edge->get_vertex_neighbors()[1]);
+
+      for (int j = dof_indices.size() - 1; j > 0; j--) {
+        double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
+        double diff_left = gamma * (dof_edge[j - 1] - dof_left_edge[j - 1]);
+        double dof_central = dof_edge[j];
+        double new_dof = 0.0;
+
+        if (dof_central > 0.0 && diff_left > 0.0) {
+          new_dof = std::min(std::abs(dof_central), std::abs(diff_left));
+        }
+
+        if (dof_central < 0.0 && diff_left < 0.0) {
+          new_dof = -std::min(std::abs(dof_central), std::abs(diff_left));
+        }
+
+        if (std::abs(dof_central - new_dof) > 1.0e-10)
+          u->set(dof_indices[j], new_dof);
+        else
+          break;
       }
     }
   }

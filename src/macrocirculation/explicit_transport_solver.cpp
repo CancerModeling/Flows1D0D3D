@@ -94,10 +94,10 @@ void ExplicitTransportSolver::solve(double t, double dt, const std::vector<doubl
 }
 
 void ExplicitTransportSolver::calculate_fluxes_on_macro_edge(const double t,
-                                               const Edge &edge,
-                                               const std::vector<double> &u_prev,
-                                               const std::vector<double> &gamma_prev,
-                                               std::vector<double> &gamma_fluxes_edge) {
+                                                             const Edge &edge,
+                                                             const std::vector<double> &u_prev,
+                                                             const std::vector<double> &gamma_prev,
+                                                             std::vector<double> &gamma_fluxes_edge) {
 
   const auto local_dof_map_flow = d_dof_map_flow->get_local_dof_map(edge);
   const auto local_dof_map_transport = d_dof_map_transport->get_local_dof_map(edge);
@@ -239,6 +239,41 @@ void ExplicitTransportSolver::assemble_rhs(double t, const std::vector<double> &
   }
 }
 
+void calculate_gamma_up_at_bifurcation(const std::vector<double> &sigma,
+                                       const std::vector<double> &Q_up_values,
+                                       const std::vector<double> &A_up_values,
+                                       const std::vector<double> &gamma_values,
+                                       std::vector<double> &gamma_up_values) {
+  assert(Q_up_values.size() == sigma.size());
+  assert(A_up_values.size() == sigma.size());
+  assert(gamma_up_values.size() == sigma.size());
+  assert(gamma_values.size() == sigma.size());
+
+  double Q_out = 0;
+  double N_in = 0;
+
+  const auto is_inflow_value = [](double v) { return v > 1e-8; };
+
+  for (size_t k = 0; k < sigma.size(); k += 1) {
+    const double v = sigma[k] * Q_up_values[k] / A_up_values[k];
+
+    if (!is_inflow_value(v))
+      Q_out += std::abs(Q_up_values[k]);
+
+    if (is_inflow_value(v))
+      N_in += std::abs(Q_up_values[k]) / A_up_values[k] * gamma_values[k];
+  }
+
+  for (std::size_t k = 0; k < sigma.size(); k += 1) {
+    const double v = sigma[k] * Q_up_values[k] / A_up_values[k];
+
+    if (is_inflow_value(v))
+      gamma_up_values[k] = gamma_values[k];
+    else
+      gamma_up_values[k] = (A_up_values[k] / std::abs(Q_up_values[k])) * (std::abs(Q_up_values[k]) / Q_out) * N_in;
+  }
+}
+
 void ExplicitTransportSolver::calculate_fluxes_at_nfurcations(double t, const std::vector<double> &u_prev) {
   std::vector<double> Q_up_values(0, 0);
   std::vector<double> A_up_values(0, 0);
@@ -317,7 +352,7 @@ void ExplicitTransportSolver::calculate_fluxes_at_nfurcations(double t, const st
           else
             d_gamma_flux_l[edge.get_id()] = v * d_gamma_macro_edge_boundary_value[2 * edge.get_id() + 0];
         } else {
-          const double flux = v * (A_up_values[i] / std::abs(Q_up_values[i])) * (std::abs(Q_up_values[i]) / Q_out ) * N_in;
+          const double flux = v * (A_up_values[i] / std::abs(Q_up_values[i])) * (std::abs(Q_up_values[i]) / Q_out) * N_in;
           if (edge.is_pointing_to(v_id))
             d_gamma_flux_r[edge.get_id()] = flux;
           else

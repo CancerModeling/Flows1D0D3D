@@ -95,11 +95,18 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->q_component, flow_solver->get_solution(), points, q_vertex_values);
       mc::interpolate_to_vertices(MPI_COMM_WORLD, *graph, *variable_upwind_provider, t, points, v_vertex_values);
 
+      std::vector<double> A_vertex_values;
+      auto trafo = [](double p, const mc::Edge &e) {
+        return e.get_physical_data().A0 + mc::linear::get_C(e.get_physical_data()) * p;
+      };
+      mc::interpolate_transformation(MPI_COMM_WORLD, *graph, *dof_map_flow, flow_solver->p_component, flow_solver->get_solution(), trafo, points, A_vertex_values);
+
       pvd_writer.set_points(points);
       pvd_writer.add_vertex_data("c", c_vertex_values);
       pvd_writer.add_vertex_data("Q", q_vertex_values);
       pvd_writer.add_vertex_data("p", p_vertex_values);
-      pvd_writer.add_vertex_data("A", vessel_A0);
+      pvd_writer.add_vertex_data("A", A_vertex_values);
+      pvd_writer.add_vertex_data("A0", vessel_A0);
       pvd_writer.add_vertex_data("v", v_vertex_values);
       pvd_writer.write(t);
 

@@ -14,6 +14,7 @@
 #include "gmm.h"
 #include "petsc.h"
 #include <Eigen/Dense>
+#include "petsc_vec.hpp"
 
 namespace macrocirculation {
 
@@ -142,6 +143,10 @@ public:
     PetscInt jj = j;
     CHKERRABORT(PETSC_COMM_WORLD, MatGetValues(d_mat, 1, &ii, 1, &jj, &value));
     return value;
+  }
+
+  void mul(const PetscVec& src, PetscVec& dst) const {
+    CHKERRABORT(PETSC_COMM_WORLD, MatMult(d_mat, src.get_vec(), dst.get_vec()));
   }
 
   void print() const {

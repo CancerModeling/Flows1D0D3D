@@ -169,7 +169,7 @@ if __name__ == '__main__':
             max_p_list = np.array(max_p_list_)[permutation]
             min_p_list = np.array(min_p_list_)[permutation]
 
-            plt.plot(radii_list, (max_p_list-min_p_list)/2, '.', color=color_max[idx])
+            plt.plot(radii_list, (max_p_list-min_p_list), '.', color=color_max[idx])
 
         plt.gca().set_xscale('log', nonposx='clip')
         plt.gca().set_xlabel('r [cm]')

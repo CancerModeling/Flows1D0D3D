@@ -57,6 +57,8 @@ def load_vessel(vessel_id):
     data['q'] = load_vessel_component(vessel_id, 'q')
     if 'a' in vessel_info['filepaths']:
         data['a'] = load_vessel_component(vessel_id, 'a')
+    else:
+        data['a'] = vessel_info['A0'] * np.ones(data['q'].shape)
     if 'p' in vessel_info['filepaths']:
         data['p'] = load_vessel_component(vessel_id, 'p') / 1.333333
     elif 'a' in vessel_info['filepaths']:
@@ -160,7 +162,10 @@ def animate(i):
             data_c = data_sets[dset_index]['c/a'][t_index]
             lc = lines[dset_index][axes_idx]
             lc.set_ydata(data_c)
-            ax_c.set_ylim([0, 1.05])
+            #ax_c.set_ylim([0, 1.05])
+            #ax_c.set_ylim([0.99, 1.01])
+            ax_c.set_ylim([0.95, 1.05])
+            ax_c.set_ylim([0.0, 1.05])
             ax_c.autoscale_view()
             axes_idx += 1
 

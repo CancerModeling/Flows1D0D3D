@@ -19,6 +19,7 @@ class DofMap;
 class Point;
 class Edge;
 class UpwindProvider;
+class PetscVec;
 
 void linear_interpolate_points(const Point &left,
                                const Point &right,
@@ -39,6 +40,15 @@ void interpolate_to_vertices(MPI_Comm comm,
                              double t,
                              std::vector<Point> &points,
                              std::vector<double> &interpolated);
+
+void interpolate_transformation(const MPI_Comm comm,
+                                const GraphStorage &graph,
+                                const DofMap &map,
+                                const std::size_t component,
+                                const PetscVec& dof_vector,
+                                std::function< double(double, const Edge&) > trafo,
+                                std::vector<Point> &points,
+                                std::vector<double> &interpolated);
 
 void add_discontinuous_points(const std::vector<Point> &embedded_points, std::vector<Point> &points);
 

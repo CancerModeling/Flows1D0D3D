@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
   cxxopts::Options options(argv[0], "Linearized solver for breast geometry");
   options.add_options()                                                                                                                //
     ("output-directory", "directory for the output", cxxopts::value<std::string>()->default_value("./output/"))                        //
-    ("mesh", "filepath to the given mesh", cxxopts::value<std::string>()->default_value("./data/meshes/coarse-network-geometry.json")) //
+    ("mesh", "filepath to the given mesh", cxxopts::value<std::string>()->default_value("./data/1d-meshes/coarse-breast-geometry.json")) //
     ("tau", "time step size", cxxopts::value<double>()->default_value("1e-4"))                                                         //
     ("tau-out", "time step size for the output", cxxopts::value<double>()->default_value("1e-2"))                                      //
     ("t-end", "Endtime for simulation", cxxopts::value<double>()->default_value("10"))                                                 //
@@ -118,12 +118,15 @@ int main(int argc, char *argv[]) {
         writer.add_vertex_data("q", q_vertex_values);
         writer.write(t);
 
+        int num = 0;
         for (auto &v_id : graph->get_active_vertex_ids(mc::mpi::rank(MPI_COMM_WORLD))) {
           auto &vertex = *graph->get_vertex(v_id);
           if (vertex.is_vessel_tree_outflow()) {
             const auto &vertex_dof_map = dof_map->get_local_dof_map(vertex);
             const auto &vertex_dofs = vertex_dof_map.dof_indices();
             const auto &u = solver.get_solution();
+            std::cout << num << std::endl;
+            num += 1;
 
             std::cout << "rank = " << mc::mpi::rank(MPI_COMM_WORLD) << std::endl;
             std::cout << "vertex = " << vertex.get_name() << "\n";
