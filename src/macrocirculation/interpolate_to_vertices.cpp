@@ -217,6 +217,16 @@ void fill_with_vessel_A0(const MPI_Comm comm,
   fill_with_edge_parameter(comm, graph, f, points, interpolated);
 }
 
+void fill_with_vertex_id(const MPI_Comm comm,
+                         const GraphStorage &graph,
+                         std::vector<Point> &points,
+                         std::vector<double> &interpolated) {
+  auto f = [](const Edge &e, size_t micro_edge_id)-> double {
+    return 2*micro_edge_id < e.num_micro_edges() ? e.get_vertex_neighbors()[0] : e.get_vertex_neighbors()[1];
+  };
+  fill_with_edge_parameter(comm, graph, f, points, interpolated);
+}
+
 void fill_with_edge_parameter(const MPI_Comm comm, const GraphStorage &graph, std::function<double(const Edge &)> extractor, std::vector<Point> &points, std::vector<double> &interpolated) {
   points.clear();
   interpolated.clear();
@@ -243,6 +253,37 @@ void fill_with_edge_parameter(const MPI_Comm comm, const GraphStorage &graph, st
     const double quantity = extractor(*edge);
 
     for (std::size_t micro_edge_id = 0; micro_edge_id < edge->num_micro_edges(); micro_edge_id += 1) {
+      interpolated.push_back(quantity);
+      interpolated.push_back(quantity);
+    }
+  }
+}
+
+void fill_with_edge_parameter(const MPI_Comm comm, const GraphStorage &graph, const std::function<double(const Edge &, size_t micro_edge_id)>& extractor, std::vector<Point> &points, std::vector<double> &interpolated) {
+  points.clear();
+  interpolated.clear();
+
+  std::vector<std::size_t> dof_indices;
+  std::vector<double> dof_vector_local;
+  std::vector<double> evaluated_at_qps;
+
+  for (auto e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
+    auto edge = graph.get_edge(e_id);
+
+    // we only write out embedded vessel segments
+    if (!edge->has_embedding_data())
+      continue;
+    const auto &embedding = edge->get_embedding_data();
+
+    if (embedding.points.size() == 2 && edge->num_micro_edges() > 1)
+      linear_interpolate_points(embedding.points[0], embedding.points[1], edge->num_micro_edges(), points);
+    else if (embedding.points.size() == edge->num_micro_edges() + 1)
+      add_discontinuous_points(embedding.points, points);
+    else
+      throw std::runtime_error("this type of embedding is not implemented");
+
+    for (std::size_t micro_edge_id = 0; micro_edge_id < edge->num_micro_edges(); micro_edge_id += 1) {
+      const double quantity = extractor(*edge, micro_edge_id);
       interpolated.push_back(quantity);
       interpolated.push_back(quantity);
     }

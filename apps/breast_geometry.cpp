@@ -31,12 +31,13 @@ int main(int argc, char *argv[]) {
   auto graph = std::make_shared<mc::GraphStorage>();
 
   mc::EmbeddedGraphReader graph_reader;
-  graph_reader.append("data/meshes/coarse-network-geometry.json", *graph);
+  graph_reader.append("data/coarse-breast2-geometry.json", *graph);
 
   // auto inflow_vertices = graph->find_embedded_vertices({ 9.093333333333334, 9.173333333333334, 8.053333333333335 });
   std::vector<mc::Point> inflow_points = {
     {9.093333333333334, 9.173333333333334, 8.053333333333335},
     {2.9333333333333336, 9.973333333333334, 10.933333333333334}};
+  /*
   for (auto &p : inflow_points) {
     auto inflow_vertices = graph->find_embedded_vertices(p);
     if (inflow_vertices.size() != 1) {
@@ -45,6 +46,7 @@ int main(int argc, char *argv[]) {
     }
     inflow_vertices[0]->set_to_inflow_with_fixed_flow(mc::heart_beat_inflow(4.85 / 8.));
   }
+   */
 
   graph->finalize_bcs();
 
@@ -76,10 +78,16 @@ int main(int argc, char *argv[]) {
   std::vector<double> p_total_vertex_values;
   std::vector<double> p_static_vertex_values;
   std::vector<double> c_vertex_values;
+  std::vector<double> vessel_A0;
   std::vector<double> vessel_ids;
+  std::vector<double> vertex_ids;
+
+  mc::fill_with_vessel_A0(MPI_COMM_WORLD, *graph, points, vessel_A0);
 
   // vessels ids do not change, thus we can precalculate them
   mc::fill_with_vessel_id(MPI_COMM_WORLD, *graph, points, vessel_ids);
+
+  mc::fill_with_vertex_id(MPI_COMM_WORLD, *graph, points, vertex_ids);
 
   // mc::GraphCSVWriter csv_writer(MPI_COMM_WORLD, "output", "data", graph, dof_map, {"Q", "A"});
   mc::GraphPVDWriter pvd_writer(MPI_COMM_WORLD, "output", "breast_geometry_solution");
@@ -110,6 +118,8 @@ int main(int argc, char *argv[]) {
       pvd_writer.add_vertex_data("p_total", p_total_vertex_values);
       pvd_writer.add_vertex_data("c", c_vertex_values);
       pvd_writer.add_vertex_data("vessel_id", vessel_ids);
+      pvd_writer.add_vertex_data("vertex_ids", vertex_ids);
+      pvd_writer.add_vertex_data("A0", vessel_A0);
       pvd_writer.write(t);
     }
 

@@ -26,9 +26,14 @@ class FlowModelParameters:
 
     S_ct = 460 * r_c_bar * l_c_bar * 2 * pi / 1e-3  # fromula from Josza
 
-    L_cv = 1e-8  # guess
+    #L_cv = 1e-8  # guess
+    #L_cv = 5e-9  # guess
+    #L_cv = 2.5e-9  # guess
+    #L_cv = 1e-8  # guess
+    L_cv = 5e-9  # guess
     L_ct = 1e-9  # guess
-    L_tl = 1e-8  # guess
+    #L_tl = 1e-8  # guess
+    L_tl = 5e-9  # guess
 
     sigma = 0.  # ?
     pi_int = 6.6e3

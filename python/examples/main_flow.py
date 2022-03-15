@@ -16,9 +16,11 @@ def cli():
     parser.add_argument('--t-3dcoup-start', type=float, help='When should the 3d coupling be active?', default=6)
     parser.add_argument('--t-preiter', type=float, help='How long should we preiterate?', default=6)
     parser.add_argument('--tau-log2', type=int, help='Defines the time step width 1/2^k where k is the parameter', required=False)
-    parser.add_argument('--t-end', type=float, help='When should the simulation stop', default=80)
+    parser.add_argument('--tau-coup-log2', type=int, help='Defines the time step width 1/2^k for the coupling where k is the parameter', required=False)
+    parser.add_argument('--t-end', type=float, help='When should the simulation stop', default=81)
     parser.add_argument("--output-folder", type=str, help="Into which directory should we write?", default='./tmp_flow')
-    parser.add_argument("--data-folder", type=str, help="Into which directory should we write?", default='../../data')
+    parser.add_argument("--data-folder", type=str, help="From which directory should get the input files?", default='../../data')
+    parser.add_argument("--geometry-id", type=int, help="Which breast geometry should we use", default=1)
 
     args = parser.parse_args()
     return args
@@ -29,31 +31,34 @@ def run():
 
     data_folder = args.data_folder 
     output_folder = args.output_folder 
-    mesh_3d_filename = os.path.join(data_folder, '3d-meshes/test_full_1d0d3d_cm.xdmf')
 
     os.makedirs(output_folder, exist_ok=True)
 
     degree = 2
-    tau_out = 1. / 2 ** 6
-    tau_coup = 1. / 2 ** 4
     t_end = args.t_end
     t = 0
     t_coup_start = args.t_3dcoup_start 
     t_preiter = args.t_preiter 
+    gid = args.geometry_id
+
+    mesh_3d_filename = os.path.join(data_folder, f'3d-meshes/test{gid}_full_1d0d3d_cm.xdmf')
 
     if args.use_fully_coupled:
         tau = 1. / 2 ** args.tau_log2 if args.tau_log2 is not None else 1. / 2 ** 16
         solver1d = f.FullyCoupledHeartToBreast1DSolver()
         solver1d.set_path_nonlinear_geometry(os.path.join(data_folder, "1d-meshes/33-vessels-with-small-extension.json"))
-        solver1d.set_path_linear_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
+        solver1d.set_path_linear_geometry(os.path.join(data_folder, f"1d-meshes/coarse-breast{gid}-geometry-with-extension.json"))
         solver1d.set_path_coupling_conditions(os.path.join(data_folder, "1d-coupling/couple-33-vessels-with-small-extension-to-coarse-breast-geometry-with-extension.json"))
     else:
         tau = 1. / 2 ** args.tau_log2 if args.tau_log2 is not None else 1. / 2 ** 4
         solver1d = f.LinearizedHeartToBreast1DSolver()
         solver1d.set_path_inflow_pressures(os.path.join(data_folder, "1d-input-pressures/from-33-vessels-with-small-extension.json"))
-        solver1d.set_path_geometry(os.path.join(data_folder, "1d-meshes/coarse-breast-geometry-with-extension.json"))
+        solver1d.set_path_geometry(os.path.join(data_folder, f"1d-meshes/coarse-breast{gid}-geometry-with-extension.json"))
     solver1d.set_output_folder(output_folder)
     solver1d.setup(degree, tau)
+
+    tau_out = max(1. / 2 ** 6, tau)
+    tau_coup = min(1. / 2 ** args.tau_coup_log2, tau)
 
     # if an input pressure file is present we read it in
     if args.tip_pressures_input_file is not None:
@@ -77,6 +82,8 @@ def run():
     solver3d.solve()
     solver3d.write_solution(0.)
     solver3d.write_subdomains(output_folder)
+
+    new_pressures = solver3d.get_pressures()
 
     for i in range(0, int(t_end / tau_out)):
         if df.MPI.rank(df.MPI.comm_world) == 0:

@@ -1,23 +1,30 @@
+import argparse
 from matplotlib import pyplot as plt
 import numpy as np
 import json
 
+
+parser = argparse.ArgumentParser(description='Plot the 3D averages')
+parser.add_argument("--filepath", type=str, help="Filepath to the json file containing the average quantities.", required=True)
+parser.add_argument('--t-start', type=float, help='Where should the plot start?', default=0)
+parser.add_argument('--t-stop', type=float, help='Where should the plot be cut-off?', default=100)
+args = parser.parse_args()
+
 #filepath = 'tmp_transport/average_quantities.json'
-filepath = 'tmp_flow/average_quantities.json'
 #indices = [23, 60, 128, 145]
 indices = [117, 23, 127, 145]
 legend = ['1', '2', '3', '4']
 #indices = range(31) 
 
-with open(filepath, 'r') as file:
+with open(args.filepath, 'r') as file:
     data = json.loads(file.read())
 
 
 
 plot_pressures = True 
 
-t_start = 0 
-t_stop = 100
+t_start = args.t_start
+t_stop = args.t_stop
 #t_stop = 100
 
 
