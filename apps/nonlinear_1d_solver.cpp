@@ -187,8 +187,17 @@ int main(int argc, char *argv[]) {
 
     write_output();
 
+    double flow_solution_time = 0;
+    size_t num_iteration = 0;
+
     for (std::size_t it = 0; it < max_iter; it += 1) {
+      auto start = std::chrono::high_resolution_clock::now();
       flow_solver->solve(tau, t);
+      auto end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> elapsed = (end - start);
+      flow_solution_time += elapsed.count();
+      num_iteration += 1;
+
       t += tau;
       if (it % update_interval_transport == 0) {
         // std::cout << "t_transport = " << t_transport << std::endl;
@@ -214,6 +223,8 @@ int main(int argc, char *argv[]) {
     const auto end_t = std::chrono::steady_clock::now();
     const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
     std::cout << "time = " << elapsed_ms * 1e-6 << " s" << std::endl;
+
+    std::cout << "total time flow solver = " << flow_solution_time << ", average = " << flow_solution_time / num_iteration << std::endl;
   }
 
   CHKERRQ(PetscFinalize());
