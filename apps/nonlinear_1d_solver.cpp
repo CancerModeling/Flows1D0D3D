@@ -153,7 +153,6 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    const auto begin_t = std::chrono::steady_clock::now();
     double t = 0;
     double t_transport = 0.0;
 
@@ -189,6 +188,8 @@ int main(int argc, char *argv[]) {
 
     double flow_solution_time = 0;
     size_t num_iteration = 0;
+
+    const auto begin_t = std::chrono::steady_clock::now();
 
     for (std::size_t it = 0; it < max_iter; it += 1) {
       auto start = std::chrono::high_resolution_clock::now();
