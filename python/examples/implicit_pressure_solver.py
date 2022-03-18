@@ -1,3 +1,4 @@
+from petsc4py import PETSc
 import os
 import numpy as np
 import dolfin as df
@@ -125,13 +126,19 @@ class ImplicitPressureSolver:
         P = 0
         P += df.inner(df.Constant(rho_c * K_c / mu_c) * df.grad(phi_c), df.grad(psi_c)) * df.dx
         P += df.inner(df.Constant(rho_t * K_t / mu_t) * df.grad(phi_t), df.grad(psi_t)) * df.dx
+        # cv:
+        P -= df.Constant(rho_c * L_cv) * (-phi_c) * psi_c * self.dx
+        # ct:
         P -= df.Constant(rho_t * L_ct * S_ct) * (-phi_c) * psi_c * self.dx
+        # tc:
         P -= df.Constant(rho_t * L_ct * S_ct) * (-phi_t) * psi_t * self.dx
+        # tl:
         P -= df.Constant(rho_t * L_tl) * (- phi_t) * psi_t * self.dx
         P += df.Constant(0) * psi_t * df.dx
         for k in range(len(self.pressures)):
             alpha = df.Constant(coeff_ca[k] + rho_c * L_cv)
             P += - alpha * llambda[k] * mu[k] * self.dx(k)
+            #P += llambda[k] * mu[k] * self.dx(k)
 
         self.J = J
         self.P = P
@@ -176,15 +183,39 @@ class ImplicitPressureSolver:
     def _setup_solver(self):
         self.A, self.b = df.assemble_system(df.lhs(self.J), df.rhs(self.J), self.bcs)
         self.P, _ = df.assemble_system(df.lhs(self.P), df.rhs(self.P), self.bcs)
-        self.solver = df.KrylovSolver('gmres', 'amg')
-        self.solver.parameters['monitor_convergence'] = True
+
+        ksp = PETSc.KSP().create()
+        df.PETScOptions.set('ksp_type', 'gmres')
+        df.PETScOptions.set('pc_type', 'fieldsplit')
+        df.PETScOptions.set('pc_fieldsplit_type', 'additive')
+        df.PETScOptions.set('fieldsplit_0_ksp_type', 'richardson')
+        df.PETScOptions.set('fieldsplit_0_pc_type', 'gamg')
+        df.PETScOptions.set('fieldsplit_0_ksp_max_it', 4)
+        df.PETScOptions.set('fieldsplit_1_ksp_type', 'richardson')
+        df.PETScOptions.set('fieldsplit_1_pc_type', 'gamg')
+        df.PETScOptions.set('fieldsplit_1_ksp_max_it', 4)
+        for i in range(2, self.V.num_sub_spaces()):
+            df.PETScOptions.set(f'fieldsplit_{i}_pc_type', 'jacobi')
+            df.PETScOptions.set(f'fieldsplit_{i}_ksp_max_it', 1)
+        ksp.setFromOptions()
+
+        pc = ksp.getPC()
+        fields = [(f'{i}', PETSc.IS().createGeneral(self.V.sub(i).dofmap().dofs())) for i in range(self.V.num_sub_spaces())]
+        pc.setFieldSplitIS(*fields)
+
+        self.solver = df.PETScKrylovSolver(ksp)
+        #self.solver = df.PETScKrylovSolver('gmres', 'petsc_amg')
+
+        self.solver.set_reuse_preconditioner(True)
+        # self.solver = df.KrylovSolver('gmres', 'jacobi')
+        # self.solver = df.KrylovSolver('gmres', 'ilu')
+        # self.solver.parameters['monitor_convergence'] = True
         self.solver.parameters['nonzero_initial_guess'] = True
         self.solver.parameters['absolute_tolerance'] = 1e-6
         self.solver.parameters['relative_tolerance'] = 1e-6
         #self.solver.parameters['maximum_iterations'] = 10000
-        # self.solver = df.KrylovSolver('gmres', 'jacobi')
         self.solver.set_operators(self.A, self.P)
-        #self.solver.set_operator(A)
+        #self.solver.set_operator(self.A)
 
     def solve(self):
         system_assembler = df.SystemAssembler(df.lhs(self.J), df.rhs(self.J), self.bcs)
