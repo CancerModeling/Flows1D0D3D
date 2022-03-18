@@ -1,3 +1,4 @@
+import time
 import argparse
 import json
 import os
@@ -19,6 +20,7 @@ def cli():
     parser.add_argument('--tau-coup-log2', type=int, help='Defines the time step width 1/2^k for the coupling where k is the parameter', required=False)
     parser.add_argument('--t-end', type=float, help='When should the simulation stop', default=81)
     parser.add_argument("--output-folder", type=str, help="Into which directory should we write?", default='./tmp_flow')
+    parser.add_argument("--disable-output", action='store_true')
     parser.add_argument("--data-folder", type=str, help="From which directory should get the input files?", default='../../data')
     parser.add_argument("--geometry-id", type=int, help="Which breast geometry should we use", default=1)
 
@@ -58,7 +60,7 @@ def run():
     solver1d.setup(degree, tau)
 
     tau_out = max(1. / 2 ** 6, tau)
-    tau_coup = min(1. / 2 ** args.tau_coup_log2, tau)
+    tau_coup = max(1. / 2 ** args.tau_coup_log2, tau)
 
     # if an input pressure file is present we read it in
     if args.tip_pressures_input_file is not None:
@@ -80,40 +82,64 @@ def run():
     # initialize the 3D solver: 
     solver3d.update_vessel_tip_pressures(vessel_tip_pressures)
     solver3d.solve()
-    solver3d.write_solution(0.)
-    solver3d.write_subdomains(output_folder)
+    if not args.disable_output:
+        solver3d.write_solution(0.)
+        solver3d.write_subdomains(output_folder)
 
     new_pressures = solver3d.get_pressures()
+
+    flow_solver3d_times = []
+    flow_solver1d_times = []
+
+    start_simulation = time.time()
 
     for i in range(0, int(t_end / tau_out)):
         if df.MPI.rank(df.MPI.comm_world) == 0:
             print('iter = {}, t = {}'.format(i, t))
-        t = solver1d.solve_flow(tau, t, int(tau_out / tau))
-        solver1d.write_output(t)
+        steps = int(tau_out / tau)
+        start = time.time()
+        t = solver1d.solve_flow(tau, t, steps)
+        flow_solver1d_times.append((time.time() - start) / steps)
+
+        if not args.disable_output:
+            solver1d.write_output(t)
         if (t > t_coup_start) and (i % coupling_interval_0d3d == 0):
             vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('start solving 3D pressures')
             solver3d.update_vessel_tip_pressures(vessel_tip_pressures)
+
+            start = time.time()
             solver3d.solve()
-            solver3d.write_solution(t)
+            flow_solver3d_times.append(time.time() - start)
+
+            if not args.disable_output:
+                solver3d.write_solution(t)
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('end solving 3D pressures')
             new_pressures = solver3d.get_pressures()
             solver1d.update_vessel_tip_pressures(new_pressures)
 
-            max_value = solver3d.current.vector().max()
-            min_value = solver3d.current.vector().min()
-            if df.MPI.rank(df.MPI.comm_world) == 0:
-                print('max = {}, min = {}'.format(max_value / 1333, min_value / 1333))
+            if not args.disable_output:
+                max_value = solver3d.current.vector().max()
+                min_value = solver3d.current.vector().min()
+                if df.MPI.rank(df.MPI.comm_world) == 0:
+                    print('max = {}, min = {}'.format(max_value / 1333, min_value / 1333))
 
-        q_writer.update(t, new_pressures, solver3d.get_pressures(1))
-        q_writer.write(os.path.join(output_folder, "average_quantities.json"))
+        print(f'3d solver (avg {np.mean(flow_solver3d_times)}): {flow_solver3d_times}')
+        print(f'1d solver (avg {np.mean(flow_solver1d_times)}, steps {steps}): {flow_solver1d_times}')
+
+        if not args.disable_output:
+            q_writer.update(t, new_pressures, solver3d.get_pressures(1))
+            q_writer.write(os.path.join(output_folder, "average_quantities.json"))
         
-        if args.tip_pressures_output_file is not None and df.MPI.rank(df.MPI.comm_world) == 0:
+        if args.tip_pressures_output_file is not None and df.MPI.rank(df.MPI.comm_world) == 0 and not args.disable_output:
             print('writing tip pressures to {}'.format(args.tip_pressures_output_file))
             with open(args.tip_pressures_output_file, 'w') as file:
                 file.write(json.dumps(new_pressures))
+
+    elapsed = time.time() - start_simulation
+    print(f'elapsed simulation time: {elapsed}')
 
 
 if __name__ == '__main__':
