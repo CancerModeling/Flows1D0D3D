@@ -18,9 +18,9 @@ def cli():
     return args
 
 
-#list_taus = [1./2**k for k in [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2]]
-#list_taus = [1./2**k for k in [4, 3, 2]]
-list_taus = [1./2**k for k in [16, 14, 12, 10, 8, 6, 4, 2]]
+#list_taus = [1./2**k for k in [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]]
+#list_taus = [1./2**k for k in [5, 4, 3]]
+list_taus = [1./2**k for k in [16, 14, 12, 10, 8, 6, 4, 3]]
 
 
 def run(num_steps, num_samples, tau):
@@ -54,14 +54,14 @@ def run(num_steps, num_samples, tau):
         # initialize the 3D solver:
         solver3d.update_vessel_tip_pressures(vessel_tip_pressures)
         solver3d.solve()
-        solver3d.write_solution(0.)
-        solver3d.write_subdomains(output_folder)
 
         total_time = 0
-        for i in range(num_steps):
+        for j in range(num_steps):
             t = solver1d.solve_flow(tau, t, 1)
             vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
             solver3d.update_vessel_tip_pressures(vessel_tip_pressures)
+
+            print(f'3D, sample {i}, step {j}')
 
             start = time.time()
             solver3d.solve()
@@ -76,8 +76,10 @@ def run(num_steps, num_samples, tau):
 
 
 def run_fixed_steps():
+    #num_steps = 50
+    #num_samples = 10
     num_steps = 50
-    num_samples = 10
+    num_samples = 1
 
     list_runtimes = []
 
@@ -85,6 +87,7 @@ def run_fixed_steps():
 
     for tau in list_taus:
         print(f'run tau = {tau}')
+        df.PETScOptions.clear()
         list_runtimes.append(run(num_steps, num_samples, tau) / num_steps)
         print(f'elapsed: {list_runtimes}')
 

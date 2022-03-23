@@ -1,3 +1,4 @@
+import time
 import json
 from dataclasses import dataclass
 import numpy as np
@@ -129,3 +130,31 @@ def viscosity_bloodplasma(r: float):
     mu_bl_cm = mu_bl * 10
 
     return mu_bl_cm
+
+
+class StopWatch:
+    def __init__(self):
+        self.start_time = None
+        self.elapsed_times = []
+        self.num_steps = []
+
+    def start(self):
+        assert self.start_time is None
+        self.start_time = time.time()
+
+    def end(self, num_steps=1):
+        assert self.start_time is not None
+        elapsed = (time.time() - self.start_time) / num_steps
+        self.elapsed_times.append(elapsed)
+        self.num_steps.append(num_steps)
+        self.start_time = None
+        return elapsed
+
+    def average(self):
+        return np.array(self.elapsed_times).mean()
+
+    def total(self):
+        return np.sum(np.array(self.elapsed_times) * np.array(self.num_steps))
+
+    def __str__(self):
+        return f'avg = {self.average()}, total = {self.total()}, number of data points = {len(self.elapsed_times)}'

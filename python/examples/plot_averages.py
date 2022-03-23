@@ -8,6 +8,7 @@ parser = argparse.ArgumentParser(description='Plot the 3D averages')
 parser.add_argument("--filepath", type=str, help="Filepath to the json file containing the average quantities.", required=True)
 parser.add_argument('--t-start', type=float, help='Where should the plot start?', default=0)
 parser.add_argument('--t-stop', type=float, help='Where should the plot be cut-off?', default=100)
+parser.add_argument('--no-labels', help='do not plot the labels of the compartments', action='store_true')
 args = parser.parse_args()
 
 #filepath = 'tmp_transport/average_quantities.json'
@@ -62,7 +63,8 @@ if True:
     axes[1][0].set_xlabel('t [s]')
     axes[0][0].grid(True)
     axes[1][0].grid(True)
-    plt.legend()
+    if not args.no_labels:
+        plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -104,7 +106,8 @@ if True:
     axes[1][0].set_xlabel('t [s]')
     axes[0][0].grid(True)
     axes[1][0].grid(True)
-    plt.legend()
+    if not args.no_labels:
+        plt.legend()
     plt.grid(True)
     plt.show()
     

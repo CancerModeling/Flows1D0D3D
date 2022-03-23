@@ -16,7 +16,8 @@ def cli():
     return args
 
 
-list_taus = [1./2**k for k in [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2]]
+#list_taus = [1./2**k for k in [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2]]
+list_taus = [1./2**k for k in [16, 14, 12, 10, 8, 6, 4, 2]]
 
 
 def run(num_steps, num_samples, tau):
@@ -71,7 +72,7 @@ def run_fixed_steps():
     ax.semilogx(list_taus, list_runtimes, label='linearized')
     ax.set_xlabel(r'$\tau$')
     ax.set_ylabel(r'absolute runtime per time step [s]')
-    ax.hlines(np.min(average_runtimes_nl), list_taus[0], list_taus[-1], linestyle='dashed', label='nonlinear')
+    ax.hlines(average_runtimes_nl, list_taus[0], list_taus[-1], linestyle='dashed', label='nonlinear')
     ax.legend()
     ax.grid(True)
 

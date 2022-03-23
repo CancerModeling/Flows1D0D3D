@@ -5,8 +5,9 @@ import os
 import flows1d0d3d as f
 import dolfin as df
 import numpy as np
-from _utils import read_mesh, open_input_pressures, AverageQuantityWriter
+from _utils import read_mesh, open_input_pressures, AverageQuantityWriter, StopWatch
 from implicit_pressure_solver import ImplicitPressureSolver
+from parameters import FlowModelParameters
 
 
 def cli():
@@ -21,6 +22,7 @@ def cli():
     parser.add_argument('--t-end', type=float, help='When should the simulation stop', default=81)
     parser.add_argument("--output-folder", type=str, help="Into which directory should we write?", default='./tmp_flow')
     parser.add_argument("--disable-output", action='store_true')
+    parser.add_argument("--use-integrated-average-pressures", action='store_true')
     parser.add_argument("--data-folder", type=str, help="From which directory should get the input files?", default='../../data')
     parser.add_argument("--geometry-id", type=int, help="Which breast geometry should we use", default=1)
 
@@ -42,6 +44,8 @@ def run():
     t_coup_start = args.t_3dcoup_start 
     t_preiter = args.t_preiter 
     gid = args.geometry_id
+
+    compare_pressure_multiplier_integral = False
 
     mesh_3d_filename = os.path.join(data_folder, f'3d-meshes/test{gid}_full_1d0d3d_cm.xdmf')
 
@@ -69,56 +73,87 @@ def run():
     
     coupling_interval_0d3d = int(round(tau_coup / tau_out))
 
+    print('start 1d preiter')
     t = solver1d.solve_flow(tau, t, int(t_preiter / tau))
+    print('end 1d preiter')
 
     vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
 
     q_writer = AverageQuantityWriter(vessel_tip_pressures)
 
+    flow_config = FlowModelParameters()
+    if gid == 2:
+        flow_config.L_cv = 2.5e-9
+        flow_config.L_tl = 5e-9
+
     mesh = read_mesh(mesh_3d_filename)
-    solver3d = ImplicitPressureSolver(mesh, output_folder, vessel_tip_pressures)
+    solver3d = ImplicitPressureSolver(mesh, output_folder, vessel_tip_pressures, flow_config)
     df.assign(solver3d.current.sub(0), df.interpolate(df.Constant(33 * 1333), solver3d.V.sub(0).collapse()))
     df.assign(solver3d.current.sub(1), df.interpolate(df.Constant(13 * 1333), solver3d.V.sub(1).collapse()))
-    # initialize the 3D solver: 
+    # initialize the 3D solver:
     solver3d.update_vessel_tip_pressures(vessel_tip_pressures)
+    print('start 3d preiter')
     solver3d.solve()
+    print('end 3d preiter')
     if not args.disable_output:
         solver3d.write_solution(0.)
         solver3d.write_subdomains(output_folder)
 
     new_pressures = solver3d.get_pressures()
 
-    flow_solver3d_times = []
-    flow_solver1d_times = []
+    watch_simulation = StopWatch()
+    watch_1d = StopWatch()
+    watch_3d = StopWatch()
+    watch_1d_coup_out = StopWatch()
+    watch_3d_coup_out = StopWatch()
+    watch_1d_coup_in = StopWatch()
+    watch_3d_coup_in = StopWatch()
+    watch_io = StopWatch()
 
-    start_simulation = time.time()
-
+    watch_simulation.start()
     for i in range(0, int(t_end / tau_out)):
         if df.MPI.rank(df.MPI.comm_world) == 0:
             print('iter = {}, t = {}'.format(i, t))
         steps = int(tau_out / tau)
-        start = time.time()
+        watch_1d.start()
         t = solver1d.solve_flow(tau, t, steps)
-        flow_solver1d_times.append((time.time() - start) / steps)
+        watch_1d.end(num_steps=steps)
 
         if not args.disable_output:
+            watch_io.start()
             solver1d.write_output(t)
+            watch_io.end()
         if (t > t_coup_start) and (i % coupling_interval_0d3d == 0):
+            watch_1d_coup_out.start()
             vessel_tip_pressures = solver1d.get_vessel_tip_pressures()
+            watch_1d_coup_out.end()
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('start solving 3D pressures')
+            watch_3d_coup_in.start()
             solver3d.update_vessel_tip_pressures(vessel_tip_pressures)
+            watch_3d_coup_in.end()
 
-            start = time.time()
+            watch_3d.start()
             solver3d.solve()
-            flow_solver3d_times.append(time.time() - start)
+            watch_3d.end()
 
             if not args.disable_output:
+                watch_io.start()
                 solver3d.write_solution(t)
+                watch_io.end()
             if df.MPI.rank(df.MPI.comm_world) == 0:
                 print('end solving 3D pressures')
-            new_pressures = solver3d.get_pressures()
+            watch_3d_coup_out.start()
+            new_pressures = solver3d.get_pressures() if args.use_integrated_average_pressures else solver3d.get_pressures_from_multiplier()
+            if compare_pressure_multiplier_integral:
+                new_pressures_old = solver3d.get_pressures()
+                new_pressures_mul = solver3d.get_pressures_from_multiplier()
+                for x in new_pressures_old.keys():
+                    print(f'{x} {new_pressures_old[x]} {new_pressures_mul[x]} {np.abs(new_pressures_old[x] - new_pressures_mul[x])}')
+            watch_3d_coup_out.end()
+            watch_1d_coup_in.start()
             solver1d.update_vessel_tip_pressures(new_pressures)
+            watch_1d_coup_in.end()
 
             if not args.disable_output:
                 max_value = solver3d.current.vector().max()
@@ -126,20 +161,30 @@ def run():
                 if df.MPI.rank(df.MPI.comm_world) == 0:
                     print('max = {}, min = {}'.format(max_value / 1333, min_value / 1333))
 
-        print(f'3d solver (avg {np.mean(flow_solver3d_times)}): {flow_solver3d_times}')
-        print(f'1d solver (avg {np.mean(flow_solver1d_times)}, steps {steps}): {flow_solver1d_times}')
-
         if not args.disable_output:
+            watch_io.start()
             q_writer.update(t, new_pressures, solver3d.get_pressures(1))
             q_writer.write(os.path.join(output_folder, "average_quantities.json"))
-        
+            watch_io.end()
+
         if args.tip_pressures_output_file is not None and df.MPI.rank(df.MPI.comm_world) == 0 and not args.disable_output:
             print('writing tip pressures to {}'.format(args.tip_pressures_output_file))
             with open(args.tip_pressures_output_file, 'w') as file:
+                watch_io.start()
                 file.write(json.dumps(new_pressures))
+                watch_io.end()
 
-    elapsed = time.time() - start_simulation
-    print(f'elapsed simulation time: {elapsed}')
+        print(f'3d solver       {watch_3d}')
+        print(f'1d solver       {watch_1d}')
+        print(f'1d coupling out {watch_1d_coup_out}')
+        print(f'1d coupling in  {watch_1d_coup_in}')
+        print(f'3d coupling out {watch_3d_coup_out}')
+        print(f'3d coupling in  {watch_3d_coup_in}')
+        print(f'io              {watch_io}')
+
+    watch_simulation.end()
+
+    print(f'elapsed simulation time: {watch_simulation.average()}')
 
 
 if __name__ == '__main__':

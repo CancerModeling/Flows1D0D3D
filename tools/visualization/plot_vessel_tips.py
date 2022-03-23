@@ -44,6 +44,8 @@ if __name__ == '__main__':
     parser.add_argument('--vessel-by-edge-id', type=int, help='The edge id of the vessel tip to plot.', required=True)
     parser.add_argument('--t-start', type=float, help='Start point when to plot', default=0.)
     parser.add_argument('--t-stop', type=float, help='Start point when to plot', required=False)
+    parser.add_argument('--show-p', help='plot the pressure p', action='store_true')
+    parser.add_argument('--show-q', help='plot the flow q', action='store_true')
     parser.add_argument('--dofs', type=int, nargs='+',  help='A list of dofs to observer.', default=[-1])
 
     args = parser.parse_args()
@@ -64,8 +66,8 @@ if __name__ == '__main__':
 
     show_Q_total = False
     show_N_total = False 
-    show_p = True 
-    show_Q = False 
+    show_p = args.show_p 
+    show_Q = args.show_q 
     show_V = False 
     show_c = False 
     show_N = False 

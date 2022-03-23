@@ -225,7 +225,7 @@ int main(int argc, char *argv[]) {
     const auto elapsed_ms = std::chrono::duration_cast<std::chrono::microseconds>(end_t - begin_t).count();
     std::cout << "time = " << elapsed_ms * 1e-6 << " s" << std::endl;
 
-    std::cout << "total time flow solver = " << flow_solution_time << ", average = " << flow_solution_time / num_iteration << std::endl;
+    std::cout << "total time flow solver = " << flow_solution_time << ", average = " << flow_solution_time / num_iteration << ", iteration = " << num_iteration << std::endl;
   }
 
   CHKERRQ(PetscFinalize());

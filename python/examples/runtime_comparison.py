@@ -45,31 +45,27 @@ if __name__ == '__main__':
 
     num_samples = 2
 
-    # log_taus = [6, 5, 4, 3]
-
-    #log_taus = [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
     log_taus = [16, 14, 12, 10, 8, 6, 4, 3]
 
     taus = [1/2**k for k in log_taus]
 
-    elapsed_time_fully_coupled = np.min([run(16, True) for i in range(num_samples)])
-    print(f'elapsed_time_fully_coupled {elapsed_time_fully_coupled}')
+    #elapsed_time_fully_coupled = np.min([run(16, True) for i in range(num_samples)])
+    #print(f'elapsed_time_fully_coupled {elapsed_time_fully_coupled}')
 
-    # elapsed_times = [135.19850397109985, 102.90438175201416, 95.01434254646301, 91.54877495765686, 87.79965162277222, 84.6084852218628, 21.64975118637085, 10.549214601516724]
+    # elapsed_times = []
+    # for log_tau in log_taus:
+    #     elapsed_time = np.min([run(log_tau, False) for i in range(num_samples)])
+    #     elapsed_times.append(elapsed_time)
+    #     print(elapsed_time)
+    # print(elapsed_times)
 
-    elapsed_times = []
-    for log_tau in log_taus:
-        elapsed_time = np.min([run(log_tau, False) for i in range(num_samples)])
-        elapsed_times.append(elapsed_time)
-        print(elapsed_time)
-    print(elapsed_times)
+    elapsed_time_fully_coupled = 264.72977447509766
+    elapsed_times = [149.2980239391327, 59.18277359008789, 29.591812133789062, 19.72035551071167, 14.324291229248047, 11.722833633422852, 10.837181091308594, 10.617775201797485]
 
-    #elapsed_time_fully_coupled = 37
-    #elapsed_times = [17.576059579849243, 8.549134492874146, 3.9048962593078613, 1.300276279449463]
-
-    plt.semilogx(taus, elapsed_time_fully_coupled / np.array(elapsed_times))
-    plt.hlines(1, taus[0], taus[-1])
-    plt.ylabel('speedup')
+    plt.semilogx(taus, elapsed_time_fully_coupled / np.array(elapsed_times), label='breast model')
+    #plt.hlines(1, taus[0], taus[-1], linestyle='--', label='fully coupled model')
+    plt.legend()
+    plt.ylabel('speed up fully coupled model')
     plt.xlabel(r'$\tau$')
     plt.grid(True)
     plt.show()
