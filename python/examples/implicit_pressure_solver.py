@@ -1,8 +1,28 @@
+import random
+from petsc4py import PETSc
 import os
 import numpy as np
 import dolfin as df
 from _utils import setup_subdomains
 from parameters import FlowModelParameters
+
+
+def estimate_coeffs_ca(flow_config, list_vessel_tips, volumes):
+    coeff_ca = []
+    assert len(list_vessel_tips) == len(volumes)
+    for tip, volume in zip(list_vessel_tips, volumes):
+        coeff_ca.append(flow_config.rho_c * 2 ** (tip.level - 1) / tip.R2 / volume)
+    # mean value:
+    return np.array(coeff_ca).mean()
+
+
+def get_volumes(list_vessel_tips, mesh):
+    weights = np.ones(len(list_vessel_tips))
+    points = np.array([[tip.p.x, tip.p.y, tip.p.z] for tip in list_vessel_tips])
+    subdomains, dx = setup_subdomains(mesh, points, weights)
+    volumes = [df.assemble(df.Constant(1) * dx(k)) for k in range(len(list_vessel_tips))]
+    volume = df.assemble(df.Constant(1) * dx)
+    return volumes, volume
 
 
 class ImplicitPressureSolver:
@@ -14,6 +34,8 @@ class ImplicitPressureSolver:
         self._setup_volumes()
         self._setup_function_spaces()
         self._setup_problem()
+        self._setup_multiplier_dofmap(len(vessel_tip_pressures))
+        self.update_average_pressures()
         self._setup_solver()
         self.file_p_cap = df.File(os.path.join(output_folder, "p_cap.pvd"), "compressed")
         self.file_p_tis = df.File(os.path.join(output_folder, "p_tis.pvd"), "compressed")
@@ -93,8 +115,6 @@ class ImplicitPressureSolver:
         L_ct = self.flow_config.L_ct
         S_ct = self.flow_config.S_ct
 
-        self.update_average_pressures()
-
         J = 0
         J += df.inner(df.Constant(rho_c * K_c / mu_c) * df.grad(phi_c), df.grad(psi_c)) * df.dx
         J += df.inner(df.Constant(rho_t * K_t / mu_t) * df.grad(phi_t), df.grad(psi_t)) * df.dx
@@ -125,13 +145,19 @@ class ImplicitPressureSolver:
         P = 0
         P += df.inner(df.Constant(rho_c * K_c / mu_c) * df.grad(phi_c), df.grad(psi_c)) * df.dx
         P += df.inner(df.Constant(rho_t * K_t / mu_t) * df.grad(phi_t), df.grad(psi_t)) * df.dx
+        # cv:
+        P -= df.Constant(rho_c * L_cv) * (-phi_c) * psi_c * self.dx
+        # ct:
         P -= df.Constant(rho_t * L_ct * S_ct) * (-phi_c) * psi_c * self.dx
+        # tc:
         P -= df.Constant(rho_t * L_ct * S_ct) * (-phi_t) * psi_t * self.dx
+        # tl:
         P -= df.Constant(rho_t * L_tl) * (- phi_t) * psi_t * self.dx
         P += df.Constant(0) * psi_t * df.dx
         for k in range(len(self.pressures)):
             alpha = df.Constant(coeff_ca[k] + rho_c * L_cv)
             P += - alpha * llambda[k] * mu[k] * self.dx(k)
+            #P += llambda[k] * mu[k] * self.dx(k)
 
         self.J = J
         self.P = P
@@ -176,15 +202,43 @@ class ImplicitPressureSolver:
     def _setup_solver(self):
         self.A, self.b = df.assemble_system(df.lhs(self.J), df.rhs(self.J), self.bcs)
         self.P, _ = df.assemble_system(df.lhs(self.P), df.rhs(self.P), self.bcs)
-        self.solver = df.KrylovSolver('gmres', 'amg')
-        self.solver.parameters['monitor_convergence'] = True
+
+        solver = df.PETScKrylovSolver()
+        prefix = f'pressure_solver{random.randint(0,10000)}_'
+        solver.set_options_prefix(prefix)
+        df.PETScOptions.set(prefix+'ksp_type', 'gmres')
+        df.PETScOptions.set(prefix+'pc_type', 'fieldsplit')
+        df.PETScOptions.set(prefix+'pc_fieldsplit_type', 'additive')
+        df.PETScOptions.set(prefix+'fieldsplit_0_ksp_type', 'richardson')
+        df.PETScOptions.set(prefix+'fieldsplit_0_pc_type', 'gamg')
+        df.PETScOptions.set(prefix+'fieldsplit_0_ksp_max_it', 4)
+        df.PETScOptions.set(prefix+'fieldsplit_1_ksp_type', 'richardson')
+        df.PETScOptions.set(prefix+'fieldsplit_1_pc_type', 'gamg')
+        df.PETScOptions.set(prefix+'fieldsplit_1_ksp_max_it', 4)
+        for i in range(2, self.V.num_sub_spaces()):
+            df.PETScOptions.set(prefix+f'fieldsplit_{i}_pc_type', 'jacobi')
+            df.PETScOptions.set(prefix+f'fieldsplit_{i}_ksp_max_it', 1)
+        solver.set_from_options()
+
+        pc = solver.ksp().getPC()
+        fields = [(f'{i}', PETSc.IS().createGeneral(self.V.sub(i).dofmap().dofs())) for i in range(self.V.num_sub_spaces())]
+        pc.setFieldSplitIS(*fields)
+
+        self.solver = solver
+        #self.solver = df.PETScKrylovSolver('gmres', 'petsc_amg')
+
+        #df.PETScOptions.clear()
+        self.solver.set_reuse_preconditioner(True)
+        # self.solver = df.KrylovSolver('gmres', 'jacobi')
+        # self.solver = df.KrylovSolver('gmres', 'ilu')
+        # self.solver.parameters['monitor_convergence'] = True
         self.solver.parameters['nonzero_initial_guess'] = True
         self.solver.parameters['absolute_tolerance'] = 1e-6
         self.solver.parameters['relative_tolerance'] = 1e-6
         #self.solver.parameters['maximum_iterations'] = 10000
-        # self.solver = df.KrylovSolver('gmres', 'jacobi')
         self.solver.set_operators(self.A, self.P)
-        #self.solver.set_operator(A)
+        #self.solver.set_operator(self.A)
+
 
     def solve(self):
         system_assembler = df.SystemAssembler(df.lhs(self.J), df.rhs(self.J), self.bcs)
@@ -214,13 +268,44 @@ class ImplicitPressureSolver:
             new_data[int(self.point_to_vertex_id[k])] = average_pressure
         return new_data
 
+    def _setup_multiplier_dofmap(self, num_zones):
+        dofs = np.zeros(num_zones, dtype=np.int32)
+        owner = [False] * num_zones
+        for k in range(num_zones):
+            ldofs = self.V.sub(self.first_multiplier_index+k).dofmap().dofs()
+            if len(ldofs) > 0:
+                dofs[k] = ldofs[0]
+                owner[k] = True
+        self.multiplier_dofmap = self.current.vector().mpi_comm().allreduce(dofs)
+        self.multiplier_owner = owner
+
     def get_pressures_from_multiplier(self):
         new_data = {}
-        # trial_functions = df.TrialFunctions(self.V)
-        # llambda = trial_functions[self.first_multiplier_index:]
+
+        #dofs = []
+        #for k in range(len(self.pressures)):
+        #    print(df.MPI.rank(df.MPI.comm_world), k, self.V.sub(self.first_multiplier_index+k).dofmap().dofs())
+        #    dofs += self.V.sub(self.first_multiplier_index+k).dofmap().dofs()
+
+        self.current.vector().update_ghost_values()
+        #print(f'rank = {df.MPI.rank(df.MPI.comm_world)}, multiplier dofmap = {self.multiplier_dofmap}')
+        average_pressures = self.current.vector().vec().getValues(self.multiplier_dofmap)
+        average_pressures[not self.multiplier_owner] = 0
+        average_pressures = self.current.vector().mpi_comm().allreduce(average_pressures)
+        #print(f'rank = {df.MPI.rank(df.MPI.comm_world)}, average pressures = {average_pressures}')
+
+        #functions = self.current.split(True)
+        #average_pressures = np.zeros(len(self.pressures))
+        #for k in range(len(self.pressures)):
+        #    if functions[self.first_multiplier_index+k].vector().local_size() > 0:
+        #        average_pressures[k] = functions[self.first_multiplier_index+k].vector()[0]
+        #average_pressures = self.current.vector().mpi_comm().allreduce(average_pressures)
+
         for k in range(len(self.pressures)):
-            #average_pressure = self.current.split()[self.first_multiplier_index+k].vector().get_local()[0]
-            average_pressure = df.assemble(self.current.split()[self.first_multiplier_index+k] * self.dx)/self.volume
+            average_pressure = average_pressures[k]
+            #average_pressure2 = df.assemble(self.current.split()[self.first_multiplier_index+k] * self.dx)/self.volume
+            #print(f'rank = {df.MPI.rank(df.MPI.comm_world)}, error = {np.abs(average_pressure2 - average_pressure)}')
+            # average_pressure = df.assemble(self.current.split()[self.first_multiplier_index+k] * self.dx)/self.volume
             new_data[int(self.point_to_vertex_id[k])] = average_pressure
         return new_data
 

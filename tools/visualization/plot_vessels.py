@@ -15,6 +15,9 @@ parser.add_argument('--no-a', help='do not output A', action='store_true')
 parser.add_argument('--no-q', help='do not output Q', action='store_true')
 parser.add_argument('--no-p', help='do not output p', action='store_true')
 parser.add_argument('--no-c', help='do not output c', action='store_true')
+parser.add_argument('--no-legend', help='remove the legend from the plots', action='store_true')
+parser.add_argument('--positive-q', help='reorients the flow q s.t. it is always positive', action='store_true')
+parser.add_argument('--narrow', help='should a very narrow layout be used?', action='store_true')
 parser.add_argument('--use-shifted-vessel-numbers', help='shifts the vessel index by one, to get intuitive labels for the CoW', action='store_true')
 
 args = parser.parse_args()
@@ -49,7 +52,7 @@ if not args.no_c and 'c' in vessel_info['filepaths']:
     num_rows += 1
 
 
-fig = plt.figure()
+fig = plt.figure(figsize=(4,2 * len(args.vessels))) if args.narrow else plt.figure()
 fig.tight_layout()
 axes = fig.subplots(num_rows, len(args.vessels), sharey='row', sharex='col', squeeze=False)
 
@@ -64,6 +67,9 @@ for idx, vessel_id in enumerate(args.vessels):
     q = np.loadtxt(path, delimiter=',')
     q = q[:]
     q = q[:, int((q.shape[1]-1)*position)]
+    
+    if args.positive_q and q.mean() < 0:
+        q *= -1
 
     if ('a' in vessel_info['filepaths']):
         path = os.path.join(directory, vessel_info['filepaths']['a'])
@@ -122,29 +128,45 @@ for idx, vessel_id in enumerate(args.vessels):
     row_idx = 0
     if not args.no_a and 'a' in vessel_info['filepaths']:
         ax = axes[row_idx, idx]
-        ax.plot(t, a, label='A_{}'.format(vessel_id))
-        ax.legend()
-        ax.grid(True)
-        row_idx += 1
-    if not args.no_q:
-        ax = axes[row_idx, idx]
-        ax.plot(t, q, label='q ({})'.format(vessel_id))
-        ax.legend()
+        label = None if args.no_legend else r'$A_{' + str(vessel_id) + '}$'
+        ax.plot(t, a, label=label)
+        if not args.no_legend:
+            ax.legend()
         ax.grid(True)
         row_idx += 1
     if not args.no_p:
         ax = axes[row_idx, idx]
-        ax.plot(t, p, label='p ({})'.format(vessel_id))
-        ax.legend()
+        label = None if args.no_legend else r'$p_{' + str(vessel_id) + '}$'
+        ax.plot(t, p, label=label)
+        if not args.no_legend:
+            ax.legend()
         ax.grid(True)
+        if idx == 0:
+            ax.set_ylabel('p [mmHg]')
+        row_idx += 1
+    if not args.no_q:
+        ax = axes[row_idx, idx]
+        label = None if args.no_legend else r'$q_{' + str(vessel_id) + '}$'
+        ax.plot(t, q, label=label)
+        if not args.no_legend:
+            ax.legend()
+        ax.grid(True)
+        if idx == 0:
+            ax.set_ylabel('q $[cm^3/s]$')
         row_idx += 1
     if not args.no_c and 'c' in vessel_info['filepaths']:
         ax = axes[row_idx, idx]
         print(c/a)
-        ax.plot(t, c/a, label='$\Gamma_{{{}}}/A_{{{}}}$'.format(vessel_id, vessel_id))
-        ax.legend()
+        label = None if args.no_legend else r'$\Gamma_{' + str(vessel_id) + r'}/A_{' + str(vessel_id) + r'}$'
+        ax.plot(t, c/a, label=label) 
+        if not args.no_legend:
+            ax.legend()
         ax.grid(True)
         row_idx += 1
 
+for idx, vessel_id in enumerate(args.vessels):
+    axes[-1, idx].set_xlabel('t [s]')
+
+plt.tight_layout()
 plt.show()
 

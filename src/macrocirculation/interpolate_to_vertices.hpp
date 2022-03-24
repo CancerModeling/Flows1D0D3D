@@ -50,15 +50,20 @@ void interpolate_transformation(const MPI_Comm comm,
                                 std::vector<Point> &points,
                                 std::vector<double> &interpolated);
 
+
 void add_discontinuous_points(const std::vector<Point> &embedded_points, std::vector<Point> &points);
 
 void fill_with_vessel_id(const MPI_Comm comm, const GraphStorage &graph, std::vector<Point> &points, std::vector<double> &interpolated);
+
+void fill_with_vertex_id(const MPI_Comm comm, const GraphStorage &graph, std::vector<Point> &points, std::vector<double> &interpolated);
 
 void fill_with_vessel_A0(const MPI_Comm comm, const GraphStorage &graph, std::vector<Point> &points, std::vector<double> &interpolated);
 
 void fill_with_radius(const MPI_Comm comm, const GraphStorage &graph, std::vector<Point> &points, std::vector<double> &interpolated);
 
 void fill_with_edge_parameter(const MPI_Comm comm, const GraphStorage &graph, std::function<double(const Edge &)> extractor, std::vector<Point> &points, std::vector<double> &interpolated);
+
+void fill_with_edge_parameter(const MPI_Comm comm, const GraphStorage &graph, const std::function<double(const Edge &, size_t micro_edge_id)>& extractor, std::vector<Point> &points, std::vector<double> &interpolated);
 
 } // namespace macrocirculation
 
