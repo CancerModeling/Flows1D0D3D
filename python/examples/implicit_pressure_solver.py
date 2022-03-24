@@ -7,6 +7,24 @@ from _utils import setup_subdomains
 from parameters import FlowModelParameters
 
 
+def estimate_coeffs_ca(flow_config, list_vessel_tips, volumes):
+    coeff_ca = []
+    assert len(list_vessel_tips) == len(volumes)
+    for tip, volume in zip(list_vessel_tips, volumes):
+        coeff_ca.append(flow_config.rho_c * 2 ** (tip.level - 1) / tip.R2 / volume)
+    # mean value:
+    return np.array(coeff_ca).mean()
+
+
+def get_volumes(list_vessel_tips, mesh):
+    weights = np.ones(len(list_vessel_tips))
+    points = np.array([[tip.p.x, tip.p.y, tip.p.z] for tip in list_vessel_tips])
+    subdomains, dx = setup_subdomains(mesh, points, weights)
+    volumes = [df.assemble(df.Constant(1) * dx(k)) for k in range(len(list_vessel_tips))]
+    volume = df.assemble(df.Constant(1) * dx)
+    return volumes, volume
+
+
 class ImplicitPressureSolver:
     def __init__(self, mesh, output_folder, vessel_tip_pressures, flow_config=FlowModelParameters()):
         self.mesh = mesh

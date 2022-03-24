@@ -6,7 +6,7 @@ import flows1d0d3d as f
 import dolfin as df
 import numpy as np
 from _utils import read_mesh, open_input_pressures, AverageQuantityWriter, StopWatch
-from implicit_pressure_solver import ImplicitPressureSolver
+from implicit_pressure_solver import ImplicitPressureSolver, estimate_coeffs_ca, get_volumes
 from parameters import FlowModelParameters
 
 
@@ -81,12 +81,17 @@ def run():
 
     q_writer = AverageQuantityWriter(vessel_tip_pressures)
 
-    flow_config = FlowModelParameters()
-    if gid == 2:
-        flow_config.L_cv = 2.5e-9
-        flow_config.L_tl = 5e-9
-
     mesh = read_mesh(mesh_3d_filename)
+    volumes, volume = get_volumes(vessel_tip_pressures, mesh)
+
+    flow_config = FlowModelParameters()
+    factor = estimate_coeffs_ca(flow_config, vessel_tip_pressures, volumes) / 1.05214002e-06
+    print(f'factor {factor}')
+    flow_config.L_cv *= factor
+    flow_config.L_ct *= factor
+    flow_config.L_tl *= factor
+    print(f'L_cv = {flow_config.L_cv}, L_ct = {flow_config.L_ct}, L_tl = {flow_config.L_tl}')
+
     solver3d = ImplicitPressureSolver(mesh, output_folder, vessel_tip_pressures, flow_config)
     df.assign(solver3d.current.sub(0), df.interpolate(df.Constant(33 * 1333), solver3d.V.sub(0).collapse()))
     df.assign(solver3d.current.sub(1), df.interpolate(df.Constant(13 * 1333), solver3d.V.sub(1).collapse()))

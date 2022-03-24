@@ -30,10 +30,10 @@ class FlowModelParameters:
     #L_cv = 5e-9  # guess
     #L_cv = 2.5e-9  # guess
     #L_cv = 1e-8  # guess
-    L_cv = 5e-9  # guess
+    L_cv = 1e-8  # guess
     L_ct = 1e-9  # guess
     #L_tl = 1e-8  # guess
-    L_tl = 5e-9  # guess
+    L_tl = 1e-8  # guess
 
     sigma = 0.  # ?
     pi_int = 6.6e3
