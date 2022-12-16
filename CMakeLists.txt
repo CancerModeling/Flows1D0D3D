@@ -158,7 +158,7 @@ if (${Enable_Tests})
         FetchContent_Declare(
                 catch2_content
                 GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-                GIT_TAG v2.13.1
+                GIT_TAG v2.13.9
         )
         FetchContent_MakeAvailable(catch2_content)
     endif()
