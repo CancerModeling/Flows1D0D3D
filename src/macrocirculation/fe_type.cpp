@@ -9,6 +9,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <stdexcept>
 
 namespace macrocirculation {
 
