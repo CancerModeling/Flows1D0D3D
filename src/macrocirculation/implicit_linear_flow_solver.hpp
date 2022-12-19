@@ -31,8 +31,8 @@ class EdgeBoundaryEvaluator;
 void assemble_mass(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, PetscVec &mass_vec);
 
 void assemble_mass(MPI_Comm comm,
-                   const std::vector< std::shared_ptr< GraphStorage > > &graph,
-                   const std::vector< std::shared_ptr< DofMap  > > &dof_map,
+                   const std::vector<std::shared_ptr<GraphStorage>> &graph,
+                   const std::vector<std::shared_ptr<DofMap>> &dof_map,
                    PetscVec &mass_vec);
 
 // TODO: Move somewhere else!!!
@@ -66,7 +66,7 @@ public:
   void use_pc_jacobi();
 
   /*! @brief Requests the Jacobi preconditioner for the linear solver, which yields (more) reproducible results for unit-testing. */
-  void use_named_solver(const std::string & name);
+  void use_named_solver(const std::string &name);
 
   /*! @brief Sets the initial constant value of p and q. */
   void set_initial_value(double p, double q);
@@ -98,13 +98,16 @@ public:
   /*! @brief Returns the current p and q values at a given vertex. */
   void get_1d_pq_values_at_vertex(const Vertex &v, double &p, double &q) const;
 
+  /*! @brief Returns the current p and q values at a given vertex. */
+  void get_1d_pq_values_at_vertex(const Vertex &v, const Edge &e, double &p, double &q) const;
+
   /*! @brief Evaluates p and q of the current solution on the edge e parametrized on [0, 1] at \f$ s \in [0,1] \f$. */
   void evaluate_1d_pq_values(const Edge &e, double s, double &p, double &q) const;
 
   /*! @brief Returns the degree of the finite element basis functions. */
   size_t get_degree() const;
-  
-  PetscKsp& get_solver();
+
+  PetscKsp &get_solver();
 
 private:
   void assemble_matrix_cells(double tau);
@@ -153,10 +156,10 @@ private:
   std::shared_ptr<PetscKsp> linear_solver;
 };
 
-void assemble_rhs_inflow(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, double t, size_t p_component, size_t q_component, PetscVec& rhs);
-void assemble_matrix_inflow(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, size_t p_component, size_t q_component, PetscMat& A);
-void assemble_matrix_inner_boundaries(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, size_t p_component, size_t q_component, PetscMat& A);
-void assemble_matrix_free_outflow(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, size_t p_component, size_t q_component, PetscMat& A);
+void assemble_rhs_inflow(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, double tau, double t, size_t p_component, size_t q_component, PetscVec &rhs);
+void assemble_matrix_inflow(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, double tau, size_t p_component, size_t q_component, PetscMat &A);
+void assemble_matrix_inner_boundaries(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, double tau, size_t p_component, size_t q_component, PetscMat &A);
+void assemble_matrix_free_outflow(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, double tau, size_t p_component, size_t q_component, PetscMat &A);
 
 } // namespace macrocirculation
 

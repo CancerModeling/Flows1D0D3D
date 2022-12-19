@@ -84,6 +84,10 @@ target_link_libraries(${ProjectName}ExplicitImplicitWithTransport cxxopts)
 add_executable(${ProjectName}Transport transport_test.cpp)
 target_link_libraries(${ProjectName}Transport ${ProjectLib})
 
+add_executable(${ProjectName}SimpleLinearizedSolver simple_linearized_solver.cpp)
+target_link_libraries(${ProjectName}SimpleLinearizedSolver ${ProjectLib})
+target_link_libraries(${ProjectName}SimpleLinearizedSolver PkgConfig::PETSC)
+
 foreach (TargetName ${ProjectName}NonlinearFlowLine
         ${ProjectName}NonlinearFlowBifurcation
         ${ProjectName}ConvergenceStudy
