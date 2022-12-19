@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
       solver.solve();
 
       // output every 100
-      if (i % 100 == 0) {
+      if (i % 10 == 0) {
         // extract coupling data at aneurysm inflow
         auto in = solver.get_result(mc::SimpleLinearizedSolver::Outlet::in);
         std::cout << i << "  in: p = " << in.p << ", a = " << in.a << ", q = " << in.q << std::endl;

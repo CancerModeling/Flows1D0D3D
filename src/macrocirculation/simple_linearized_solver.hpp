@@ -30,7 +30,7 @@ public:
     double a;
     /*! @brief Pressure in [dyne / cm^2]. */
     double p;
-    /*! Flow in [cm^2 / s]. */
+    /*! Flow in [cm^3 / s]. */
     double q;
   };
 
