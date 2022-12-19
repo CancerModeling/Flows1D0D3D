@@ -147,8 +147,7 @@ ImplicitLinearFlowSolver::ImplicitLinearFlowSolver(MPI_Comm comm, std::shared_pt
       rhs(std::make_shared<PetscVec>("rhs", *d_dof_map)),
       A(std::make_shared<PetscMat>("A", *d_dof_map)),
       mass(std::make_shared<PetscVec>("mass", *d_dof_map)),
-      linear_solver(PetscKsp::create_with_pc_ilu(*A))
-{
+      linear_solver(PetscKsp::create_with_pc_ilu(*A)) {
   assemble_mass(d_comm, *d_graph, *d_dof_map, *mass);
   u->zero();
   rhs->zero();
@@ -294,7 +293,7 @@ void ImplicitLinearFlowSolver::assemble_matrix_inner_boundaries(double tau) {
   }
 }
 
-void assemble_matrix_inner_boundaries(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, size_t p_component, size_t q_component, PetscMat& A) {
+void assemble_matrix_inner_boundaries(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, double tau, size_t p_component, size_t q_component, PetscMat &A) {
   for (const auto &e_id : graph.get_active_edge_ids(mpi::rank(comm))) {
     const auto macro_edge = graph.get_edge(e_id);
 
@@ -410,7 +409,7 @@ void ImplicitLinearFlowSolver::assemble_rhs_inflow(double tau, double t) {
   }
 }
 
-void assemble_rhs_inflow(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, double t, size_t p_component, size_t q_component, PetscVec& rhs) {
+void assemble_rhs_inflow(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, double tau, double t, size_t p_component, size_t q_component, PetscVec &rhs) {
   for (auto v_idx : graph.get_active_vertex_ids(mpi::rank(comm))) {
     auto &vertex = *graph.get_vertex(v_idx);
     if (!vertex.is_inflow_with_fixed_flow() && !vertex.is_inflow_with_fixed_pressure())
@@ -486,7 +485,7 @@ void ImplicitLinearFlowSolver::assemble_matrix_inflow(double tau) {
   }
 }
 
-void assemble_matrix_inflow(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, size_t p_component, size_t q_component, PetscMat& A) {
+void assemble_matrix_inflow(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, double tau, size_t p_component, size_t q_component, PetscMat &A) {
   // fixed inflow condition
   for (auto v_idx : graph.get_active_vertex_ids(mpi::rank(comm))) {
     auto &vertex = *graph.get_vertex(v_idx);
@@ -548,7 +547,7 @@ void ImplicitLinearFlowSolver::assemble_matrix_free_outflow(double tau) {
   }
 }
 
-void assemble_matrix_free_outflow(MPI_Comm comm, const GraphStorage& graph, const DofMap& dof_map, double tau, size_t p_component, size_t q_component, PetscMat& A) {
+void assemble_matrix_free_outflow(MPI_Comm comm, const GraphStorage &graph, const DofMap &dof_map, double tau, size_t p_component, size_t q_component, PetscMat &A) {
   for (auto v_idx : graph.get_active_vertex_ids(mpi::rank(comm))) {
     auto &vertex = *graph.get_vertex(v_idx);
     if (!vertex.is_free_outflow())
@@ -564,8 +563,8 @@ void assemble_matrix_free_outflow(MPI_Comm comm, const GraphStorage& graph, cons
     local_dof_map.dof_indices(micro_edge_idx, p_component, dof_indices_p);
     local_dof_map.dof_indices(micro_edge_idx, q_component, dof_indices_q);
     auto pattern = neighbor_edge.is_pointing_to(v_idx)
-                   ? create_boundary(local_dof_map, BoundaryPointType::Right, BoundaryPointType::Right)
-                   : create_boundary(local_dof_map, BoundaryPointType::Left, BoundaryPointType::Left);
+                     ? create_boundary(local_dof_map, BoundaryPointType::Right, BoundaryPointType::Right)
+                     : create_boundary(local_dof_map, BoundaryPointType::Left, BoundaryPointType::Left);
     Eigen::MatrixXd u_pp = tau * (1. / C) * (0.5 * std::sqrt(C / L)) * pattern;
     Eigen::MatrixXd u_pq = tau * (1. / C) * sigma * (0.5) * pattern;
     Eigen::MatrixXd u_qp = tau * (1. / L) * sigma * (0.5) * pattern;
@@ -576,7 +575,6 @@ void assemble_matrix_free_outflow(MPI_Comm comm, const GraphStorage& graph, cons
     A.add(dof_indices_q, dof_indices_q, u_qq);
   }
 }
-
 
 
 void ImplicitLinearFlowSolver::assemble_matrix_nfurcations(double tau) {
@@ -1059,6 +1057,10 @@ void ImplicitLinearFlowSolver::get_1d_pq_values_at_vertex(const Vertex &v, doubl
 
   const auto &edge = *d_graph->get_edge(e_id);
 
+  get_1d_pq_values_at_vertex(v, edge, p, q);
+}
+
+void ImplicitLinearFlowSolver::get_1d_pq_values_at_vertex(const Vertex &v, const Edge &edge, double &p, double &q) const {
   const auto ldofmap = d_dof_map->get_local_dof_map(edge);
 
   QuadratureFormula qf = create_gauss4();
