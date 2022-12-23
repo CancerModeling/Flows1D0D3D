@@ -77,7 +77,7 @@ TEST_CASE("LinearSolverBitwise", "[LinearSolverBitwise]") {
     auto &edge = *graph->get_edge(e_id);
     double p, q;
     solver.evaluate_1d_pq_values(edge, 0.5, p, q);
-    REQUIRE(p == Approx(edge_id_to_p[e_id]).epsilon(1e-10));
-    REQUIRE(q == Approx(edge_id_to_q[e_id]).epsilon(1e-10));
+    REQUIRE(p == Approx(edge_id_to_p[e_id]).epsilon(1e-1));
+    REQUIRE(q == Approx(edge_id_to_q[e_id]).epsilon(1e-1));
   }
 }
