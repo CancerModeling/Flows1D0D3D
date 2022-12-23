@@ -853,11 +853,6 @@ void ImplicitLinearFlowSolver::assemble_matrix_0d_model(double tau) {
       const auto R1 = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().resistance - R0 : vertex.get_vessel_tree_data().resistances[0];
       const auto C_tilde = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().compliance : vertex.get_vessel_tree_data().capacitances[0];
 
-      const auto &data = vertex.get_vessel_tree_data();
-      const auto &R = data.resistances;
-      const auto &C_tilde2 = data.capacitances;
-      const auto n = static_cast<double>(data.furcation_number);
-
       const double alpha = sigma / (std::sqrt(C / L) + 1. / R0);
 
       Eigen::MatrixXd u_qp = (+sigma * tau / L) * alpha * (sigma * std::sqrt(C / L)) * E;
@@ -867,6 +862,8 @@ void ImplicitLinearFlowSolver::assemble_matrix_0d_model(double tau) {
       Eigen::MatrixXd u_pp = (+sigma * tau / C) * sigma * (1. / R0 * alpha * sigma * std::sqrt(C / L)) * E;
       Eigen::MatrixXd u_pq = (+sigma * tau / C) * sigma * (1. / R0 * alpha) * E;
       Eigen::MatrixXd u_p_ptilde = (+sigma * tau / C) * sigma * (1. / R0 * (alpha * sigma / R0 - 1)) * e;
+
+      const auto n = vertex.is_vessel_tree_outflow() ? static_cast<double>(vertex.get_vessel_tree_data().furcation_number) : 1;
 
       Eigen::MatrixXd u_p0tilde_p0tilde(1, 1);
       u_p0tilde_p0tilde << 1. + tau / (n * R0 * C_tilde) + tau / R1 / C_tilde - tau / (n * R0 * C_tilde) * alpha * sigma / R0;
@@ -887,6 +884,10 @@ void ImplicitLinearFlowSolver::assemble_matrix_0d_model(double tau) {
       A->add({dof_indices_ptilde[0]}, {dof_indices_ptilde[0]}, u_p0tilde_p0tilde);
 
       if (vertex.is_vessel_tree_outflow()) {
+        const auto &data = vertex.get_vessel_tree_data();
+        const auto &R = data.resistances;
+        const auto &C_tilde2 = data.capacitances;
+
         for (size_t k = 1; k < R.size(); k += 1) {
           Eigen::MatrixXd mat_k_km1(1, 1);
           mat_k_km1 << -tau / (n * R[k - 1] * C_tilde2[k]);
