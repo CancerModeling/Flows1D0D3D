@@ -132,14 +132,7 @@ endif ()
 # ****************************************************************************
 include_directories(${MPI_INCLUDE_PATH})
 
-# external headeronly dependencies
-include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/gmm")
-include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/aixlog")
-
-#file(GLOB gmm_SRC CONFIGURE_DEPENDS external/gmm/*.h)
-#add_library(lmgmm ${gmm_SRC})
 add_library(lmgmm INTERFACE)
-# target_include_directories(lmgmm INTERFACE ${gmm_SRC})
 target_include_directories(lmgmm INTERFACE external/gmm)
 
 # ****************************************************************************
