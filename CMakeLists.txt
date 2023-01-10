@@ -37,13 +37,13 @@ if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
 endif ()
 
 # set flag for information dump during cmake build
-set(Enable_CMAKE_Debug_Build TRUE CACHE BOOL "Output important information during cmake for isolating build issues")
+set(LibMacrocirculation_Enable_CMAKE_Debug_Build TRUE CACHE BOOL "Output important information during cmake for isolating build issues")
 
 # set flag for documentation
-set(Enable_Documentation TRUE CACHE BOOL "Generate documentation")
+set(LibMacrocirculation_Enable_Documentation TRUE CACHE BOOL "Generate documentation")
 
 # set flag that enables or disables tests
-set(Enable_Tests TRUE CACHE BOOL "Build test executibles and perform tests")
+set(LibMacrocirculation_Enable_Tests TRUE CACHE BOOL "Build test executibles and perform tests")
 
 # ****************************************************************************
 # Package search
@@ -118,7 +118,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG -std=c++11 -stdlib=libc++")
 endif ()
 
-if (${Enable_CMAKE_Debug_Build})
+if (${LibMacrocirculation_Enable_CMAKE_Debug_Build})
     message("Build type: ${CMAKE_BUILD_TYPE}")
     message("CMAKE_CXX_COMPILER_ID = ${CMAKE_CXX_COMPILER_ID}")
     message("CMAKE_EXE_LINKER_FLAGS = ${CMAKE_EXE_LINKER_FLAGS}")
@@ -138,14 +138,14 @@ target_include_directories(lmgmm INTERFACE external/gmm)
 # ****************************************************************************
 # Add subfolders
 # ****************************************************************************
-if (${Enable_CMAKE_Debug_Build})
+if (${LibMacrocirculation_Enable_CMAKE_Debug_Build})
     message("LIBTG_BUILD_FLAG: ${LIBTG_BUILD_FLAG}")
 endif ()
 
 add_subdirectory(src)
 
-set(Enable_Apps ON CACHE BOOL "Includes the apps in our build process")
-if (${Enable_Apps})
+set(LibMacrocirculation_Enable_Apps ON CACHE BOOL "Includes the apps in our build process")
+if (${LibMacrocirculation_Enable_Apps})
     add_subdirectory(apps)
 endif()
 
@@ -153,10 +153,10 @@ endif()
 # ****************************************************************************
 # Testing
 # ****************************************************************************
-if (${Enable_CMAKE_Debug_Build})
-    message("Enable_Tests = ${Enable_Tests}")
+if (${LibMacrocirculation_Enable_CMAKE_Debug_Build})
+    message("Enable_Tests = ${LibMacrocirculation_Enable_Tests}")
 endif ()
-if (${Enable_Tests})
+if (${LibMacrocirculation_Enable_Tests})
     enable_testing()
 
     add_subdirectory(tests)
@@ -176,16 +176,16 @@ if (${Enable_Tests})
 endif ()
 
 # documentation
-if (${Enable_Documentation})
-    if (${Enable_CMAKE_Debug_Build})
+if (${LibMacrocirculation_Enable_Documentation})
+    if (${LibMacrocirculation_Enable_CMAKE_Debug_Build})
         message("Adding Documentation ")
     endif ()
     add_subdirectory(docs)
 endif ()
 
 # python bindings
-set(Enable_Python_Bindings OFF CACHE BOOL "Adds the python bindings to our build process")
-if (${Enable_Python_Bindings})
+set(LibMacrocirculation_Enable_Python_Bindings OFF CACHE BOOL "Adds the python bindings to our build process")
+if (${LibMacrocirculation_Enable_Python_Bindings})
     add_subdirectory(${CMAKE_SOURCE_DIR}/external/pybind11)
     add_subdirectory(${CMAKE_SOURCE_DIR}/python)
 endif ()
