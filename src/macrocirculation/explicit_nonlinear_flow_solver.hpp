@@ -11,7 +11,7 @@
 #include <cassert>
 #include <cmath>
 #include <functional>
-#include <gmm.h>
+#include "gmm.h"
 #include <memory>
 #include <mpi.h>
 #include <vector>

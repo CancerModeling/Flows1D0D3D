@@ -13,9 +13,10 @@ AUX_SOURCE_DIRECTORY(./macrocirculation/petsc SOURCES)
 
 add_library(${ProjectLib} ${SOURCES})
 set_target_properties(${ProjectLib} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(${ProjectLib} PUBLIC ${MPI_CXX_LIBRARIES}
-                                           ${CMAKE_THREAD_LIBS_INIT}
+target_link_libraries(${ProjectLib} PUBLIC ${CMAKE_THREAD_LIBS_INIT}
+                                           lmgmm
                                            PkgConfig::PETSC
+                                           MPI::MPI_CXX
                                            Eigen3::Eigen)
 target_include_directories(${ProjectLib} INTERFACE ./)
 target_link_libraries(${ProjectLib} PRIVATE nlohmann_json::nlohmann_json)

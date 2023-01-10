@@ -9,7 +9,7 @@
 #define TUMORMODELS_VESSEL_FORMULAS_HPP
 
 #include <cmath>
-#include <gmm.h>
+#include "gmm.h"
 #include <utility>
 
 namespace macrocirculation {

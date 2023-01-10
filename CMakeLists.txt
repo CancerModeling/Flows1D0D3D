@@ -56,6 +56,18 @@ find_program(BASH_PROGRAM bash REQUIRED)
 find_package(MPI REQUIRED)
 # add this line only when you are using openmpi which has a different c++ bindings
 add_definitions(-DOMPI_SKIP_MPICXX)
+# for backward compatibility it make sense to add
+# see https://cliutils.gitlab.io/modern-cmake/chapters/packages/MPI.html
+if(NOT TARGET MPI::MPI_CXX)
+    add_library(MPI::MPI_CXX IMPORTED INTERFACE)
+
+    set_property(TARGET MPI::MPI_CXX
+                 PROPERTY INTERFACE_COMPILE_OPTIONS ${MPI_CXX_COMPILE_FLAGS})
+    set_property(TARGET MPI::MPI_CXX
+                 PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${MPI_CXX_INCLUDE_PATH}")
+    set_property(TARGET MPI::MPI_CXX
+                 PROPERTY INTERFACE_LINK_LIBRARIES ${MPI_CXX_LINK_FLAGS} ${MPI_CXX_LIBRARIES})
+endif()
 
 # **** pthreads ****#
 find_package(Threads REQUIRED)
@@ -123,6 +135,12 @@ include_directories(${MPI_INCLUDE_PATH})
 # external headeronly dependencies
 include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/gmm")
 include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/aixlog")
+
+#file(GLOB gmm_SRC CONFIGURE_DEPENDS external/gmm/*.h)
+#add_library(lmgmm ${gmm_SRC})
+add_library(lmgmm INTERFACE)
+# target_include_directories(lmgmm INTERFACE ${gmm_SRC})
+target_include_directories(lmgmm INTERFACE external/gmm)
 
 # ****************************************************************************
 # Add subfolders
