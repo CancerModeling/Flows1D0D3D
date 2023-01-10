@@ -10,7 +10,7 @@
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
 #include "fe_type.hpp"
-#include "gmm.h"
+#include "gmm_legacy_facade.hpp"
 #include "graph_storage.hpp"
 #include "right_hand_side_evaluator.hpp"
 

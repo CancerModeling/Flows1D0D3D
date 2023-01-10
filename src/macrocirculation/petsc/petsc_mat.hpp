@@ -11,7 +11,7 @@
 #include <numeric>
 #include <vector>
 
-#include "gmm.h"
+#include "../gmm_legacy_facade.hpp"
 #include "petsc.h"
 #include <Eigen/Dense>
 #include "petsc_vec.hpp"
