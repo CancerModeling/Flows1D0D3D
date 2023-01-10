@@ -49,12 +49,6 @@ Core dependencies are:
   - [cmake](https://cmake.org/) (3.12 or above) 
   - [petsc](https://github.com/petsc/petsc) (3.13.3 or above)
     * see further below on how to build petsc
-  - [aixlog](https://github.com/badaix/aixlog) (1.2.4)
-    * included as external library in the code
-    * for logging
-  - [fast-cpp-csv-parser](https://github.com/ben-strasser/fast-cpp-csv-parser) (1.2.4)
-    * included as external library in the code
-    * for reading csv file
   - [json](https://github.com/nlohmann/json) (3.7.3)
     * directly pulled using CMake `FetchContent` module
     * for reading json file

@@ -8,7 +8,7 @@
 #include "time_integrators.hpp"
 #include "right_hand_side_evaluator.hpp"
 
-#include "gmm.h"
+#include "gmm_legacy_facade.hpp"
 
 namespace macrocirculation {
 

@@ -37,13 +37,13 @@ if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
 endif ()
 
 # set flag for information dump during cmake build
-set(Enable_CMAKE_Debug_Build TRUE CACHE BOOL "Output important information during cmake for isolating build issues")
+set(LibMacrocirculation_Enable_CMAKE_Debug_Build TRUE CACHE BOOL "Output important information during cmake for isolating build issues")
 
 # set flag for documentation
-set(Enable_Documentation TRUE CACHE BOOL "Generate documentation")
+set(LibMacrocirculation_Enable_Documentation TRUE CACHE BOOL "Generate documentation")
 
 # set flag that enables or disables tests
-set(Enable_Tests TRUE CACHE BOOL "Build test executibles and perform tests")
+set(LibMacrocirculation_Enable_Tests TRUE CACHE BOOL "Build test executibles and perform tests")
 
 # ****************************************************************************
 # Package search
@@ -56,6 +56,18 @@ find_program(BASH_PROGRAM bash REQUIRED)
 find_package(MPI REQUIRED)
 # add this line only when you are using openmpi which has a different c++ bindings
 add_definitions(-DOMPI_SKIP_MPICXX)
+# for backward compatibility it make sense to add
+# see https://cliutils.gitlab.io/modern-cmake/chapters/packages/MPI.html
+if(NOT TARGET MPI::MPI_CXX)
+    add_library(MPI::MPI_CXX IMPORTED INTERFACE)
+
+    set_property(TARGET MPI::MPI_CXX
+                 PROPERTY INTERFACE_COMPILE_OPTIONS ${MPI_CXX_COMPILE_FLAGS})
+    set_property(TARGET MPI::MPI_CXX
+                 PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${MPI_CXX_INCLUDE_PATH}")
+    set_property(TARGET MPI::MPI_CXX
+                 PROPERTY INTERFACE_LINK_LIBRARIES ${MPI_CXX_LINK_FLAGS} ${MPI_CXX_LIBRARIES})
+endif()
 
 # **** pthreads ****#
 find_package(Threads REQUIRED)
@@ -106,7 +118,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DNDEBUG -std=c++11 -stdlib=libc++")
 endif ()
 
-if (${Enable_CMAKE_Debug_Build})
+if (${LibMacrocirculation_Enable_CMAKE_Debug_Build})
     message("Build type: ${CMAKE_BUILD_TYPE}")
     message("CMAKE_CXX_COMPILER_ID = ${CMAKE_CXX_COMPILER_ID}")
     message("CMAKE_EXE_LINKER_FLAGS = ${CMAKE_EXE_LINKER_FLAGS}")
@@ -120,21 +132,20 @@ endif ()
 # ****************************************************************************
 include_directories(${MPI_INCLUDE_PATH})
 
-# external headeronly dependencies
-include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/gmm")
-include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/aixlog")
+add_library(lmgmm INTERFACE)
+target_include_directories(lmgmm INTERFACE external/gmm)
 
 # ****************************************************************************
 # Add subfolders
 # ****************************************************************************
-if (${Enable_CMAKE_Debug_Build})
+if (${LibMacrocirculation_Enable_CMAKE_Debug_Build})
     message("LIBTG_BUILD_FLAG: ${LIBTG_BUILD_FLAG}")
 endif ()
 
 add_subdirectory(src)
 
-set(Enable_Apps ON CACHE BOOL "Includes the apps in our build process")
-if (${Enable_Apps})
+set(LibMacrocirculation_Enable_Apps ON CACHE BOOL "Includes the apps in our build process")
+if (${LibMacrocirculation_Enable_Apps})
     add_subdirectory(apps)
 endif()
 
@@ -142,10 +153,10 @@ endif()
 # ****************************************************************************
 # Testing
 # ****************************************************************************
-if (${Enable_CMAKE_Debug_Build})
-    message("Enable_Tests = ${Enable_Tests}")
+if (${LibMacrocirculation_Enable_CMAKE_Debug_Build})
+    message("Enable_Tests = ${LibMacrocirculation_Enable_Tests}")
 endif ()
-if (${Enable_Tests})
+if (${LibMacrocirculation_Enable_Tests})
     enable_testing()
 
     add_subdirectory(tests)
@@ -165,16 +176,16 @@ if (${Enable_Tests})
 endif ()
 
 # documentation
-if (${Enable_Documentation})
-    if (${Enable_CMAKE_Debug_Build})
+if (${LibMacrocirculation_Enable_Documentation})
+    if (${LibMacrocirculation_Enable_CMAKE_Debug_Build})
         message("Adding Documentation ")
     endif ()
     add_subdirectory(docs)
 endif ()
 
 # python bindings
-set(Enable_Python_Bindings OFF CACHE BOOL "Adds the python bindings to our build process")
-if (${Enable_Python_Bindings})
+set(LibMacrocirculation_Enable_Python_Bindings OFF CACHE BOOL "Adds the python bindings to our build process")
+if (${LibMacrocirculation_Enable_Python_Bindings})
     add_subdirectory(${CMAKE_SOURCE_DIR}/external/pybind11)
     add_subdirectory(${CMAKE_SOURCE_DIR}/python)
 endif ()

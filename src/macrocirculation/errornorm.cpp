@@ -10,7 +10,7 @@
 #include "communication/mpi.hpp"
 #include "dof_map.hpp"
 #include "fe_type.hpp"
-#include "gmm.h"
+#include "gmm_legacy_facade.hpp"
 
 namespace macrocirculation {
 
