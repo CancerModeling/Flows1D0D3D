@@ -19,7 +19,8 @@
 namespace macrocirculation {
 
 SimpleLinearizedSolver::SimpleLinearizedSolver()
-    : comm(PETSC_COMM_WORLD), tau(1e-3), t(0), writer(std::make_shared<GraphPVDWriter>(comm, "./", "simple_linearized_solver")) {
+    // TODO: Manage parallelism better
+    : comm(PETSC_COMM_SELF), tau(1e-3), t(0), writer(std::make_shared<GraphPVDWriter>(comm, "./", "simple_linearized_solver")) {
   set_tau(tau);
 }
 

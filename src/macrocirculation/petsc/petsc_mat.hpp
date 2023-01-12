@@ -20,21 +20,22 @@ namespace macrocirculation {
 
 class PetscMat {
 public:
-  PetscMat(const std::string &name, const std::vector<std::shared_ptr<DofMap>> &dof_map)
-      : PetscMat(name,
+  PetscMat(MPI_Comm comm, const std::string &name, const std::vector<std::shared_ptr<DofMap>> &dof_map)
+      : PetscMat(comm, 
+                 name,
                  std::accumulate(dof_map.begin(), dof_map.end(), 0, [](auto v, auto dm) { return v + dm->num_owned_dofs(); }),
                  std::accumulate(dof_map.begin(), dof_map.end(), 0, [](auto v, auto dm) { return v + dm->num_dof(); })) {}
 
-  PetscMat(const std::string &name, const DofMap &dof_map)
-      : PetscMat(name, dof_map.num_owned_dofs(), dof_map.num_dof()) {}
+  PetscMat(MPI_Comm comm, const std::string &name, const DofMap &dof_map)
+      : PetscMat(comm, name, dof_map.num_owned_dofs(), dof_map.num_dof()) {}
 
-  PetscMat(const std::string &name, std::size_t num_owned_dofs, std::size_t num_dofs) {
-    CHKERRABORT(PETSC_COMM_WORLD, MatCreate(PETSC_COMM_WORLD, &d_mat));
-    CHKERRABORT(PETSC_COMM_WORLD, MatSetType(d_mat, MATMPIAIJ));
-    CHKERRABORT(PETSC_COMM_WORLD, MatSetSizes(d_mat, num_owned_dofs, num_owned_dofs, num_dofs, num_dofs));
+  PetscMat(MPI_Comm comm, const std::string &name, std::size_t num_owned_dofs, std::size_t num_dofs) : d_comm(comm) {
+    CHKERRABORT(d_comm, MatCreate(d_comm, &d_mat));
+    CHKERRABORT(d_comm, MatSetType(d_mat, MATMPIAIJ));
+    CHKERRABORT(d_comm, MatSetSizes(d_mat, num_owned_dofs, num_owned_dofs, num_dofs, num_dofs));
     // we overestimate the number non-zero entries, otherwise matrix assembly is incredibly slow :
-    CHKERRABORT(PETSC_COMM_WORLD, MatMPIAIJSetPreallocation(d_mat, 1000, nullptr, 1000, nullptr));
-    CHKERRABORT(PETSC_COMM_WORLD, PetscObjectSetName((PetscObject) d_mat, name.c_str()));
+    CHKERRABORT(d_comm, MatMPIAIJSetPreallocation(d_mat, 1000, nullptr, 1000, nullptr));
+    CHKERRABORT(d_comm, PetscObjectSetName((PetscObject) d_mat, name.c_str()));
   }
 
   PetscMat(const PetscMat &) = delete;
@@ -43,7 +44,7 @@ public:
   PetscMat &operator=(PetscMat &&) = delete;
 
   ~PetscMat() {
-    CHKERRABORT(PETSC_COMM_WORLD, MatDestroy(&d_mat));
+    CHKERRABORT(d_comm, MatDestroy(&d_mat));
   }
 
   void add(const std::vector<size_t> &row_dofs, const std::vector<size_t> &col_dofs, gmm::row_matrix<gmm::wsvector<double>> &mat_loc) {
@@ -66,7 +67,7 @@ public:
       col_dofs_[c] = static_cast<PetscInt>(col_dofs[c]);
 
     // pass it to petsc
-    CHKERRABORT(PETSC_COMM_WORLD,
+    CHKERRABORT(d_comm,
                 MatSetValues(d_mat,
                              static_cast<PetscInt>(row_dofs.size()),
                              row_dofs_.data(),
@@ -96,7 +97,7 @@ public:
       col_dofs_[c] = static_cast<PetscInt>(col_dofs[c]);
 
     // pass it to petsc
-    CHKERRABORT(PETSC_COMM_WORLD,
+    CHKERRABORT(d_comm,
                 MatSetValues(d_mat,
                              static_cast<PetscInt>(row_dofs.size()),
                              row_dofs_.data(),
@@ -108,7 +109,7 @@ public:
 
   double norm1() const {
     double value;
-    CHKERRABORT(PETSC_COMM_WORLD, MatNorm(d_mat, NORM_1, &value));
+    CHKERRABORT(d_comm, MatNorm(d_mat, NORM_1, &value));
     return value;
   }
 
@@ -117,8 +118,8 @@ public:
   }
 
   void assemble() {
-    CHKERRABORT(PETSC_COMM_WORLD, MatAssemblyBegin(d_mat, MAT_FINAL_ASSEMBLY));
-    CHKERRABORT(PETSC_COMM_WORLD, MatAssemblyEnd(d_mat, MAT_FINAL_ASSEMBLY));
+    CHKERRABORT(d_comm, MatAssemblyBegin(d_mat, MAT_FINAL_ASSEMBLY));
+    CHKERRABORT(d_comm, MatAssemblyEnd(d_mat, MAT_FINAL_ASSEMBLY));
   }
 
   Mat &get_mat() { return d_mat; }
@@ -126,14 +127,14 @@ public:
   size_t first_dof() const {
     PetscInt start = 0;
     PetscInt end = 0;
-    CHKERRABORT(PETSC_COMM_WORLD, MatGetOwnershipRange(d_mat, &start, &end));
+    CHKERRABORT(d_comm, MatGetOwnershipRange(d_mat, &start, &end));
     return start;
   }
 
   size_t last_dof() const {
     PetscInt start = 0;
     PetscInt end = 0;
-    CHKERRABORT(PETSC_COMM_WORLD, MatGetOwnershipRange(d_mat, &start, &end));
+    CHKERRABORT(d_comm, MatGetOwnershipRange(d_mat, &start, &end));
     return end;
   }
 
@@ -141,19 +142,20 @@ public:
     double value;
     PetscInt ii = i;
     PetscInt jj = j;
-    CHKERRABORT(PETSC_COMM_WORLD, MatGetValues(d_mat, 1, &ii, 1, &jj, &value));
+    CHKERRABORT(d_comm, MatGetValues(d_mat, 1, &ii, 1, &jj, &value));
     return value;
   }
 
   void mul(const PetscVec& src, PetscVec& dst) const {
-    CHKERRABORT(PETSC_COMM_WORLD, MatMult(d_mat, src.get_vec(), dst.get_vec()));
+    CHKERRABORT(d_comm, MatMult(d_mat, src.get_vec(), dst.get_vec()));
   }
 
   void print() const {
-    CHKERRABORT(PETSC_COMM_WORLD, MatView(d_mat, PETSC_VIEWER_STDOUT_WORLD));
+    CHKERRABORT(d_comm, MatView(d_mat, PETSC_VIEWER_STDOUT_WORLD));
     }
 
 private:
+  MPI_Comm d_comm;
   Mat d_mat{};
 };
 

@@ -293,7 +293,7 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
       d_degree(degree),
       u(std::make_shared<PetscVec>(comm, "u", d_dof_map)),
       rhs(std::make_shared<PetscVec>(comm, "rhs", d_dof_map)),
-      A(std::make_shared<PetscMat>("A", d_dof_map)),
+      A(std::make_shared<PetscMat>(comm, "A", d_dof_map)),
       mass(std::make_shared<PetscVec>(comm, "mass", d_dof_map)),
       linear_solver(PetscKsp::create_with_pc_ilu(*A)),
       d_inflow_functions(d_graph.size()) {
