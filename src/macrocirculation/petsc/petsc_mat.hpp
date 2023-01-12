@@ -53,16 +53,16 @@ public:
     // we have no guarantees that gmm's memory is continuous
     // thus we copy it over
     std::vector<double> mat_memory(row_dofs.size() * col_dofs.size(), 0);
-    for (int r = 0; r < row_dofs.size(); r += 1)
-      for (int c = 0; c < col_dofs.size(); c += 1)
+    for (int r = 0; r < static_cast< int >( row_dofs.size() ); r += 1)
+      for (int c = 0; c < static_cast< int >( col_dofs.size() ); c += 1)
         mat_memory[c + r * col_dofs.size()] = mat_loc[r][c];
 
     std::vector<PetscInt> row_dofs_(row_dofs.size(), 0);
-    for (int r = 0; r < row_dofs.size(); r += 1)
+    for (int r = 0; r < static_cast< int >( row_dofs.size() ); r += 1)
       row_dofs_[r] = static_cast<PetscInt>(row_dofs[r]);
 
     std::vector<PetscInt> col_dofs_(col_dofs.size(), 0);
-    for (int c = 0; c < col_dofs.size(); c += 1)
+    for (int c = 0; c < static_cast< int >( col_dofs.size() ); c += 1)
       col_dofs_[c] = static_cast<PetscInt>(col_dofs[c]);
 
     // pass it to petsc
@@ -83,16 +83,16 @@ public:
     // we have no guarantees that gmm's memory is continuous
     // thus we copy it over
     std::vector<double> mat_memory(row_dofs.size() * col_dofs.size(), 0);
-    for (int r = 0; r < row_dofs.size(); r += 1)
-      for (int c = 0; c < col_dofs.size(); c += 1)
+    for (int r = 0; r < static_cast< int >( row_dofs.size() ); r += 1)
+      for (int c = 0; c < static_cast< int >( col_dofs.size() ); c += 1)
         mat_memory[c + r * col_dofs.size()] = mat_loc(r, c);
 
     std::vector<PetscInt> row_dofs_(row_dofs.size(), 0);
-    for (int r = 0; r < row_dofs.size(); r += 1)
+    for (int r = 0; r < static_cast< int >( row_dofs.size() ); r += 1)
       row_dofs_[r] = static_cast<PetscInt>(row_dofs[r]);
 
     std::vector<PetscInt> col_dofs_(col_dofs.size(), 0);
-    for (int c = 0; c < col_dofs.size(); c += 1)
+    for (int c = 0; c < static_cast< int >( col_dofs.size() ); c += 1)
       col_dofs_[c] = static_cast<PetscInt>(col_dofs[c]);
 
     // pass it to petsc

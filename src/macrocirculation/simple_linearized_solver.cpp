@@ -14,11 +14,12 @@
 #include "implicit_linear_flow_solver.hpp"
 #include "simple_linearized_solver.hpp"
 #include "vessel_formulas.hpp"
+#include "petsc.h"
 
 namespace macrocirculation {
 
 SimpleLinearizedSolver::SimpleLinearizedSolver()
-    : tau(1e-3), t(0), writer(std::make_shared<GraphPVDWriter>(MPI_COMM_WORLD, "./", "simple_linearized_solver")) {
+    : comm(PETSC_COMM_WORLD), tau(1e-3), t(0), writer(std::make_shared<GraphPVDWriter>(comm, "./", "simple_linearized_solver")) {
   set_tau(tau);
 }
 
@@ -62,12 +63,12 @@ void SimpleLinearizedSolver::set_tau(double ptau) {
 
   graph->finalize_bcs();
 
-  naive_mesh_partitioner(*graph, MPI_COMM_WORLD);
+  naive_mesh_partitioner(*graph, comm);
 
   dof_map = std::make_shared<DofMap>(graph->num_vertices(), graph->num_edges());
-  dof_map->create(MPI_COMM_WORLD, *graph, 2, degree, true);
+  dof_map->create(comm, *graph, 2, degree, true);
 
-  solver = std::make_shared<ImplicitLinearFlowSolver>(MPI_COMM_WORLD, graph, dof_map, degree);
+  solver = std::make_shared<ImplicitLinearFlowSolver>(comm, graph, dof_map, degree);
   solver->setup(tau);
 }
 
@@ -99,8 +100,8 @@ void SimpleLinearizedSolver::write() {
   std::vector<Point> points;
   std::vector<double> p_vertex_values;
   std::vector<double> q_vertex_values;
-  interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, solver->p_component, solver->get_solution(), points, p_vertex_values);
-  interpolate_to_vertices(MPI_COMM_WORLD, *graph, *dof_map, solver->q_component, solver->get_solution(), points, q_vertex_values);
+  interpolate_to_vertices(comm, *graph, *dof_map, solver->p_component, solver->get_solution(), points, p_vertex_values);
+  interpolate_to_vertices(comm, *graph, *dof_map, solver->q_component, solver->get_solution(), points, q_vertex_values);
 
   writer->set_points(points);
   writer->add_vertex_data("p", p_vertex_values);

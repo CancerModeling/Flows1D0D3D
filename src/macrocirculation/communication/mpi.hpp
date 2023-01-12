@@ -33,6 +33,13 @@ inline int rank(MPI_Comm comm) {
   CHECK_MPI_SUCCESS(MPI_Comm_rank(comm, &rank));
   return rank;
 }
+
+inline MPI_Comm create_local() {
+  MPI_Comm new_comm;
+  MPI_Comm_split(MPI_COMM_WORLD, rank(MPI_COMM_WORLD), 0, &new_comm);
+  return new_comm;
+} 
+
 } // namespace mpi
 
 } // namespace macrocirculation

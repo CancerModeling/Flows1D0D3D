@@ -188,7 +188,7 @@ inline double calculate_G0(double h0, double E, double A0) {
 }
 
 /*! @brief Calculates c0. */
-inline double calculate_c0(double G0, double rho, double A0) {
+inline double calculate_c0(double G0, double rho, double /* A0 */) {
   return std::sqrt(G0 / (2 * rho));
 }
 

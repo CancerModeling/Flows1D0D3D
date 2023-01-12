@@ -90,7 +90,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     // floor ?
     const int N = static_cast<int>(std::ceil(gamma * std::log(r_0 / r_cap) / std::log(2)));
     const auto alpha = 1. / std::pow(2, 1 / gamma);
-    const auto beta = 3. / 4.;
+    // const auto beta = 3. / 4.;
     std::vector<double> list_radius;
     std::vector<double> list_C;
     std::vector<double> list_R;

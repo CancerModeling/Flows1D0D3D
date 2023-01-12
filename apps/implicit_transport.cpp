@@ -59,9 +59,9 @@ void implicit_transport_with_implicit_flow(double tau, double tau_out, double t_
   mc::assemble_matrix_inner_boundaries(PETSC_COMM_WORLD, *graph, *dof_map_flow, tau, flow_solver->p_component, flow_solver->q_component, A);
   mc::assemble_matrix_free_outflow(PETSC_COMM_WORLD, *graph, *dof_map_flow, tau, flow_solver->p_component, flow_solver->q_component, A);
   A.assemble();
-  mc::PetscVec rhs("rhs", *dof_map_flow);
+  mc::PetscVec rhs(PETSC_COMM_WORLD, "rhs", *dof_map_flow);
 
-  mc::PetscVec u_dst("u_dst", *dof_map_flow);
+  mc::PetscVec u_dst(PETSC_COMM_WORLD, "u_dst", *dof_map_flow);
 
   mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, graph, dof_map_transport, variable_upwind_provider, degree);
 

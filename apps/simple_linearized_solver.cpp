@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "macrocirculation/simple_linearized_solver.hpp"
+#include "macrocirculation/communication/mpi.hpp"
 #include "petsc.h"
 
 namespace mc = macrocirculation;
@@ -29,11 +30,11 @@ int main(int argc, char *argv[]) {
       if (i % 10 == 0) {
         // extract coupling data at aneurysm inflow
         auto in = solver.get_result(mc::SimpleLinearizedSolver::Outlet::in);
-        std::cout << i << "  in: p = " << in.p << ", a = " << in.a << ", q = " << in.q << std::endl;
+        std::cout << "[rank=" << mc::mpi::rank(MPI_COMM_WORLD) << "] " << i << "  in: p = " << in.p << ", a = " << in.a << ", q = " << in.q << std::endl;
 
         // extract coupling data at aneurysm outflow
         auto out = solver.get_result(mc::SimpleLinearizedSolver::Outlet::out);
-        std::cout << i << " out: p = " << out.p << ", a = " << out.a << ", q = " << out.q << std::endl;
+        std::cout << "[rank=" << mc::mpi::rank(MPI_COMM_WORLD) << "] " << i << " out: p = " << out.p << ", a = " << out.a << ", q = " << out.q << std::endl;
 
         // just for fun, to see something, we could disable this
         solver.write();

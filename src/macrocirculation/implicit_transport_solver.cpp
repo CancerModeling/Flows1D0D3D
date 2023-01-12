@@ -291,10 +291,10 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
       d_dof_map(std::move(dof_map)),
       d_upwind_provider(std::move(upwind_provider)),
       d_degree(degree),
-      u(std::make_shared<PetscVec>("u", d_dof_map)),
-      rhs(std::make_shared<PetscVec>("rhs", d_dof_map)),
+      u(std::make_shared<PetscVec>(comm, "u", d_dof_map)),
+      rhs(std::make_shared<PetscVec>(comm, "rhs", d_dof_map)),
       A(std::make_shared<PetscMat>("A", d_dof_map)),
-      mass(std::make_shared<PetscVec>("mass", d_dof_map)),
+      mass(std::make_shared<PetscVec>(comm, "mass", d_dof_map)),
       linear_solver(PetscKsp::create_with_pc_ilu(*A)),
       d_inflow_functions(d_graph.size()) {
 
@@ -333,7 +333,7 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
     }
   }
 
-  d_volumes = std::make_shared<PetscVec>("volumes", d_dof_maps_volume);
+  d_volumes = std::make_shared<PetscVec>(comm, "volumes", d_dof_maps_volume);
 
   // TODO: preallocate the nonzeros properly!
   // MatSetOption(A->get_mat(), MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
