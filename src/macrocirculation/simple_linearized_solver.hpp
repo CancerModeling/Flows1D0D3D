@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <vector>
+#include <mpi.h>
 
 namespace macrocirculation {
 
@@ -60,6 +61,8 @@ private:
   Result get_result(const Vertex &vertex, const Edge &edge);
 
 private:
+  MPI_Comm comm;
+
   double tau{};
   double t{};
 

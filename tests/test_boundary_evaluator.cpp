@@ -70,11 +70,11 @@ TEST_CASE("BoundaryEvaluator", "[BoundaryEvaluator]") {
   auto dof_map_B = std::make_shared< mc::DofMap > (*graph_B);
   dof_map_B->create(comm, *graph_B, 1, 0, true);
 
-  mc::PetscVec vec_A ("vecA", dof_map_A->num_owned_dofs());
+  mc::PetscVec vec_A (comm, "vecA", dof_map_A->num_owned_dofs());
   for (size_t k = 0; k < dof_map_A->num_owned_dofs(); k+= 1)
     vec_A.set(k + dof_map_A->first_owned_global_dof(), 1. + k + dof_map_A->first_owned_global_dof());
 
-  mc::PetscVec vec_B ("vecB", dof_map_B->num_owned_dofs());
+  mc::PetscVec vec_B (comm, "vecB", dof_map_B->num_owned_dofs());
   for (size_t k = 0; k < dof_map_B->num_owned_dofs(); k+= 1)
     vec_B.set(k + dof_map_B->first_owned_global_dof(), 200. + k + dof_map_B->first_owned_global_dof());
 
