@@ -43,6 +43,8 @@ public:
   PetscMat &operator=(const PetscMat &) = delete;
   PetscMat &operator=(PetscMat &&) = delete;
 
+  MPI_Comm comm() const { return d_comm; }
+
   ~PetscMat() {
     CHKERRABORT(d_comm, MatDestroy(&d_mat));
   }

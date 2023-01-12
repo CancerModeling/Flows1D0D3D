@@ -21,10 +21,10 @@ public:
     std::shared_ptr<PetscKsp> ksp(new PetscKsp(mat));
 
     PC pc;
-    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
-    CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
+    CHKERRABORT(mat.comm(), KSPGetPC(ksp->d_ksp, &pc));
+    CHKERRABORT(mat.comm(), PCSetType(pc, PCJACOBI));
 
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(ksp->d_ksp));
+    CHKERRABORT(mat.comm(), KSPSetFromOptions(ksp->d_ksp));
 
     return ksp;
   }
@@ -33,12 +33,12 @@ public:
     std::shared_ptr<PetscKsp> ksp(new PetscKsp(mat));
 
     PC pc;
-    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
-    CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
+    CHKERRABORT(mat.comm(), KSPGetPC(ksp->d_ksp, &pc));
+    CHKERRABORT(mat.comm(), PCSetType(pc, PCJACOBI));
 
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(ksp->d_ksp));
+    CHKERRABORT(mat.comm(), KSPSetFromOptions(ksp->d_ksp));
 
-    CHKERRABORT(PETSC_COMM_WORLD, PetscObjectSetName((PetscObject) ksp->d_ksp, (name).c_str()));
+    CHKERRABORT(mat.comm(), PetscObjectSetName((PetscObject) ksp->d_ksp, (name).c_str()));
 
     return ksp;
   }
@@ -48,38 +48,38 @@ public:
 
     /*
     PC pc;
-    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
-    CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCHYPRE));
-    CHKERRABORT(PETSC_COMM_WORLD, PCHYPRESetType(pc, "euclid"));
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetTolerances(ksp->d_ksp, 1e-16, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
+    CHKERRABORT(d_comm, KSPGetPC(ksp->d_ksp, &pc));
+    CHKERRABORT(d_comm, PCSetType(pc, PCHYPRE));
+    CHKERRABORT(d_comm, PCHYPRESetType(pc, "euclid"));
+    CHKERRABORT(d_comm, KSPSetTolerances(ksp->d_ksp, 1e-16, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
      */
 
     PC pc;
-    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(ksp->d_ksp));
-    // CHKERRABORT(PETSC_COMM_WORLD, KSPSetTolerances(ksp->d_ksp, 1e-16, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
-
-    /*
-    PC pc;
-    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
-    CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc, PCJACOBI));
-     */
+    CHKERRABORT(mat.comm(), KSPGetPC(ksp->d_ksp, &pc));
+    CHKERRABORT(mat.comm(), KSPSetFromOptions(ksp->d_ksp));
+    // CHKERRABORT(d_comm, KSPSetTolerances(ksp->d_ksp, 1e-16, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
 
     /*
     PC pc;
-    CHKERRABORT(PETSC_COMM_WORLD, KSPGetPC(ksp->d_ksp, &pc));
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetType(ksp->d_ksp,KSPPREONLY));
-    CHKERRABORT(PETSC_COMM_WORLD, PCSetType(pc,PCLU));
-    CHKERRABORT(PETSC_COMM_WORLD, PCFactorSetMatSolverType(pc,MATSOLVERSUPERLU_DIST));
+    CHKERRABORT(d_comm, KSPGetPC(ksp->d_ksp, &pc));
+    CHKERRABORT(d_comm, PCSetType(pc, PCJACOBI));
      */
-    // CHKERRABORT(PETSC_COMM_WORLD, KSPSetUp(ksp->d_ksp));
+
+    /*
+    PC pc;
+    CHKERRABORT(d_comm, KSPGetPC(ksp->d_ksp, &pc));
+    CHKERRABORT(d_comm, KSPSetType(ksp->d_ksp,KSPPREONLY));
+    CHKERRABORT(d_comm, PCSetType(pc,PCLU));
+    CHKERRABORT(d_comm, PCFactorSetMatSolverType(pc,MATSOLVERSUPERLU_DIST));
+     */
+    // CHKERRABORT(d_comm, KSPSetUp(ksp->d_ksp));
 
     return ksp;
   }
 
   void set_tolerances(double rtol, double atol, double divtol, int max_int)
   {
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetTolerances(d_ksp, rtol, atol, divtol, max_int));
+    CHKERRABORT(d_comm, KSPSetTolerances(d_ksp, rtol, atol, divtol, max_int));
   }
 
   PetscKsp(const PetscKsp &) = delete;
@@ -88,30 +88,31 @@ public:
   PetscKsp &operator=(PetscKsp &&) = delete;
 
   ~PetscKsp() {
-    CHKERRABORT(PETSC_COMM_WORLD, KSPDestroy(&d_ksp));
+    CHKERRABORT(d_comm, KSPDestroy(&d_ksp));
   }
 
   void solve(PetscVec &rhs, PetscVec &solution) {
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSolve(d_ksp, rhs.get_vec(), solution.get_vec()));
+    CHKERRABORT(d_comm, KSPSolve(d_ksp, rhs.get_vec(), solution.get_vec()));
   }
 
   KSP &get_ksp() { return d_ksp; }
 
   PetscInt get_iterations() const {
     PetscInt its;
-    CHKERRABORT(PETSC_COMM_WORLD, KSPGetIterationNumber(d_ksp, &its));
+    CHKERRABORT(d_comm, KSPGetIterationNumber(d_ksp, &its));
     return its;
   }
 
 protected:
-  PetscKsp(PetscMat &mat) {
-    CHKERRABORT(PETSC_COMM_WORLD, KSPCreate(PETSC_COMM_WORLD, &d_ksp));
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetOperators(d_ksp, mat.get_mat(), mat.get_mat()));
-    // CHKERRABORT(PETSC_COMM_WORLD, PetscObjectSetName((PetscObject) d_ksp, "pqsolver_"));
-    CHKERRABORT(PETSC_COMM_WORLD, KSPSetFromOptions(d_ksp));
+  PetscKsp(PetscMat &mat) : d_comm(mat.comm()) {
+    CHKERRABORT(d_comm, KSPCreate(PETSC_COMM_WORLD, &d_ksp));
+    CHKERRABORT(d_comm, KSPSetOperators(d_ksp, mat.get_mat(), mat.get_mat()));
+    // CHKERRABORT(d_comm, PetscObjectSetName((PetscObject) d_ksp, "pqsolver_"));
+    CHKERRABORT(d_comm, KSPSetFromOptions(d_ksp));
   }
 
 private:
+  MPI_Comm d_comm;
   KSP d_ksp;
 };
 
