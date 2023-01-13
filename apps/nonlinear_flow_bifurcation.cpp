@@ -94,7 +94,6 @@ int main(int argc, char *argv[]) {
   const double tau_out = 1e-1;
   const auto output_interval = static_cast<std::size_t>(tau_out / tau);
 
-  const std::size_t num_edges_per_segment = 10;
   std::cerr << "FIX physical parameters" << std::endl;
 
   // create_for_node the ascending aorta
@@ -186,7 +185,6 @@ int main(int argc, char *argv[]) {
     auto &edge = *graph->get_edge(e_id);
     double A, Q;
     solver.evaluate_1d_AQ_values(edge, 0.5, A, Q);
-    const double err_A = std::abs(edge_id_to_A[e_id] - A);
     std::cout << std::scientific << std::setprecision(16) << e_id << " " << A << " " << Q << std::endl;
   }
 

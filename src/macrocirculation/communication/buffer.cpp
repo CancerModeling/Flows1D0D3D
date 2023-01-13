@@ -70,7 +70,7 @@ void BufferSystem::start_communication() {
 
   // send the data in the send buffers:
   for (std::size_t recipient = 0; recipient < d_send_buffers.size(); recipient += 1) {
-    if (rank == recipient)
+    if (static_cast<size_t>(rank) == recipient)
       continue;
 
     auto &buffer = get_send_buffer(recipient);
@@ -80,7 +80,7 @@ void BufferSystem::start_communication() {
 
   // resize the receive buffers, depending on how much data arrives:
   for (std::size_t sender = 0; sender < d_receive_buffers.size(); sender += 1) {
-    if (rank == sender)
+    if (static_cast<size_t>(rank) == sender)
       continue;
 
     MPI_Status status;
@@ -95,7 +95,7 @@ void BufferSystem::start_communication() {
 
   // initiate receiving:
   for (std::size_t sender = 0; sender < d_receive_buffers.size(); sender += 1) {
-    if (rank == sender)
+    if (static_cast<size_t>(rank) == sender)
       continue;
 
     auto &buffer = get_receive_buffer(sender);
@@ -120,7 +120,7 @@ void BufferSystem::end_communication() {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   for (std::size_t recipient = 0; recipient < d_send_buffers.size(); recipient += 1) {
-    if (rank == recipient)
+    if (static_cast<size_t>(rank) == recipient)
       continue;
 
     MPI_Status status;
@@ -128,7 +128,7 @@ void BufferSystem::end_communication() {
   }
 
   for (std::size_t sender = 0; sender < d_send_requests.size(); sender += 1) {
-    if (rank == sender)
+    if (static_cast<size_t>(rank) == sender)
       continue;
 
     MPI_Status status;

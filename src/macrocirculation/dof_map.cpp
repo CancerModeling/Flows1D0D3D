@@ -30,7 +30,7 @@ void LocalEdgeDofMap::dof_indices(std::size_t micro_edge_index,
                                   std::size_t component,
                                   std::vector<std::size_t> &dof_indices) const {
   assert(dof_indices.size() == d_num_basis_functions);
-  for (auto idx = 0; idx < d_num_basis_functions; idx += 1)
+  for (auto idx = 0; idx < static_cast< int > ( d_num_basis_functions ); idx += 1)
     dof_indices[idx] = d_dof_interval_start + micro_edge_index * d_num_basis_functions * d_num_components +
                        d_num_basis_functions * component + idx;
   assert(dof_indices.back() < d_dof_interval_end);
@@ -211,7 +211,7 @@ void DofMap::create(MPI_Comm comm,
   for (int rank = 0; rank < mpi::size(comm); rank += 1) {
     const bool callingRank = (rank == mpi::rank(comm));
 
-    for (int k = 0; k < graphs.size(); k += 1) {
+    for (int k = 0; k < static_cast< int > ( graphs.size() ); k += 1) {
       auto graph = graphs[k];
       auto dof_map = dof_maps[k];
 
@@ -286,7 +286,7 @@ void DofMap::create_on_vertices(MPI_Comm comm,
   for (int rank = 0; rank < mpi::size(comm); rank += 1) {
     const bool callingRank = (rank == mpi::rank(comm));
 
-    for (int k = 0; k < graphs.size(); k += 1) {
+    for (int k = 0; k < static_cast< int > ( graphs.size() ); k += 1) {
       auto graph = graphs[k];
       auto dof_map = dof_maps[k];
 

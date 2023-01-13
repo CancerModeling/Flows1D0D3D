@@ -422,7 +422,7 @@ void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage &graph, const 
     for (auto e_id : vertex.get_edge_neighbors())
       edges.push_back(graph.get_edge(e_id).get());
 
-    for (int i = 0; i < edges.size(); i += 1) {
+    for (int i = 0; i < static_cast<int>(edges.size()); i += 1) {
       if (edges[i]->rank() != mpi::rank(comm))
         continue;
 
@@ -430,7 +430,7 @@ void calculate_sparsity_pattern(MPI_Comm comm, const GraphStorage &graph, const 
       std::vector<size_t> dof_indices_i(local_dof_map_i.num_basis_functions());
       local_dof_map_i.dof_indices(edges[i]->get_adajcent_micro_edge_id(vertex), 0, dof_indices_i);
 
-      for (int j = 0; j < edges.size(); j += 1) {
+      for (int j = 0; j < static_cast<int>(edges.size()); j += 1) {
         if (j == i)
           continue;
 
@@ -568,7 +568,7 @@ void ImplicitTransportSolver::assemble_characteristics(double tau, double t) {
           adjacent_graph_index = j;
 
       // we only assemble once with the smaller index!
-      if (adjacent_graph_index < graph_index)
+      if (adjacent_graph_index < static_cast<int>(graph_index))
         continue;
 
       std::vector<Edge const *> edges = {edge.get(), adjacent_edge.get()};
@@ -788,10 +788,10 @@ Eigen::MatrixXd create_QA_phi_grad_psi(const FETypeNetwork &fe,
   const auto &JxW = fe.get_JxW();
 
   Eigen::MatrixXd k_loc(local_dof_map.num_basis_functions(), local_dof_map.num_basis_functions());
-  for (int j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
-    for (int i = 0; i < local_dof_map.num_basis_functions(); i += 1) {
+  for (int j = 0; j < static_cast<int>(local_dof_map.num_basis_functions()); j += 1) {
+    for (int i = 0; i < static_cast<int>(local_dof_map.num_basis_functions()); i += 1) {
       k_loc(j, i) = 0;
-      for (int qp = 0; qp < phi[i].size(); qp += 1)
+      for (int qp = 0; qp < static_cast<int>(phi[i].size()); qp += 1)
         k_loc(j, i) += v_qp[qp] * phi[i][qp] * dphi[j][qp] * JxW[qp];
     }
   }
@@ -799,7 +799,7 @@ Eigen::MatrixXd create_QA_phi_grad_psi(const FETypeNetwork &fe,
 }
 
 void ImplicitTransportSolver::apply_slope_limiter(double t) {
-  for (int i = 0; i < d_graph.size(); i++) {
+  for (int i = 0; i < static_cast<int>(d_graph.size()); i++) {
     apply_slope_limiter(d_graph[i], d_dof_map[i]);
   }
   u->assemble();
@@ -833,7 +833,6 @@ void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> 
     const auto macro_edge = d_graph->get_edge(e_id);
 
     const auto &local_dof_map = d_dof_map->get_local_dof_map(*macro_edge);
-    const auto &param = macro_edge->get_physical_data();
 
     // collect the dof
     std::vector<std::size_t> dof_indices(local_dof_map.num_basis_functions());
@@ -931,10 +930,6 @@ void ImplicitTransportSolver::apply_slope_limiter(std::shared_ptr<GraphStorage> 
       // middle
       local_dof_map.dof_indices(micro_edge_id, 0, dof_indices);
       extract_dof(dof_indices, *u, dof_edge);
-
-      auto left_edge_id = micro_edge_id - 1;
-
-      auto &vertex = *d_graph->get_vertex(macro_edge->get_vertex_neighbors()[1]);
 
       for (int j = dof_indices.size() - 1; j > 0; j--) {
         double gamma = 1.0 / (2.0 * (2.0 * (double) j - 1.0));
@@ -1199,7 +1194,7 @@ void additively_assemble_matrix_nfurcations(MPI_Comm comm,
       boundary_type.push_back(edge->is_pointing_to(v_idx) ? BPT::Right : BPT::Left);
 
     std::vector<std::vector<size_t>> dof_indices_list;
-    for (int i = 0; i < num_edges; i += 1) {
+    for (int i = 0; i < static_cast<int>(num_edges); i += 1) {
       auto edge = edges[i];
       auto &local_dof_map = dof_map.get_local_dof_map(*edge);
       auto micro_edge_id = edge->is_pointing_to(v_idx) ? edge->num_micro_edges() - 1 : 0;

@@ -43,7 +43,6 @@ int main(int argc, char *argv[]) {
     const double tau_out = 1e-2;
 
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
-    const size_t skip_length = 1;
 
     // vessel parameters
     const double vessel_length = 21.1 * 4;

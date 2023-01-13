@@ -57,12 +57,12 @@ LinearizedFlowUpwindEvaluator::LinearizedFlowUpwindEvaluator(MPI_Comm comm, std:
     : d_comm(comm),
       d_graph(std::move(graph)),
       d_dof_map(std::move(dof_map)),
-      d_q_boundary_evaluator(comm, d_graph, d_dof_map, 1),
       d_p_boundary_evaluator(comm, d_graph, d_dof_map, 0),
-      d_q_macro_edge_flux_l(d_graph->num_edges(), NAN),
-      d_q_macro_edge_flux_r(d_graph->num_edges(), NAN),
+      d_q_boundary_evaluator(comm, d_graph, d_dof_map, 1),
       d_p_macro_edge_flux_l(d_graph->num_edges(), NAN),
       d_p_macro_edge_flux_r(d_graph->num_edges(), NAN),
+      d_q_macro_edge_flux_l(d_graph->num_edges(), NAN),
+      d_q_macro_edge_flux_r(d_graph->num_edges(), NAN),
       d_current_t(NAN) {}
 
 void LinearizedFlowUpwindEvaluator::init(double t, const std::vector<double> &u_prev) {

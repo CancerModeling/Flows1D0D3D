@@ -34,7 +34,7 @@ void Communicator::update_ghost_layer(std::vector<double> &u) {
   d_buffer_system.clear();
 
   // send the ghost layer to our neighbors
-  for (int other_rank = 0; other_rank < d_ghost_dofs_to_send.size(); other_rank += 1) {
+  for (int other_rank = 0; other_rank < static_cast< int >( d_ghost_dofs_to_send.size() ); other_rank += 1) {
     // we dont send to ourselves.
     if (other_rank == d_rank)
       continue;
@@ -53,7 +53,7 @@ void Communicator::update_ghost_layer(std::vector<double> &u) {
 
 void Communicator::unpack_dof_from_receive_buffer(std::vector<double> &u) {
   // receive the ghost layer from our neighbors
-  for (int other_rank = 0; other_rank < d_ghost_dofs_to_send.size(); other_rank += 1) {
+  for (int other_rank = 0; other_rank < static_cast< int >( d_ghost_dofs_to_send.size() ); other_rank += 1) {
     // we dont receive from ourselves.
     if (other_rank == d_rank)
       continue;

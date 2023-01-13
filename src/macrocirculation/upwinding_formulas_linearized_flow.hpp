@@ -71,20 +71,20 @@ inline void nfurcation_boundary(const std::vector<double> &p,
   }
 
   // constrain the upwinded fluxes to zero:
-  for (int k = 0; k < N; k += 1) {
+  for (int k = 0; k < static_cast<int>(N); k += 1) {
     mat(0, 2 * k + 1) = sigma[k];
   }
   rhs(0) = 0;
 
   // the characteristics should be equal
-  for (int k = 0; k < N; k += 1) {
+  for (int k = 0; k < static_cast<int>(N); k += 1) {
     mat(1 + k, 2 * k) = 0.5 * alpha[k] * sigma[k];
     mat(1 + k, 2 * k + 1) = 0.5;
     rhs(1 + k) = 0.5 * alpha[k] * sigma[k] * p[k] + 0.5 * q[k];
   }
 
   // the pressures should be equal
-  for (int k = 1; k < N; k += 1) {
+  for (int k = 1; k < static_cast<int>(N); k += 1) {
     mat(N + k, 2 * k) = 1.;
     mat(N + k, 2 * (k - 1)) = -1.;
     rhs(N + k) = 0.;
@@ -92,7 +92,7 @@ inline void nfurcation_boundary(const std::vector<double> &p,
 
   Eigen::VectorXd result = mat.fullPivLu().solve(rhs);
 
-  for (int k = 0; k < N; k += 1) {
+  for (int k = 0; k < static_cast<int>(N); k += 1) {
     p_up[k] = result[2 * k];
     q_up[k] = result[2 * k + 1];
   }

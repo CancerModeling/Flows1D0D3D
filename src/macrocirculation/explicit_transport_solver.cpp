@@ -176,7 +176,6 @@ void ExplicitTransportSolver::assemble_rhs(double t, const std::vector<double> &
     QuadratureFormula qf = create_gauss4();
     FETypeNetwork fe(qf, local_dof_map_transport.num_basis_functions() - 1);
 
-    const auto &phi = fe.get_phi();
     const auto &phi_b = fe.get_phi_boundary();
     const auto &dphi = fe.get_dphi();
     const auto &JxW = fe.get_JxW();

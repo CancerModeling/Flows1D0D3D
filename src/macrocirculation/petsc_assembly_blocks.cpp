@@ -17,10 +17,10 @@ Eigen::MatrixXd create_mass(const FETypeNetwork &fe, const LocalEdgeDofMap &loca
 
   // TODO: This matrix is diagonal -> directly assemble it
   Eigen::MatrixXd m_loc(local_dof_map.num_basis_functions(), local_dof_map.num_basis_functions());
-  for (int j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
-    for (int i = 0; i < local_dof_map.num_basis_functions(); i += 1) {
+  for (int j = 0; j < static_cast<int>(local_dof_map.num_basis_functions()); j += 1) {
+    for (int i = 0; i < static_cast<int>(local_dof_map.num_basis_functions()); i += 1) {
       m_loc(j, i) = 0;
-      for (int qp = 0; qp < phi[i].size(); qp += 1)
+      for (int qp = 0; qp < static_cast<int>(phi[i].size()); qp += 1)
         m_loc(j, i) += phi[i][qp] * phi[j][qp] * JxW[qp];
     }
   }
@@ -33,10 +33,10 @@ Eigen::MatrixXd create_phi_grad_psi(const FETypeNetwork &fe, const LocalEdgeDofM
   const auto &JxW = fe.get_JxW();
 
   Eigen::MatrixXd k_loc(local_dof_map.num_basis_functions(), local_dof_map.num_basis_functions());
-  for (int j = 0; j < local_dof_map.num_basis_functions(); j += 1) {
-    for (int i = 0; i < local_dof_map.num_basis_functions(); i += 1) {
+  for (int j = 0; j < static_cast<int>(local_dof_map.num_basis_functions()); j += 1) {
+    for (int i = 0; i < static_cast<int>(local_dof_map.num_basis_functions()); i += 1) {
       k_loc(j, i) = 0;
-      for (int qp = 0; qp < phi[i].size(); qp += 1)
+      for (int qp = 0; qp < static_cast<int>(phi[i].size()); qp += 1)
         k_loc(j, i) += phi[i][qp] * dphi[j][qp] * JxW[qp];
     }
   }
@@ -53,8 +53,8 @@ Eigen::MatrixXd create_boundary(size_t num_basis_functions, BoundaryPointType ro
   const auto right = [](size_t i) -> double { return 1.; };
   const auto phi = (col == BoundaryPointType::Left) ? left : right;
   const auto psi = (row == BoundaryPointType::Left) ? left : right;
-  for (int j = 0; j < num_basis_functions; j += 1) {
-    for (int i = 0; i < num_basis_functions; i += 1) {
+  for (int j = 0; j < static_cast<int>(num_basis_functions); j += 1) {
+    for (int i = 0; i < static_cast<int>(num_basis_functions); i += 1) {
       u_loc(j, i) = psi(j) * phi(i);
     }
   }
@@ -66,7 +66,7 @@ Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPo
   const auto left = [](size_t i) -> double { return std::pow(-1., i); };
   const auto right = [](size_t i) -> double { return 1.; };
   const auto phi = (type == BoundaryPointType::Left) ? left : right;
-  for (int j = 0; j < local_dof_map.num_basis_functions(); j += 1)
+  for (int j = 0; j < static_cast<int>(local_dof_map.num_basis_functions()); j += 1)
     u_loc(j) = phi(j);
   return u_loc;
 }

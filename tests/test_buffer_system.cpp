@@ -43,7 +43,7 @@ TEST_CASE( "TestBufferSystem", "[BufferSystem]" )
          auto& buf = bs.get_receive_buffer( src_rank );
 
          // unpack data
-         int    other_rank, a;
+         size_t other_rank, a;
          double b;
          buf >> other_rank;
          buf >> a;

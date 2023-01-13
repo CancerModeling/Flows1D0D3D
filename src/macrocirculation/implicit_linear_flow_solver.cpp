@@ -602,7 +602,7 @@ void ImplicitLinearFlowSolver::assemble_matrix_nfurcations(double tau) {
     // inverse orientation matrix
     Eigen::MatrixXd orientation(2 * num_edges, 2 * num_edges);
     orientation.setZero();
-    for (int k = 0; k < num_edges; k += 1) {
+    for (int k = 0; k < static_cast<int>(num_edges); k += 1) {
       orientation(2 * k, 2 * k) = tau * sigma[k] / L[k];
       orientation(2 * k + 1, 2 * k + 1) = tau * sigma[k] / C[k];
     }
@@ -611,15 +611,15 @@ void ImplicitLinearFlowSolver::assemble_matrix_nfurcations(double tau) {
     Eigen::MatrixXd conditions(2 * num_edges, 2 * num_edges);
     conditions.setZero();
     // flow condition
-    for (int k = 0; k < num_edges; k += 1)
+    for (int k = 0; k < static_cast<int>(num_edges); k += 1)
       conditions(0, 2 * k + 1) = sigma[k];
     // pressure conditions
-    for (int k = 1; k < num_edges; k += 1) {
+    for (int k = 1; k < static_cast<int>(num_edges); k += 1) {
       conditions(k, 0) = 1.;
       conditions(k, 2 * k) = -1.;
     }
     // characteristic conditions
-    for (int k = 0; k < num_edges; k += 1) {
+    for (int k = 0; k < static_cast<int>(num_edges); k += 1) {
       conditions(num_edges + k, 2 * k) = sigma[k] * 0.5 * std::sqrt(C[k] / L[k]);
       conditions(num_edges + k, 2 * k + 1) = 0.5;
     }
@@ -750,7 +750,6 @@ void ImplicitLinearFlowSolver::assemble_matrix_rcl_model(double tau) {
       auto &data = vertex.get_rcl_data();
 
       const double R0 = calculate_R1(neighbor_edge.get_physical_data());
-      const auto R1 = data.resistances[0];
       const auto C_tilde = data.capacitances[0];
 
       const double alpha = sigma / (std::sqrt(C / L) + 1. / R0);
@@ -933,8 +932,6 @@ void ImplicitLinearFlowSolver::assemble_rhs_rcl_model(double tau) {
     auto &vertex = *d_graph->get_vertex(v_idx);
 
     if (vertex.is_rcl_outflow()) {
-      auto &edge = *d_graph->get_edge(vertex.get_edge_neighbors()[0]);
-
       auto &local_dof_map_vertex = d_dof_map->get_local_dof_map(vertex);
 
       const auto &dof_indices_ptilde = local_dof_map_vertex.dof_indices();
