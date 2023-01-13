@@ -337,7 +337,7 @@ LocalVertexDofMap::LocalVertexDofMap(std::size_t dof_interval_start, std::size_t
 size_t DofMap::first_owned_global_dof() const { return d_first_owned_global_dof; }
 
 size_t DofMap::num_owned_dofs() const { return d_num_owned_dofs; }
-void DofMap::create(MPI_Comm comm, const std::vector<GraphStorage> &graphs, const std::vector<DofMap> &dof_maps, size_t num_components, size_t degree, bool global, const std::function<size_t(const Vertex &)> &num_vertex_dofs) {
+void DofMap::create(MPI_Comm /*comm*/, const std::vector<GraphStorage> &/*graphs*/, const std::vector<DofMap> &/*dof_maps*/, size_t /*num_components*/, size_t /*degree*/, bool /*global*/, const std::function<size_t(const Vertex &)> &/*num_vertex_dofs*/) {
 }
 
 std::size_t LocalVertexDofMap::num_local_dof() const { return d_dof_indices.size(); }

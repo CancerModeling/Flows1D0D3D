@@ -44,7 +44,7 @@ ExplicitTransportSolver::ExplicitTransportSolver(MPI_Comm comm, std::shared_ptr<
   assemble_inverse_mass(d_comm, *d_graph, *d_dof_map_transport, d_inverse_mass);
 }
 
-void ExplicitTransportSolver::evaluate_macro_edge_boundary_values(const std::vector<double> &u_prev, const std::vector<double> &gamma_prev) {
+void ExplicitTransportSolver::evaluate_macro_edge_boundary_values(const std::vector<double> &/*u_prev*/, const std::vector<double> &gamma_prev) {
   std::vector<std::size_t> dof_indices(4, 0);
   std::vector<double> local_dofs(4, 0);
 
@@ -273,7 +273,7 @@ void calculate_gamma_up_at_bifurcation(const std::vector<double> &sigma,
   }
 }
 
-void ExplicitTransportSolver::calculate_fluxes_at_nfurcations(double t, const std::vector<double> &u_prev) {
+void ExplicitTransportSolver::calculate_fluxes_at_nfurcations(double t, const std::vector<double> &/*u_prev*/) {
   std::vector<double> Q_up_values(0, 0);
   std::vector<double> A_up_values(0, 0);
 

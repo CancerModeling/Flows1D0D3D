@@ -31,9 +31,9 @@ ConstantUpwindProvider::ConstantUpwindProvider(double speed)
 
 ConstantUpwindProvider::~ConstantUpwindProvider() = default;
 
-void ConstantUpwindProvider::get_values_at_qp(double t,
-                                              const Edge &edge,
-                                              size_t micro_edge,
+void ConstantUpwindProvider::get_values_at_qp(double /*t*/,
+                                              const Edge &/*edge*/,
+                                              size_t /*micro_edge*/,
                                               const QuadratureFormula &qf,
                                               std::vector<double> &v_qp) const {
   assert(qf.size() == v_qp.size());
@@ -45,7 +45,7 @@ void ConstantUpwindProvider::get_values_at_qp(double t,
 }
 
 /*! @brief Returns the upwinded values for Q and A for a whole macro-edge at the micro-edge boundaries. */
-void ConstantUpwindProvider::get_upwinded_values(double t, const Edge &edge, std::vector<double> &v_qp) const {
+void ConstantUpwindProvider::get_upwinded_values(double /*t*/, const Edge &edge, std::vector<double> &v_qp) const {
   assert(v_qp.size() == edge.num_micro_vertices());
 
   std::uniform_real_distribution<double> distribution(0.5, 1.);
@@ -54,7 +54,7 @@ void ConstantUpwindProvider::get_upwinded_values(double t, const Edge &edge, std
     v_qp[k] = d_speed;
 }
 
-void ConstantUpwindProvider::get_upwinded_values(double t, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
+void ConstantUpwindProvider::get_upwinded_values(double /*t*/, const Vertex &v, std::vector<double> &A, std::vector<double> &Q) const {
   assert(v.get_edge_neighbors().size() == A.size());
   assert(v.get_edge_neighbors().size() == Q.size());
 
@@ -135,7 +135,7 @@ void UpwindProviderNonlinearFlow::init(double t, const std::vector<double> &u) {
   d_evaluator->init(t, u);
 }
 
-void UpwindProviderNonlinearFlow::get_values_at_qp(double t,
+void UpwindProviderNonlinearFlow::get_values_at_qp(double /*t*/,
                                                    const Edge &edge,
                                                    size_t micro_edge,
                                                    const QuadratureFormula &qf,
@@ -175,7 +175,7 @@ void UpwindProviderNonlinearFlow::get_upwinded_values(double t, const Vertex &v,
   d_evaluator->get_fluxes_on_nfurcation(t, v, Q, A);
 }
 
-void UpwindProviderNonlinearFlow::get_0d_pressures(double t, const Vertex &v, std::vector<double> &p_c) const {
+void UpwindProviderNonlinearFlow::get_0d_pressures(double /*t*/, const Vertex &v, std::vector<double> &p_c) const {
   assert(v.is_windkessel_outflow());
   const auto &dof_map = d_solver->get_dof_map();
   auto dof_indices = dof_map.get_local_dof_map(v).dof_indices();
@@ -197,7 +197,7 @@ void UpwindProviderLinearizedFlow::init(double t, const PetscVec &u) {
   d_evaluator->init(t, u);
 }
 
-void UpwindProviderLinearizedFlow::get_values_at_qp(double t,
+void UpwindProviderLinearizedFlow::get_values_at_qp(double /*t*/,
                                                     const Edge &edge,
                                                     size_t micro_edge,
                                                     const QuadratureFormula &qf,
@@ -255,7 +255,7 @@ void UpwindProviderLinearizedFlow::get_upwinded_values(double t, const Vertex &v
   }
 }
 
-void UpwindProviderLinearizedFlow::get_0d_pressures(double t, const Vertex &v, std::vector<double> &p_c) const {
+void UpwindProviderLinearizedFlow::get_0d_pressures(double /*t*/, const Vertex &v, std::vector<double> &p_c) const {
   if (v.is_windkessel_outflow() || v.is_vessel_tree_outflow()) {
     const auto &dof_map = d_solver->get_dof_map();
     auto dof_indices = dof_map.get_local_dof_map(v).dof_indices();
@@ -328,7 +328,7 @@ ImplicitTransportSolver::ImplicitTransportSolver(MPI_Comm comm,
       if (vertex.is_inflow_with_fixed_flow()) {
         d_inflow_functions[k][vertex.get_id()] = inflow_function;
       } else if (vertex.is_leaf()) {
-        d_inflow_functions[k][vertex.get_id()] = [](double t) { return 0.; };
+        d_inflow_functions[k][vertex.get_id()] = [](double /*t*/) { return 0.; };
       }
     }
   }
@@ -798,7 +798,7 @@ Eigen::MatrixXd create_QA_phi_grad_psi(const FETypeNetwork &fe,
   return k_loc;
 }
 
-void ImplicitTransportSolver::apply_slope_limiter(double t) {
+void ImplicitTransportSolver::apply_slope_limiter(double /*t*/) {
   for (int i = 0; i < static_cast<int>(d_graph.size()); i++) {
     apply_slope_limiter(d_graph[i], d_dof_map[i]);
   }

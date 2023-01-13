@@ -51,7 +51,7 @@ int NonlinearLinearCoupling::get_rank(GraphStorage &graph, Vertex &v) {
   return graph.get_edge(v.get_edge_neighbors()[0])->rank();
 }
 
-void NonlinearLinearCoupling::update_linear_solver(const ExplicitNonlinearFlowSolver &nonlinear_solver, ImplicitLinearFlowSolver &linear_solver) {
+void NonlinearLinearCoupling::update_linear_solver(const ExplicitNonlinearFlowSolver &nonlinear_solver, ImplicitLinearFlowSolver &/*linear_solver*/) {
   // send data
   for (auto vertex_pair : coupled_vertices) {
     auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);
@@ -89,7 +89,7 @@ void NonlinearLinearCoupling::update_linear_solver(const ExplicitNonlinearFlowSo
   d_buffer_system.clear();
 }
 
-void NonlinearLinearCoupling::update_nonlinear_solver(const ImplicitLinearFlowSolver &linear_solver, ExplicitNonlinearFlowSolver &nonlinear_solver) {
+void NonlinearLinearCoupling::update_nonlinear_solver(const ImplicitLinearFlowSolver &linear_solver, ExplicitNonlinearFlowSolver &/*nonlinear_solver*/) {
   // send data
   for (auto vertex_pair : coupled_vertices) {
     auto v_nl = d_graph_nl->get_vertex(vertex_pair.vertex_id_1);

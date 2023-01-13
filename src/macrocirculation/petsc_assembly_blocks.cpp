@@ -50,7 +50,7 @@ Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPo
 Eigen::MatrixXd create_boundary(size_t num_basis_functions, BoundaryPointType row, BoundaryPointType col) {
   Eigen::MatrixXd u_loc(num_basis_functions, num_basis_functions);
   const auto left = [](size_t i) -> double { return std::pow(-1., i); };
-  const auto right = [](size_t i) -> double { return 1.; };
+  const auto right = [](size_t) -> double { return 1.; };
   const auto phi = (col == BoundaryPointType::Left) ? left : right;
   const auto psi = (row == BoundaryPointType::Left) ? left : right;
   for (int j = 0; j < static_cast<int>(num_basis_functions); j += 1) {
@@ -64,7 +64,7 @@ Eigen::MatrixXd create_boundary(size_t num_basis_functions, BoundaryPointType ro
 Eigen::MatrixXd create_boundary(const LocalEdgeDofMap &local_dof_map, BoundaryPointType type) {
   Eigen::VectorXd u_loc(local_dof_map.num_basis_functions());
   const auto left = [](size_t i) -> double { return std::pow(-1., i); };
-  const auto right = [](size_t i) -> double { return 1.; };
+  const auto right = [](size_t /*i*/) -> double { return 1.; };
   const auto phi = (type == BoundaryPointType::Left) ? left : right;
   for (int j = 0; j < static_cast<int>(local_dof_map.num_basis_functions()); j += 1)
     u_loc(j) = phi(j);
