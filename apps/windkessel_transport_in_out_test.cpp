@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
       }
       return sgn * 0.;
     };
-    auto flow_outside = [&dof_map_transport](double t, const mc::Vertex &v, std::vector<double> &p_c) {
+    auto flow_outside = [&dof_map_transport](double /*t*/, const mc::Vertex &v, std::vector<double> &p_c) {
       auto num_dof = dof_map_transport->get_local_dof_map(v).num_local_dof();
       p_c.resize(num_dof + 1);
       for (size_t k = 0; k < num_dof + 1; k += 1)

@@ -139,7 +139,7 @@ void NonlinearFlowUpwindEvaluator::get_fluxes_on_nfurcation(double t, const Vert
   }
 }
 
-void NonlinearFlowUpwindEvaluator::calculate_nfurcation_fluxes(const std::vector<double> &u_prev) {
+void NonlinearFlowUpwindEvaluator::calculate_nfurcation_fluxes(const std::vector<double> &/*u_prev*/) {
   for (const auto &v_id : d_graph->get_active_and_connected_vertex_ids(mpi::rank(d_comm))) {
     const auto vertex = d_graph->get_vertex(v_id);
 

@@ -30,7 +30,7 @@ EdgeTreeParameters calculate_edge_tree_parameters(const Edge &edge) {
   std::vector<double> list_radii;
   std::vector<double> list_lengths;
   double r = r_0 * alpha;
-  for (size_t k = 0; k < N; k += 1) {
+  for (size_t k = 0; k < static_cast< size_t > ( N ); k += 1) {
     const double l = 280 * r;
     const double C = 3 * std::pow(r, 3) * M_PI * l / (2 * E * h_0);
     const double viscosity = viscosity_bloodplasma(r);
@@ -98,7 +98,7 @@ void set_0d_tree_boundary_conditions(const std::shared_ptr<GraphStorage> &graph,
     //double l = 0.2; // 2mm is the average vessel length
     //double l = 3 * beta; // 2mm is the average vessel length
     std::cout << "vessel start" << std::endl;
-    for (size_t k = 0; k < N; k += 1) {
+    for (size_t k = 0; k < static_cast< size_t > ( N ); k += 1) {
       const double l = 280 * r;
       std::cout << " l = " << l << " r = " << r << std::endl;
       const double C = 3 * std::pow(r, 3) * M_PI * l / (2 * E * h_0);
@@ -168,7 +168,7 @@ void convert_rcr_to_partitioned_tree_bcs(const std::shared_ptr<GraphStorage> &gr
       list_R.push_back(R2 * 0.025);
 
       std::vector<double> radii;
-      for (auto x : list_R)
+      for (int i = 0; i < static_cast< int > ( list_R.size() ); i += 1)
         radii.push_back(NAN);
 
       vertex.set_to_vessel_tree_outflow(p_cap, list_R, list_C, radii, 1);

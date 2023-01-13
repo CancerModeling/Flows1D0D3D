@@ -47,7 +47,6 @@ int main(int argc, char *argv[]) {
     const double tau_out = 1e-2;
 
     const auto output_interval = static_cast<std::size_t>(tau_out / tau);
-    const size_t skip_length = 1;
 
     // vessel parameters
     const double vessel_length = 2.5;
@@ -190,7 +189,7 @@ int main(int argc, char *argv[]) {
 
     mc::ImplicitTransportSolver transport_solver(MPI_COMM_WORLD, {graph_nl, graph_li}, {dof_map_transport_nl, dof_map_transport_li}, {variable_upwind_provider_nl, variable_upwind_provider_li}, degree);
 
-    transport_solver.set_inflow_function([](double t) { return 1.; });
+    transport_solver.set_inflow_function([](double /*t*/) { return 1.; });
 
     auto solver_nl = solver.get_explicit_solver();
     auto solver_li = solver.get_implicit_solver();

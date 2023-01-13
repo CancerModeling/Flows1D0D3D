@@ -147,7 +147,7 @@ void GraphPVDWriter::write_pvtp(std::ostream &out) const {
     out << "</PPointData>\n";
   }
 
-  for (std::size_t rank = 0; rank < mpi::size(d_comm); rank += 1) {
+  for (std::size_t rank = 0; rank < static_cast< size_t > ( mpi::size(d_comm) ); rank += 1) {
     const auto filename = get_vtp_filename(d_times.size() - 1, rank);
     out << "<Piece Source=\"" << filename << "\" />\n";
   }

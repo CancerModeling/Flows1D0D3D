@@ -43,7 +43,7 @@ constexpr double diff_legendre<0>(double) {
   return 0;
 }
 template<>
-constexpr double diff_legendre<1>(double x) {
+constexpr double diff_legendre<1>(double /*x*/) {
   return 1;
 }
 template<>

@@ -276,7 +276,6 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
     else if (vertex->is_leaf() && vertex->is_vessel_tree_outflow()) {
       const auto &edge = *d_graph->get_edge(vertex->get_edge_neighbors()[0]);
       assert(edge.has_physical_data());
-      const auto &param = edge.get_physical_data();
 
       const bool is_pointing_to = edge.is_pointing_to(vertex->get_id());
 

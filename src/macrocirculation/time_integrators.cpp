@@ -36,7 +36,7 @@ ButcherScheme create_ssp_method() {
   return bs;
 }
 
-bool check_consistency_rkm(const ButcherScheme &bs) {
+bool check_consistency_rkm(const ButcherScheme &/*bs*/) {
   throw std::runtime_error("not implemented yet.");
 }
 

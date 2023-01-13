@@ -172,9 +172,6 @@ void interpolate_to_vertices(MPI_Comm comm,
     else
       throw std::runtime_error("this type of embedding is not implemented");
 
-    const auto &param = edge->get_physical_data();
-    const double h = param.length / edge->num_micro_edges();
-
     std::vector< double > upwinded_values_v( edge->num_micro_vertices() );
 
     upwind.get_upwinded_values(t, *edge, upwinded_values_v );

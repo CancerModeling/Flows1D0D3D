@@ -20,7 +20,7 @@ void naive_mesh_partitioner(GraphStorage &graph, MPI_Comm comm) {
   int size;
   MPI_Comm_size(comm, &size);
 
-  for (std::size_t rank = 0; rank < size; rank += 1) {
+  for (std::size_t rank = 0; rank < static_cast< size_t > ( size ); rank += 1) {
     std::size_t start_edge_id = (rank * graph.num_edges()) / size;
     std::size_t end_edge_id = ((rank + 1) * graph.num_edges()) / size;
 

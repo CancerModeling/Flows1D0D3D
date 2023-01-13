@@ -98,8 +98,8 @@ double default_inflow_function(double) {
 
 Vertex::Vertex(std::size_t id)
     : Primitive(id),
-      p_flow_type(FlowType::Undefined),
       p_inflow_value(default_inflow_function),
+      p_flow_type(FlowType::Undefined),
       d_bcs_finalized(false) {}
 
 const std::vector<std::size_t> &Vertex::get_edge_neighbors() const {

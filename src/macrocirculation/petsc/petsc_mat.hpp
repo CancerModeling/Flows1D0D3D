@@ -80,8 +80,8 @@ public:
   }
 
   void add(const std::vector<size_t> &row_dofs, const std::vector<size_t> &col_dofs, Eigen::MatrixXd &mat_loc) {
-    assert(row_dofs.size() == mat_loc.rows());
-    assert(col_dofs.size() == mat_loc.cols());
+    assert(static_cast< int > (row_dofs.size()) == mat_loc.rows());
+    assert(static_cast< int > (col_dofs.size()) == mat_loc.cols());
 
     // we have no guarantees that gmm's memory is continuous
     // thus we copy it over

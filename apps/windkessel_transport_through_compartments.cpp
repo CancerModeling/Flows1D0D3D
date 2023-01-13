@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
     dof_map_flow->create(MPI_COMM_WORLD, *graph, 2, degree, true);
 
     auto upwind_evaluator = std::make_shared<mc::LinearizedFlowUpwindEvaluator>(MPI_COMM_WORLD, graph, dof_map_flow);
-    auto flow_inside = [backward_orientation](double t, const mc::Point &p) -> double {
+    auto flow_inside = [backward_orientation](double t, const mc::Point &/*p*/) -> double {
       const double sgn = backward_orientation ? -1. : +1.;
       if (t < 2)
         return sgn;
