@@ -14,50 +14,35 @@
 #include "implicit_linear_flow_solver.hpp"
 #include "simple_linearized_solver.hpp"
 #include "vessel_formulas.hpp"
+#include "embedded_graph_reader.hpp"
 #include "petsc.h"
 
 namespace macrocirculation {
 
-SimpleLinearizedSolver::SimpleLinearizedSolver()
-    // TODO: Manage parallelism better
-    : comm(PETSC_COMM_SELF), tau(1e-3), t(0), writer(std::make_shared<GraphPVDWriter>(comm, "./", "simple_linearized_solver")) {
+SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath)
+// TODO: Manage parallelism better
+  : comm(PETSC_COMM_SELF), tau(1e-3), t(0), writer(std::make_shared<GraphPVDWriter>(comm, "./", "simple_linearized_solver")) {
+
+  graph = std::make_shared<GraphStorage>();
+
+  EmbeddedGraphReader graph_reader;
+  graph_reader.append(filepath, *graph);
+
   set_tau(tau);
 }
 
 void SimpleLinearizedSolver::set_tau(double ptau) {
   tau = ptau;
 
-  // test values
-  const double vessel_length = 1.2;
-  const double radius = 0.117;
-  const double wall_thickness = 0.029;
-  const double elastic_modulus = 400000.0;
-  const double gamma = 2;
-  const double density = 1.028e-3;
-
-  const size_t num_micro_edges = 40;
-
   const size_t degree = 2;
 
-  graph = std::make_shared<GraphStorage>();
+  v0 = graph->find_vertex_by_name("inflow");
+  v1 = graph->find_vertex_by_name("coupling_1");
+  v2 = graph->find_vertex_by_name("coupling_2");
+  v3 = graph->find_vertex_by_name("outflow");
 
-  v0 = graph->create_vertex();
-  v1 = graph->create_vertex();
-  v2 = graph->create_vertex();
-  v3 = graph->create_vertex();
-  edge1 = graph->connect(*v0, *v1, num_micro_edges);
-  edge2 = graph->connect(*v1, *v2, num_micro_edges);
-  edge3 = graph->connect(*v2, *v3, num_micro_edges);
-
-  edge1->add_embedding_data({{Point(0 * vessel_length, 0, 0), Point(1 * vessel_length, 0, 0)}});
-  edge2->add_embedding_data({{Point(1 * vessel_length, 0, 0), Point(2 * vessel_length, 0, 0)}});
-  edge3->add_embedding_data({{Point(2 * vessel_length, 0, 0), Point(3 * vessel_length, 0, 0)}});
-
-  auto physical_data = PhysicalData::set_from_data(elastic_modulus, wall_thickness, density, gamma, radius, vessel_length);
-
-  edge1->add_physical_data(physical_data);
-  edge2->add_physical_data(physical_data);
-  edge3->add_physical_data(physical_data);
+  edge0 = graph->find_edge_by_name("vessel_coupling_1");
+  edge1 = graph->find_edge_by_name("vessel_coupling_2");
 
   v0->set_to_inflow_with_fixed_pressure([](double t) { return 2 * std::abs(std::sin(M_PI * t)); });
   v3->set_to_free_outflow();
@@ -89,7 +74,7 @@ SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(const Vertex &
 
 SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(Outlet outlet) {
   if (outlet == Outlet::in) {
-    return get_result(*v1, *edge1);
+    return get_result(*v1, *edge0);
   } else if (outlet == Outlet::out) {
     return get_result(*v2, *edge1);
   } else {

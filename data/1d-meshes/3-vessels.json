@@ -1,0 +1,46 @@
+{
+  "vertices": [
+    { "id": 0, "name": "inflow" },
+    { "id": 1, "name": "coupling_1" },
+    { "id": 2, "name": "coupling_2" },
+    { "id": 3, "name": "outflow" }
+  ],
+  "vessels": [
+    {
+      "id": 0,
+      "name": "vessel_coupling_1",
+      "vessel_length": 1.2,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 40,
+      "left_vertex_id": 0,
+      "right_vertex_id": 1
+    },
+    {
+      "id": 1,
+      "name": "vessel_coupling_2",
+      "vessel_length": 1.2,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 40,
+      "left_vertex_id": 1,
+      "right_vertex_id": 2
+    },
+    {
+      "id": 2,
+      "name": "vessel2",
+      "vessel_length": 1.2,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 40,
+      "left_vertex_id": 2,
+      "right_vertex_id": 3
+    }
+  ]
+}

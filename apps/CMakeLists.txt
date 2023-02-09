@@ -88,6 +88,10 @@ add_executable(${ProjectName}SimpleLinearizedSolver simple_linearized_solver.cpp
 target_link_libraries(${ProjectName}SimpleLinearizedSolver ${ProjectLib})
 target_link_libraries(${ProjectName}SimpleLinearizedSolver PkgConfig::PETSC)
 
+add_executable(${ProjectName}SimpleLinearizedSolverCoupled simple_linearized_solver_coupled.cpp)
+target_link_libraries(${ProjectName}SimpleLinearizedSolverCoupled ${ProjectLib})
+target_link_libraries(${ProjectName}SimpleLinearizedSolverCoupled PkgConfig::PETSC)
+
 foreach (TargetName ${ProjectName}NonlinearFlowLine
         ${ProjectName}NonlinearFlowBifurcation
         ${ProjectName}ConvergenceStudy
@@ -96,6 +100,7 @@ foreach (TargetName ${ProjectName}NonlinearFlowLine
         ${ProjectName}CombinedGeometry
         ${ProjectName}Transport
         ${ProjectName}LinearFlow
+        ${ProjectName}SimpleLinearizedSolverCoupled
         )
 
     foreach (FolderName output
