@@ -472,6 +472,8 @@ public:
   /*! @brief Searches the given named vertex. */
   std::shared_ptr<Vertex> find_vertex_by_name(const std::string &name);
 
+  bool has_named_vertex(const std::string &name) const;
+
 private:
   std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_id, std::size_t num_micro_edges);
 

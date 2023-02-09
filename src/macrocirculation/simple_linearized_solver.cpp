@@ -36,16 +36,25 @@ void SimpleLinearizedSolver::set_tau(double ptau) {
 
   const size_t degree = 2;
 
-  v0 = graph->find_vertex_by_name("inflow");
-  v1 = graph->find_vertex_by_name("coupling_1");
-  v2 = graph->find_vertex_by_name("coupling_2");
-  v3 = graph->find_vertex_by_name("outflow");
+  v_coupling_1_outer = graph->find_vertex_by_name("coupling_1_outer");
+  v_coupling_1_inner = graph->find_vertex_by_name("coupling_1_inner");
+  v_coupling_2_inner = graph->find_vertex_by_name("coupling_2_inner");
+  v_coupling_2_outer = graph->find_vertex_by_name("coupling_2_outer");
 
   edge0 = graph->find_edge_by_name("vessel_coupling_1");
   edge1 = graph->find_edge_by_name("vessel_coupling_2");
 
-  v0->set_to_inflow_with_fixed_pressure([](double t) { return 2 * std::abs(std::sin(M_PI * t)); });
-  v3->set_to_free_outflow();
+  if (graph->has_named_vertex("inflow"))
+  {
+    auto v0 = graph->find_vertex_by_name("inflow");
+    v0->set_to_inflow_with_fixed_pressure([](double t) { return 2 * std::abs(std::sin(M_PI * t)); });
+  }
+
+  if (graph->has_named_vertex("outflow"))
+  {
+    auto v3 = graph->find_vertex_by_name("outflow");
+    v3->set_to_free_outflow();
+  }
 
   graph->finalize_bcs();
 
@@ -74,9 +83,9 @@ SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(const Vertex &
 
 SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(Outlet outlet) {
   if (outlet == Outlet::in) {
-    return get_result(*v1, *edge0);
+    return get_result(*v_coupling_1_inner, *edge0);
   } else if (outlet == Outlet::out) {
-    return get_result(*v2, *edge1);
+    return get_result(*v_coupling_2_inner, *edge1);
   } else {
     throw std::runtime_error("unknown vertex value");
   }

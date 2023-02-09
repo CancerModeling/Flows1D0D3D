@@ -650,6 +650,11 @@ std::shared_ptr<Edge> GraphStorage::find_edge_by_name(const std::string &name) {
   return pos->second;
 }
 
+bool GraphStorage::has_named_vertex(const std::string &name) const {
+  auto pos = std::find_if(p_vertices.begin(), p_vertices.end(), [&](auto v) { return v.second->get_name() == name; });
+  return pos != p_vertices.end();
+}
+
 std::shared_ptr<Vertex> GraphStorage::find_vertex_by_name(const std::string &name) {
   auto pos = std::find_if(p_vertices.begin(), p_vertices.end(), [&](auto v) { return v.second->get_name() == name; });
 

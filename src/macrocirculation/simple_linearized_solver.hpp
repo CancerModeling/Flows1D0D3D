@@ -70,10 +70,10 @@ private:
   std::shared_ptr<DofMap> dof_map;
   std::shared_ptr<ImplicitLinearFlowSolver> solver;
 
-  std::shared_ptr<Vertex> v0;
-  std::shared_ptr<Vertex> v1;
-  std::shared_ptr<Vertex> v2;
-  std::shared_ptr<Vertex> v3;
+  std::shared_ptr<Vertex> v_coupling_1_outer;
+  std::shared_ptr<Vertex> v_coupling_1_inner;
+  std::shared_ptr<Vertex> v_coupling_2_inner;
+  std::shared_ptr<Vertex> v_coupling_2_outer;
 
   std::shared_ptr<Edge> edge0;
   std::shared_ptr<Edge> edge1;
