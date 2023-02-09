@@ -34,18 +34,6 @@
     },
     {
       "id": 2,
-      "name": "gap",
-      "vessel_length": 1.2,
-      "radius": 0.117,
-      "wall_thickness": 0.029,
-      "elastic_modulus": 400000.0,
-      "gamma": 2,
-      "number_edges": 40,
-      "left_vertex_id": 2,
-      "right_vertex_id": 3
-    },
-    {
-      "id": 3,
       "name": "vessel_coupling_2",
       "vessel_length": 0.4,
       "radius": 0.117,
@@ -57,7 +45,7 @@
       "right_vertex_id": 4
     },
     {
-      "id": 4,
+      "id": 3,
       "name": "vessel",
       "vessel_length": 0.8,
       "radius": 0.117,
