@@ -24,7 +24,7 @@ class GraphPVDWriter;
 /*! This is a simplified interface for calling our code from an LBM aneurysm solver. */
 class SimpleLinearizedSolver {
 public:
-  explicit SimpleLinearizedSolver(const std::string & filepath);
+  explicit SimpleLinearizedSolver(const std::string & filepath, const std::string& name);
 
   struct Result {
     /*! @brief Vessel area in [cm^2]. */
