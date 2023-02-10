@@ -56,6 +56,26 @@ void SimpleLinearizedSolver::set_tau(double ptau) {
     v3->set_to_free_outflow();
   }
 
+  if ( v_coupling_1_outer->is_leaf() )
+  {
+    const double C = linear::get_C(edge0->get_physical_data());
+    const double L = linear::get_L(edge0->get_physical_data());
+    const bool ptv = edge0->is_pointing_to( v_coupling_1_outer->get_id() );
+    // v_coupling_1_outer->set_to_linear_characteristic_inflow(C, L, ptv, 0, 0);
+    // v_coupling_1_outer->set_to_linear_characteristic_inflow(C, L, false, 0., 0.);
+    v_coupling_1_outer->set_to_free_outflow();
+  }
+
+  if ( v_coupling_2_outer->is_leaf() )
+  {
+    const double C = linear::get_C(edge1->get_physical_data());
+    const double L = linear::get_L(edge1->get_physical_data());
+    const bool ptv = edge1->is_pointing_to( v_coupling_1_outer->get_id() );
+    //v_coupling_2_outer->set_to_linear_characteristic_inflow(C, L, ptv, 0, 0);
+    // v_coupling_2_outer->set_to_linear_characteristic_inflow(C, L, false, 0., 0.);
+    v_coupling_2_outer->set_to_inflow_with_fixed_flow([](const double x){ return 0.; });
+  }
+
   graph->finalize_bcs();
 
   naive_mesh_partitioner(*graph, comm);
@@ -79,6 +99,18 @@ SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(const Vertex &
   const auto &phys_data = edge.get_physical_data();
   const double a = nonlinear::get_A_from_p(p, phys_data.G0, phys_data.A0);
   return {a, p, q};
+}
+
+
+void SimpleLinearizedSolver::set_result(Outlet outlet, double p, double q) {
+  p /= 1e3; // cgs to mixed units
+  if (outlet == Outlet::in) {
+    v_coupling_1_outer->update_linear_characteristic_inflow(p, q);
+  } else if (outlet == Outlet::out) {
+    v_coupling_2_outer->update_linear_characteristic_inflow(p, q);
+  } else {
+    throw std::runtime_error("unknown vertex value");
+  }
 }
 
 SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(Outlet outlet) {

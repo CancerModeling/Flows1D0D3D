@@ -49,6 +49,8 @@ public:
   /*! @brief Returns the coupling data at the given outlet (either in or out, see above). */
   Result get_result(Outlet outlet);
 
+  void set_result(Outlet outlet, double p, double q);
+
   /*! @brief Writes the solution to the disk for debugging purposes.
    *         Output is pretty slows, so don't call this too often.
    */
