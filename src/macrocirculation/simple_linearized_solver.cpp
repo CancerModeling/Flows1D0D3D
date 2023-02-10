@@ -36,44 +36,50 @@ void SimpleLinearizedSolver::set_tau(double ptau) {
 
   const size_t degree = 2;
 
-  v_coupling_1_outer = graph->find_vertex_by_name("coupling_1_outer");
-  v_coupling_1_inner = graph->find_vertex_by_name("coupling_1_inner");
-  v_coupling_2_inner = graph->find_vertex_by_name("coupling_2_inner");
-  v_coupling_2_outer = graph->find_vertex_by_name("coupling_2_outer");
+  if (graph->has_named_vertex("coupling_1_outer"))
+  {
+    v_coupling_1_outer = graph->find_vertex_by_name("coupling_1_outer");
+    v_coupling_1_inner = graph->find_vertex_by_name("coupling_1_inner");
+    edge0 = graph->find_edge_by_name("vessel_coupling_1");
 
-  edge0 = graph->find_edge_by_name("vessel_coupling_1");
-  edge1 = graph->find_edge_by_name("vessel_coupling_2");
+    if ( v_coupling_1_outer->is_leaf() )
+    {
+      const double C = linear::get_C(edge0->get_physical_data());
+      const double L = linear::get_L(edge0->get_physical_data());
+      const bool ptv = edge0->is_pointing_to( v_coupling_1_outer->get_id() );
+      v_coupling_1_outer->set_to_linear_characteristic_inflow(C, L, !ptv, 0, 0);
+      // v_coupling_1_outer->set_to_linear_characteristic_inflow(C, L, false, 0., 0.);
+      // v_coupling_1_outer->set_to_free_outflow();
+    }
+  }
+
+  if (graph->has_named_vertex("coupling_2_outer")) {
+    v_coupling_2_inner = graph->find_vertex_by_name("coupling_2_inner");
+    v_coupling_2_outer = graph->find_vertex_by_name("coupling_2_outer");
+
+    edge1 = graph->find_edge_by_name("vessel_coupling_2");
+
+    if (v_coupling_2_outer->is_leaf()) {
+      const double C = linear::get_C(edge1->get_physical_data());
+      const double L = linear::get_L(edge1->get_physical_data());
+      const bool ptv = edge1->is_pointing_to(v_coupling_1_outer->get_id());
+      v_coupling_2_outer->set_to_linear_characteristic_inflow(C, L, !ptv, 0, 0);
+      // v_coupling_2_outer->set_to_linear_characteristic_inflow(C, L, false, 0., 0.);
+      // v_coupling_2_outer->set_to_inflow_with_fixed_flow([](double t) { return 2 * std::abs(std::sin(M_PI * t)); });
+      std::cout << "set!" << std::endl;
+    }
+  }
 
   if (graph->has_named_vertex("inflow"))
   {
     auto v0 = graph->find_vertex_by_name("inflow");
-    v0->set_to_inflow_with_fixed_pressure([](double t) { return 2 * std::abs(std::sin(M_PI * t)); });
+    v0->set_to_inflow_with_fixed_flow([](double t) { return 2 * std::abs(std::sin(M_PI * t)); });
   }
 
   if (graph->has_named_vertex("outflow"))
   {
     auto v3 = graph->find_vertex_by_name("outflow");
     v3->set_to_free_outflow();
-  }
-
-  if ( v_coupling_1_outer->is_leaf() )
-  {
-    const double C = linear::get_C(edge0->get_physical_data());
-    const double L = linear::get_L(edge0->get_physical_data());
-    const bool ptv = edge0->is_pointing_to( v_coupling_1_outer->get_id() );
-    // v_coupling_1_outer->set_to_linear_characteristic_inflow(C, L, ptv, 0, 0);
-    // v_coupling_1_outer->set_to_linear_characteristic_inflow(C, L, false, 0., 0.);
-    v_coupling_1_outer->set_to_free_outflow();
-  }
-
-  if ( v_coupling_2_outer->is_leaf() )
-  {
-    const double C = linear::get_C(edge1->get_physical_data());
-    const double L = linear::get_L(edge1->get_physical_data());
-    const bool ptv = edge1->is_pointing_to( v_coupling_1_outer->get_id() );
-    //v_coupling_2_outer->set_to_linear_characteristic_inflow(C, L, ptv, 0, 0);
-    // v_coupling_2_outer->set_to_linear_characteristic_inflow(C, L, false, 0., 0.);
-    v_coupling_2_outer->set_to_inflow_with_fixed_flow([](const double x){ return 0.; });
   }
 
   graph->finalize_bcs();
