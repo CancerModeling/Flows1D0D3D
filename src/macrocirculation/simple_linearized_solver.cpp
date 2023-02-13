@@ -19,9 +19,9 @@
 
 namespace macrocirculation {
 
-SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath, const std::string& name)
+SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath, const std::string& name, double dt)
 // TODO: Manage parallelism better
-  : comm(PETSC_COMM_SELF), tau(1e-5), t(0), writer(std::make_shared<GraphPVDWriter>(comm, "./", name)) {
+  : comm(PETSC_COMM_SELF), tau(dt), t(0), writer(std::make_shared<GraphPVDWriter>(comm, "./", name)) {
 
   graph = std::make_shared<GraphStorage>();
 

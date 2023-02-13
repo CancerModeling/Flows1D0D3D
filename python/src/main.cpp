@@ -3,6 +3,7 @@
 #include "macrocirculation/heart_to_breast_1d_solver.hpp"
 #include "macrocirculation/linearized_heart_to_breast_1d_solver.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
+#include "macrocirculation/simple_linearized_solver.hpp"
 #include "petsc.h"
 
 #define STRINGIFY(x) #x
@@ -95,6 +96,45 @@ PYBIND11_MODULE(_core, m) {
     .def("update_vessel_tip_concentrations", &mc::LinearizedHeartToBreast1DSolver::update_vessel_tip_concentrations)
     .def("apply_slope_limiter_transport", &mc::LinearizedHeartToBreast1DSolver::apply_slope_limiter_transport)
     ;
+
+  py::class_<mc::SimpleLinearizedSolver::Result>(m, "SimpleLinearizedSolver_Result")
+    .def(py::init<>())
+    .def_readwrite("a", &mc::SimpleLinearizedSolver::Result::a)
+    .def_readwrite("p", &mc::SimpleLinearizedSolver::Result::p)
+    .def_readwrite("q", &mc::SimpleLinearizedSolver::Result::q)
+    ;
+
+  py::class_<mc::SimpleLinearizedSolver::Outlet>(m, "SimpleLinearizedSolver_Outlet")
+    .def(py::init<>())
+    ;
+
+  py::class_<mc::SimpleLinearizedSolver>(m, "SimpleLinearizedSolver")
+    .def(py::init< const std::string&, const std::string&, double >(), py::arg("filepath"), py::arg("name"), py::arg("tau"))
+    //.def("get_result", py::overload_cast<mc::SimpleLinearizedSolver::Outlet>(&mc::SimpleLinearizedSolver::get_result))
+    //.def("set_result", &mc::SimpleLinearizedSolver::set_result)
+    .def("get_result", [](mc::SimpleLinearizedSolver& self, int outlet){
+      if (outlet == 0)
+        return self.get_result(mc::SimpleLinearizedSolver::Outlet::in);
+      else if (outlet == 1)
+        return self.get_result(mc::SimpleLinearizedSolver::Outlet::out);
+      else
+        throw std::runtime_error("outlet " + std::to_string(outlet) + " unknown");
+    })
+    .def("set_result", [](mc::SimpleLinearizedSolver& self, int outlet, double p, double q) {
+      if (outlet == 0)
+        self.set_result(mc::SimpleLinearizedSolver::Outlet::in, p, q);
+      else if (outlet == 1)
+        self.set_result(mc::SimpleLinearizedSolver::Outlet::out, p, q);
+      else
+        throw std::runtime_error("outlet " + std::to_string(outlet) + " unknown");
+    })
+    .def("write", &mc::SimpleLinearizedSolver::write)
+    .def("set_tau", &mc::SimpleLinearizedSolver::set_tau)
+    .def("solve", &mc::SimpleLinearizedSolver::solve)
+    ;
+  ;
+
+
 
 #ifdef VERSION_INFO
   m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);
