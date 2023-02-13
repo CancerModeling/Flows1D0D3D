@@ -109,7 +109,7 @@ PYBIND11_MODULE(_core, m) {
     ;
 
   py::class_<mc::SimpleLinearizedSolver>(m, "SimpleLinearizedSolver")
-    .def(py::init< const std::string&, const std::string&, double >(), py::arg("filepath"), py::arg("name"), py::arg("tau"))
+    .def(py::init< const std::string&, const std::string&, const std::string&, double >(), py::arg("filepath_mesh"), py::arg("output_directory"), py::arg("name"), py::arg("tau"))
     //.def("get_result", py::overload_cast<mc::SimpleLinearizedSolver::Outlet>(&mc::SimpleLinearizedSolver::get_result))
     //.def("set_result", &mc::SimpleLinearizedSolver::set_result)
     .def("get_result", [](mc::SimpleLinearizedSolver& self, int outlet){
