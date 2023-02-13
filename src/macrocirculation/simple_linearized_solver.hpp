@@ -24,7 +24,7 @@ class GraphPVDWriter;
 /*! This is a simplified interface for calling our code from an LBM aneurysm solver. */
 class SimpleLinearizedSolver {
 public:
-  explicit SimpleLinearizedSolver(const std::string & filepath);
+  explicit SimpleLinearizedSolver(const std::string & filepath, const std::string& name, double tau = 1e-5);
 
   struct Result {
     /*! @brief Vessel area in [cm^2]. */
@@ -48,6 +48,8 @@ public:
 
   /*! @brief Returns the coupling data at the given outlet (either in or out, see above). */
   Result get_result(Outlet outlet);
+
+  void set_result(Outlet outlet, double p, double q);
 
   /*! @brief Writes the solution to the disk for debugging purposes.
    *         Output is pretty slows, so don't call this too often.

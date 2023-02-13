@@ -1059,6 +1059,8 @@ void ImplicitLinearFlowSolver::get_1d_pq_values_at_vertex(const Vertex &v, doubl
 }
 
 void ImplicitLinearFlowSolver::get_1d_pq_values_at_vertex(const Vertex &v, const Edge &edge, double &p, double &q) const {
+  assert( std::find(edge.get_vertex_neighbors().begin(), edge.get_vertex_neighbors().end(), v.get_id()) != edge.get_vertex_neighbors().end() );
+
   const auto ldofmap = d_dof_map->get_local_dof_map(edge);
 
   QuadratureFormula qf = create_gauss4();
