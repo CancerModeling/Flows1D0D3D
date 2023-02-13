@@ -28,9 +28,8 @@ def run():
     # dummy 1d solver to get the information from the mesh:
     mesh_path = path_to_mesh()
     os.makedirs(args.output_directory, exist_ok=True)
-    output_path = os.path.join(args.output_directory, '3-vessels' )
 
-    solver1d = f.SimpleLinearizedSolver(mesh_path, output_path, args.dt)
+    solver1d = f.SimpleLinearizedSolver(mesh_path, args.output_directory, "vessels", args.dt)
 
     num_steps = int(math.ceil(args.t_max / args.dt))
     output_interval = int(math.ceil(args.dt_out / args.dt))

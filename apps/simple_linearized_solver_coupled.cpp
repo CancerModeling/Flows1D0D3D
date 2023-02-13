@@ -21,8 +21,8 @@ int main(int argc, char *argv[]) {
   std::cout << std::ios::scientific;
 
   {
-    mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/vessels-with-gap.json", "vessels-with-gap" );
-    mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/vessel-gap.json", "vessel-gap" );
+    mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/vessels-with-gap.json", "output", "vessels-with-gap" );
+    mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/vessel-gap.json", "output", "vessel-gap" );
 
     for (size_t i = 0; i < 1000000; i += 1) {
       // TODO: iterate

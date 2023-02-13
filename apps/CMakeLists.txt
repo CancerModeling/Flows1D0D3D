@@ -100,6 +100,7 @@ foreach (TargetName ${ProjectName}NonlinearFlowLine
         ${ProjectName}CombinedGeometry
         ${ProjectName}Transport
         ${ProjectName}LinearFlow
+        ${ProjectName}SimpleLinearizedSolver
         ${ProjectName}SimpleLinearizedSolverCoupled
         )
 

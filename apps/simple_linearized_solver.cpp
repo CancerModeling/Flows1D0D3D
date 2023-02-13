@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
   std::cout << std::ios::scientific;
 
   {
-    mc::SimpleLinearizedSolver solver( "data/1d-meshes/3-vessels.json", "vessels" );
+    mc::SimpleLinearizedSolver solver( "data/1d-meshes/3-vessels.json", "output", "vessels" );
 
     for (size_t i = 0; i < 10000; i += 1) {
       solver.solve();
