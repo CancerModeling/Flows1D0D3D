@@ -10,6 +10,7 @@
 #include "dof_map.hpp"
 #include "graph_partitioner.hpp"
 #include "graph_pvd_writer.hpp"
+#include "graph_csv_writer.hpp"
 #include "graph_storage.hpp"
 #include "implicit_linear_flow_solver.hpp"
 #include "simple_linearized_solver.hpp"
@@ -22,22 +23,15 @@ namespace macrocirculation {
 
 SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
 // TODO: Manage parallelism better
-  : comm(comm), tau(dt), t(0), writer(std::make_shared<GraphPVDWriter>(comm, filepath_output, name)) {
-
-  graph = std::make_shared<GraphStorage>();
-
+  : comm(comm)
+  , tau(dt)
+  , t(0)
+  , graph(std::make_shared<GraphStorage>())
+  , pvd_writer(std::make_shared<GraphPVDWriter>(comm, filepath_output, name))
+  , csv_writer(std::make_shared<GraphCSVWriter>(comm, filepath_output, name, graph)) 
+{
   EmbeddedGraphReader graph_reader;
   graph_reader.append(filepath_mesh, *graph);
-
-  set_tau(tau);
-}
-
-SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
-// TODO: Manage parallelism better
-  : SimpleLinearizedSolver(PETSC_COMM_WORLD, filepath_mesh, filepath_output, name, dt) {};
-
-void SimpleLinearizedSolver::set_tau(double ptau) {
-  tau = ptau;
 
   const size_t degree = 2;
 
@@ -96,6 +90,26 @@ void SimpleLinearizedSolver::set_tau(double ptau) {
 
   solver = std::make_shared<ImplicitLinearFlowSolver>(comm, graph, dof_map, degree);
   solver->setup(tau);
+
+  csv_writer->add_setup_data(dof_map, solver->p_component, "p");
+  csv_writer->add_setup_data(dof_map, solver->q_component, "q");
+  csv_writer->setup();
+}
+
+SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
+// TODO: Manage parallelism better
+  : SimpleLinearizedSolver(PETSC_COMM_WORLD, filepath_mesh, filepath_output, name, dt) {};
+
+void SimpleLinearizedSolver::set_tau(double ptau) {
+  solver->setup(ptau);
+}
+
+void SimpleLinearizedSolver::set_inflow(const std::function< double(double)> & fun) {
+  if (graph->has_named_vertex("inflow"))
+  {
+    auto v0 = graph->find_vertex_by_name("inflow");
+    v0->set_to_inflow_with_fixed_flow(fun);
+  }
 }
 
 void SimpleLinearizedSolver::solve() {
@@ -149,10 +163,14 @@ void SimpleLinearizedSolver::write() {
   interpolate_to_vertices(comm, *graph, *dof_map, solver->p_component, solver->get_solution(), points, p_vertex_values);
   interpolate_to_vertices(comm, *graph, *dof_map, solver->q_component, solver->get_solution(), points, q_vertex_values);
 
-  writer->set_points(points);
-  writer->add_vertex_data("p", p_vertex_values);
-  writer->add_vertex_data("q", q_vertex_values);
-  writer->write(t);
+  pvd_writer->set_points(points);
+  pvd_writer->add_vertex_data("p", p_vertex_values);
+  pvd_writer->add_vertex_data("q", q_vertex_values);
+  pvd_writer->write(t);
+
+  csv_writer->add_data("p", solver->get_solution());
+  csv_writer->add_data("q", solver->get_solution());
+  csv_writer->write(t);
 }
 
 } // namespace macrocirculation

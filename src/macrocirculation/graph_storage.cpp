@@ -123,7 +123,7 @@ bool Vertex::is_bifurcation() const {
 void Vertex::set_to_inflow_with_fixed_flow(std::function<double(double)> inflow_value) {
   if (!is_leaf())
     throw std::runtime_error("inflow bc can only be set for leaf nodes (vertex name = " + get_name() + ")");
-  if (d_bcs_finalized)
+  if (d_bcs_finalized && p_flow_type != FlowType::InflowFixedFlow) // we allow a different function, but not a different boundary type!
     throw std::runtime_error("finalized boundary conditions cannot be changed.");
   p_flow_type = FlowType::InflowFixedFlow;
   p_inflow_value = std::move(inflow_value);

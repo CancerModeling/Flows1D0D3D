@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <vector>
+#include <functional>
 #include <mpi.h>
 
 namespace macrocirculation {
@@ -20,6 +21,7 @@ class Edge;
 class Vertex;
 class DofMap;
 class GraphPVDWriter;
+class GraphCSVWriter;
 
 /*! This is a simplified interface for calling our code from an LBM aneurysm solver. */
 class SimpleLinearizedSolver {
@@ -61,6 +63,9 @@ public:
   /*! @brief Sets the time step size. */
   void set_tau(double tau);
 
+  /*! @brief Sets the inflow function. */
+  void set_inflow(const std::function< double(double)> & fun);
+
 private:
   Result get_result(const Vertex &vertex, const Edge &edge);
 
@@ -82,7 +87,8 @@ private:
   std::shared_ptr<Edge> edge0;
   std::shared_ptr<Edge> edge1;
 
-  std::shared_ptr<GraphPVDWriter> writer;
+  std::shared_ptr<GraphPVDWriter> pvd_writer;
+  std::shared_ptr<GraphCSVWriter> csv_writer;
 };
 
 } // namespace macrocirculation
