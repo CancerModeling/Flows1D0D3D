@@ -20,11 +20,13 @@ int main(int argc, char *argv[]) {
 
   std::cout << std::ios::scientific;
 
+  std::cout << "size: " << mc::mpi::size(MPI_COMM_WORLD) << std::endl;
+
   {
     mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/vessels-with-gap.json", "output", "vessels-with-gap" );
     mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/vessel-gap.json", "output", "vessel-gap" );
 
-    for (size_t i = 0; i < 1000000; i += 1) {
+    for (size_t i = 0; i < 1000; i += 1) {
       // TODO: iterate
       solver_with_gap.solve();
       solver_gap.solve();
@@ -55,7 +57,7 @@ int main(int argc, char *argv[]) {
       }
 
       // output every 100
-      if (i % 1000 == 0) {
+      if (i % 10 == 0) {
         {
           // extract coupling data at aneurysm inflow
           auto in = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::in);

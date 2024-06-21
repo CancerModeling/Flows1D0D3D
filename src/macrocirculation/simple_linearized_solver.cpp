@@ -19,9 +19,9 @@
 
 namespace macrocirculation {
 
-SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
+SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
 // TODO: Manage parallelism better
-  : comm(PETSC_COMM_SELF), tau(dt), t(0), writer(std::make_shared<GraphPVDWriter>(comm, filepath_output, name)) {
+  : comm(comm), tau(dt), t(0), writer(std::make_shared<GraphPVDWriter>(comm, filepath_output, name)) {
 
   graph = std::make_shared<GraphStorage>();
 
@@ -30,6 +30,10 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath_mesh,
 
   set_tau(tau);
 }
+
+SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
+// TODO: Manage parallelism better
+  : SimpleLinearizedSolver(PETSC_COMM_SELF, filepath_mesh, filepath_output, name, dt) {};
 
 void SimpleLinearizedSolver::set_tau(double ptau) {
   tau = ptau;
