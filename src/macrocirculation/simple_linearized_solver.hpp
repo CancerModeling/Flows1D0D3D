@@ -66,8 +66,13 @@ public:
   /*! @brief Sets the inflow function. */
   void set_inflow(const std::function< double(double)> & fun);
 
+  /*! @brief Sets the outflow to an RCR model. */
+  void set_outflow_rcr(const double R, const double C);
+
 private:
   Result get_result(const Vertex &vertex, const Edge &edge);
+
+  void setup();
 
 private:
   MPI_Comm comm;

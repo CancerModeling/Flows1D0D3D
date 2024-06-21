@@ -671,6 +671,15 @@ void GraphStorage::finalize_bcs() {
   }
 }
 
+bool GraphStorage::bcs_finalized() {
+  for (auto it : p_vertices) {
+    auto &vertex = *it.second;
+    if(vertex.bc_finalized())
+      return true;
+  }
+  return false;
+}
+
 bool GraphStorage::owns_primitive(const Vertex &vertex, size_t rank) const {
   return vertex_is_neighbor_of_rank(vertex, rank);
 }

@@ -443,6 +443,8 @@ public:
 
   /*! @brief Finalizes all the boundary conditions on the vertices. */
   void finalize_bcs();
+  /*! @brief Checks if the boundary conditions were finalized. */
+  bool bcs_finalized();
 
   /*! @brief Returns all the edge ids assigned to the given rank. */
   std::vector<std::size_t> get_active_edge_ids(int rank) const;

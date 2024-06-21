@@ -31,14 +31,16 @@ int main(int argc, char *argv[]) {
   std::cout << "size: " << mc::mpi::size(MPI_COMM_WORLD) << std::endl;
 
   {
-    const double tau = 1e-2;
+    const double tau = 1e-3;
 
     mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/vessels-with-gap.json", "output", "vessels-with-gap", tau );
     mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/vessel-gap.json", "output", "vessel-gap", tau );
 
     solver_with_gap.set_inflow(inflow);
+    //solver_with_gap.set_outflow_rcr(1.28e2, 5e-3);
+    solver_with_gap.set_outflow_rcr(1e2, 1.75e-3);
 
-    for (size_t i = 0; i < 1000; i += 1) {
+    for (size_t i = 0; i < int(10/tau); i += 1) {
       // TODO: iterate
       solver_with_gap.solve();
       solver_gap.solve();
@@ -69,7 +71,7 @@ int main(int argc, char *argv[]) {
       }
 
       // output every 100
-      if (i % 1 == 0) {
+      if (i % int(1e-2/tau) == 0) {
         {
           // extract coupling data at aneurysm inflow
           auto in = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::in);

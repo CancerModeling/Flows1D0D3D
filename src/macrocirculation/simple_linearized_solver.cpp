@@ -33,8 +33,6 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
   EmbeddedGraphReader graph_reader;
   graph_reader.append(filepath_mesh, *graph);
 
-  const size_t degree = 2;
-
   if (graph->has_named_vertex("coupling_1_outer"))
   {
     v_coupling_1_outer = graph->find_vertex_by_name("coupling_1_outer");
@@ -81,6 +79,35 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
     v3->set_to_free_outflow();
   }
 
+}
+
+SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
+// TODO: Manage parallelism better
+  : SimpleLinearizedSolver(PETSC_COMM_WORLD, filepath_mesh, filepath_output, name, dt) {};
+
+void SimpleLinearizedSolver::set_tau(double ptau) {
+  tau = ptau;
+}
+
+void SimpleLinearizedSolver::set_inflow(const std::function< double(double)> & fun) {
+  if (graph->has_named_vertex("inflow"))
+  {
+    auto v0 = graph->find_vertex_by_name("inflow");
+    v0->set_to_inflow_with_fixed_flow(fun);
+  }
+}
+
+void SimpleLinearizedSolver::set_outflow_rcr(const double r, const double c) {
+  if (graph->has_named_vertex("outflow"))
+  {
+    auto v3 = graph->find_vertex_by_name("outflow");
+    v3->set_to_windkessel_outflow(r, c);
+  }
+}
+
+void SimpleLinearizedSolver::setup(){
+  const size_t degree = 2;
+
   graph->finalize_bcs();
 
   naive_mesh_partitioner(*graph, comm);
@@ -96,23 +123,10 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
   csv_writer->setup();
 }
 
-SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
-// TODO: Manage parallelism better
-  : SimpleLinearizedSolver(PETSC_COMM_WORLD, filepath_mesh, filepath_output, name, dt) {};
-
-void SimpleLinearizedSolver::set_tau(double ptau) {
-  solver->setup(ptau);
-}
-
-void SimpleLinearizedSolver::set_inflow(const std::function< double(double)> & fun) {
-  if (graph->has_named_vertex("inflow"))
-  {
-    auto v0 = graph->find_vertex_by_name("inflow");
-    v0->set_to_inflow_with_fixed_flow(fun);
-  }
-}
-
 void SimpleLinearizedSolver::solve() {
+  if (!graph->bcs_finalized())
+    setup();
+
   t += tau;
   solver->solve(tau, t);
 }
@@ -122,9 +136,9 @@ SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(const Vertex &
   if (edge.rank() == mpi::rank(comm))
   {
     solver->get_1d_pq_values_at_vertex(vertex, edge, p, q);
-    p *= 1e3; // mixed units to cgs
     const auto &phys_data = edge.get_physical_data();
     a = nonlinear::get_A_from_p(p, phys_data.G0, phys_data.A0);
+    p *= 1e3; // mixed units to cgs
   }
   // communicate everywhere:
   double data[3]  = {p, q, a};
