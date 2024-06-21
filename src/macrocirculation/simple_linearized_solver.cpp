@@ -16,6 +16,7 @@
 #include "vessel_formulas.hpp"
 #include "embedded_graph_reader.hpp"
 #include "petsc.h"
+#include "communication/mpi.hpp"
 
 namespace macrocirculation {
 
@@ -33,7 +34,7 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
 
 SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
 // TODO: Manage parallelism better
-  : SimpleLinearizedSolver(PETSC_COMM_SELF, filepath_mesh, filepath_output, name, dt) {};
+  : SimpleLinearizedSolver(PETSC_COMM_WORLD, filepath_mesh, filepath_output, name, dt) {};
 
 void SimpleLinearizedSolver::set_tau(double ptau) {
   tau = ptau;
@@ -103,11 +104,19 @@ void SimpleLinearizedSolver::solve() {
 }
 
 SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(const Vertex &vertex, const Edge &edge) {
-  double p, q;
-  solver->get_1d_pq_values_at_vertex(vertex, edge, p, q);
-  p *= 1e3; // mixed units to cgs
-  const auto &phys_data = edge.get_physical_data();
-  const double a = nonlinear::get_A_from_p(p, phys_data.G0, phys_data.A0);
+  double p, q, a;
+  if (edge.rank() == mpi::rank(comm))
+  {
+    solver->get_1d_pq_values_at_vertex(vertex, edge, p, q);
+    p *= 1e3; // mixed units to cgs
+    const auto &phys_data = edge.get_physical_data();
+    a = nonlinear::get_A_from_p(p, phys_data.G0, phys_data.A0);
+  }
+  // communicate everywhere:
+  double data[3]  = {p, q, a};
+  MPI_Bcast(data, 3, MPI_DOUBLE, edge.rank(), comm);
+  p = data[0]; q = data[1]; a = data[2];
+  // return
   return {a, p, q};
 }
 
