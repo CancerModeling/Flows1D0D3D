@@ -23,7 +23,6 @@
 #include "macrocirculation/petsc/petsc_ksp.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
-
 namespace mc = macrocirculation;
 
 
@@ -81,10 +80,19 @@ int main(int argc, char *argv[]) {
     // mc::set_0d_tree_boundary_conditions(graph, "Outflow");
     // graph_reader.set_boundary_data("./data/meshes/boundary-combined-geometry-linear-part.json", *graph);
 
+    double A_total = 0;
     for (auto v : graph->find_vertices_by_name_prefix("Outflow"))
     {
-      v->set_to_windkessel_outflow(110.8 * 1e-0, 0.0062 * 1e+1);
-      v->set_to_windkessel_outflow(110.8*2e1, 0.0062*1e-1);
+      A_total += graph->get_edge( v->get_edge_neighbors()[0] )->get_physical_data().A0;
+    }
+
+    const double C_tot = 0.0062;
+    const double R_tot = 110.8;
+    for (auto v : graph->find_vertices_by_name_prefix("Outflow"))
+    {
+      const double A_i = graph->get_edge( v->get_edge_neighbors()[0] )->get_physical_data().A0;
+      const double ratio = A_i / A_total;
+      v->set_to_windkessel_outflow(R_tot/ratio, ratio*C_tot);
     }
 
     graph->finalize_bcs();
