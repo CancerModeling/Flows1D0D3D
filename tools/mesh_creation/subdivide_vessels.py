@@ -53,6 +53,10 @@ def subdivide_for_coupling(graph, name, omit_connecting_edge=True):
 	edge2['right_vertex_id'] = v3['id']
 	edge3['left_vertex_id'] = v3['id']
 	edge3['right_vertex_id'] = v4['id']
+	# fix edge names
+	old_edge['name'] = 'vessel_coupling_1'
+	edge2['name'] = 'gap'
+	edge3['name'] = 'vessel_coupling_2'
 	# rename vertices
 	v1['name'] = 'coupling_1_inner'
 	v2['name'] = 'coupling_1_outer'
@@ -116,8 +120,8 @@ if __name__ == '__main__':
 		graph, new_graph = subdivide_for_coupling(graph, name, omit_connecting_edge=omit)
 		p = pathlib.Path(filepath)
 		folder = pathlib.Path(filepath).parent.resolve()
-		with open(os.path.join(folder, p.stem + '_with_gap' + ('_omitted' if omit else '') + p.suffix),'w') as file:
+		with open(os.path.join(folder, p.stem + '-with-gap' + ('-omitted' if omit else '') + p.suffix),'w') as file:
 			file.write(json.dumps(graph, indent=2))
-		with open(os.path.join(folder, p.stem + '_gap' + p.suffix), 'w') as file:
+		with open(os.path.join(folder, p.stem + '-gap' + p.suffix), 'w') as file:
 			file.write(json.dumps(new_graph, indent=2))
 	
