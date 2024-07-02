@@ -655,6 +655,18 @@ bool GraphStorage::has_named_vertex(const std::string &name) const {
   return pos != p_vertices.end();
 }
 
+std::vector<std::shared_ptr<Vertex>> GraphStorage::find_vertices_by_name_prefix(const std::string &prefix) {
+  std::vector<std::shared_ptr<Vertex>> results;
+  for (auto &v_id : get_vertex_ids()) {
+    auto vertex = get_vertex(v_id);
+
+    if (vertex->get_name().rfind(prefix) == 0) {
+      results.push_back(vertex);
+    }
+  }
+  return results;
+}
+
 std::shared_ptr<Vertex> GraphStorage::find_vertex_by_name(const std::string &name) {
   auto pos = std::find_if(p_vertices.begin(), p_vertices.end(), [&](auto v) { return v.second->get_name() == name; });
 

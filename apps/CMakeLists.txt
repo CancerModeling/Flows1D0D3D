@@ -51,6 +51,11 @@ target_link_libraries(${ProjectName}LinearFlowBreastGeometry ${ProjectLib})
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry PkgConfig::PETSC)
 target_link_libraries(${ProjectName}LinearFlowBreastGeometry cxxopts)
 
+add_executable(${ProjectName}LinearFlowAneurysmGeometry linear_flow_aneurysm_geometry.cpp)
+target_link_libraries(${ProjectName}LinearFlowAneurysmGeometry ${ProjectLib})
+target_link_libraries(${ProjectName}LinearFlowAneurysmGeometry PkgConfig::PETSC)
+target_link_libraries(${ProjectName}LinearFlowAneurysmGeometry cxxopts)
+
 add_executable(${ProjectName}ImplicitTransport implicit_transport.cpp)
 target_link_libraries(${ProjectName}ImplicitTransport ${ProjectLib})
 target_link_libraries(${ProjectName}ImplicitTransport PkgConfig::PETSC)

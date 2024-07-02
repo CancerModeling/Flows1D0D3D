@@ -476,6 +476,9 @@ public:
 
   bool has_named_vertex(const std::string &name) const;
 
+  /*! @brief Returns all vertices with a common prefix in their name. */
+  std::vector<std::shared_ptr<Vertex>> find_vertices_by_name_prefix(const std::string &prefix);
+
 private:
   std::shared_ptr<Edge> connect(Vertex &v1, Vertex &v2, std::size_t edge_id, std::size_t num_micro_edges);
 
