@@ -23,6 +23,8 @@
 #include "macrocirculation/petsc/petsc_ksp.hpp"
 #include "macrocirculation/vessel_formulas.hpp"
 #include "macrocirculation/interpolate_to_vertices.hpp"
+#include "macrocirculation/quantities_of_interest.hpp"
+
 namespace mc = macrocirculation;
 
 
@@ -113,7 +115,9 @@ int main(int argc, char *argv[]) {
 
     std::vector<mc::Point> points;
     std::vector<double> vessel_A0;
+    std::vector<double> vessel_ids;
     mc::fill_with_vessel_A0(MPI_COMM_WORLD, *graph, points, vessel_A0);
+    mc::fill_with_vessel_id(MPI_COMM_WORLD, *graph, points, vessel_ids);
 
     mc::GraphPVDWriter writer(PETSC_COMM_WORLD, args["output-directory"].as<std::string>(), "breast_geometry_linearized");
 
@@ -134,10 +138,15 @@ int main(int argc, char *argv[]) {
         interpolate_to_vertices(PETSC_COMM_WORLD, *graph, *dof_map, solver.p_component, solver.get_solution(), points, p_vertex_values);
         interpolate_to_vertices(PETSC_COMM_WORLD, *graph, *dof_map, solver.q_component, solver.get_solution(), points, q_vertex_values);
 
+        std::vector<double> r_vertex_values;
+        calculate_linearized_r(PETSC_COMM_WORLD, *graph, p_vertex_values, points, r_vertex_values);
+
         writer.set_points(points);
         writer.add_vertex_data("p", p_vertex_values);
         writer.add_vertex_data("q", q_vertex_values);
         writer.add_vertex_data("a0", vessel_A0);
+        writer.add_vertex_data("r", r_vertex_values);
+        writer.add_vertex_data("vessel_ids", vessel_ids);
         writer.write(t);
 
         int num = 0;
