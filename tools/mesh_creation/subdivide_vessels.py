@@ -1,6 +1,7 @@
 import json 
 import pathlib
 import os
+import argparse
 
 
 def subdivide(graph, name, name_vertex=None):
@@ -27,7 +28,7 @@ def subdivide(graph, name, name_vertex=None):
 	new_edge['number_edges'] = len(new_edge['embedded_coordinates'])-1
 
 
-def subdivide_for_coupling(graph, name):
+def subdivide_for_coupling(graph, name, omit_connecting_edge=True):
 	last_vertex_id = max([v['id'] for v in graph['vertices']])
 	last_edge_id = max([e['id'] for e in graph['vessels']])
 	old_edge = [e for e in graph['vessels'] if e['name'] == name][0]
@@ -40,10 +41,11 @@ def subdivide_for_coupling(graph, name):
 	graph['vertices'].append(v3)
 	# create edges
 	edge2 = dict(old_edge)
+	edge2['id'] = last_edge_id + 2 # choose the largest edge index of edge 2, since it is not always connected
+	if not omit_connecting_edge:
+		graph['vessels'].append(edge2)
 	edge3 = dict(old_edge)
-	edge2['id'] = last_edge_id + 1
-	edge3['id'] = last_edge_id + 2
-	graph['vessels'].append(edge2)
+	edge3['id'] = last_edge_id + 1
 	graph['vessels'].append(edge3)
 	# fix connectivity
 	old_edge['right_vertex_id'] = v2['id']
@@ -96,16 +98,26 @@ def subdivide_for_coupling(graph, name):
 	return graph, new_graph
 
 
-filepath = '/home/andreas/Flows1D0D3D/data/1d-meshes/Graph0.json'
-name = 'belongs to vmtk branch 21'
-with open(filepath, 'r') as file:
-	data = file.read()
-	graph = json.loads(data)
-	graph, new_graph = subdivide_for_coupling(graph, name)
-	p = pathlib.Path(filepath)
-	folder = pathlib.Path(filepath).parent.resolve()
-	with open(os.path.join(folder, p.stem + '_with_gap' + p.suffix),'w') as file:
-		file.write(json.dumps(graph, indent=2))
-	with open(os.path.join(folder, p.stem + '_gap' + p.suffix), 'w') as file:
-		file.write(json.dumps(new_graph, indent=2))
-  
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--filepath', type=str, help='Path to the json file specifying the mesh.', required=True)
+	parser.add_argument('--name', type=str, help='Name of the edge, we are prepared to subdivide.', required=True)
+	parser.add_argument('--omit', action='store_true', help='Should the connecting vessel be omitted?')
+	args = parser.parse_args()
+
+	#filepath = '/home/andreas/Flows1D0D3D/data/1d-meshes/Graph0.json'
+	#name = 'belongs to vmtk branch 21'
+	filepath = args.filepath 
+	name = args.name
+	omit = args.omit 
+	with open(filepath, 'r') as file:
+		data = file.read()
+		graph = json.loads(data)
+		graph, new_graph = subdivide_for_coupling(graph, name, omit_connecting_edge=omit)
+		p = pathlib.Path(filepath)
+		folder = pathlib.Path(filepath).parent.resolve()
+		with open(os.path.join(folder, p.stem + '_with_gap' + ('_omitted' if omit else '') + p.suffix),'w') as file:
+			file.write(json.dumps(graph, indent=2))
+		with open(os.path.join(folder, p.stem + '_gap' + p.suffix), 'w') as file:
+			file.write(json.dumps(new_graph, indent=2))
+	
