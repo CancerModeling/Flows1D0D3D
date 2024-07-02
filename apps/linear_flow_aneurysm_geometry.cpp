@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
   Eigen::setNbThreads(1);
   {
-    const std::size_t degree = 2;
+    const std::size_t degree = 3;
 
     cxxopts::Options options(argv[0], "Linearized solver for breast geometry");
     options.add_options()                                                                                                                   //
