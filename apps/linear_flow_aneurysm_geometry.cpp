@@ -27,6 +27,10 @@
 
 namespace mc = macrocirculation;
 
+double inflow_q(const double t) {
+  return 1.1404309961089418*sin(2*M_PI*t) + 0.14759429195732496*sin(4*M_PI*t) - 0.089634825905614154*sin(6*M_PI*t) - 0.13748499176304788*sin(8*M_PI*t) - 0.001508291832124623*sin(10*M_PI*t) - 0.027920688159089872*sin(12*M_PI*t) - 0.072872665461071101*sin(14*M_PI*t) - 0.016177833822184799*sin(16*M_PI*t) - 0.029540145413595065*sin(18*M_PI*t) - 0.037678128460578039*sin(20*M_PI*t) + 0.0064372912549947592*sin(22*M_PI*t) - 0.006368357910711271*sin(24*M_PI*t) - 0.0074487772144708432*sin(26*M_PI*t) + 0.015557031418329106*sin(28*M_PI*t) + 6.2944119745259592e-5*sin(30*M_PI*t) + 0.00047186687321913555*sin(32*M_PI*t) + 0.013554404006090053*sin(34*M_PI*t) + 0.0034418426833568681*sin(36*M_PI*t) + 0.0036287767056148701*sin(38*M_PI*t) - 0.44871880994560942*cos(2*M_PI*t) - 0.50271478926018176*cos(4*M_PI*t) - 0.28220961604949629*cos(6*M_PI*t) - 0.027857147855511882*cos(8*M_PI*t) - 0.0069601964955519624*cos(10*M_PI*t) - 0.065684136097110171*cos(12*M_PI*t) - 0.0085851961973528578*cos(14*M_PI*t) + 0.019100015472036134*cos(16*M_PI*t) - 0.013854393295418113*cos(18*M_PI*t) + 0.028939285055516465*cos(20*M_PI*t) + 0.027099153281623878*cos(22*M_PI*t) + 0.0010777253057536848*cos(24*M_PI*t) + 0.024335189943427746*cos(26*M_PI*t) + 0.011354707890156298*cos(28*M_PI*t) - 0.001149433754069461*cos(30*M_PI*t) + 0.013460885024647462*cos(32*M_PI*t) + 0.0053142763005285237*cos(34*M_PI*t) - 0.0031227079930479895*cos(36*M_PI*t) + 0.0070290639115924928*cos(38*M_PI*t) + 2.9620852000000002;
+}
+
 
 int main(int argc, char *argv[]) {
   // initialize petsc
@@ -75,10 +79,11 @@ int main(int argc, char *argv[]) {
     graph_reader.append(args["mesh"].as<std::string>(), *graph);
 
 
-    const std::string path_inflow_pressures = "data/1d-input-pressures/from-33-vessels-with-small-extension.json";
-    auto inflow_pressure = mc::read_input_pressures(path_inflow_pressures);
-    auto inflow_function = mc::piecewise_linear_source_function(inflow_pressure[0].t, inflow_pressure[0].p, inflow_pressure[0].periodic);
-    graph->find_vertex_by_name("Inflow")->set_to_inflow_with_fixed_pressure(inflow_function);
+    //const std::string path_inflow_pressures = "data/1d-input-pressures/from-33-vessels-with-small-extension.json";
+    //auto inflow_pressure = mc::read_input_pressures(path_inflow_pressures);
+    //auto inflow_function = mc::piecewise_linear_source_function(inflow_pressure[0].t, inflow_pressure[0].p, inflow_pressure[0].periodic);
+    //graph->find_vertex_by_name("Inflow")->set_to_inflow_with_fixed_pressure(inflow_function);
+    graph->find_vertex_by_name("Inflow")->set_to_inflow_with_fixed_flow(inflow_q);
     // mc::set_0d_tree_boundary_conditions(graph, "Outflow");
     // graph_reader.set_boundary_data("./data/meshes/boundary-combined-geometry-linear-part.json", *graph);
 
