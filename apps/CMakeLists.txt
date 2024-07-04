@@ -96,6 +96,7 @@ target_link_libraries(${ProjectName}SimpleLinearizedSolver PkgConfig::PETSC)
 add_executable(${ProjectName}SimpleLinearizedSolverCoupled simple_linearized_solver_coupled.cpp)
 target_link_libraries(${ProjectName}SimpleLinearizedSolverCoupled ${ProjectLib})
 target_link_libraries(${ProjectName}SimpleLinearizedSolverCoupled PkgConfig::PETSC)
+target_link_libraries(${ProjectName}SimpleLinearizedSolverCoupled nlohmann_json::nlohmann_json)
 
 foreach (TargetName ${ProjectName}NonlinearFlowLine
         ${ProjectName}NonlinearFlowBifurcation

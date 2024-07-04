@@ -47,11 +47,17 @@ public:
   enum class Outlet { in,
                       out };
 
+  enum class Inlet { in,
+                     out };
+
   /*! @brief Propagates the solver and its solution one time step further. */
   void solve();
 
   /*! @brief Returns the coupling data at the given outlet (either in or out, see above). */
   Result get_result(Outlet outlet);
+
+  /*! @brief Returns the outer values just to check. */
+  Result get_result_outer(Outlet outlet);
 
   void set_result(Outlet outlet, double p, double q);
 

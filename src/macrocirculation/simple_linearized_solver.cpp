@@ -170,6 +170,16 @@ SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(Outlet outlet)
   }
 }
 
+SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result_outer(Outlet outlet) {
+  if (outlet == Outlet::in) {
+    return get_result(*v_coupling_1_outer, *edge0);
+  } else if (outlet == Outlet::out) {
+    return get_result(*v_coupling_2_outer, *edge1);
+  } else {
+    throw std::runtime_error("unknown vertex value");
+  }
+}
+
 void SimpleLinearizedSolver::write() {
   std::vector<Point> points;
   std::vector<double> p_vertex_values;

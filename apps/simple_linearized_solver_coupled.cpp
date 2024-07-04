@@ -12,6 +12,8 @@
 
 #include "macrocirculation/simple_linearized_solver.hpp"
 #include "macrocirculation/communication/mpi.hpp"
+#include <nlohmann/json.hpp>
+#include <fstream>
 #include "petsc.h"
 
 namespace mc = macrocirculation;
@@ -40,10 +42,25 @@ int main(int argc, char *argv[]) {
     //solver_with_gap.set_outflow_rcr(1.28e2, 5e-3);
     solver_with_gap.set_outflow_rcr(1e2, 1.75e-3);
 
+    std::vector< double > t;
+    std::vector< double > p_1_in;
+    std::vector< double > p_1_out;
+    std::vector< double > p_2_out;
+    std::vector< double > p_2_in;
+    std::vector< double > q_1_in;
+    std::vector< double > q_1_out;
+    std::vector< double > q_2_out;
+    std::vector< double > q_2_in;
+    std::vector< double > a_1_in;
+    std::vector< double > a_1_out;
+    std::vector< double > a_2_out;
+    std::vector< double > a_2_in;
+
     for (size_t i = 0; i < int(10/tau); i += 1) {
       // TODO: iterate
       solver_with_gap.solve();
       solver_gap.solve();
+      const double t_now = (i+1)*tau;
 
       /*
       {
@@ -80,6 +97,53 @@ int main(int argc, char *argv[]) {
           // extract coupling data at aneurysm outflow
           auto out = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::out);
           std::cout << "[rank=" << mc::mpi::rank(MPI_COMM_WORLD) << "] " << i << " 1 out: p = " << out.p << ", a = " << out.a << ", q = " << out.q << std::endl;
+        }
+
+        {
+          auto r1_in = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::in);
+          auto r1_out = solver_with_gap.get_result_outer(mc::SimpleLinearizedSolver::Outlet::in);
+          auto r2_out = solver_with_gap.get_result_outer(mc::SimpleLinearizedSolver::Outlet::out);
+          auto r2_in = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::out);
+
+          t.push_back(t_now);
+          p_1_in.push_back(r1_in.p); 
+          p_1_out.push_back(r1_out.p); 
+          p_2_out.push_back(r2_out.p );
+          p_2_in.push_back(r2_in.p );
+          q_1_in.push_back(r1_in.q); 
+          q_1_out.push_back(r1_out.q); 
+          q_2_out.push_back(r2_out.q );
+          q_2_in.push_back(r2_in.q );
+          a_1_in.push_back(r1_in.a); 
+          a_1_out.push_back(r1_out.a); 
+          a_2_out.push_back(r2_out.a );
+          a_2_in.push_back(r2_in.a );
+
+            std::ofstream f("coupling-values.json", std::ios::out);
+
+            using json = nlohmann::json;
+
+            json j = {
+              {"t", t},
+              {"coupling_1_inner", {
+                {"p", p_1_in},
+                {"q", q_1_in},
+                {"a", a_1_in}}},
+              {"coupling_1_outer", {
+                {"p", p_1_out},
+                {"q", q_1_out},
+                {"a", a_1_out}}},
+              {"coupling_2_outer", {
+                {"p", p_2_out},
+                {"q", q_2_out},
+                {"a", a_2_out}}},
+              {"coupling_2_inner", {
+                {"p", p_2_in},
+                {"q", q_2_in},
+                {"a", a_2_in}}},
+            };
+
+            f << j.dump(1);
         }
 
         {
