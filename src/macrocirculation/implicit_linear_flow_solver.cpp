@@ -848,8 +848,14 @@ void ImplicitLinearFlowSolver::assemble_matrix_0d_model(double tau) {
                  ? create_boundary(local_dof_map_edge, BoundaryPointType::Right)
                  : create_boundary(local_dof_map_edge, BoundaryPointType::Left);
 
-      const double R0 = calculate_R1(neighbor_edge.get_physical_data());
-      const auto R1 = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().resistance - R0 : vertex.get_vessel_tree_data().resistances[0];
+      double R0 = calculate_R1(neighbor_edge.get_physical_data());
+      double R1 = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().resistance - R0 : vertex.get_vessel_tree_data().resistances.back();
+      if (vertex.is_windkessel_outflow() && (R0 > R1))
+      {
+        R0 = vertex.get_peripheral_vessel_data().resistance/5.;
+        R1 = vertex.get_peripheral_vessel_data().resistance*4./5.;
+      }
+
       const auto C_tilde = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().compliance : vertex.get_vessel_tree_data().capacitances[0];
 
       const double alpha = sigma / (std::sqrt(C / L) + 1. / R0);
@@ -915,8 +921,13 @@ void ImplicitLinearFlowSolver::assemble_rhs_0d_model(double tau) {
 
       const auto &dof_indices_ptilde = local_dof_map_vertex.dof_indices();
 
-      const double R0 = calculate_R1(edge.get_physical_data());
-      const auto R1 = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().resistance - R0 : vertex.get_vessel_tree_data().resistances.back();
+      double R0 = calculate_R1(edge.get_physical_data());
+      double R1 = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().resistance - R0 : vertex.get_vessel_tree_data().resistances.back();
+      if (vertex.is_windkessel_outflow() && (R0 > R1))
+      {
+        R0 = vertex.get_peripheral_vessel_data().resistance/5.;
+        R1 = vertex.get_peripheral_vessel_data().resistance*4./5.;
+      }
       const auto C_tilde = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().compliance : vertex.get_vessel_tree_data().capacitances.back();
       const auto p_out = vertex.is_windkessel_outflow() ? vertex.get_peripheral_vessel_data().p_out : vertex.get_vessel_tree_data().p_out;
 
