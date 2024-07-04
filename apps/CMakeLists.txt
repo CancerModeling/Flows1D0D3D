@@ -107,6 +107,7 @@ foreach (TargetName ${ProjectName}NonlinearFlowLine
         ${ProjectName}LinearFlow
         ${ProjectName}SimpleLinearizedSolver
         ${ProjectName}SimpleLinearizedSolverCoupled
+        ${ProjectName}LinearFlowAneurysmGeometry
         )
 
     foreach (FolderName output
