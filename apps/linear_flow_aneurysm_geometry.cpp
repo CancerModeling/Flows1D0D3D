@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
   Eigen::setNbThreads(1);
   {
-    const std::size_t degree = 3;
+    const std::size_t degree = 1;
 
     cxxopts::Options options(argv[0], "Linearized solver for breast geometry");
     options.add_options()                                                                                                                   //
@@ -82,19 +82,54 @@ int main(int argc, char *argv[]) {
     // mc::set_0d_tree_boundary_conditions(graph, "Outflow");
     // graph_reader.set_boundary_data("./data/meshes/boundary-combined-geometry-linear-part.json", *graph);
 
-    double A_total = 0;
-    for (auto v : graph->find_vertices_by_name_prefix("Outflow"))
     {
-      A_total += graph->get_edge( v->get_edge_neighbors()[0] )->get_physical_data().A0;
+      double A_total = 0;
+      for (auto v : graph->find_vertices_by_name_prefix("Outflow"))
+      {
+        // MCA
+        if (v->get_id() > 24)
+          continue;
+        A_total += graph->get_edge( v->get_edge_neighbors()[0] )->get_physical_data().A0;
+      }
+      const double C_tot = 0.0116;
+      const double R_tot = 59.7;
+     /*
+      const double C_tot = 0.0082;
+      const double R_tot = 84.8;
+     */
+      for (auto v : graph->find_vertices_by_name_prefix("Outflow"))
+      {
+        if (v->get_id() > 24)
+          continue;
+        const double A_i = graph->get_edge( v->get_edge_neighbors()[0] )->get_physical_data().A0;
+        const double ratio = A_i / A_total;
+        v->set_to_windkessel_outflow(R_tot/ratio, ratio*C_tot);
+      }
     }
 
-    const double C_tot = 0.0062;
-    const double R_tot = 110.8;
-    for (auto v : graph->find_vertices_by_name_prefix("Outflow"))
     {
-      const double A_i = graph->get_edge( v->get_edge_neighbors()[0] )->get_physical_data().A0;
-      const double ratio = A_i / A_total;
-      v->set_to_windkessel_outflow(R_tot/ratio, ratio*C_tot);
+      double A_total = 0;
+      for (auto v : graph->find_vertices_by_name_prefix("Outflow"))
+      {
+        if (v->get_id() <= 24)
+          continue;
+        A_total += graph->get_edge( v->get_edge_neighbors()[0] )->get_physical_data().A0;
+      }
+
+      const double C_tot = 0.0082;
+      const double R_tot = 84.8;
+     /*
+      const double C_tot = 0.0116;
+      const double R_tot = 59.7;
+     */
+      for (auto v : graph->find_vertices_by_name_prefix("Outflow"))
+      {
+        if (v->get_id() <= 24)
+          continue;
+        const double A_i = graph->get_edge( v->get_edge_neighbors()[0] )->get_physical_data().A0;
+        const double ratio = A_i / A_total;
+        v->set_to_windkessel_outflow(R_tot/ratio, ratio*C_tot);
+      }
     }
 
     graph->finalize_bcs();
@@ -111,13 +146,15 @@ int main(int argc, char *argv[]) {
 
     mc::ImplicitLinearFlowSolver solver(PETSC_COMM_WORLD, graph, dof_map, degree);
     solver.setup(tau);
-    // solver.use_named_solver("ilf_");
+    //solver.use_named_solver("ilf_");
 
     std::vector<mc::Point> points;
     std::vector<double> vessel_A0;
     std::vector<double> vessel_ids;
+    std::vector<double> vertex_ids;
     mc::fill_with_vessel_A0(MPI_COMM_WORLD, *graph, points, vessel_A0);
     mc::fill_with_vessel_id(MPI_COMM_WORLD, *graph, points, vessel_ids);
+    mc::fill_with_vertex_id(MPI_COMM_WORLD, *graph, points, vertex_ids);
 
     mc::GraphPVDWriter writer(PETSC_COMM_WORLD, args["output-directory"].as<std::string>(), "breast_geometry_linearized");
 
@@ -147,6 +184,7 @@ int main(int argc, char *argv[]) {
         writer.add_vertex_data("a0", vessel_A0);
         writer.add_vertex_data("r", r_vertex_values);
         writer.add_vertex_data("vessel_ids", vessel_ids);
+        writer.add_vertex_data("vertex_ids", vertex_ids);
         writer.write(t);
 
         int num = 0;
