@@ -16,7 +16,7 @@
       "wall_thickness": 0.029,
       "elastic_modulus": 400000.0,
       "gamma": 2,
-      "number_edges": 8,
+      "number_edges": 32,
       "left_vertex_id": 0,
       "right_vertex_id": 1,
       "embedded_coordinates": [
@@ -32,7 +32,7 @@
       "wall_thickness": 0.029,
       "elastic_modulus": 400000.0,
       "gamma": 2,
-      "number_edges": 4,
+      "number_edges": 16,
       "left_vertex_id": 1,
       "right_vertex_id": 2,
       "embedded_coordinates": [
@@ -49,7 +49,7 @@
       "wall_thickness": 0.029,
       "elastic_modulus": 400000.0,
       "gamma": 2,
-      "number_edges": 4,
+      "number_edges": 16,
       "left_vertex_id": 3,
       "right_vertex_id": 4,
       "embedded_coordinates": [
@@ -65,7 +65,7 @@
       "wall_thickness": 0.029,
       "elastic_modulus": 400000.0,
       "gamma": 2,
-      "number_edges": 8,
+      "number_edges": 32,
       "left_vertex_id": 4,
       "right_vertex_id": 5,
       "embedded_coordinates": [

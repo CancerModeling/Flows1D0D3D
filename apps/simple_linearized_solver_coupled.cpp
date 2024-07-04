@@ -26,6 +26,10 @@ double inflow(double t)
 }
 
 int main(int argc, char *argv[]) {
+  /// TODO: Sehr groesses E
+  /// TODO: Geometrie beschreiben 
+  /// TODO: Fluesse immer in vessel stueck hinein 
+
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
 
   std::cout << std::ios::scientific;
@@ -33,7 +37,7 @@ int main(int argc, char *argv[]) {
   std::cout << "size: " << mc::mpi::size(MPI_COMM_WORLD) << std::endl;
 
   {
-    const double tau = 1e-3;
+    const double tau = 1e-4;
 
     mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/vessels-with-gap.json", "output", "vessels-with-gap", tau );
     mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/vessel-gap.json", "output", "vessel-gap", tau );
@@ -55,6 +59,14 @@ int main(int argc, char *argv[]) {
     std::vector< double > a_1_out;
     std::vector< double > a_2_out;
     std::vector< double > a_2_in;
+    std::vector< double > r_1_in;
+    std::vector< double > r_1_out;
+    std::vector< double > r_2_out;
+    std::vector< double > r_2_in;
+    std::vector< double > v_1_in;
+    std::vector< double > v_1_out;
+    std::vector< double > v_2_out;
+    std::vector< double > v_2_in;
 
     for (size_t i = 0; i < int(10/tau); i += 1) {
       // TODO: iterate
@@ -87,18 +99,7 @@ int main(int argc, char *argv[]) {
         // solver_with_gap.set_result(mc::SimpleLinearizedSolver::Outlet::out, 1., 1.);
       }
 
-      // output every 100
-      if (i % int(1e-2/tau) == 0) {
-        {
-          // extract coupling data at aneurysm inflow
-          auto in = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::in);
-          std::cout << "[rank=" << mc::mpi::rank(MPI_COMM_WORLD) << "] " << i << " 1  in: p = " << in.p << ", a = " << in.a << ", q = " << in.q << std::endl;
-
-          // extract coupling data at aneurysm outflow
-          auto out = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::out);
-          std::cout << "[rank=" << mc::mpi::rank(MPI_COMM_WORLD) << "] " << i << " 1 out: p = " << out.p << ", a = " << out.a << ", q = " << out.q << std::endl;
-        }
-
+        if (t_now >= 0. && (i+1) % int(1e-2/tau) == 0)
         {
           auto r1_in = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::in);
           auto r1_out = solver_with_gap.get_result_outer(mc::SimpleLinearizedSolver::Outlet::in);
@@ -112,39 +113,96 @@ int main(int argc, char *argv[]) {
           p_2_in.push_back(r2_in.p );
           q_1_in.push_back(r1_in.q); 
           q_1_out.push_back(r1_out.q); 
-          q_2_out.push_back(r2_out.q );
-          q_2_in.push_back(r2_in.q );
+          q_2_out.push_back(-r2_out.q );
+          q_2_in.push_back(-r2_in.q );
           a_1_in.push_back(r1_in.a); 
           a_1_out.push_back(r1_out.a); 
           a_2_out.push_back(r2_out.a );
           a_2_in.push_back(r2_in.a );
+          r_1_in.push_back(std::sqrt(r1_in.a/M_PI)); 
+          r_1_out.push_back(std::sqrt(r1_out.a/M_PI)); 
+          r_2_out.push_back(std::sqrt(r2_out.a/M_PI ));
+          r_2_in.push_back(std::sqrt(r2_in.a/M_PI ));
+          v_1_in.push_back(r1_in.q/r1_in.a); 
+          v_1_out.push_back(r1_out.q/r1_out.a); 
+          v_2_out.push_back(-r2_out.q/r2_out.a );
+          v_2_in.push_back(-r2_in.q/r2_in.a );
 
             std::ofstream f("coupling-values.json", std::ios::out);
 
             using json = nlohmann::json;
 
             json j = {
-              {"t", t},
-              {"coupling_1_inner", {
-                {"p", p_1_in},
-                {"q", q_1_in},
-                {"a", a_1_in}}},
-              {"coupling_1_outer", {
-                {"p", p_1_out},
-                {"q", q_1_out},
-                {"a", a_1_out}}},
-              {"coupling_2_outer", {
-                {"p", p_2_out},
-                {"q", q_2_out},
-                {"a", a_2_out}}},
-              {"coupling_2_inner", {
-                {"p", p_2_in},
-                {"q", q_2_in},
-                {"a", a_2_in}}},
+              {"version", "0.1"},
+              { "vessel_data", {
+                {"coupling_1_inner", {
+                  {"id", "coupling_1_inner"},
+                  {"gamma", 2},
+                  {"x", solver_with_gap.get_points()[0]},
+                  {"p", p_1_in},
+                  {"q", q_1_in},
+                  {"r", r_1_in},
+                  {"v", v_1_in},
+                  {"a", a_1_in}}},
+                {"coupling_1_outer", {
+                  {"id", "coupling_1_outer"},
+                  {"gamma", 2},
+                  {"x", solver_with_gap.get_points()[1]},
+                  {"p", p_1_out},
+                  {"q", q_1_out},
+                  {"r", r_1_out},
+                  {"v", v_1_out},
+                  {"a", a_1_out}}},
+                {"coupling_2_outer", {
+                  {"id", "coupling_2_outer"},
+                  {"gamma", 2},
+                  {"x", solver_with_gap.get_points()[2]},
+                  {"p", p_2_out},
+                  {"q", q_2_out},
+                  {"r", r_2_out},
+                  {"v", v_2_out},
+                  {"a", a_2_out}}},
+                {"coupling_2_inner", {
+                  {"id", "coupling_2_inner"},
+                  {"gamma", 2},
+                  {"x", solver_with_gap.get_points()[3]},
+                  {"p", p_2_in},
+                  {"q", q_2_in},
+                  {"r", r_2_in},
+                  {"v", v_2_in},
+                  {"a", a_2_in}}},
+                }
+              },
+              {"time", t},
+              {"units", {
+                {"p", "g s^{-2} cm^{-1}"},
+                {"q", "cm^{3} s^{-1}"},
+                {"a", "cm^{2}"},
+                {"r", "cm"},
+                {"v", "cm s^{-1}"}}},
+              {"vessel_ids", {
+                "coupling_1_inner",
+                "coupling_1_outer",
+                "coupling_2_outer",
+                "coupling_2_inner",
+              }}
             };
 
             f << j.dump(1);
         }
+
+      // output every 100
+      if ((i+1) % int(1e-2/tau) == 0) {
+        {
+          // extract coupling data at aneurysm inflow
+          auto in = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::in);
+          std::cout << "[rank=" << mc::mpi::rank(MPI_COMM_WORLD) << "] " << i << " 1  in: p = " << in.p << ", a = " << in.a << ", q = " << in.q << std::endl;
+
+          // extract coupling data at aneurysm outflow
+          auto out = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::out);
+          std::cout << "[rank=" << mc::mpi::rank(MPI_COMM_WORLD) << "] " << i << " 1 out: p = " << out.p << ", a = " << out.a << ", q = " << out.q << std::endl;
+        }
+
 
         {
           // extract coupling data at aneurysm inflow
