@@ -161,12 +161,12 @@
     {
       "id": 0,
       "name": "belongs to vmtk branch 0",
-      "vessel_length": 8.613637299337881,
-      "radius": 0.27172657449392484,
-      "wall_thickness": 0.015435449819946295,
+      "vessel_length": 8.755995873968947,
+      "radius": 0.2700211523223764,
+      "wall_thickness": 0.015367581351239995,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 40,
+      "number_edges": 41,
       "left_vertex_id": 0,
       "right_vertex_id": 1,
       "embedded_coordinates": [
@@ -374,21 +374,31 @@
           1.9293119430541994,
           -0.6445210456848145,
           -1.214358425140381
+        ],
+        [
+          1.9744862238566083,
+          -0.76090620358785,
+          -1.1459497769673666
         ]
       ]
     },
     {
       "id": 1,
       "name": "belongs to vmtk branch 2",
-      "vessel_length": 2.3675578721251167,
-      "radius": 0.15837987578196655,
-      "wall_thickness": 0.01414605471995351,
+      "vessel_length": 2.524716390221142,
+      "radius": 0.15814482067726077,
+      "wall_thickness": 0.014154664486830235,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 15,
+      "number_edges": 17,
       "left_vertex_id": 1,
       "right_vertex_id": 2,
       "embedded_coordinates": [
+        [
+          1.9744862238566083,
+          -0.76090620358785,
+          -1.1459497769673666
+        ],
         [
           2.1124282836914063,
           -0.8134328842163087,
@@ -468,21 +478,31 @@
           4.18463134765625,
           -0.5611605167388917,
           -1.3000569343566895
+        ],
+        [
+          4.3325239817301435,
+          -0.5119597540961371,
+          -1.2726085556877984
         ]
       ]
     },
     {
       "id": 2,
       "name": "belongs to vmtk branch 4",
-      "vessel_length": 0.8580292286091323,
-      "radius": 0.1323797950958619,
-      "wall_thickness": 0.015540587051343514,
+      "vessel_length": 0.9145443880202612,
+      "radius": 0.13038480722530957,
+      "wall_thickness": 0.01568600359219318,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 8,
+      "number_edges": 9,
       "left_vertex_id": 2,
       "right_vertex_id": 19,
       "embedded_coordinates": [
+        [
+          4.3325239817301435,
+          -0.5119597540961371,
+          -1.2726085556877984
+        ],
         [
           4.479072570800781,
           -0.4996349334716797,
@@ -533,15 +553,20 @@
     {
       "id": 3,
       "name": "belongs to vmtk branch 5",
-      "vessel_length": 0.8469209822951087,
-      "radius": 0.042430671101028807,
-      "wall_thickness": 0.02268405950324973,
+      "vessel_length": 0.9671592467420933,
+      "radius": 0.044844438179970525,
+      "wall_thickness": 0.022833850432556483,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 27,
+      "number_edges": 28,
       "left_vertex_id": 2,
       "right_vertex_id": 20,
       "embedded_coordinates": [
+        [
+          4.3325239817301435,
+          -0.5119597540961371,
+          -1.2726085556877984
+        ],
         [
           4.413604354858399,
           -0.4217756271362305,
@@ -687,15 +712,20 @@
     {
       "id": 4,
       "name": "belongs to vmtk branch 6",
-      "vessel_length": 2.591855697711633,
-      "radius": 0.07982423345915292,
-      "wall_thickness": 0.020834819310478606,
+      "vessel_length": 2.7630527073995688,
+      "radius": 0.08041040847359776,
+      "wall_thickness": 0.02076949604308332,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 33,
+      "number_edges": 35,
       "left_vertex_id": 2,
       "right_vertex_id": 3,
       "embedded_coordinates": [
+        [
+          4.3325239817301435,
+          -0.5119597540961371,
+          -1.2726085556877984
+        ],
         [
           4.242404174804688,
           -0.519768762588501,
@@ -865,21 +895,31 @@
           5.160348129272461,
           -1.638717269897461,
           0.489171314239502
+        ],
+        [
+          5.18443832397461,
+          -1.7067597071329754,
+          0.5311121145884197
         ]
       ]
     },
     {
       "id": 5,
       "name": "belongs to vmtk branch 8",
-      "vessel_length": 0.13621812092487967,
-      "radius": 0.048441209690327364,
-      "wall_thickness": 0.02294918551436979,
+      "vessel_length": 0.19063199893207763,
+      "radius": 0.0509140347111455,
+      "wall_thickness": 0.022962771093530964,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 2,
+      "number_edges": 4,
       "left_vertex_id": 3,
       "right_vertex_id": 4,
       "embedded_coordinates": [
+        [
+          5.18443832397461,
+          -1.7067597071329754,
+          0.5311121145884197
+        ],
         [
           5.194542312622071,
           -1.7540494918823244,
@@ -894,21 +934,31 @@
           5.210713195800782,
           -1.8251176834106446,
           0.45692896842956543
+        ],
+        [
+          5.203247197469076,
+          -1.8414119720458986,
+          0.414534068107605
         ]
       ]
     },
     {
       "id": 6,
       "name": "belongs to vmtk branch 10",
-      "vessel_length": 2.8039696587625387,
-      "radius": 0.047786388357414694,
-      "wall_thickness": 0.022937036513109892,
+      "vessel_length": 2.81181267818113,
+      "radius": 0.04772873545892184,
+      "wall_thickness": 0.02293578657560373,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 117,
+      "number_edges": 118,
       "left_vertex_id": 4,
       "right_vertex_id": 21,
       "embedded_coordinates": [
+        [
+          5.203247197469076,
+          -1.8414119720458986,
+          0.414534068107605
+        ],
         [
           5.209331512451172,
           -1.82735652923584,
@@ -1504,15 +1554,20 @@
     {
       "id": 7,
       "name": "belongs to vmtk branch 11",
-      "vessel_length": 1.3835993834620846,
-      "radius": 0.04625866660068311,
-      "wall_thickness": 0.022893714790453427,
+      "vessel_length": 1.372118156851899,
+      "radius": 0.04609706135329161,
+      "wall_thickness": 0.022887860471051482,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 31,
+      "number_edges": 32,
       "left_vertex_id": 4,
       "right_vertex_id": 22,
       "embedded_coordinates": [
+        [
+          5.203247197469076,
+          -1.8414119720458986,
+          0.414534068107605
+        ],
         [
           5.188764953613282,
           -1.8659835815429688,
@@ -1678,15 +1733,20 @@
     {
       "id": 8,
       "name": "belongs to vmtk branch 12",
-      "vessel_length": 0.9776936851538722,
-      "radius": 0.07457155998931743,
-      "wall_thickness": 0.021402583272467295,
+      "vessel_length": 1.0059427887548886,
+      "radius": 0.07389116977183914,
+      "wall_thickness": 0.021473193721248694,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 13,
+      "number_edges": 15,
       "left_vertex_id": 3,
       "right_vertex_id": 5,
       "embedded_coordinates": [
+        [
+          5.18443832397461,
+          -1.7067597071329754,
+          0.5311121145884197
+        ],
         [
           5.190805053710938,
           -1.7101007461547852,
@@ -1756,21 +1816,31 @@
           4.990241622924805,
           -1.117969799041748,
           1.1061666488647461
+        ],
+        [
+          4.970287704467774,
+          -1.0712812741597495,
+          1.1225303332010905
         ]
       ]
     },
     {
       "id": 9,
       "name": "belongs to vmtk branch 14",
-      "vessel_length": 4.226924557282138,
-      "radius": 0.04926068787719838,
-      "wall_thickness": 0.022959212522737707,
+      "vessel_length": 4.229535778809171,
+      "radius": 0.049485419807348406,
+      "wall_thickness": 0.0229609835100117,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 90,
+      "number_edges": 91,
       "left_vertex_id": 5,
       "right_vertex_id": 23,
       "embedded_coordinates": [
+        [
+          4.970287704467774,
+          -1.0712812741597495,
+          1.1225303332010905
+        ],
         [
           4.959950256347657,
           -1.0608722686767578,
@@ -2231,15 +2301,20 @@
     {
       "id": 10,
       "name": "belongs to vmtk branch 15",
-      "vessel_length": 4.174916940615957,
-      "radius": 0.053198699909283664,
-      "wall_thickness": 0.022933708193739816,
+      "vessel_length": 4.192012236460169,
+      "radius": 0.053388896790439525,
+      "wall_thickness": 0.022929628661839264,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 86,
+      "number_edges": 87,
       "left_vertex_id": 5,
       "right_vertex_id": 24,
       "embedded_coordinates": [
+        [
+          4.970287704467774,
+          -1.0712812741597495,
+          1.1225303332010905
+        ],
         [
           4.9615631103515625,
           -1.0389307022094727,
@@ -2680,15 +2755,20 @@
     {
       "id": 11,
       "name": "belongs to vmtk branch 16",
-      "vessel_length": 2.165279795528842,
-      "radius": 0.15656271548077896,
-      "wall_thickness": 0.014214415520716476,
+      "vessel_length": 2.251544167997334,
+      "radius": 0.15791230654209884,
+      "wall_thickness": 0.014163249023548596,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 15,
+      "number_edges": 17,
       "left_vertex_id": 1,
       "right_vertex_id": 6,
       "embedded_coordinates": [
+        [
+          1.9744862238566083,
+          -0.76090620358785,
+          -1.1459497769673666
+        ],
         [
           1.858187484741211,
           -0.8317855834960938,
@@ -2768,21 +2848,31 @@
           1.100636100769043,
           0.328402853012085,
           -0.3691960573196411
+        ],
+        [
+          1.114220682779948,
+          0.3864993890126547,
+          -0.3753351132074992
         ]
       ]
     },
     {
       "id": 12,
       "name": "belongs to vmtk branch 18",
-      "vessel_length": 1.2414076878015905,
-      "radius": 0.12622922331941144,
-      "wall_thickness": 0.016006759470962074,
+      "vessel_length": 1.3465802257785766,
+      "radius": 0.1265185984797695,
+      "wall_thickness": 0.015983645844842524,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 9,
+      "number_edges": 11,
       "left_vertex_id": 6,
       "right_vertex_id": 7,
       "embedded_coordinates": [
+        [
+          1.114220682779948,
+          0.3864993890126547,
+          -0.3753351132074992
+        ],
         [
           1.1698106765747072,
           0.4451619148254395,
@@ -2832,21 +2922,31 @@
           1.1454146385192872,
           1.4633716583251954,
           -0.3752243757247925
+        ],
+        [
+          1.1491838773091636,
+          1.5591962814331055,
+          -0.27533305486043297
         ]
       ]
     },
     {
       "id": 13,
       "name": "belongs to vmtk branch 20",
-      "vessel_length": 3.984657662165035,
-      "radius": 0.05400174232713423,
-      "wall_thickness": 0.02291483642102724,
+      "vessel_length": 4.0565217208841124,
+      "radius": 0.054696473289064976,
+      "wall_thickness": 0.022895103516152267,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 91,
+      "number_edges": 92,
       "left_vertex_id": 7,
       "right_vertex_id": 25,
       "embedded_coordinates": [
+        [
+          1.1491838773091636,
+          1.5591962814331055,
+          -0.27533305486043297
+        ],
         [
           1.1955985069274904,
           1.6525468826293945,
@@ -3312,15 +3412,20 @@
     {
       "id": 14,
       "name": "belongs to vmtk branch 21",
-      "vessel_length": 2.207663930903909,
-      "radius": 0.12965711957149417,
-      "wall_thickness": 0.01574043227413394,
+      "vessel_length": 2.2923859740797057,
+      "radius": 0.12910814962394482,
+      "wall_thickness": 0.015781983225122642,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 19,
+      "number_edges": 21,
       "left_vertex_id": 6,
       "right_vertex_id": 8,
       "embedded_coordinates": [
+        [
+          1.114220682779948,
+          0.3864993890126547,
+          -0.3753351132074992
+        ],
         [
           1.016425323486328,
           0.4273864269256592,
@@ -3420,21 +3525,31 @@
           0.46953482627868653,
           1.1051576614379883,
           0.6013554096221925
+        ],
+        [
+          0.4998198350270589,
+          1.1328986803690593,
+          0.670229991277059
         ]
       ]
     },
     {
       "id": 15,
       "name": "belongs to vmtk branch 23",
-      "vessel_length": 0.5704781318555172,
-      "radius": 0.04899641916380171,
-      "wall_thickness": 0.02295659572192978,
+      "vessel_length": 0.620713500331365,
+      "radius": 0.0533479373321356,
+      "wall_thickness": 0.022930527889096764,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 12,
+      "number_edges": 13,
       "left_vertex_id": 8,
       "right_vertex_id": 26,
       "embedded_coordinates": [
+        [
+          0.4998198350270589,
+          1.1328986803690593,
+          0.670229991277059
+        ],
         [
           0.5249812602996826,
           1.2198347091674806,
@@ -3505,15 +3620,20 @@
     {
       "id": 16,
       "name": "belongs to vmtk branch 24",
-      "vessel_length": 2.9984716128449147,
-      "radius": 0.1275185181285193,
-      "wall_thickness": 0.015904671437047824,
+      "vessel_length": 3.1204578968833374,
+      "radius": 0.12694038842064517,
+      "wall_thickness": 0.01595016341463893,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 24,
+      "number_edges": 26,
       "left_vertex_id": 7,
       "right_vertex_id": 9,
       "embedded_coordinates": [
+        [
+          1.1491838773091636,
+          1.5591962814331055,
+          -0.27533305486043297
+        ],
         [
           1.120474624633789,
           1.4996843338012695,
@@ -3638,21 +3758,31 @@
           1.8058391571044923,
           2.0851974487304688,
           1.7913557052612306
+        ],
+        [
+          1.8652461369832356,
+          2.0906368255615235,
+          1.9038666407267255
         ]
       ]
     },
     {
       "id": 17,
       "name": "belongs to vmtk branch 26",
-      "vessel_length": 2.248210778988466,
-      "radius": 0.09314504024749576,
-      "wall_thickness": 0.019313992906225652,
+      "vessel_length": 2.294835730582604,
+      "radius": 0.0938848810601879,
+      "wall_thickness": 0.0192294995609788,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 24,
+      "number_edges": 26,
       "left_vertex_id": 9,
       "right_vertex_id": 10,
       "embedded_coordinates": [
+        [
+          1.8652461369832356,
+          2.0906368255615235,
+          1.9038666407267255
+        ],
         [
           1.8978418350219728,
           2.1606195449829104,
@@ -3777,21 +3907,31 @@
           2.080991744995117,
           2.3760684967041015,
           3.8115612030029298
+        ],
+        [
+          2.065708287556966,
+          2.36568717956543,
+          3.8577344258626307
         ]
       ]
     },
     {
       "id": 18,
       "name": "belongs to vmtk branch 28",
-      "vessel_length": 3.203676155781462,
-      "radius": 0.05126491053770456,
-      "wall_thickness": 0.02296078638843862,
+      "vessel_length": 3.2420175593485596,
+      "radius": 0.05159361303330295,
+      "wall_thickness": 0.022958089389230663,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 102,
+      "number_edges": 103,
       "left_vertex_id": 10,
       "right_vertex_id": 27,
       "embedded_coordinates": [
+        [
+          2.065708287556966,
+          2.36568717956543,
+          3.8577344258626307
+        ],
         [
           2.0527317047119142,
           2.414423942565918,
@@ -4312,15 +4452,20 @@
     {
       "id": 19,
       "name": "belongs to vmtk branch 29",
-      "vessel_length": 0.9354706936753037,
-      "radius": 0.08208911436638545,
-      "wall_thickness": 0.020580857239373338,
+      "vessel_length": 0.9536461470699609,
+      "radius": 0.0818023600382072,
+      "wall_thickness": 0.02061322866666798,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 10,
+      "number_edges": 12,
       "left_vertex_id": 10,
       "right_vertex_id": 11,
       "embedded_coordinates": [
+        [
+          2.065708287556966,
+          2.36568717956543,
+          3.8577344258626307
+        ],
         [
           2.05532169342041,
           2.3004674911499023,
@@ -4375,21 +4520,31 @@
           1.6881702423095704,
           1.5908003807067872,
           4.098479843139649
+        ],
+        [
+          1.6775901794433594,
+          1.564191500345866,
+          4.086161804199219
         ]
       ]
     },
     {
       "id": 20,
       "name": "belongs to vmtk branch 31",
-      "vessel_length": 0.675189983771117,
-      "radius": 0.040361891587467474,
-      "wall_thickness": 0.022503498866064682,
+      "vessel_length": 0.7056813106040781,
+      "radius": 0.041867915970034905,
+      "wall_thickness": 0.022639921721255583,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 21,
+      "number_edges": 22,
       "left_vertex_id": 11,
       "right_vertex_id": 28,
       "embedded_coordinates": [
+        [
+          1.6775901794433594,
+          1.564191500345866,
+          4.086161804199219
+        ],
         [
           1.7020687103271486,
           1.5401867866516115,
@@ -4505,15 +4660,20 @@
     {
       "id": 21,
       "name": "belongs to vmtk branch 32",
-      "vessel_length": 2.0220626290070256,
-      "radius": 0.07603121187921717,
-      "wall_thickness": 0.021248541352142263,
+      "vessel_length": 2.0285321957853757,
+      "radius": 0.07600830611271275,
+      "wall_thickness": 0.021250983873717395,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 43,
+      "number_edges": 44,
       "left_vertex_id": 11,
       "right_vertex_id": 29,
       "embedded_coordinates": [
+        [
+          1.6775901794433594,
+          1.564191500345866,
+          4.086161804199219
+        ],
         [
           1.6325298309326173,
           1.523119640350342,
@@ -4739,15 +4899,20 @@
     {
       "id": 22,
       "name": "belongs to vmtk branch 33",
-      "vessel_length": 3.4675433233660877,
-      "radius": 0.12394925992677963,
-      "wall_thickness": 0.016192908853883588,
+      "vessel_length": 3.6040251515240147,
+      "radius": 0.12303121458401133,
+      "wall_thickness": 0.01626987561223564,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 29,
+      "number_edges": 31,
       "left_vertex_id": 8,
       "right_vertex_id": 12,
       "embedded_coordinates": [
+        [
+          0.4998198350270589,
+          1.1328986803690593,
+          0.670229991277059
+        ],
         [
           0.5226685047149658,
           1.0967631340026855,
@@ -4897,21 +5062,31 @@
           1.472460460662842,
           1.6482873916625977,
           3.048685646057129
+        ],
+        [
+          1.394492212931315,
+          1.5759854952494303,
+          3.1655864079793297
         ]
       ]
     },
     {
       "id": 23,
       "name": "belongs to vmtk branch 35",
-      "vessel_length": 0.7923071954595854,
-      "radius": 0.09736049947427294,
-      "wall_thickness": 0.018835867285168707,
+      "vessel_length": 0.9043937227034633,
+      "radius": 0.09753554775459153,
+      "wall_thickness": 0.018816215387602656,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 7,
+      "number_edges": 9,
       "left_vertex_id": 12,
       "right_vertex_id": 13,
       "embedded_coordinates": [
+        [
+          1.394492212931315,
+          1.5759854952494303,
+          3.1655864079793297
+        ],
         [
           1.3835530281066895,
           1.6061773300170898,
@@ -4951,21 +5126,31 @@
           1.285451889038086,
           1.7837318420410158,
           3.9064823150634767
+        ],
+        [
+          1.2833333015441895,
+          1.8370494842529297,
+          4.011414082845053
         ]
       ]
     },
     {
       "id": 24,
       "name": "belongs to vmtk branch 37",
-      "vessel_length": 3.765132067089427,
-      "radius": 0.05512941739461469,
-      "wall_thickness": 0.022881260201647442,
+      "vessel_length": 3.8015169746958506,
+      "radius": 0.05553865075702246,
+      "wall_thickness": 0.02286711232045283,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 78,
+      "number_edges": 79,
       "left_vertex_id": 13,
       "right_vertex_id": 30,
       "embedded_coordinates": [
+        [
+          1.2833333015441895,
+          1.8370494842529297,
+          4.011414082845053
+        ],
         [
           1.3189476966857911,
           1.9056095123291017,
@@ -5366,15 +5551,20 @@
     {
       "id": 25,
       "name": "belongs to vmtk branch 38",
-      "vessel_length": 2.332093137234879,
-      "radius": 0.08172758225119463,
-      "wall_thickness": 0.020621660908519315,
+      "vessel_length": 2.398547111019272,
+      "radius": 0.08170375539167309,
+      "wall_thickness": 0.020624346890047912,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 28,
+      "number_edges": 30,
       "left_vertex_id": 13,
       "right_vertex_id": 14,
       "embedded_coordinates": [
+        [
+          1.2833333015441895,
+          1.8370494842529297,
+          4.011414082845053
+        ],
         [
           1.2539868354797363,
           1.7940536499023438,
@@ -5519,21 +5709,31 @@
           0.21975393295288087,
           0.06300819516181946,
           4.496709442138672
+        ],
+        [
+          0.18824750582377117,
+          0.021975366026163103,
+          4.453011576334635
         ]
       ]
     },
     {
       "id": 26,
       "name": "belongs to vmtk branch 40",
-      "vessel_length": 1.8399195062109155,
-      "radius": 0.060027109087114706,
-      "wall_thickness": 0.022650182539543297,
+      "vessel_length": 1.8657624082812145,
+      "radius": 0.060363957641270886,
+      "wall_thickness": 0.022629752460312947,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 42,
+      "number_edges": 43,
       "left_vertex_id": 14,
       "right_vertex_id": 31,
       "embedded_coordinates": [
+        [
+          0.18824750582377117,
+          0.021975366026163103,
+          4.453011576334635
+        ],
         [
           0.12867637872695922,
           0.003224646672606468,
@@ -5754,15 +5954,20 @@
     {
       "id": 27,
       "name": "belongs to vmtk branch 41",
-      "vessel_length": 2.1208595166999826,
-      "radius": 0.11144385803692257,
-      "wall_thickness": 0.01733659726664513,
+      "vessel_length": 2.24437648214712,
+      "radius": 0.11084018576899463,
+      "wall_thickness": 0.01739674676571765,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 19,
+      "number_edges": 21,
       "left_vertex_id": 9,
       "right_vertex_id": 15,
       "embedded_coordinates": [
+        [
+          1.8652461369832356,
+          2.0906368255615235,
+          1.9038666407267255
+        ],
         [
           1.8699390411376955,
           2.00787525177002,
@@ -5862,21 +6067,31 @@
           1.1539557456970215,
           0.973063087463379,
           3.4478492736816406
+        ],
+        [
+          1.0702528635660806,
+          0.9288127263387045,
+          3.537567265828451
         ]
       ]
     },
     {
       "id": 28,
       "name": "belongs to vmtk branch 43",
-      "vessel_length": 6.121137243440063,
-      "radius": 0.06731874088574928,
-      "wall_thickness": 0.022104676769900966,
+      "vessel_length": 6.158382751178093,
+      "radius": 0.06743235132456375,
+      "wall_thickness": 0.022094698020920678,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 187,
+      "number_edges": 188,
       "left_vertex_id": 15,
       "right_vertex_id": 32,
       "embedded_coordinates": [
+        [
+          1.0702528635660806,
+          0.9288127263387045,
+          3.537567265828451
+        ],
         [
           1.0532437324523927,
           0.9643138885498047,
@@ -6822,15 +7037,20 @@
     {
       "id": 29,
       "name": "belongs to vmtk branch 44",
-      "vessel_length": 4.533648895219969,
-      "radius": 0.050939247911599095,
-      "wall_thickness": 0.02296265960094526,
+      "vessel_length": 4.561324568676287,
+      "radius": 0.051166954555012314,
+      "wall_thickness": 0.022961434031430576,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 103,
+      "number_edges": 104,
       "left_vertex_id": 14,
       "right_vertex_id": 33,
       "embedded_coordinates": [
+        [
+          0.18824750582377117,
+          0.021975366026163103,
+          4.453011576334635
+        ],
         [
           0.22398574352264405,
           0.005518732219934464,
@@ -7356,15 +7576,20 @@
     {
       "id": 30,
       "name": "belongs to vmtk branch 45",
-      "vessel_length": 3.741562209701413,
-      "radius": 0.07566644349762305,
-      "wall_thickness": 0.02128734580085563,
+      "vessel_length": 3.7999707628791612,
+      "radius": 0.07620215038229455,
+      "wall_thickness": 0.02123028955584208,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 55,
+      "number_edges": 57,
       "left_vertex_id": 12,
       "right_vertex_id": 16,
       "embedded_coordinates": [
+        [
+          1.394492212931315,
+          1.5759854952494303,
+          3.1655864079793297
+        ],
         [
           1.3518476486206055,
           1.4960372924804688,
@@ -7644,21 +7869,31 @@
           -0.5669821262359619,
           -1.5005784988403321,
           3.5950229644775393
+        ],
+        [
+          -0.5871946175893148,
+          -1.5347084999084473,
+          3.6058326721191407
         ]
       ]
     },
     {
       "id": 31,
       "name": "belongs to vmtk branch 47",
-      "vessel_length": 3.38126811627522,
-      "radius": 0.04608176969866204,
-      "wall_thickness": 0.022887293581286543,
+      "vessel_length": 3.3794607328241812,
+      "radius": 0.04645634701275711,
+      "wall_thickness": 0.022900538331746094,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 72,
+      "number_edges": 73,
       "left_vertex_id": 16,
       "right_vertex_id": 34,
       "embedded_coordinates": [
+        [
+          -0.5871946175893148,
+          -1.5347084999084473,
+          3.6058326721191407
+        ],
         [
           -0.5885042667388917,
           -1.549038314819336,
@@ -8029,15 +8264,20 @@
     {
       "id": 32,
       "name": "belongs to vmtk branch 48",
-      "vessel_length": 3.6461111534498536,
-      "radius": 0.08138768839386512,
-      "wall_thickness": 0.020659938018953872,
+      "vessel_length": 3.7082753119778227,
+      "radius": 0.08160548417009783,
+      "wall_thickness": 0.020635420634651094,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 46,
+      "number_edges": 48,
       "left_vertex_id": 15,
       "right_vertex_id": 17,
       "embedded_coordinates": [
+        [
+          1.0702528635660806,
+          0.9288127263387045,
+          3.537567265828451
+        ],
         [
           1.0257027626037598,
           0.8666588783264161,
@@ -8272,21 +8512,31 @@
           -0.5215789794921876,
           -1.8143104553222658,
           2.988025665283203
+        ],
+        [
+          -0.552589750289917,
+          -1.8691626230875653,
+          2.9532898585001632
         ]
       ]
     },
     {
       "id": 33,
       "name": "belongs to vmtk branch 50",
-      "vessel_length": 5.39134341673163,
-      "radius": 0.061682523658993044,
-      "wall_thickness": 0.022544825932404176,
+      "vessel_length": 5.3987026781452805,
+      "radius": 0.061863419189248585,
+      "wall_thickness": 0.022532580748263784,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 125,
+      "number_edges": 126,
       "left_vertex_id": 17,
       "right_vertex_id": 35,
       "embedded_coordinates": [
+        [
+          -0.552589750289917,
+          -1.8691626230875653,
+          2.9532898585001632
+        ],
         [
           -0.5819520473480225,
           -1.9190118789672852,
@@ -8922,15 +9172,20 @@
     {
       "id": 34,
       "name": "belongs to vmtk branch 51",
-      "vessel_length": 4.126334401091609,
-      "radius": 0.07141305463016728,
-      "wall_thickness": 0.021722992789570246,
+      "vessel_length": 4.1604585785596395,
+      "radius": 0.07145568677543178,
+      "wall_thickness": 0.021718802268758653,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 61,
+      "number_edges": 63,
       "left_vertex_id": 16,
       "right_vertex_id": 18,
       "embedded_coordinates": [
+        [
+          -0.5871946175893148,
+          -1.5347084999084473,
+          3.6058326721191407
+        ],
         [
           -0.6131729125976563,
           -1.5649240493774415,
@@ -9240,21 +9495,31 @@
           -2.12077693939209,
           -3.6000667572021485,
           3.5776100158691406
+        ],
+        [
+          -2.126850954691569,
+          -3.6180234273274743,
+          3.5468252817789714
         ]
       ]
     },
     {
       "id": 35,
       "name": "belongs to vmtk branch 53",
-      "vessel_length": 0.47856855362616085,
-      "radius": 0.04532615278338528,
-      "wall_thickness": 0.022856456233463694,
+      "vessel_length": 0.49827028424945746,
+      "radius": 0.04697789796039635,
+      "wall_thickness": 0.022916781964473366,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 14,
+      "number_edges": 15,
       "left_vertex_id": 18,
       "right_vertex_id": 36,
       "embedded_coordinates": [
+        [
+          -2.126850954691569,
+          -3.6180234273274743,
+          3.5468252817789714
+        ],
         [
           -2.109801483154297,
           -3.6549766540527346,
@@ -9335,15 +9600,20 @@
     {
       "id": 36,
       "name": "belongs to vmtk branch 54",
-      "vessel_length": 6.188708282768708,
-      "radius": 0.05583343092878701,
-      "wall_thickness": 0.0228562939559931,
+      "vessel_length": 6.237457843967167,
+      "radius": 0.05594219630641968,
+      "wall_thickness": 0.02285217149804315,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 263,
+      "number_edges": 264,
       "left_vertex_id": 17,
       "right_vertex_id": 37,
       "embedded_coordinates": [
+        [
+          -0.552589750289917,
+          -1.8691626230875653,
+          2.9532898585001632
+        ],
         [
           -0.5665300369262696,
           -1.8820089340209962,
@@ -10669,15 +10939,20 @@
     {
       "id": 37,
       "name": "belongs to vmtk branch 55",
-      "vessel_length": 1.6416513802876738,
-      "radius": 0.0629277036709473,
-      "wall_thickness": 0.022457778998181237,
+      "vessel_length": 1.646381353314282,
+      "radius": 0.06315997661685822,
+      "wall_thickness": 0.022440845609918863,
       "elastic_modulus": 16000000.0,
       "gamma": 9,
-      "number_edges": 36,
+      "number_edges": 37,
       "left_vertex_id": 18,
       "right_vertex_id": 38,
       "embedded_coordinates": [
+        [
+          -2.126850954691569,
+          -3.6180234273274743,
+          3.5468252817789714
+        ],
         [
           -2.173796844482422,
           -3.58361930847168,
