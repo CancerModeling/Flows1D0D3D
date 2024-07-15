@@ -41,8 +41,11 @@ int main(int argc, char *argv[]) {
     // mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/vessels-with-gap.json", "output", "vessels-with-gap", tau );
     // mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/vessel-gap.json", "output", "vessel-gap", tau );
 
-    mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, "data/1d-meshes/bifurcation-with-gap.json", "output", "vessels-with-gap", tau);
-    mc::SimpleLinearizedSolver solver_gap(PETSC_COMM_SELF, "data/1d-meshes/bifurcation-gap.json", "output", "vessel-gap", tau);
+    // mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, "data/1d-meshes/bifurcation-with-gap.json", "output", "vessels-with-gap", tau);
+    // mc::SimpleLinearizedSolver solver_gap(PETSC_COMM_SELF, "data/1d-meshes/bifurcation-gap.json", "output", "vessel-gap", tau);
+
+    mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-gap.json", "output", "vessels-with-gap", tau);
+    mc::SimpleLinearizedSolver solver_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-with-gap.json", "output", "vessel-gap", tau);
 
     solver_with_gap.set_inflow(inflow);
 
