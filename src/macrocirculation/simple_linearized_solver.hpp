@@ -26,7 +26,7 @@ class GraphCSVWriter;
 /*! This is a simplified interface for calling our code from an LBM aneurysm solver. */
 class SimpleLinearizedSolver {
 public:
-  SimpleLinearizedSolver(MPI_Comm comm, const std::string & filepath, const std::string& folder, const std::string& name, double tau);
+  SimpleLinearizedSolver(MPI_Comm comm, const std::string & filepath, const std::string& folder, const std::string& name, double tau, bool to_outer);
 
   SimpleLinearizedSolver(const std::string & filepath, const std::string& folder, const std::string& name, double tau = 1e-5);
 
@@ -97,11 +97,20 @@ private:
   std::shared_ptr<Vertex> v_coupling_2_inner;
   std::shared_ptr<Vertex> v_coupling_2_outer;
 
-  std::shared_ptr<Edge> edge0;
-  std::shared_ptr<Edge> edge1;
+  bool to_outer;
+
+  // std::shared_ptr<Edge> edge0;
+  // std::shared_ptr<Edge> edge1;
+
+  std::vector<std::shared_ptr<Vertex>> v_coupling_outer;
+  // std::vector<std::shared_ptr<Vertex>> v_coupling_inner;
+
+  std::vector<std::shared_ptr<Edge>> edge;
 
   std::shared_ptr<GraphPVDWriter> pvd_writer;
   std::shared_ptr<GraphCSVWriter> csv_writer;
+
+  double rescale_q(const Vertex &vertex, const Edge &edge, double q);
 };
 
 } // namespace macrocirculation

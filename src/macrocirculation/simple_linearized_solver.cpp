@@ -22,7 +22,7 @@
 
 namespace macrocirculation {
 
-SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
+SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt, bool to_outer)
 // TODO: Manage parallelism better
   : comm(comm)
   , tau(dt)
@@ -30,6 +30,7 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
   , graph(std::make_shared<GraphStorage>())
   , pvd_writer(std::make_shared<GraphPVDWriter>(comm, filepath_output, name))
   , csv_writer(std::make_shared<GraphCSVWriter>(comm, filepath_output, name, graph)) 
+  , to_outer{to_outer}
 {
   EmbeddedGraphReader graph_reader;
   graph_reader.append(filepath_mesh, *graph);
@@ -38,16 +39,14 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
   {
     v_coupling_1_outer = graph->find_vertex_by_name("coupling_0_outer");
     v_coupling_1_inner = graph->find_vertex_by_name("coupling_0_inner");
-    edge0 = graph->find_edge_by_name("vessel_coupling_0");
+    edge.push_back(graph->find_edge_by_name("vessel_coupling_0"));
 
     if ( v_coupling_1_outer->is_leaf() )
     {
-      const double C = linear::get_C(edge0->get_physical_data());
-      const double L = linear::get_L(edge0->get_physical_data());
-      const bool ptv = edge0->is_pointing_to( v_coupling_1_outer->get_id() );
-      v_coupling_1_outer->set_to_linear_characteristic_inflow(C, L, !ptv, 0, 0);
-      // v_coupling_1_outer->set_to_linear_characteristic_inflow(C, L, false, 0., 0.);
-      // v_coupling_1_outer->set_to_free_outflow();
+      const double C = linear::get_C(edge.back()->get_physical_data());
+      const double L = linear::get_L(edge.back()->get_physical_data());
+      const bool ptv = edge[0]->is_pointing_to( v_coupling_1_outer->get_id() );
+      v_coupling_1_outer->set_to_linear_characteristic_inflow(C, L, true, 0, 0);
     }
   }
 
@@ -55,16 +54,12 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
     v_coupling_2_inner = graph->find_vertex_by_name("coupling_1_inner");
     v_coupling_2_outer = graph->find_vertex_by_name("coupling_1_outer");
 
-    edge1 = graph->find_edge_by_name("vessel_coupling_1");
+    edge.push_back(graph->find_edge_by_name("vessel_coupling_1"));
 
     if (v_coupling_2_outer->is_leaf()) {
-      const double C = linear::get_C(edge1->get_physical_data());
-      const double L = linear::get_L(edge1->get_physical_data());
-      const bool ptv = edge1->is_pointing_to(v_coupling_1_outer->get_id());
-      v_coupling_2_outer->set_to_linear_characteristic_inflow(C, L, !ptv, 0, 0);
-      // v_coupling_2_outer->set_to_linear_characteristic_inflow(C, L, false, 0., 0.);
-      // v_coupling_2_outer->set_to_inflow_with_fixed_flow([](double t) { return 2 * std::abs(std::sin(M_PI * t)); });
-      std::cout << "set!" << std::endl;
+      const double C = linear::get_C(edge.back()->get_physical_data());
+      const double L = linear::get_L(edge.back()->get_physical_data());
+      v_coupling_2_outer->set_to_linear_characteristic_inflow(C, L, true, 0, 0);
     }
   }
 
@@ -83,7 +78,7 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
 
 SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
 // TODO: Manage parallelism better
-  : SimpleLinearizedSolver(PETSC_COMM_WORLD, filepath_mesh, filepath_output, name, dt) {};
+  : SimpleLinearizedSolver(PETSC_COMM_WORLD, filepath_mesh, filepath_output, name, dt, true) {};
 
 void SimpleLinearizedSolver::set_tau(double ptau) {
   tau = ptau;
@@ -140,6 +135,10 @@ SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(const Vertex &
     //a = nonlinear::get_A_from_p(p, phys_data.G0, phys_data.A0);
     a = phys_data.A0 + linear::get_C(phys_data) * p;
     p *= 1e3; // mixed units to cgs
+
+    // vertex is the inner vertex. if the edge points to it, it points to the wrong direction
+    if (edge.is_pointing_to(vertex.get_id()))
+      q *= -1;
   }
   // communicate everywhere:
   double data[3]  = {p, q, a};
@@ -163,9 +162,9 @@ void SimpleLinearizedSolver::set_result(Outlet outlet, double p, double q) {
 
 SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(Outlet outlet) {
   if (outlet == Outlet::in) {
-    return get_result(*v_coupling_1_inner, *edge0);
+    return get_result(*v_coupling_1_inner, *edge[0]);
   } else if (outlet == Outlet::out) {
-    return get_result(*v_coupling_2_inner, *edge1);
+    return get_result(*v_coupling_2_inner, *edge[1]);
   } else {
     throw std::runtime_error("unknown vertex value");
   }
@@ -174,10 +173,10 @@ SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(Outlet outlet)
 std::vector<std::array<double, 3>> SimpleLinearizedSolver::get_points()
 {
   // TODO: Generalize this for arbitrary orientations
-  const auto v1 = edge0->get_embedding_data().points.front();
-  const auto v2 = edge0->get_embedding_data().points.back();
-  const auto v3 = edge1->get_embedding_data().points.front();
-  const auto v4 = edge1->get_embedding_data().points.back();
+  const auto v1 = edge[0]->get_embedding_data().points.front();
+  const auto v2 = edge[0]->get_embedding_data().points.back();
+  const auto v3 = edge[1]->get_embedding_data().points.front();
+  const auto v4 = edge[1]->get_embedding_data().points.back();
   return {
     {v1.x, v1.y, v1.z},
     {v2.x, v2.y, v2.z},
@@ -188,9 +187,9 @@ std::vector<std::array<double, 3>> SimpleLinearizedSolver::get_points()
 
 SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result_outer(Outlet outlet) {
   if (outlet == Outlet::in) {
-    return get_result(*v_coupling_1_outer, *edge0);
+    return get_result(*v_coupling_1_outer, *edge[0]);
   } else if (outlet == Outlet::out) {
-    return get_result(*v_coupling_2_outer, *edge1);
+    return get_result(*v_coupling_2_outer, *edge[1]);
   } else {
     throw std::runtime_error("unknown vertex value");
   }

@@ -42,8 +42,8 @@ int main(int argc, char *argv[]) {
     // mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/vessels-with-gap.json", "output", "vessels-with-gap", tau );
     // mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/vessel-gap.json", "output", "vessel-gap", tau );
 
-    mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/bifurcation-with-gap.json", "output", "vessels-with-gap", tau );
-    mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/bifurcation-gap.json", "output", "vessel-gap", tau );
+    mc::SimpleLinearizedSolver solver_with_gap (PETSC_COMM_SELF, "data/1d-meshes/bifurcation-with-gap.json", "output", "vessels-with-gap", tau, true );
+    mc::SimpleLinearizedSolver solver_gap (PETSC_COMM_SELF, "data/1d-meshes/bifurcation-gap.json", "output", "vessel-gap", tau, false );
 
     solver_with_gap.set_inflow(inflow);
     //solver_with_gap.set_outflow_rcr(1.28e2, 5e-3);
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
         auto r_in = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::in);
         solver_gap.set_result(mc::SimpleLinearizedSolver::Outlet::in, r_in.p, r_in.q);
         auto r_out = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::out);
-        solver_gap.set_result(mc::SimpleLinearizedSolver::Outlet::out, r_out.p, -r_out.q);
+        solver_gap.set_result(mc::SimpleLinearizedSolver::Outlet::out, r_out.p, r_out.q);
         // solver_gap.set_result(mc::SimpleLinearizedSolver::Outlet::out, 1., 1.);
       }
 
@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
         }
 
       // output every 100
-      if ((i+1) % int(1e-2/tau) == 0) {
+      if ((i+1) % int(1e-1/tau) == 0) {
         {
           // extract coupling data at aneurysm inflow
           auto in = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::in);
