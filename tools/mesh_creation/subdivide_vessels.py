@@ -54,14 +54,14 @@ def subdivide_for_coupling(graph, name, omit_connecting_edge=True):
 	edge3['left_vertex_id'] = v3['id']
 	edge3['right_vertex_id'] = v4['id']
 	# fix edge names
-	old_edge['name'] = 'vessel_coupling_1'
+	old_edge['name'] = 'vessel_coupling_0'
 	edge2['name'] = 'gap'
-	edge3['name'] = 'vessel_coupling_2'
+	edge3['name'] = 'vessel_coupling_1'
 	# rename vertices
-	v1['name'] = 'coupling_1_inner'
-	v2['name'] = 'coupling_1_outer'
-	v3['name'] = 'coupling_2_outer'
-	v4['name'] = 'coupling_2_inner'
+	v1['name'] = 'coupling_0_inner'
+	v2['name'] = 'coupling_0_outer'
+	v3['name'] = 'coupling_1_outer'
+	v4['name'] = 'coupling_1_inner'
 	# fix length
 	old_edge['vessel_length'] /= 3
 	edge2['vessel_length'] /= 3
@@ -87,10 +87,10 @@ def subdivide_for_coupling(graph, name, omit_connecting_edge=True):
 	v2['id'] = 1
 	v3['id'] = 2
 	v4['id'] = 3
-	v1['name'] = 'coupling_1_outer'
-	v2['name'] = 'coupling_1_inner'
-	v3['name'] = 'coupling_2_inner'
-	v4['name'] = 'coupling_2_outer'
+	v1['name'] = 'coupling_0_outer'
+	v2['name'] = 'coupling_0_inner'
+	v3['name'] = 'coupling_1_inner'
+	v4['name'] = 'coupling_1_outer'
 	old_edge['left_vertex_id'] = 0
 	old_edge['right_vertex_id'] = 1
 	edge2['left_vertex_id'] = 1
@@ -102,25 +102,28 @@ def subdivide_for_coupling(graph, name, omit_connecting_edge=True):
 	return graph, new_graph
 
 
+def subdivide_bifurcation(graph, names):
+	pass
+
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--filepath', type=str, help='Path to the json file specifying the mesh.', required=True)
 	parser.add_argument('--name', type=str, help='Name of the edge, we are prepared to subdivide.', required=True)
-	parser.add_argument('--omit', action='store_true', help='Should the connecting vessel be omitted?')
 	args = parser.parse_args()
 
 	#filepath = '/home/andreas/Flows1D0D3D/data/1d-meshes/Graph0.json'
 	#name = 'belongs to vmtk branch 21'
 	filepath = args.filepath 
 	name = args.name
-	omit = args.omit 
 	with open(filepath, 'r') as file:
 		data = file.read()
 		graph = json.loads(data)
-		graph, new_graph = subdivide_for_coupling(graph, name, omit_connecting_edge=omit)
+		graph, new_graph = subdivide_for_coupling(graph, name, omit_connecting_edge=True)
 		p = pathlib.Path(filepath)
 		folder = pathlib.Path(filepath).parent.resolve()
-		with open(os.path.join(folder, p.stem + '-with-gap' + ('-omitted' if omit else '') + p.suffix),'w') as file:
+		#with open(os.path.join(folder, p.stem + '-with-gap' + ('-omitted' if omit else '') + p.suffix),'w') as file:
+		with open(os.path.join(folder, p.stem + '-with-gap' + p.suffix),'w') as file:
 			file.write(json.dumps(graph, indent=2))
 		with open(os.path.join(folder, p.stem + '-gap' + p.suffix), 'w') as file:
 			file.write(json.dumps(new_graph, indent=2))
