@@ -34,11 +34,11 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
   EmbeddedGraphReader graph_reader;
   graph_reader.append(filepath_mesh, *graph);
 
-  if (graph->has_named_vertex("coupling_1_outer"))
+  if (graph->has_named_vertex("coupling_0_outer"))
   {
-    v_coupling_1_outer = graph->find_vertex_by_name("coupling_1_outer");
-    v_coupling_1_inner = graph->find_vertex_by_name("coupling_1_inner");
-    edge0 = graph->find_edge_by_name("vessel_coupling_1");
+    v_coupling_1_outer = graph->find_vertex_by_name("coupling_0_outer");
+    v_coupling_1_inner = graph->find_vertex_by_name("coupling_0_inner");
+    edge0 = graph->find_edge_by_name("vessel_coupling_0");
 
     if ( v_coupling_1_outer->is_leaf() )
     {
@@ -51,11 +51,11 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
     }
   }
 
-  if (graph->has_named_vertex("coupling_2_outer")) {
-    v_coupling_2_inner = graph->find_vertex_by_name("coupling_2_inner");
-    v_coupling_2_outer = graph->find_vertex_by_name("coupling_2_outer");
+  if (graph->has_named_vertex("coupling_1_outer")) {
+    v_coupling_2_inner = graph->find_vertex_by_name("coupling_1_inner");
+    v_coupling_2_outer = graph->find_vertex_by_name("coupling_1_outer");
 
-    edge1 = graph->find_edge_by_name("vessel_coupling_2");
+    edge1 = graph->find_edge_by_name("vessel_coupling_1");
 
     if (v_coupling_2_outer->is_leaf()) {
       const double C = linear::get_C(edge1->get_physical_data());

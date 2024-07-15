@@ -39,13 +39,17 @@ int main(int argc, char *argv[]) {
   {
     const double tau = 1e-4;
 
-    mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/vessels-with-gap.json", "output", "vessels-with-gap", tau );
-    mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/vessel-gap.json", "output", "vessel-gap", tau );
+    // mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/vessels-with-gap.json", "output", "vessels-with-gap", tau );
+    // mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/vessel-gap.json", "output", "vessel-gap", tau );
+
+    mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/bifurcation-with-gap.json", "output", "vessels-with-gap", tau );
+    mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/bifurcation-gap.json", "output", "vessel-gap", tau );
 
     solver_with_gap.set_inflow(inflow);
     //solver_with_gap.set_outflow_rcr(1.28e2, 5e-3);
-    solver_with_gap.set_outflow_rcr(1e2, 1.75e-3);
+    // solver_with_gap.set_outflow_rcr(1e2, 1.75e-3);
 
+    /*
     std::vector< double > t;
     std::vector< double > p_1_in;
     std::vector< double > p_1_out;
@@ -67,6 +71,7 @@ int main(int argc, char *argv[]) {
     std::vector< double > v_1_out;
     std::vector< double > v_2_out;
     std::vector< double > v_2_in;
+    */
 
     for (size_t i = 0; i < int(10/tau); i += 1) {
       // TODO: iterate
@@ -99,12 +104,14 @@ int main(int argc, char *argv[]) {
         // solver_with_gap.set_result(mc::SimpleLinearizedSolver::Outlet::out, 1., 1.);
       }
 
-        if (t_now >= 0. && (i+1) % int(1e-2/tau) == 0)
+        // if (t_now >= 0. && (i+1) % int(1e-2/tau) == 0)
         {
           auto r1_in = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::in);
           auto r1_out = solver_with_gap.get_result_outer(mc::SimpleLinearizedSolver::Outlet::in);
           auto r2_out = solver_with_gap.get_result_outer(mc::SimpleLinearizedSolver::Outlet::out);
           auto r2_in = solver_with_gap.get_result(mc::SimpleLinearizedSolver::Outlet::out);
+          
+          /*
 
           t.push_back(t_now);
           p_1_in.push_back(r1_in.p); 
@@ -189,6 +196,8 @@ int main(int argc, char *argv[]) {
             };
 
             f << j.dump(1);
+
+          */
         }
 
       // output every 100
