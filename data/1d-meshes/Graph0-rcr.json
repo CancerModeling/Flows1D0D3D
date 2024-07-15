@@ -79,122 +79,122 @@
     {
       "id": 19,
       "name": "Outflow",
-      "peripheral_resistance": 143.22739739456273,
-      "peripheral_compliance": 0.004854937062665621
+      "peripheral_resistance": 100.8334389676344,
+      "peripheral_compliance": 0.006867959747185512
     },
     {
       "id": 20,
       "name": "Outflow",
-      "peripheral_resistance": 1210.7734912290216,
-      "peripheral_compliance": 0.0005743105585291267
+      "peripheral_resistance": 852.395960216658,
+      "peripheral_compliance": 0.0008124393266997399
     },
     {
       "id": 21,
       "name": "Outflow",
-      "peripheral_resistance": 1068.8585177139103,
-      "peripheral_compliance": 0.0006505631835046286
+      "peripheral_resistance": 752.4864800415147,
+      "peripheral_compliance": 0.0009203088937382551
     },
     {
       "id": 22,
       "name": "Outflow",
-      "peripheral_resistance": 1145.865379365197,
-      "peripheral_compliance": 0.0006068426645241919
+      "peripheral_resistance": 806.7000371238474,
+      "peripheral_compliance": 0.000858460354692759
     },
     {
       "id": 23,
       "name": "Outflow",
-      "peripheral_resistance": 994.3185941222265,
-      "peripheral_compliance": 0.0006993331957287354
+      "peripheral_resistance": 700.009670626143,
+      "peripheral_compliance": 0.000989300618347967
     },
     {
       "id": 24,
       "name": "Outflow",
-      "peripheral_resistance": 854.2366200416799,
-      "peripheral_compliance": 0.0008140133350476969
+      "peripheral_resistance": 601.3906393453808,
+      "peripheral_compliance": 0.001151531059335766
     },
     {
       "id": 25,
       "name": "Outflow",
-      "peripheral_resistance": 902.6572786660887,
-      "peripheral_compliance": 0.0007672014798610817
+      "peripheral_resistance": 1282.1664527786318,
+      "peripheral_compliance": 0.0005423320805914544
     },
     {
       "id": 26,
       "name": "Outflow",
-      "peripheral_resistance": 948.8690333716484,
-      "peripheral_compliance": 0.0007298372859099905
+      "peripheral_resistance": 1347.807270182844,
+      "peripheral_compliance": 0.000515919460729476
     },
     {
       "id": 27,
       "name": "Outflow",
-      "peripheral_resistance": 1014.4944002387823,
-      "peripheral_compliance": 0.0006826257491781138
+      "peripheral_resistance": 1441.0238716959586,
+      "peripheral_compliance": 0.000482545788212115
     },
     {
       "id": 28,
       "name": "Outflow",
-      "peripheral_resistance": 1540.5608268480048,
-      "peripheral_compliance": 0.0004495246068387312
+      "peripheral_resistance": 2188.267305137534,
+      "peripheral_compliance": 0.000317767394489448
     },
     {
       "id": 29,
       "name": "Outflow",
-      "peripheral_resistance": 467.4330648969053,
-      "peripheral_compliance": 0.0014815383249636796
+      "peripheral_resistance": 663.9585243426728,
+      "peripheral_compliance": 0.0010472943331639804
     },
     {
       "id": 30,
       "name": "Outflow",
-      "peripheral_resistance": 875.4893923203992,
-      "peripheral_compliance": 0.0007910090128728382
+      "peripheral_resistance": 1243.5762222574515,
+      "peripheral_compliance": 0.0005591615435825237
     },
     {
       "id": 31,
       "name": "Outflow",
-      "peripheral_resistance": 741.1158932847427,
-      "peripheral_compliance": 0.0009344287530127602
+      "peripheral_resistance": 1052.707332504961,
+      "peripheral_compliance": 0.0006605444633366065
     },
     {
       "id": 32,
       "name": "Outflow",
-      "peripheral_resistance": 593.8885211109758,
-      "peripheral_compliance": 0.0011660774293204325
+      "peripheral_resistance": 843.5803448946523,
+      "peripheral_compliance": 0.0008242961138299609
     },
     {
       "id": 33,
       "name": "Outflow",
-      "peripheral_resistance": 1031.4837748046618,
-      "peripheral_compliance": 0.0006713823493066061
+      "peripheral_resistance": 1465.1561826371073,
+      "peripheral_compliance": 0.00047459786761329056
     },
     {
       "id": 34,
       "name": "Outflow",
-      "peripheral_resistance": 1251.2711290363354,
-      "peripheral_compliance": 0.0005534531916622605
+      "peripheral_resistance": 1777.3499454318467,
+      "peripheral_compliance": 0.0003912341527267704
     },
     {
       "id": 35,
       "name": "Outflow",
-      "peripheral_resistance": 705.6245765680576,
-      "peripheral_compliance": 0.0009814284011594463
+      "peripheral_resistance": 1002.2942059124167,
+      "peripheral_compliance": 0.0006937683525437466
     },
     {
       "id": 36,
       "name": "Outflow",
-      "peripheral_resistance": 1223.6420071125197,
-      "peripheral_compliance": 0.00056594984151792
+      "peripheral_resistance": 1738.1045595166108,
+      "peripheral_compliance": 0.00040006799141784
     },
     {
       "id": 37,
       "name": "Outflow",
-      "peripheral_resistance": 862.9040600933886,
-      "peripheral_compliance": 0.000802545766124975
+      "peripheral_resistance": 1225.6995694458851,
+      "peripheral_compliance": 0.0005673168346745514
     },
     {
       "id": 38,
       "name": "Outflow",
-      "peripheral_resistance": 676.9515969641601,
-      "peripheral_compliance": 0.0010229978082711636
+      "peripheral_resistance": 961.56608748008,
+      "peripheral_compliance": 0.0007231536230882365
     }
   ],
   "vessels": [

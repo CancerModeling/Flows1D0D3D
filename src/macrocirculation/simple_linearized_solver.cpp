@@ -19,6 +19,7 @@
 #include "petsc.h"
 #include "communication/mpi.hpp"
 #include "interpolate_to_vertices.hpp"
+#include "quantities_of_interest.hpp"
 
 namespace macrocirculation {
 
@@ -63,17 +64,19 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
     }
   }
 
-  if (graph->has_named_vertex("inflow"))
+  if (graph->has_named_vertex("Inflow"))
   {
-    auto v0 = graph->find_vertex_by_name("inflow");
+    auto v0 = graph->find_vertex_by_name("Inflow");
     v0->set_to_inflow_with_fixed_flow([](double t) { return 2 * std::abs(std::sin(M_PI * t)); });
   }
 
+  /*
   if (graph->has_named_vertex("outflow"))
   {
     auto v3 = graph->find_vertex_by_name("outflow");
     v3->set_to_free_outflow();
   }
+  */
 }
 
 SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
@@ -85,17 +88,17 @@ void SimpleLinearizedSolver::set_tau(double ptau) {
 }
 
 void SimpleLinearizedSolver::set_inflow(const std::function< double(double)> & fun) {
-  if (graph->has_named_vertex("inflow"))
+  if (graph->has_named_vertex("Inflow"))
   {
-    auto v0 = graph->find_vertex_by_name("inflow");
+    auto v0 = graph->find_vertex_by_name("Inflow");
     v0->set_to_inflow_with_fixed_flow(fun);
   }
 }
 
 void SimpleLinearizedSolver::set_outflow_rcr(const double r, const double c) {
-  if (graph->has_named_vertex("outflow"))
+  if (graph->has_named_vertex("Outflow"))
   {
-    auto v3 = graph->find_vertex_by_name("outflow");
+    auto v3 = graph->find_vertex_by_name("Outflow");
     v3->set_to_windkessel_outflow(r, c);
   }
 }
@@ -187,15 +190,24 @@ void SimpleLinearizedSolver::write() {
   std::vector<Point> points;
   std::vector<double> p_vertex_values;
   std::vector<double> q_vertex_values;
+  std::vector<double> vertex_ids;
   std::vector<double> vessel_ids;
+  std::vector<double> A0;
+  std::vector<double> r_vertex_values;
   interpolate_to_vertices(comm, *graph, *dof_map, solver->p_component, solver->get_solution(), points, p_vertex_values);
   interpolate_to_vertices(comm, *graph, *dof_map, solver->q_component, solver->get_solution(), points, q_vertex_values);
-  fill_with_vessel_id(MPI_COMM_WORLD, *graph, points, vessel_ids);
+  fill_with_vessel_id(comm, *graph, points, vessel_ids);
+  fill_with_vertex_id(MPI_COMM_WORLD, *graph, points, vertex_ids);
+  fill_with_vessel_A0(comm, *graph, points, A0);
+  calculate_linearized_r(comm, *graph, p_vertex_values, points, r_vertex_values);
 
   pvd_writer->set_points(points);
   pvd_writer->add_vertex_data("p", p_vertex_values);
   pvd_writer->add_vertex_data("q", q_vertex_values);
   pvd_writer->add_vertex_data("vessel_ids", vessel_ids);
+  pvd_writer->add_vertex_data("vertex_ids", vertex_ids);
+  pvd_writer->add_vertex_data("a0", A0);
+  pvd_writer->add_vertex_data("r", r_vertex_values);
   pvd_writer->write(t);
 
   csv_writer->add_data("p", solver->get_solution());

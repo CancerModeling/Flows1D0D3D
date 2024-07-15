@@ -21,6 +21,8 @@ def distribute(graph, r, c, predicate=lambda x: True):
 		ratio = a / total_area
 		v['peripheral_resistance'] = r / ratio 
 		v['peripheral_compliance'] = c * ratio 
+		print(vid, ratio, v['peripheral_resistance'], v['peripheral_compliance'])
+		print()
 	return graph
 
 
@@ -40,8 +42,8 @@ if __name__ == '__main__':
 	with open(filepath, 'r') as file:
 		data = file.read()
 		graph = json.loads(data)
-		graph = distribute(graph, r=59.7, c=0.0116, predicate=lambda v: v['id'] > 24)
-		graph = distribute(graph, r=84.8, c=0.0082, predicate=lambda v: v['id'] <= 24)
+		graph = distribute(graph, r=84.8, c=0.0082, predicate=lambda v: v['id'] > 24)
+		graph = distribute(graph, r=59.7, c=0.0116, predicate=lambda v: v['id'] <= 24)
 		p = pathlib.Path(filepath)
 		folder = pathlib.Path(filepath).parent.resolve()
 		with open(os.path.join(folder, p.stem + '-rcr' + p.suffix),'w') as file:
