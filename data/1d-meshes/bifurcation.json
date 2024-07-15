@@ -1,0 +1,64 @@
+{
+  "vertices": [
+    { "id": 0, "name": "inflow" },
+    { "id": 1, "name": "v1" },
+    { "id": 2, "name": "v2" },
+    { "id": 3, "name": "v3" }
+  ],
+  "vessels": [
+    {
+      "id": 0,
+      "name": "vessel0",
+      "vessel_length": 0.8,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 4,
+      "left_vertex_id": 0,
+      "right_vertex_id": 1,
+      "embedded_coordinates": [
+        [ 0, 0, 0 ],
+        [ 0, 0, 0.1 ],
+        [ 0, 0, 0.2 ],
+        [ 0, 0, 0.3 ]
+      ]
+    },
+    {
+      "id": 1,
+      "name": "vessel1",
+      "vessel_length": 0.4,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 4,
+      "left_vertex_id": 1,
+      "right_vertex_id": 2,
+      "embedded_coordinates": [
+        [ 0, 0, 0.3 ],
+        [ 0, 0, 0.4 ],
+        [ 0, 0, 0.5 ],
+        [ 0, 0, 0.6 ]
+      ]
+    },
+    {
+      "id": 2,
+      "name": "vessel2",
+      "vessel_length": 0.4,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 4,
+      "left_vertex_id": 1,
+      "right_vertex_id": 3,
+      "embedded_coordinates": [
+        [ 0, 0, 0.3 ],
+        [ 0, 0.1, 0.3 ],
+        [ 0, 0.2, 0.3 ],
+        [ 0, 0.3, 0.3 ]
+      ]
+    }
+  ]
+}

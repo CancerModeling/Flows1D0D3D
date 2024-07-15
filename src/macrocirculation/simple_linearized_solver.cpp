@@ -22,7 +22,7 @@
 
 namespace macrocirculation {
 
-SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt, bool to_outer)
+SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
 // TODO: Manage parallelism better
   : comm(comm)
   , tau(dt)
@@ -30,36 +30,36 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
   , graph(std::make_shared<GraphStorage>())
   , pvd_writer(std::make_shared<GraphPVDWriter>(comm, filepath_output, name))
   , csv_writer(std::make_shared<GraphCSVWriter>(comm, filepath_output, name, graph)) 
-  , to_outer{to_outer}
+  , num_coupling_points(0)
 {
   EmbeddedGraphReader graph_reader;
   graph_reader.append(filepath_mesh, *graph);
 
-  if (graph->has_named_vertex("coupling_0_outer"))
+  for (int i = 0; i <= 100; i+=1) // more than 100 coupling vertices are not realistic
   {
-    v_coupling_1_outer = graph->find_vertex_by_name("coupling_0_outer");
-    v_coupling_1_inner = graph->find_vertex_by_name("coupling_0_inner");
-    edge.push_back(graph->find_edge_by_name("vessel_coupling_0"));
-
-    if ( v_coupling_1_outer->is_leaf() )
+    if (graph->has_named_vertex("coupling_" + std::to_string(i) + "_outer"))
     {
-      const double C = linear::get_C(edge.back()->get_physical_data());
-      const double L = linear::get_L(edge.back()->get_physical_data());
-      const bool ptv = edge[0]->is_pointing_to( v_coupling_1_outer->get_id() );
-      v_coupling_1_outer->set_to_linear_characteristic_inflow(C, L, true, 0, 0);
+      num_coupling_points += 1;
+
+      v_coupling_outer.push_back(graph->find_vertex_by_name("coupling_" + std::to_string(i) + "_outer"));
+      v_coupling_inner.push_back(graph->find_vertex_by_name("coupling_" + std::to_string(i) + "_inner"));
+      edge.push_back(graph->find_edge_by_name("vessel_coupling_" + std::to_string(i)));
+
+      if ( v_coupling_outer.back()->is_leaf() )
+      {
+        const double C = linear::get_C(edge.back()->get_physical_data());
+        const double L = linear::get_L(edge.back()->get_physical_data());
+        const bool ptv = edge[0]->is_pointing_to( v_coupling_outer.back()->get_id() );
+        v_coupling_outer.back()->set_to_linear_characteristic_inflow(C, L, true, 0, 0);
+      }
+      else
+      {
+        throw std::runtime_error("Outer coupling point must be a leaf node.");
+      }
     }
-  }
-
-  if (graph->has_named_vertex("coupling_1_outer")) {
-    v_coupling_2_inner = graph->find_vertex_by_name("coupling_1_inner");
-    v_coupling_2_outer = graph->find_vertex_by_name("coupling_1_outer");
-
-    edge.push_back(graph->find_edge_by_name("vessel_coupling_1"));
-
-    if (v_coupling_2_outer->is_leaf()) {
-      const double C = linear::get_C(edge.back()->get_physical_data());
-      const double L = linear::get_L(edge.back()->get_physical_data());
-      v_coupling_2_outer->set_to_linear_characteristic_inflow(C, L, true, 0, 0);
+    else
+    {
+      break;
     }
   }
 
@@ -78,7 +78,7 @@ SimpleLinearizedSolver::SimpleLinearizedSolver(MPI_Comm comm, const std::string&
 
 SimpleLinearizedSolver::SimpleLinearizedSolver(const std::string& filepath_mesh, const std::string& filepath_output, const std::string& name, double dt)
 // TODO: Manage parallelism better
-  : SimpleLinearizedSolver(PETSC_COMM_WORLD, filepath_mesh, filepath_output, name, dt, true) {};
+  : SimpleLinearizedSolver(PETSC_COMM_WORLD, filepath_mesh, filepath_output, name, dt) {};
 
 void SimpleLinearizedSolver::set_tau(double ptau) {
   tau = ptau;
@@ -148,26 +148,17 @@ SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(const Vertex &
   return {a, p, q};
 }
 
-
-void SimpleLinearizedSolver::set_result(Outlet outlet, double p, double q) {
+void SimpleLinearizedSolver::set_result(int outlet, double p, double q) {
   p /= 1e3; // cgs to mixed units
-  if (outlet == Outlet::in) {
-    v_coupling_1_outer->update_linear_characteristic_inflow(p, q);
-  } else if (outlet == Outlet::out) {
-    v_coupling_2_outer->update_linear_characteristic_inflow(p, q);
-  } else {
+  if (outlet >= num_coupling_points)
     throw std::runtime_error("unknown vertex value");
-  }
+  v_coupling_outer[outlet]->update_linear_characteristic_inflow(p, q);
 }
 
-SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(Outlet outlet) {
-  if (outlet == Outlet::in) {
-    return get_result(*v_coupling_1_inner, *edge[0]);
-  } else if (outlet == Outlet::out) {
-    return get_result(*v_coupling_2_inner, *edge[1]);
-  } else {
+SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result(int outlet) {
+  if (outlet >= num_coupling_points)
     throw std::runtime_error("unknown vertex value");
-  }
+  return get_result(*v_coupling_inner[outlet], *edge[outlet]);
 }
 
 std::vector<std::array<double, 3>> SimpleLinearizedSolver::get_points()
@@ -185,14 +176,11 @@ std::vector<std::array<double, 3>> SimpleLinearizedSolver::get_points()
   };
 }
 
-SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result_outer(Outlet outlet) {
-  if (outlet == Outlet::in) {
-    return get_result(*v_coupling_1_outer, *edge[0]);
-  } else if (outlet == Outlet::out) {
-    return get_result(*v_coupling_2_outer, *edge[1]);
-  } else {
+SimpleLinearizedSolver::Result SimpleLinearizedSolver::get_result_outer(int outlet) {
+  if (outlet >= num_coupling_points)
     throw std::runtime_error("unknown vertex value");
-  }
+
+  return get_result(*v_coupling_outer[outlet], *edge[outlet]);
 }
 
 void SimpleLinearizedSolver::write() {
@@ -214,5 +202,7 @@ void SimpleLinearizedSolver::write() {
   csv_writer->add_data("q", solver->get_solution());
   csv_writer->write(t);
 }
+
+size_t SimpleLinearizedSolver::get_num_coupling_points() const { return num_coupling_points; }
 
 } // namespace macrocirculation

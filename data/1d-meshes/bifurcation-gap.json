@@ -1,0 +1,178 @@
+{
+  "vertices": [
+    {
+      "id": 0,
+      "name": "v1"
+    },
+    {
+      "id": 1,
+      "name": "coupling_0_outer"
+    },
+    {
+      "id": 2,
+      "name": "coupling_0_inner"
+    },
+    {
+      "id": 3,
+      "name": "coupling_1_inner"
+    },
+    {
+      "id": 4,
+      "name": "coupling_1_outer"
+    },
+    {
+      "id": 5,
+      "name": "coupling_2_inner"
+    },
+    {
+      "id": 6,
+      "name": "coupling_2_outer"
+    }
+  ],
+  "vessels": [
+    {
+      "id": 0,
+      "name": "gap",
+      "vessel_length": 0.4,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 1,
+      "left_vertex_id": 0,
+      "right_vertex_id": 3,
+      "embedded_coordinates": [
+        [
+          0,
+          0,
+          0.3
+        ],
+        [
+          0,
+          0,
+          0.4
+        ]
+      ]
+    },
+    {
+      "id": 1,
+      "name": "gap",
+      "vessel_length": 0.4,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 1,
+      "left_vertex_id": 0,
+      "right_vertex_id": 5,
+      "embedded_coordinates": [
+        [
+          0,
+          0,
+          0.3
+        ],
+        [
+          0,
+          0.1,
+          0.3
+        ]
+      ]
+    },
+    {
+      "id": 2,
+      "name": "vessel_coupling_0",
+      "vessel_length": 0.8,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 1,
+      "left_vertex_id": 1,
+      "right_vertex_id": 2,
+      "embedded_coordinates": [
+        [
+          0,
+          0,
+          0.1
+        ],
+        [
+          0,
+          0,
+          0.2
+        ]
+      ]
+    },
+    {
+      "id": 3,
+      "name": "gap",
+      "vessel_length": 0.8,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 1,
+      "left_vertex_id": 2,
+      "right_vertex_id": 0,
+      "embedded_coordinates": [
+        [
+          0,
+          0,
+          0.2
+        ],
+        [
+          0,
+          0,
+          0.3
+        ]
+      ]
+    },
+    {
+      "id": 4,
+      "name": "vessel_coupling_1",
+      "vessel_length": 0.4,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 1,
+      "left_vertex_id": 3,
+      "right_vertex_id": 4,
+      "embedded_coordinates": [
+        [
+          0,
+          0,
+          0.4
+        ],
+        [
+          0,
+          0,
+          0.5
+        ]
+      ]
+    },
+    {
+      "id": 5,
+      "name": "vessel_coupling_2",
+      "vessel_length": 0.4,
+      "radius": 0.117,
+      "wall_thickness": 0.029,
+      "elastic_modulus": 400000.0,
+      "gamma": 2,
+      "number_edges": 1,
+      "left_vertex_id": 5,
+      "right_vertex_id": 6,
+      "embedded_coordinates": [
+        [
+          0,
+          0.1,
+          0.3
+        ],
+        [
+          0,
+          0.2,
+          0.3
+        ]
+      ]
+    }
+  ]
+}

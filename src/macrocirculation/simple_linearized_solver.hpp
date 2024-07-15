@@ -26,7 +26,7 @@ class GraphCSVWriter;
 /*! This is a simplified interface for calling our code from an LBM aneurysm solver. */
 class SimpleLinearizedSolver {
 public:
-  SimpleLinearizedSolver(MPI_Comm comm, const std::string & filepath, const std::string& folder, const std::string& name, double tau, bool to_outer);
+  SimpleLinearizedSolver(MPI_Comm comm, const std::string & filepath, const std::string& folder, const std::string& name, double tau);
 
   SimpleLinearizedSolver(const std::string & filepath, const std::string& folder, const std::string& name, double tau = 1e-5);
 
@@ -39,29 +39,18 @@ public:
     double q;
   };
 
-  /*! @brief Currently our geometry consists of 3 vessels, s.t.
-   *         +--------+-[Aneurysm]-+-------+
-   *                  in          out
-   *         This function allows us to identify, if we want the data at in or at out.
-   */
-  enum class Outlet { in,
-                      out };
-
-  enum class Inlet { in,
-                     out };
-
   /*! @brief Propagates the solver and its solution one time step further. */
   void solve();
 
   /*! @brief Returns the coupling data at the given outlet (either in or out, see above). */
-  Result get_result(Outlet outlet);
+  Result get_result(int outlet);
 
   std::vector<std::array<double, 3>> get_points();
 
   /*! @brief Returns the outer values just to check. */
-  Result get_result_outer(Outlet outlet);
+  Result get_result_outer(int outlet);
 
-  void set_result(Outlet outlet, double p, double q);
+  void set_result(int outlet, double p, double q);
 
   /*! @brief Writes the solution to the disk for debugging purposes.
    *         Output is pretty slows, so don't call this too often.
@@ -76,6 +65,9 @@ public:
 
   /*! @brief Sets the outflow to an RCR model. */
   void set_outflow_rcr(const double R, const double C);
+
+  /*! @brief Returns the number of coupling points found in the 1D geometry. */
+  size_t get_num_coupling_points() const;
 
 private:
   Result get_result(const Vertex &vertex, const Edge &edge);
@@ -92,23 +84,15 @@ private:
   std::shared_ptr<DofMap> dof_map;
   std::shared_ptr<ImplicitLinearFlowSolver> solver;
 
-  std::shared_ptr<Vertex> v_coupling_1_outer;
-  std::shared_ptr<Vertex> v_coupling_1_inner;
-  std::shared_ptr<Vertex> v_coupling_2_inner;
-  std::shared_ptr<Vertex> v_coupling_2_outer;
-
-  bool to_outer;
-
-  // std::shared_ptr<Edge> edge0;
-  // std::shared_ptr<Edge> edge1;
-
   std::vector<std::shared_ptr<Vertex>> v_coupling_outer;
-  // std::vector<std::shared_ptr<Vertex>> v_coupling_inner;
+  std::vector<std::shared_ptr<Vertex>> v_coupling_inner;
 
   std::vector<std::shared_ptr<Edge>> edge;
 
   std::shared_ptr<GraphPVDWriter> pvd_writer;
   std::shared_ptr<GraphCSVWriter> csv_writer;
+
+  size_t num_coupling_points;
 
   double rescale_q(const Vertex &vertex, const Edge &edge, double q);
 };
