@@ -134,6 +134,7 @@ def _get_adjacent_vertex_ids_from_edges(edges):
 
 def prepare_bifurcation(graph, edges):
 	common_vertex = _find_common_vertex(graph, edges)
+	print(common_vertex)
 
 	for idx,edge in enumerate(edges):
 		[v1,v2,v3,v4], [e1,e2,e3] = _split_edge(graph, edge)
@@ -158,7 +159,7 @@ def prepare_bifurcation(graph, edges):
 	edges = _get_edge_neighbors_of_vertex(graph_gap, common_vertex)
 	connected_vertices = _get_adjacent_vertex_ids_from_edges(edges)
 	edges = [e for vid in connected_vertices for e in _get_edge_neighbors_of_vertex(graph_gap, _find_vertex_by_id(graph_gap, vid))]
-	edge_ids = [e['id'] for e in edges]
+	edge_ids = list(set([e['id'] for e in edges]))
 	edges_to_delete = [e for e in graph_gap['vessels'] if e['id'] not in edge_ids]
 	for e in edges_to_delete:
 		_delete_edge(graph_gap, e)
@@ -256,25 +257,39 @@ def subdivide_bifurcation(graph, names):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--filepath', type=str, help='Path to the json file specifying the mesh.', required=True)
-	parser.add_argument('--names', type=str, help='Names of the vessels', action='append')
-	parser.add_argument('--ids', type=int, help='Names of the vessels', action='append')
+	parser.add_argument('--filepath', type=str, help='Path to the json file specifying the mesh.', required=False)
+	parser.add_argument('--names', type=str, help='Names of the vessels', nargs='+')
+	parser.add_argument('--ids', type=int, help='Names of the vessels', nargs='+')
 	args = parser.parse_args()
 
 	#filepath = '/home/wagneran/Flows1D0D3D_aneurysm/data/1d-meshes/bifurcation.json'
 	#name = 'belongs to vmtk branch 21'
 	#filepath = args.filepath 
 
-	with open(args.filepath, 'r') as file:
+	filepath = args.filepath
+	names = args.names
+	ids = args.ids
+
+	with open(filepath, 'r') as file:
 		data = file.read()
 		graph = json.loads(data)
 
-		edges = []
+		cli_edges = []
 		if args.names:
-			edges += [_find_edge_by_name(graph, name) for name in args.names] 
+			cli_edges += [_find_edge_by_name(graph, name) for name in args.names] 
 		if args.ids:
-			edges += [_find_edge_by_id(graph, idx) for idx in args.ids]
-		graph, graph_with_gap, graph_gap = prepare_bifurcation(graph, edges)
+			cli_edges += [_find_edge_by_id(graph, idx) for idx in args.ids]
+		
+		# cli_edges += [_find_edge_by_id(graph, idx) for idx in [0,1,2]]
+
+		graph, graph_with_gap, graph_gap = prepare_bifurcation(graph, cli_edges)
+
+		p = pathlib.Path(filepath)
+		folder = pathlib.Path(filepath).parent.resolve()
+		with open(os.path.join(folder, p.stem + '-with-gap' + p.suffix),'w') as file:
+			file.write(json.dumps(graph_with_gap, indent=2))
+		with open(os.path.join(folder, p.stem + '-gap' + p.suffix), 'w') as file:
+			file.write(json.dumps(graph_gap, indent=2))
 
 		print('graph')
 		print(json.dumps(graph, indent=1))
