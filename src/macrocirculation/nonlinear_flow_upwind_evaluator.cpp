@@ -316,7 +316,14 @@ void NonlinearFlowUpwindEvaluator::calculate_inout_fluxes(double t, const std::v
 
         const auto p_c = u_prev[vertex_dofs[0]];
 
-        const double R1 = calculate_R1(param);
+        // TODO: Move this calculation to the vertex.
+        double R1 = calculate_R1(edge->get_physical_data());
+        double R2 = vertex->is_windkessel_outflow() ? vertex->get_peripheral_vessel_data().resistance - R1 : vertex->get_vessel_tree_data().resistances.back();
+        if (vertex->is_windkessel_outflow() && (R1 > R2))
+        {
+          R1 = vertex->get_peripheral_vessel_data().resistance/5.;
+          R2 = vertex->get_peripheral_vessel_data().resistance*4./5.;
+        }
 
         double Q_out = 0;
         double A_out = 0;

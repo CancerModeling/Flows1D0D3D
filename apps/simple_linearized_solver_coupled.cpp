@@ -12,6 +12,7 @@
 
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/simple_linearized_solver.hpp"
+#include "macrocirculation/simple_nonlinear_solver.hpp"
 #include "petsc.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -40,7 +41,8 @@ int main(int argc, char *argv[]) {
   std::cout << "size: " << mc::mpi::size(MPI_COMM_WORLD) << std::endl;
 
   {
-    const double tau = 1e-4;
+    // const double tau = 2.5e-6;
+    const double tau = 2.5e-5;
 
     // mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/vessels-with-gap.json", "output", "vessels-with-gap", tau );
     // mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/vessel-gap.json", "output", "vessel-gap", tau );
@@ -48,11 +50,14 @@ int main(int argc, char *argv[]) {
     // mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, "data/1d-meshes/bifurcation-with-gap.json", "output", "vessels-with-gap", tau);
     // mc::SimpleLinearizedSolver solver_gap(PETSC_COMM_SELF, "data/1d-meshes/bifurcation-gap.json", "output", "vessel-gap", tau);
 
-    mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-with-gap.json", "output", "vessels-with-gap", tau);
-    mc::SimpleLinearizedSolver solver_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-gap.json", "output", "vessel-gap", tau);
+    //mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-with-gap.json", "output", "vessels-with-gap", tau);
+    //mc::SimpleLinearizedSolver solver_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-gap.json", "output", "vessel-gap", tau);
 
-    // solver_with_gap.set_inflow(inflow);
+    mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-with-gap.json", "output", "vessels-with-gap", tau);
+    mc::SimpleNonlinearSolver solver_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-gap.json", "output", "vessel-gap", tau);
+
     solver_with_gap.set_inflow(inflow_aneurysm1);
+    //solver_with_gap.set_inflow(inflow_aneurysm1);
 
     for (size_t i = 0; i < int(10 / tau); i += 1) {
       // TODO: iterate
@@ -70,15 +75,8 @@ int main(int argc, char *argv[]) {
         solver_with_gap.set_result(outlet_idx, res.p, res.q);
       }
 
-      if (t_now >= 0. && (i + 1) % int(1e-2 / tau) == 0) {
-        auto r1_in = solver_with_gap.get_result(0);
-        auto r1_out = solver_with_gap.get_result_outer(0);
-        auto r2_out = solver_with_gap.get_result_outer(1);
-        auto r2_in = solver_with_gap.get_result(1);
-      }
-
       // output every 100
-      if ((i + 1) % int(1e-1 / tau) == 0) {
+      if ((i + 1) % int(1e-2 / tau) == 0) {
         for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
           // extract coupling data at aneurysm inflow
           auto in = solver_with_gap.get_result(outlet_idx);

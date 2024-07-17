@@ -1,10 +1,10 @@
 {
   "vertices": [
-    { "id": 0, "name": "inflow" },
-    { "id": 1, "name": "coupling_1_inner" },
-    { "id": 2, "name": "coupling_1_outer" },
-    { "id": 3, "name": "coupling_2_outer" },
-    { "id": 4, "name": "coupling_2_inner" },
+    { "id": 0, "name": "Inflow" },
+    { "id": 1, "name": "coupling_0_inner" },
+    { "id": 2, "name": "coupling_0_outer" },
+    { "id": 3, "name": "coupling_1_outer" },
+    { "id": 4, "name": "coupling_1_inner" },
     { "id": 5, "name": "outflow" }
   ],
   "vessels": [
@@ -16,7 +16,7 @@
       "wall_thickness": 0.029,
       "elastic_modulus": 400000.0,
       "gamma": 2,
-      "number_edges": 32,
+      "number_edges": 4,
       "left_vertex_id": 0,
       "right_vertex_id": 1,
       "embedded_coordinates": [
@@ -26,13 +26,13 @@
     },
     {
       "id": 1,
-      "name": "vessel_coupling_1",
+      "name": "vessel_coupling_0",
       "vessel_length": 0.4,
       "radius": 0.117,
       "wall_thickness": 0.029,
       "elastic_modulus": 400000.0,
       "gamma": 2,
-      "number_edges": 16,
+      "number_edges": 2,
       "left_vertex_id": 1,
       "right_vertex_id": 2,
       "embedded_coordinates": [
@@ -43,13 +43,13 @@
 
     {
       "id": 2,
-      "name": "vessel_coupling_2",
+      "name": "vessel_coupling_1",
       "vessel_length": 0.4,
       "radius": 0.117,
       "wall_thickness": 0.029,
       "elastic_modulus": 400000.0,
       "gamma": 2,
-      "number_edges": 16,
+      "number_edges": 2,
       "left_vertex_id": 3,
       "right_vertex_id": 4,
       "embedded_coordinates": [
@@ -65,7 +65,7 @@
       "wall_thickness": 0.029,
       "elastic_modulus": 400000.0,
       "gamma": 2,
-      "number_edges": 32,
+      "number_edges": 4,
       "left_vertex_id": 4,
       "right_vertex_id": 5,
       "embedded_coordinates": [

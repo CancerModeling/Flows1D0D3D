@@ -264,8 +264,13 @@ void RightHandSideEvaluator::calculate_rhs(const double t, const std::vector<dou
       const auto p_c = u_prev[vertex_dofs[0]];
 
       // TODO: Move this calculation to the vertex.
-      const double R1 = param.rho * param.get_c0() / param.A0;
-      const double R2 = vertex->get_peripheral_vessel_data().resistance - R1;
+      double R1 = calculate_R1(edge.get_physical_data());
+      double R2 = vertex->is_windkessel_outflow() ? vertex->get_peripheral_vessel_data().resistance - R1 : vertex->get_vessel_tree_data().resistances.back();
+      if (vertex->is_windkessel_outflow() && (R1 > R2))
+      {
+        R1 = vertex->get_peripheral_vessel_data().resistance/5.;
+        R2 = vertex->get_peripheral_vessel_data().resistance*4./5.;
+      }
 
       // pressure in the veins:
       const double p_v = vertex->get_peripheral_vessel_data().p_out;

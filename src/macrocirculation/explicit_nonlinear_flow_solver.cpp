@@ -164,7 +164,11 @@ void ExplicitNonlinearFlowSolver::get_1d_AQ_values_at_vertex(const Vertex &v, do
 
   const auto &edge = *d_graph->get_edge(e_id);
 
-  const auto ldofmap = d_dof_map->get_local_dof_map(edge);
+  get_1d_AQ_values_at_vertex(v, edge, A, Q);
+}
+
+void ExplicitNonlinearFlowSolver::get_1d_AQ_values_at_vertex(const Vertex &v, const Edge&e, double &A, double &Q) const {
+  const auto ldofmap = d_dof_map->get_local_dof_map(e);
 
   QuadratureFormula qf = create_gauss4();
   FETypeNetwork fe(qf, ldofmap.num_basis_functions() - 1);
@@ -172,9 +176,9 @@ void ExplicitNonlinearFlowSolver::get_1d_AQ_values_at_vertex(const Vertex &v, do
   std::vector<size_t> dof_indices_q(ldofmap.num_basis_functions(), 0);
   std::vector<size_t> dof_indices_a(ldofmap.num_basis_functions(), 0);
 
-  if (edge.is_pointing_to(v.get_id())) {
-    ldofmap.dof_indices(edge.num_micro_edges() - 1, 0, dof_indices_q);
-    ldofmap.dof_indices(edge.num_micro_edges() - 1, 1, dof_indices_a);
+  if (e.is_pointing_to(v.get_id())) {
+    ldofmap.dof_indices(e.num_micro_edges() - 1, 0, dof_indices_q);
+    ldofmap.dof_indices(e.num_micro_edges() - 1, 1, dof_indices_a);
   } else {
     ldofmap.dof_indices(0, 0, dof_indices_q);
     ldofmap.dof_indices(0, 1, dof_indices_a);
@@ -188,7 +192,7 @@ void ExplicitNonlinearFlowSolver::get_1d_AQ_values_at_vertex(const Vertex &v, do
   extract_dof(dof_indices_a, d_u_now, dof_values_a);
   auto boundary_values_a = fe.evaluate_dof_at_boundary_points(dof_values_a);
 
-  if (edge.is_pointing_to(v.get_id())) {
+  if (e.is_pointing_to(v.get_id())) {
     Q = boundary_values_q.right;
     A = boundary_values_a.right;
   } else {
@@ -198,10 +202,15 @@ void ExplicitNonlinearFlowSolver::get_1d_AQ_values_at_vertex(const Vertex &v, do
 }
 
 void ExplicitNonlinearFlowSolver::get_1d_pq_values_at_vertex(const Vertex &v, double &p, double &q) const {
-  auto &data = d_graph->get_edge(v.get_edge_neighbors()[0])->get_physical_data();
+  const Edge& e= *(d_graph->get_edge(v.get_edge_neighbors()[0]));
+  get_1d_pq_values_at_vertex(v, e, p, q);
+}
+
+void ExplicitNonlinearFlowSolver::get_1d_pq_values_at_vertex(const Vertex &v, const Edge &e, double &p, double &q) const {
+  const PhysicalData &data = e.get_physical_data();
 
   double A, Q;
-  get_1d_AQ_values_at_vertex(v, A, Q);
+  get_1d_AQ_values_at_vertex(v, e, A, Q);
 
   q = Q;
   p = nonlinear::get_p_from_A(data, A);

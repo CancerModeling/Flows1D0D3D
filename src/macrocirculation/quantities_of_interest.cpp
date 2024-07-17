@@ -128,13 +128,33 @@ void calculate_linearized_r(const MPI_Comm comm, const GraphStorage &graph, cons
   fill_with_vessel_A0(comm, graph, points, A0);
 
   interpolated.resize(C.size());
-  for(size_t i=0; i<C.size(); i+=1)
-  {
+  for (size_t i = 0; i < C.size(); i += 1) {
     const double A = A0[i] + C[i] * p[i];
     const double r = std::sqrt(A / M_PI);
     interpolated[i] = r;
   }
 }
 
+void calculate_nonlinear_p(const MPI_Comm comm,
+                           const GraphStorage &graph,
+                           const std::vector<double> &A,
+                           std::vector<Point> &points,
+                           std::vector<double> &interpolated) {
+
+  auto f = [](const Edge &e) {
+    if (!e.has_physical_data())
+      throw std::runtime_error("cannot get radius for edges without physical parameters");
+    return e.get_physical_data().G0;
+  };
+
+  std::vector<double> G0;
+  fill_with_edge_parameter(comm, graph, f, points, G0);
+  std::vector<double> A0;
+  fill_with_vessel_A0(comm, graph, points, A0);
+
+  interpolated.resize(A0.size());
+  for (size_t i = 0; i < A0.size(); i += 1)
+    interpolated[i] = nonlinear::get_p_from_A(A[i], G0[i], A0[i]);
+}
 
 } // namespace macrocirculation

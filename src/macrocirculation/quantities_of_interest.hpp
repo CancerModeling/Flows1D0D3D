@@ -38,6 +38,12 @@ void calculate_linearized_r(const MPI_Comm comm,
                             std::vector<Point> &points, 
                             std::vector<double> &interpolated); 
 
+void calculate_nonlinear_p(const MPI_Comm comm, 
+                           const GraphStorage &graph, 
+                           const std::vector<double> &A, 
+                           std::vector<Point> &points, 
+                           std::vector<double> &interpolated); 
+
 } // namespace macrocirculation
 
 #endif //TUMORMODELS_QUANTITIES_OF_INTEREST_HPP
