@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 
   std::cout << std::ios::scientific;
 
-  std::cout << "size: " << mc::mpi::size(MPI_COMM_WORLD) << std::endl;
+  std::cout << "Communicator size: " << mc::mpi::size(MPI_COMM_WORLD) << std::endl;
 
   // Time step width during our swing in phase. Can be quiet coarse:
   const double tau_swing_in = 1e-1;
@@ -97,6 +97,7 @@ int main(int argc, char *argv[]) {
   // Which domain type? 0 are two cylinders, 1 is a bifurcation, and 2 is a complex aneurysm geometry
   int domain_type = 2;
 
+  // Choose the correct file paths for different domain types:
   std::string filepath_with_gap;
   std::string filepath_gap;
   switch (domain_type) {
@@ -118,37 +119,37 @@ int main(int argc, char *argv[]) {
 
   {
     // Solver for the outer network:
-    mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, filepath_with_gap, "output", "vessels-with-gap", tau);
+    mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_WORLD, filepath_with_gap, "output", "vessels-with-gap", tau);
     // Solver for the inner network to achieve a swing in phase:
-    mc::SimpleLinearizedSolver solver_gap_swing_in(PETSC_COMM_SELF, filepath_gap, "output", "vessel-gap", tau);
+    mc::SimpleLinearizedSolver solver_gap_swing_in(PETSC_COMM_WORLD, filepath_gap, "output", "vessel-gap", tau);
     // Explicit solver for the inner network:
-    mc::SimpleNonlinearSolver solver_gap(PETSC_COMM_SELF, filepath_gap, "output", "vessel-gap", tau_explicit);
+    mc::SimpleNonlinearSolver solver_gap(PETSC_COMM_WORLD, filepath_gap, "output", "vessel-gap", tau_explicit);
 
     solver_with_gap.set_inflow(inflow_aneurysm1);
 
-    // swing in phase:
+    // Swing in phase (for this we just use the implicit solvers):
     for (size_t i = 0; i < int(t_swing_in / tau_swing_in); i += 1) {
       solver_with_gap.solve();
       solver_gap_swing_in.solve();
       const double t_now = (i + 1) * tau_swing_in;
 
-      // couple the solver with gap to the gap solver
+      // couple the solver with a gap to the gap solver
       for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
         auto res = solver_with_gap.get_result(outlet_idx);
         solver_gap_swing_in.set_result(outlet_idx, res.p, res.q);
       }
 
-      // couple the gap solver to the solver with gap
+      // couple the gap solver to the solver with a gap
       for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
         auto res = solver_gap_swing_in.get_result(outlet_idx);
         solver_with_gap.set_result(outlet_idx, res.p, res.q);
       }
     }
 
-    // reset the time
+    // Reset the time
     solver_with_gap.set_t(0);
 
-    // For the real simulation we have an explicit integrator. Hence, we need to interpolate between the values of the implicit solver.
+    // We have to couple an implicit ODE solver to an explict ODE solver. Hence, we need to interpolate between the values of the implicit solver.
     OutletInterpolator p_interpolator_with_gap(solver_gap.get_num_coupling_points());
     OutletInterpolator q_interpolator_with_gap(solver_gap.get_num_coupling_points());
     for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
@@ -156,7 +157,7 @@ int main(int argc, char *argv[]) {
       p_interpolator_with_gap.add(outlet_idx, solver_with_gap.get_current_t(), res.p);
       q_interpolator_with_gap.add(outlet_idx, solver_with_gap.get_current_t(), res.q);
     }
-    // For the real simulation we have an implicit integrator and we have to extrapolate the values from the explicit solver.
+    // We have to couple an explicit ODE solver to an implicit ODE solver. Hence, we have to extrapolate the values from the explicit solver.
     OutletInterpolator p_interpolator_gap(solver_gap.get_num_coupling_points());
     OutletInterpolator q_interpolator_gap(solver_gap.get_num_coupling_points());
     for (int outlet_idx = 0; outlet_idx < solver_gap.get_num_coupling_points(); outlet_idx += 1) {
@@ -168,21 +169,24 @@ int main(int argc, char *argv[]) {
     for (size_t i = 0; i < int(10 / tau); i += 1) {
       solver_with_gap.solve();
 
+      // Put the results of the solver_with_gap into the interpolators:
       for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
         auto res = solver_with_gap.get_result(outlet_idx);
         p_interpolator_with_gap.add(outlet_idx, solver_with_gap.get_current_t(), res.p);
         q_interpolator_with_gap.add(outlet_idx, solver_with_gap.get_current_t(), res.q);
       }
 
-      // inner loop to solve with the explicit solver
+      // Inner loop to solve with the explicit solver on a much smaller scale
       for (size_t j = 0; j < int(tau / tau_explicit); j += 1) {
         const double t_now = i * tau + j * tau_explicit;
 
+        // Set interpolated coupling conditions, from the solver_with_gap to the solver_gap:
         for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1)
           solver_gap.set_result(outlet_idx, p_interpolator_with_gap(outlet_idx, t_now), q_interpolator_with_gap(outlet_idx, t_now));
 
         solver_gap.solve();
 
+        // Put the results of the solver_gap into the interpolators:
         for (int outlet_idx = 0; outlet_idx < solver_gap.get_num_coupling_points(); outlet_idx += 1) {
           auto res = solver_gap.get_result(outlet_idx);
           p_interpolator_gap.add(outlet_idx, solver_gap.get_current_t(), res.p);
@@ -190,14 +194,12 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      // couple to implicit solver
+      // Couple to implicit solver: Set interpolated coupling conditions, from the solver_gap to the solver_with_gap:
       for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
         solver_with_gap.set_result(outlet_idx, p_interpolator_gap(outlet_idx, (i+2)*tau), q_interpolator_gap(outlet_idx, (i+2)*tau));
       }
 
-      const double t_now = (i + 1) * tau;
-
-      // output every 100
+      // Output not every time step 
       if ((i + 1) % int(1e-1 / tau) == 0) {
         for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
           // extract coupling data at aneurysm inflow
