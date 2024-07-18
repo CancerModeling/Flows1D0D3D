@@ -87,6 +87,10 @@ void SimpleLinearizedSolver::set_tau(double ptau) {
   tau = ptau;
 }
 
+double SimpleLinearizedSolver::get_current_t() const { return t; }
+
+void SimpleLinearizedSolver::set_t(double pt) { t = pt; }
+
 void SimpleLinearizedSolver::set_inflow(const std::function< double(double)> & fun) {
   if (graph->has_named_vertex("Inflow"))
   {

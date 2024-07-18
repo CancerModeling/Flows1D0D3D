@@ -42,7 +42,7 @@ public:
   /*! @brief Propagates the solver and its solution one time step further. */
   void solve();
 
-  /*! @brief Returns the coupling data at the given outlet (either in or out, see above). */
+  /*! @brief Returns the coupling data at the given outlet specified with an index. */
   Result get_result(int outlet);
 
   std::vector<std::array<double, 3>> get_points();
@@ -68,6 +68,11 @@ public:
 
   /*! @brief Returns the number of coupling points found in the 1D geometry. */
   size_t get_num_coupling_points() const;
+
+  /*! @brief Returns the simulation time, to which the currently saved solution and the get_result outputs correspond. */
+  double get_current_t() const;
+
+  void set_t(double t);
 
 private:
   Result get_result(const Vertex &vertex, const Edge &edge);
