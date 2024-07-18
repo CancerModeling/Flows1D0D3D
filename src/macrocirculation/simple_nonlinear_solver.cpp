@@ -133,6 +133,8 @@ void SimpleNonlinearSolver::solve() {
   solver->solve(tau, t);
 }
 
+double SimpleNonlinearSolver::get_current_t() const { return t; }
+
 SimpleNonlinearSolver::Result SimpleNonlinearSolver::get_result(const Vertex &vertex, const Edge &edge) {
   double p, q, a;
   if (edge.rank() == mpi::rank(comm))

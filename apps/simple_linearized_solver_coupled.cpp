@@ -60,12 +60,12 @@ public:
       : value_interpolator(num_outlets) {}
 
   void add(int outlet, double time, double value) {
-    assert(outlet < p_interpolator.size() && outlet < q_interpolator.size());
+    assert(outlet < value_interpolator.size());
     value_interpolator[outlet].add(time, value);
   }
 
-  double operator()(double outlet, double current_time) const {
-    assert(outlet < p_interpolator.size() && outlet < q_interpolator.size());
+  double operator()(int outlet, double current_time) const {
+    assert(outlet < value_interpolator.size());
     return value_interpolator[outlet](current_time);
   }
 
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
   // Duration of our swing in phase :
   const double t_swing_in = 2;
 
-  // which domain type
+  // Which domain type? 0 are two cylinders, 1 is a bifurcation, and 2 is a complex aneurysm geometry
   int domain_type = 2;
 
   std::string filepath_with_gap;
@@ -145,16 +145,24 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // For the real simulation we have an explicit integrator. Hence, we need to interpolate values.
-    OutletInterpolator p_interpolator(solver_gap.get_num_coupling_points());
-    OutletInterpolator q_interpolator(solver_gap.get_num_coupling_points());
-    for (int i = 0; i < solver_gap.get_num_coupling_points(); i += 1) {
-      p_interpolator.add(i, 0., 0);
-      q_interpolator.add(i, 0., 0);
-    }
-
     // reset the time
     solver_with_gap.set_t(0);
+
+    // For the real simulation we have an explicit integrator. Hence, we need to interpolate between the values of the implicit solver.
+    OutletInterpolator p_interpolator_with_gap(solver_gap.get_num_coupling_points());
+    OutletInterpolator q_interpolator_with_gap(solver_gap.get_num_coupling_points());
+    for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
+      auto res = solver_with_gap.get_result(outlet_idx);
+      p_interpolator_with_gap.add(outlet_idx, solver_with_gap.get_current_t(), res.p);
+      q_interpolator_with_gap.add(outlet_idx, solver_with_gap.get_current_t(), res.q);
+    }
+    // For the real simulation we have an implicit integrator and we have to extrapolate the values from the explicit solver.
+    OutletInterpolator p_interpolator_gap(solver_gap.get_num_coupling_points());
+    OutletInterpolator q_interpolator_gap(solver_gap.get_num_coupling_points());
+    for (int outlet_idx = 0; outlet_idx < solver_gap.get_num_coupling_points(); outlet_idx += 1) {
+      p_interpolator_gap.add(outlet_idx, 0., 0.);
+      q_interpolator_gap.add(outlet_idx, 0., 0.);
+    }
 
     // simulation phase:
     for (size_t i = 0; i < int(10 / tau); i += 1) {
@@ -162,8 +170,8 @@ int main(int argc, char *argv[]) {
 
       for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
         auto res = solver_with_gap.get_result(outlet_idx);
-        p_interpolator.add(outlet_idx, solver_with_gap.get_current_t(), res.p);
-        q_interpolator.add(outlet_idx, solver_with_gap.get_current_t(), res.q);
+        p_interpolator_with_gap.add(outlet_idx, solver_with_gap.get_current_t(), res.p);
+        q_interpolator_with_gap.add(outlet_idx, solver_with_gap.get_current_t(), res.q);
       }
 
       // inner loop to solve with the explicit solver
@@ -171,15 +179,20 @@ int main(int argc, char *argv[]) {
         const double t_now = i * tau + j * tau_explicit;
 
         for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1)
-          solver_gap.set_result(outlet_idx, p_interpolator(outlet_idx, t_now), q_interpolator(outlet_idx, t_now));
+          solver_gap.set_result(outlet_idx, p_interpolator_with_gap(outlet_idx, t_now), q_interpolator_with_gap(outlet_idx, t_now));
 
         solver_gap.solve();
+
+        for (int outlet_idx = 0; outlet_idx < solver_gap.get_num_coupling_points(); outlet_idx += 1) {
+          auto res = solver_gap.get_result(outlet_idx);
+          p_interpolator_gap.add(outlet_idx, solver_gap.get_current_t(), res.p);
+          q_interpolator_gap.add(outlet_idx, solver_gap.get_current_t(), res.q);
+        }
       }
 
-      // couple to implicit solver (TODO: use extrapolation here)
+      // couple to implicit solver
       for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
-        auto res = solver_gap.get_result(outlet_idx);
-        solver_with_gap.set_result(outlet_idx, res.p, res.q);
+        solver_with_gap.set_result(outlet_idx, p_interpolator_gap(outlet_idx, (i+2)*tau), q_interpolator_gap(outlet_idx, (i+2)*tau));
       }
 
       const double t_now = (i + 1) * tau;

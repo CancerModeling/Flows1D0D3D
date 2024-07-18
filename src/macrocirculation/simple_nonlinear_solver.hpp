@@ -70,6 +70,9 @@ public:
   /*! @brief Returns the number of coupling points found in the 1D geometry. */
   size_t get_num_coupling_points() const;
 
+  /*! @brief Returns the simulation time, to which the currently saved solution and the get_result outputs correspond. */
+  double get_current_t() const;
+
 private:
   Result get_result(const Vertex &vertex, const Edge &edge);
 
