@@ -40,25 +40,49 @@ int main(int argc, char *argv[]) {
 
   std::cout << "size: " << mc::mpi::size(MPI_COMM_WORLD) << std::endl;
 
+  // Duration of our swing in phase :
+  const double t_swing_in = 2;
+  // Time step width during our swing in phase. Can be quiet coarse:
+  const double tau_swing_in = 1e-2;
+
   {
     // const double tau = 2.5e-6;
     const double tau = 2.5e-5;
 
-    // mc::SimpleLinearizedSolver solver_with_gap ("data/1d-meshes/vessels-with-gap.json", "output", "vessels-with-gap", tau );
-    // mc::SimpleLinearizedSolver solver_gap ("data/1d-meshes/vessel-gap.json", "output", "vessel-gap", tau );
+    // const std::string filepath_with_gap = "data/1d-meshes/vessels-with-gap.json";
+    // const std::string filepath_gap = "data/1d-meshes/vessel-gap.json";
+    // const std::string filepath_with_gap = "data/1d-meshes/bifurcation-with-gap.json";
+    // const std::string filepath_gap = "data/1d-meshes/bifurcation-gap.json";
+    const std::string filepath_with_gap = "data/1d-meshes/Graph0-rcr-with-gap.json";
+    const std::string filepath_gap = "data/1d-meshes/Graph0-rcr-gap.json";
 
-    // mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, "data/1d-meshes/bifurcation-with-gap.json", "output", "vessels-with-gap", tau);
-    // mc::SimpleLinearizedSolver solver_gap(PETSC_COMM_SELF, "data/1d-meshes/bifurcation-gap.json", "output", "vessel-gap", tau);
-
-    //mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-with-gap.json", "output", "vessels-with-gap", tau);
-    //mc::SimpleLinearizedSolver solver_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-gap.json", "output", "vessel-gap", tau);
-
-    mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-with-gap.json", "output", "vessels-with-gap", tau);
-    mc::SimpleNonlinearSolver solver_gap(PETSC_COMM_SELF, "data/1d-meshes/Graph0-rcr-gap.json", "output", "vessel-gap", tau);
+    // Solver for the outer network:
+    mc::SimpleLinearizedSolver solver_with_gap(PETSC_COMM_SELF, filepath_with_gap, "output", "vessels-with-gap", tau);
+    // Solver for the inner network to achieve a swing in phase:
+    mc::SimpleLinearizedSolver solver_gap_swing_in(PETSC_COMM_SELF, filepath_gap, "output", "vessel-gap", tau);
+    // Explicit solver for the inner network:
+    mc::SimpleNonlinearSolver solver_gap(PETSC_COMM_SELF, filepath_gap, "output", "vessel-gap", tau);
 
     solver_with_gap.set_inflow(inflow_aneurysm1);
-    //solver_with_gap.set_inflow(inflow_aneurysm1);
 
+    // swing in phase:
+    for (size_t i = 0; i < int(t_swing_in / tau_swing_in); i += 1) {
+      solver_with_gap.solve();
+      solver_gap_swing_in.solve();
+      const double t_now = (i + 1) * tau_swing_in;
+
+      for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
+        auto res = solver_with_gap.get_result(outlet_idx);
+        solver_gap_swing_in.set_result(outlet_idx, res.p, res.q);
+      }
+
+      for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
+        auto res = solver_gap_swing_in.get_result(outlet_idx);
+        solver_with_gap.set_result(outlet_idx, res.p, res.q);
+      }
+    }
+
+    // simulation phase:
     for (size_t i = 0; i < int(10 / tau); i += 1) {
       // TODO: iterate
       solver_with_gap.solve();
