@@ -13,6 +13,7 @@
 #include "macrocirculation/communication/mpi.hpp"
 #include "macrocirculation/simple_linearized_solver.hpp"
 #include "macrocirculation/simple_nonlinear_solver.hpp"
+#include "macrocirculation/outlet_interpolator.hpp"
 #include "petsc.h"
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -29,55 +30,7 @@ double inflow_aneurysm1(const double t) {
   return 1.1400127037858874 * sin(2 * M_PI * t) + 0.10000157404719523 * sin(4 * M_PI * t) - 0.11286043261149026 * sin(6 * M_PI * t) - 0.10272017307948093 * sin(8 * M_PI * t) - 0.0054169100548564046 * sin(10 * M_PI * t) - 0.02557859579598561 * sin(12 * M_PI * t) - 0.078047431190483588 * sin(14 * M_PI * t) - 0.022033974667631729 * sin(16 * M_PI * t) - 0.034738483688161952 * sin(18 * M_PI * t) - 0.045615688241977252 * sin(20 * M_PI * t) + 0.018999552643855375 * sin(22 * M_PI * t) - 0.0084982548911405227 * sin(24 * M_PI * t) + 0.0066704505306768112 * sin(26 * M_PI * t) + 0.0205896141914854 * sin(28 * M_PI * t) + 0.00056547376330811749 * sin(30 * M_PI * t) + 0.0079161507767753492 * sin(32 * M_PI * t) + 0.011957921955760809 * sin(34 * M_PI * t) + 0.0019131544051249399 * sin(36 * M_PI * t) + 0.0048081271514646045 * sin(38 * M_PI * t) - 0.48681323281506877 * cos(2 * M_PI * t) - 0.53309141008559258 * cos(4 * M_PI * t) - 0.20633570858479031 * cos(6 * M_PI * t) - 0.036670810452806915 * cos(8 * M_PI * t) - 0.014049767327029486 * cos(10 * M_PI * t) - 0.066663082737686313 * cos(12 * M_PI * t) - 0.015523473625300599 * cos(14 * M_PI * t) + 0.023855278352215264 * cos(16 * M_PI * t) - 0.016520131034039841 * cos(18 * M_PI * t) + 0.04615603374764362 * cos(20 * M_PI * t) + 0.031258225120331377 * cos(22 * M_PI * t) + 0.0052060140772440802 * cos(24 * M_PI * t) + 0.030280763300256783 * cos(26 * M_PI * t) + 0.00202669624626461 * cos(28 * M_PI * t) - 0.00026986726295702868 * cos(30 * M_PI * t) + 0.0091328960066964764 * cos(32 * M_PI * t) - 0.0025995007712682956 * cos(34 * M_PI * t) - 0.003740301110564225 * cos(36 * M_PI * t) + 0.0020915964477192118 * cos(38 * M_PI * t) + 3.0675015000000001;
 }
 
-class Interpolator {
-public:
-  void add(double ptime, double pvalue) {
-    time.push_back(ptime);
-    value.push_back(pvalue);
-  }
-
-  double operator()(double current_time) const {
-    if (value.size() < 1)
-      throw std::runtime_error("Not enough values to interpolate");
-
-    double value_now = value[value.size() - 1];
-    double value_prev = value[value.size() - 2];
-    double time_now = time[time.size() - 1];
-    double time_prev = time[time.size() - 2];
-    double zeta = (current_time - time_prev) / (time_now - time_prev);
-    double value_interp = value_prev + zeta * (value_now - value_prev);
-    return value_interp;
-  }
-
-private:
-  std::vector<double> time;
-  std::vector<double> value;
-};
-
-class OutletInterpolator {
-public:
-  OutletInterpolator(int num_outlets)
-      : value_interpolator(num_outlets) {}
-
-  void add(int outlet, double time, double value) {
-    assert(outlet < value_interpolator.size());
-    value_interpolator[outlet].add(time, value);
-  }
-
-  double operator()(int outlet, double current_time) const {
-    assert(outlet < value_interpolator.size());
-    return value_interpolator[outlet](current_time);
-  }
-
-private:
-  std::vector<Interpolator> value_interpolator;
-};
-
 int main(int argc, char *argv[]) {
-  /// TODO: Sehr groesses E
-  /// TODO: Geometrie beschreiben
-  /// TODO: Fluesse immer in vessel stueck hinein
-
   CHKERRQ(PetscInitialize(&argc, &argv, nullptr, "solves linear flow problem"));
 
   std::cout << std::ios::scientific;
@@ -150,16 +103,16 @@ int main(int argc, char *argv[]) {
     solver_with_gap.set_t(0);
 
     // We have to couple an implicit ODE solver to an explict ODE solver. Hence, we need to interpolate between the values of the implicit solver.
-    OutletInterpolator p_interpolator_with_gap(solver_gap.get_num_coupling_points());
-    OutletInterpolator q_interpolator_with_gap(solver_gap.get_num_coupling_points());
+    mc::OutletInterpolator p_interpolator_with_gap(solver_gap.get_num_coupling_points());
+    mc::OutletInterpolator q_interpolator_with_gap(solver_gap.get_num_coupling_points());
     for (int outlet_idx = 0; outlet_idx < solver_with_gap.get_num_coupling_points(); outlet_idx += 1) {
       auto res = solver_with_gap.get_result(outlet_idx);
       p_interpolator_with_gap.add(outlet_idx, solver_with_gap.get_current_t(), res.p);
       q_interpolator_with_gap.add(outlet_idx, solver_with_gap.get_current_t(), res.q);
     }
     // We have to couple an explicit ODE solver to an implicit ODE solver. Hence, we have to extrapolate the values from the explicit solver.
-    OutletInterpolator p_interpolator_gap(solver_gap.get_num_coupling_points());
-    OutletInterpolator q_interpolator_gap(solver_gap.get_num_coupling_points());
+    mc::OutletInterpolator p_interpolator_gap(solver_gap.get_num_coupling_points());
+    mc::OutletInterpolator q_interpolator_gap(solver_gap.get_num_coupling_points());
     for (int outlet_idx = 0; outlet_idx < solver_gap.get_num_coupling_points(); outlet_idx += 1) {
       p_interpolator_gap.add(outlet_idx, 0., 0.);
       q_interpolator_gap.add(outlet_idx, 0., 0.);
