@@ -32,6 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('--no-legend', help='remove the legend from the plots', action='store_true')
     parser.add_argument('-N', type=int, help='Number of fourier coefficients', default=4)
     parser.add_argument('--vessel-id', type=int, required=True, help='Vessel id for Fourier')
+    parser.add_argument('--quantity', help='Which quantity should be approximated?', type=str, choices=['q', 'v', 'a'], default='v')
 
     args = parser.parse_args()
 
@@ -40,12 +41,16 @@ if __name__ == '__main__':
     with open(args.filepath) as f:
         meta = json.loads(f.read())
 
-    vessel_info = meta['vessel_data'][f'{args.vessel_id}']
-    if vessel_info is None:
-        print(f'Vessel {args.vessel_id} not found. Only {meta["vessel_ids"]} available.')
+    try:
+        vessel_info = meta['vessel_data'][f'{args.vessel_id}']
+    except:
+        print(f'Vessel {args.vessel_id} not found. Only {meta["vessel_ids"]} available.'); exit()
 
 
-    q = np.array(vessel_info['q'])
+    try:
+        q = np.array(vessel_info[args.quantity])
+    except:
+        print(f'Quantity "{args.quantity}" not found'); exit()
     t = np.array(meta['time'])
 
     fourier_val, fourier_fun = get_fourier_series(q, args.N)
